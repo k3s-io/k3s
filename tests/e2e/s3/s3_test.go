@@ -82,17 +82,44 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("ensures s3 mock is working", func() {
-			a, err := e2e.RunCmdOnNode("sudo docker ps -a | grep mock\n", serverNodeNames[0])
-			fmt.Println(a)
+			res, err := e2e.RunCmdOnNode("docker ps -a | grep mock\n", serverNodeNames[0])
+			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("save s3 snapshot", func() {
-			a, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot save", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(strings.Contains(a, "S3 bucket test exists")).Should(Equal(true))
-			Expect(strings.Contains(a, "Uploading snapshot")).Should(Equal(true))
-			Expect(strings.Contains(a, "S3 upload complete for")).Should(Equal(true))
-
+			Expect(res).To(ContainSubstring("S3 bucket test exists"))
+			Expect(res).To(ContainSubstring("Uploading snapshot"))
+			Expect(res).To(ContainSubstring("S3 upload complete for"))
+		})
+		It("lists saved s3 snapshot", func() {
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot list", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("on-demand-server-0"))
+		})
+		It("save 3 more s3 snapshots", func() {
+			for _, i := range []string{"1", "2", "3"} {
+				res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save --name special-"+i, serverNodeNames[0])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(ContainSubstring("Uploading snapshot"))
+				Expect(res).To(ContainSubstring("S3 upload complete for special-" + i))
+			}
+		})
+		It("lists saved s3 snapshot", func() {
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot list", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("on-demand-server-0"))
+			Expect(res).To(ContainSubstring("special-1-server-0"))
+			Expect(res).To(ContainSubstring("special-2-server-0"))
+			Expect(res).To(ContainSubstring("special-3-server-0"))
+		})
+		// TODO, there is currently a bug that prevents pruning on s3 snapshots that are not prefixed with "on-demand"
+		// https://github.com/rancher/rke2/issues/3714
+		// Once fixed, ensure that the snapshots list are actually reduced to 2
+		It("prunes s3 snapshots", func() {
+			_, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
