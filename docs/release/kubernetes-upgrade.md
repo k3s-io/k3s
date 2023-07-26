@@ -214,6 +214,12 @@ The resulting run can be viewed here:
 
 It may be necessary to create a new release candidate to accommodate changes in dependencies such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, repeat the previous process for tagging and increment the rc version.
 
+# Create system-agent-installer-k3s Release Images
+The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
+[Go to the repo](https://github.com/rancher/system-agent-installer-k3s) and manually create a new release and tag it with the corresponding version numbers. This will kick off a build of the image.
+
+Build progress can be tracked [here](https://hub.docker.com/r/rancher/system-agent-installer-k3s/tags). 
+
 # Create GA Release Candidate
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
 
@@ -283,10 +289,7 @@ A later version can point to those arguments with no change:
     serverArgs: *serverArgs-v1
 ```
 If you are unsure of the new minor versions min/max constraints you can ask the Project manager and/or QA.
-# Create system-agent-installer-k3s Release Images
-The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
-[Go to the repo](https://github.com/rancher/system-agent-installer-k3s) and manually create a new release and tag it with the corresponding version numbers. This will kick off a build of the image.
-Build progress can be tracked here.
+
 # Update Channel Server
 Once the release is verified, the channel server config needs to be updated to reflect the new version for “stable”. [channel.yaml can be found at the root of the K3s repo.](https://github.com/k3s-io/k3s/blob/master/channel.yaml)
 
