@@ -139,7 +139,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://myserver:6443 K3S_TOKEN=XXX sh -
 Manual Download
 ---------------
 
-1. Download `k3s` from latest [release](https://github.com/k3s-io/k3s/releases/latest), x86_64, armhf, arm64 and s390x are supported.
+1. Download `k3s` from latest [release](https://github.com/k3s-io/k3s/releases/latest), x86_64, armhf, arm64, s390x and riscv64 are supported.
 1. Run the server.
 
 ```bash
