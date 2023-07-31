@@ -604,7 +604,7 @@ EOF
             ${transactional_update_run} mkdir -p /var/lib/rpm-state
             ;;
         coreos)
-            rpm_installer="rpm-ostree"
+            rpm_installer="rpm-ostree --idempotent"
             # rpm_install_extra_args="--apply-live"
             : "${INSTALL_K3S_SKIP_START:=true}"
             ;;
