@@ -221,18 +221,20 @@ func backupCertificates(serverDataDir, agentDataDir string) (string, error) {
 	if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
 		return "", err
 	}
-	agentCerts := []string{
-		filepath.Join(agentDataDir, "client-"+version.Program+"-controller.crt"),
-		filepath.Join(agentDataDir, "client-"+version.Program+"-controller.key"),
-		filepath.Join(agentDataDir, "client-kubelet.crt"),
-		filepath.Join(agentDataDir, "client-kubelet.key"),
-		filepath.Join(agentDataDir, "serving-kubelet.crt"),
-		filepath.Join(agentDataDir, "serving-kubelet.key"),
-		filepath.Join(agentDataDir, "client-kube-proxy.crt"),
-		filepath.Join(agentDataDir, "client-kube-proxy.key"),
+	certs := []string{
+		"client-" + version.Program + "-controller.crt",
+		"client-" + version.Program + "-controller.key",
+		"client-kubelet.crt",
+		"client-kubelet.key",
+		"serving-kubelet.crt",
+		"serving-kubelet.key",
+		"client-kube-proxy.crt",
+		"client-kube-proxy.key",
 	}
-	for _, cert := range agentCerts {
-		if err := util.CopyFile(cert, tlsBackupDir, true); err != nil {
+	for _, cert := range certs {
+		agentCert := filepath.Join(agentDataDir, cert)
+		tlsBackupCert := filepath.Join(tlsBackupDir, cert)
+		if err := util.CopyFile(agentCert, tlsBackupCert, true); err != nil {
 			return "", err
 		}
 	}
