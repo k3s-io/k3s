@@ -131,6 +131,7 @@ enable_keychain = true
 func ParseTemplateFromConfig(templateBuffer string, config interface{}) (string, error) {
 	out := new(bytes.Buffer)
 	t := template.Must(template.New("compiled_template").Parse(templateBuffer))
+	template.Must(t.New("base").Parse(ContainerdConfigTemplate))
 	if err := t.Execute(out, config); err != nil {
 		return "", err
 	}
