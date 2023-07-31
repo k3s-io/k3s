@@ -179,6 +179,7 @@ func ParseTemplateFromConfig(templateBuffer string, config interface{}) (string,
 		},
 	}
 	t := template.Must(template.New("compiled_template").Funcs(funcs).Parse(templateBuffer))
+	template.Must(t.New("base").Parse(ContainerdConfigTemplate))
 	if err := t.Execute(out, config); err != nil {
 		return "", err
 	}
