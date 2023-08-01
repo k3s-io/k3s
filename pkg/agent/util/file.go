@@ -16,10 +16,12 @@ func WriteFile(name string, content string) error {
 	return nil
 }
 
-func CopyFile(sourceFile string, destinationFile string) error {
+func CopyFile(sourceFile string, destinationFile string, ignoreNotExist bool) error {
 	os.MkdirAll(filepath.Dir(destinationFile), 0755)
 	input, err := os.ReadFile(sourceFile)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) && ignoreNotExist {
+		return nil
+	} else if err != nil {
 		return errors.Wrapf(err, "copying %s to %s", sourceFile, destinationFile)
 	}
 	err = os.WriteFile(destinationFile, input, 0644)
