@@ -68,6 +68,7 @@ func main() {
 			secretsencrypt.Prepare,
 			secretsencrypt.Rotate,
 			secretsencrypt.Reencrypt,
+			secretsencrypt.RotateKeys,
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(

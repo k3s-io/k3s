@@ -71,6 +71,7 @@ func main() {
 			secretsencryptCommand,
 			secretsencryptCommand,
 			secretsencryptCommand,
+			secretsencryptCommand,
 		),
 		cmds.NewCertCommand(
 			cmds.NewCertSubcommands(
