@@ -34,7 +34,10 @@ def getInstallType(vm, release_version, branch)
   end
 end
 
-def addCoverageDir(vm, role)
+def addCoverageDir(vm, role, gocover)
+  if gocover.empty?
+    return
+  end
   service = role.include?("agent") ? "k3s-agent" : "k3s" 
     script = <<~SHELL
       mkdir -p /tmp/k3scov

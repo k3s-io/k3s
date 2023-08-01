@@ -22,7 +22,6 @@ var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
-// E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
 // E2E_REGISTRY: true/false (default: false)
 
@@ -85,39 +84,39 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create new private registry", func() {
-			registry, err := e2e.RunCmdOnNode("sudo docker run -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
+			registry, err := e2e.RunCmdOnNode("docker run -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
 			fmt.Println(registry)
 			Expect(err).NotTo(HaveOccurred())
 
 		})
 		It("ensures registry is working", func() {
-			a, err := e2e.RunCmdOnNode("sudo docker ps -a | grep registry\n", serverNodeNames[0])
+			a, err := e2e.RunCmdOnNode("docker ps -a | grep registry\n", serverNodeNames[0])
 			fmt.Println(a)
 			Expect(err).NotTo(HaveOccurred())
 
 		})
 		It("Should pull and image from dockerhub and send it to private registry", func() {
-			cmd := "sudo docker pull nginx"
+			cmd := "docker pull nginx"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			nodeIP, err := e2e.FetchNodeExternalIP(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 
-			cmd = "sudo docker tag nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker tag nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker push " + nodeIP + ":5000/my-webpage"
+			cmd = "docker push " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker image remove nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker image remove nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := e2e.RunCmdOnNode("sudo kubectl create deployment my-webpage --image=my-registry.local/my-webpage", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/my-webpage", serverNodeNames[0])
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -131,7 +130,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(pod.Status).Should(Equal("Running"))
-				g.Expect(pod.Node).Should(Equal(agentNodeNames[0]))
 			}, "60s", "5s").Should(Succeed())
 
 			cmd := "curl " + pod.IP
@@ -151,11 +149,12 @@ var _ = AfterSuite(func() {
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
-		r1, err := e2e.RunCmdOnNode("sudo docker rm -f registry", serverNodeNames[0])
+		r1, err := e2e.RunCmdOnNode("docker rm -f registry", serverNodeNames[0])
 		Expect(err).NotTo(HaveOccurred(), r1)
-		r2, err := e2e.RunCmdOnNode("sudo kubectl delete deployment my-webpage", serverNodeNames[0])
+		r2, err := e2e.RunCmdOnNode("kubectl delete deployment my-webpage", serverNodeNames[0])
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

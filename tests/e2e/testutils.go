@@ -493,6 +493,9 @@ func UpgradeCluster(nodeNames []string, local bool) error {
 }
 
 func GetCoverageReport(nodeNames []string) error {
+	if os.Getenv("E2E_GOCOVER") == "" {
+		return nil
+	}
 	covDirs := []string{}
 	for _, nodeName := range nodeNames {
 		covDir := nodeName + "-cov"

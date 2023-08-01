@@ -46,10 +46,7 @@ def provision(vm, role, role_num, node_num)
   if !REGISTRY.empty?
     vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
   end
-
-  if !GOCOVER.empty?
-    addCoverageDir(vm, role)
-  end
+  addCoverageDir(vm, role, GOCOVER)
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
