@@ -73,10 +73,6 @@ const (
 	maxBackupRetention     = 5
 	maxConcurrentSnapshots = 1
 	compressedExtension    = ".zip"
-
-	MasterLabel       = "node-role.kubernetes.io/master"
-	ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
-	EtcdRoleLabel     = "node-role.kubernetes.io/etcd"
 )
 
 var (
