@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 		return nil, nil
 	}
 
-	if _, ok := node.Labels[EtcdRoleLabel]; !ok {
+	if _, ok := node.Labels[util.ETCDRoleLabelKey]; !ok {
 		logrus.Debugf("Node %s was not labeled etcd node, skipping sync", key)
 		return node, nil
 	}
@@ -98,7 +99,7 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 }
 
 func (e *etcdMemberHandler) onRemove(key string, node *v1.Node) (*v1.Node, error) {
-	if _, ok := node.Labels[EtcdRoleLabel]; !ok {
+	if _, ok := node.Labels[util.ETCDRoleLabelKey]; !ok {
 		logrus.Debugf("Node %s was not labeled etcd node, skipping etcd member removal", key)
 		return node, nil
 	}

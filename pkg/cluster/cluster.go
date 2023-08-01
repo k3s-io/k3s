@@ -24,6 +24,7 @@ type Cluster struct {
 	storageStarted   bool
 	saveBootstrap    bool
 	shouldBootstrap  bool
+	cnFilterFunc     func(...string) []string
 }
 
 // Start creates the dynamic tls listener, http request handler,
