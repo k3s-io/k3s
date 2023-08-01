@@ -17,6 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,6 +140,9 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 		logrus.Infoln("Secrets encryption already disabled")
 		return nil
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil && enable {
+		if nodeArgs := getNodeArgs(server); !strings.Contains(nodeArgs, "secrets-encryption") {
+			return fmt.Errorf("secrets encryption cannot be enabled without first starting the server with --secrets-encryption flag")
+		}
 		logrus.Infoln("Enabling secrets encryption")
 		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
 			return err
@@ -149,7 +153,20 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return cluster.Save(ctx, server, true)
+	if err := cluster.Save(ctx, server, true); err != nil {
+		return err
+	}
+	server.EncryptSkip = true
+	return setReencryptAnnotation(server)
+}
+
+func getNodeArgs(server *config.Control) string {
+	nodeName := os.Getenv("NODE_NAME")
+	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+	return node.Annotations[version.Program+".io/node-args"]
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -174,6 +191,8 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 				err = encryptionPrepare(ctx, server, encryptReq.Force)
 			case secretsencrypt.EncryptionRotate:
 				err = encryptionRotate(ctx, server, encryptReq.Force)
+			case secretsencrypt.EncryptionRotateKeys:
+				err = encryptionRotateKeys(ctx, server)
 			case secretsencrypt.EncryptionReencryptActive:
 				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
 			default:
@@ -261,6 +280,63 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	}
 	server.EncryptForce = force
 	server.EncryptSkip = skip
+	nodeName := os.Getenv("NODE_NAME")
+	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
+	if err != nil {
+		return err
+	}
+	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
+	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
+	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
+		return err
+	}
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	return nil
+}
+
+func addAndRotateKeys(server *config.Control) error {
+
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	if err != nil {
+		return err
+	}
+
+	if err := AppendNewEncryptionKey(&curKeys); err != nil {
+		return err
+	}
+	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
+
+	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+		return err
+	}
+
+	// Right rotate elements
+	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+
+	return secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true)
+}
+
+// encryptionRotateKeys is both adds and rotates keys, and sets the annotaiton that triggers the
+// reencryption process. It is the preferred way to rotate keys, starting with v1.28
+func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
+	states := secretsencrypt.EncryptionStart + "-" + secretsencrypt.EncryptionReencryptFinished
+	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil {
+		return err
+	}
+
+	if err := addAndRotateKeys(server); err != nil {
+		return err
+	}
+
+	return setReencryptAnnotation(server)
+}
+
+func setReencryptAnnotation(server *config.Control) error {
 	nodeName := os.Getenv("NODE_NAME")
 	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 	if err != nil {

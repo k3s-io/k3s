@@ -214,6 +214,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	}
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
+		argsMap["encryption-provider-config-automatic-reload"] = "true"
 	}
 	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
 

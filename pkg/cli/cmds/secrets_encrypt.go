@@ -26,7 +26,7 @@ var (
 	}
 )
 
-func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt func(ctx *cli.Context) error) cli.Command {
+func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:           SecretsEncryptCommand,
 		Usage:          "Control secrets encryption and keys rotation",
@@ -83,6 +83,13 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 						Usage:       "Skip removing old key",
 						Destination: &ServerConfig.EncryptSkip,
 					}),
+			},
+			{
+				Name:           "rotate-keys",
+				Usage:          "Add, rotate and rencryption with a new encryption key",
+				SkipArgReorder: true,
+				Action:         rotateKeys,
+				Flags:          EncryptFlags,
 			},
 		},
 	}

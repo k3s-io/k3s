@@ -21,6 +21,7 @@ const (
 	EncryptionStart             string = "start"
 	EncryptionPrepare           string = "prepare"
 	EncryptionRotate            string = "rotate"
+	EncryptionRotateKeys        string = "rotate_keys"
 	EncryptionReencryptRequest  string = "reencrypt_request"
 	EncryptionReencryptActive   string = "reencrypt_active"
 	EncryptionReencryptFinished string = "reencrypt_finished"
