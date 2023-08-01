@@ -51,11 +51,15 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	if err != nil {
 		return nil, nil, err
 	}
+	c.config.SANs = append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain)
+	c.config.Runtime.ClusterControllerStarts["server-cn-filter"] = func(ctx context.Context) {
+		registerAddressHandlers(ctx, c)
+	}
 	storage := tlsStorage(ctx, c.config.DataDir, c.config.Runtime)
 	return wrapHandler(dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
-		SANs:                append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain),
+		SANs:                c.config.SANs,
 		CN:                  version.Program,
 		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
@@ -63,6 +67,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			CipherSuites: c.config.TLSCipherSuites,
 			NextProtos:   []string{"h2", "http/1.1"},
 		},
+		FilterCN: c.filterCN,
 		RegenerateCerts: func() bool {
 			const regenerateDynamicListenerFile = "dynamic-cert-regenerate"
 			dynamicListenerRegenFilePath := filepath.Join(c.config.DataDir, "tls", regenerateDynamicListenerFile)
@@ -73,6 +78,13 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			return false
 		},
 	}))
+}
+
+func (c *Cluster) filterCN(cn ...string) []string {
+	if c.cnFilterFunc != nil {
+		return c.cnFilterFunc(cn...)
+	}
+	return cn
 }
 
 // initClusterAndHTTPS sets up the dynamic tls listener, request router,
