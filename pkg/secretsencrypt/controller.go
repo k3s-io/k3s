@@ -29,7 +29,6 @@ const (
 	secretsProgressEvent       string = "SecretsProgress"
 	secretsUpdateCompleteEvent string = "SecretsUpdateComplete"
 	secretsUpdateErrorEvent    string = "SecretsUpdateError"
-	controlPlaneRoleLabelKey   string = "node-role.kubernetes.io/control-plane"
 )
 
 type handler struct {
@@ -186,7 +185,7 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 	if err != nil {
 		return false, err
 	}
-	labelSelector := labels.Set{controlPlaneRoleLabelKey: "true"}.String()
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
 	nodes, err := h.nodes.List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return false, err
