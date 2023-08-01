@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 
@@ -106,7 +107,7 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfi
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(runtime.EncryptionConfig, jsonfile, 0600)
+	return util.AtomicWrite(runtime.EncryptionConfig, jsonfile, 0600)
 }
 
 func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
