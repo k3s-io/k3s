@@ -14,7 +14,7 @@ See the [create cluster test](../tests/terraform/createcluster_test.go) as an ex
 
 ## Running
 
-- Before running the tests, you should creat local.tfvars file in `./tests/terraform/modules/k3scluster/config/local.tfvars`. There is some information there to get you started, but the empty variables should be filled in appropriately per your AWS environment.
+- Before running the tests, you should create local.tfvars file in `./tests/terraform/modules/k3scluster/config/local.tfvars`. There is some information there to get you started, but the empty variables should be filled in appropriately per your AWS environment.
 
 
 
