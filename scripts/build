@@ -67,7 +67,7 @@ RUNC_TAGS="apparmor seccomp"
 RUNC_STATIC="static"
 
 if [ ${OS} = windows ]; then
-    TAGS="netcgo osusergo providerless"
+    TAGS="ctrd netcgo osusergo providerless"
 fi
 
 if [ "$SELINUX" = "true" ]; then
@@ -110,12 +110,12 @@ k3s_binaries=(
     "bin/k3s-certificate"
     "bin/k3s-completion"
     "bin/kubectl"
+    "bin/containerd"
     "bin/crictl"
     "bin/ctr"
 )
 
 containerd_binaries=(
-    "bin/containerd"
     "bin/containerd-shim"
     "bin/containerd-shim-runc-v2"
     "bin/runc"

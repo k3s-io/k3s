@@ -69,7 +69,7 @@ elif [ ${ARCH} = s390x ]; then
     BIN_SUFFIX="-s390x"
 fi
 
-CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}
+CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}
 
 GOOS=linux CC=gcc CXX=g++ "${GO}" generate
 LDFLAGS="
@@ -79,7 +79,7 @@ LDFLAGS="
 "
 TAGS="urfave_cli_no_docs"
 STATIC="-extldflags '-static'"
-CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s/main.go ./cmd/k3s/main_linux.go
+CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s
 
 stat ${CMD_NAME}
 
