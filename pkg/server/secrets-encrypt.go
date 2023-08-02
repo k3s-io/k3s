@@ -17,7 +17,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,9 +139,6 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 		logrus.Infoln("Secrets encryption already disabled")
 		return nil
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil && enable {
-		if nodeArgs := getNodeArgs(server); !strings.Contains(nodeArgs, "secrets-encryption") {
-			return fmt.Errorf("secrets encryption cannot be enabled without first starting the server with --secrets-encryption flag")
-		}
 		logrus.Infoln("Enabling secrets encryption")
 		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
 			return err
@@ -158,15 +154,6 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	}
 	server.EncryptSkip = true
 	return setReencryptAnnotation(server)
-}
-
-func getNodeArgs(server *config.Control) string {
-	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
-	if err != nil {
-		return ""
-	}
-	return node.Annotations[version.Program+".io/node-args"]
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -245,7 +232,6 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 }
 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
-
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
 		return err
 	}
@@ -274,7 +260,6 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 }
 
 func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
-
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
 	}
@@ -300,7 +285,6 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 }
 
 func addAndRotateKeys(server *config.Control) error {
-
 	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
@@ -357,7 +341,6 @@ func setReencryptAnnotation(server *config.Control) error {
 }
 
 func AppendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
-
 	aescbcKey := make([]byte, aescbcKeySize)
 	_, err := rand.Read(aescbcKey)
 	if err != nil {
