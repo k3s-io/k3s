@@ -20,7 +20,7 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error) {
+func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
@@ -46,11 +46,10 @@ func wrapServerError(err error) error {
 }
 
 func Enable(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -70,7 +69,7 @@ func Disable(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,7 @@ func Status(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -147,11 +146,10 @@ func Status(app *cli.Context) error {
 }
 
 func Prepare(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -173,7 +171,7 @@ func Rotate(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -192,11 +190,10 @@ func Rotate(app *cli.Context) error {
 }
 
 func Reencrypt(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -216,11 +213,10 @@ func Reencrypt(app *cli.Context) error {
 }
 
 func RotateKeys(app *cli.Context) error {
-	var err error
-	if err = cmds.InitLogging(); err != nil {
+	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	info, err := commandPrep(app, &cmds.ServerConfig)
+	info, err := commandPrep(&cmds.ServerConfig)
 	if err != nil {
 		return err
 	}
@@ -233,6 +229,6 @@ func RotateKeys(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
 		return wrapServerError(err)
 	}
-	fmt.Println("keys rotated, rencryption started")
+	fmt.Println("keys rotated, reencryption started")
 	return nil
 }
