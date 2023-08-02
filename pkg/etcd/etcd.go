@@ -1429,7 +1429,6 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot data to configmap")
 		}
-		
 		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply local snapshot retention policy")
 		}
@@ -2049,6 +2048,7 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
+
 	delCount := len(snapshotFiles) - retention
 	for _, df := range snapshotFiles[:delCount] {
 		snapshotPath := filepath.Join(snapshotDir, df.Name())
