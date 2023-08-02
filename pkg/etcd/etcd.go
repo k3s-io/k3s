@@ -1429,7 +1429,7 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot data to configmap")
 		}
-
+		
 		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply local snapshot retention policy")
 		}
@@ -2029,15 +2029,14 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 		return nil
 	}
 
-	nodeName := os.Getenv("NODE_NAME")
-	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix+"-"+nodeName, snapshotDir)
+	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix, snapshotDir)
 
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix+"-"+nodeName) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
@@ -2050,7 +2049,6 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
 	})
-
 	delCount := len(snapshotFiles) - retention
 	for _, df := range snapshotFiles[:delCount] {
 		snapshotPath := filepath.Join(snapshotDir, df.Name())
