@@ -82,12 +82,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("ensures s3 mock is working", func() {
-			a, err := e2e.RunCmdOnNode("sudo docker ps -a | grep mock\n", serverNodeNames[0])
+			a, err := e2e.RunCmdOnNode("docker ps -a | grep mock\n", serverNodeNames[0])
 			fmt.Println(a)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("save s3 snapshot", func() {
-			a, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot save", serverNodeNames[0])
+			a, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(strings.Contains(a, "S3 bucket test exists")).Should(Equal(true))
 			Expect(strings.Contains(a, "Uploading snapshot")).Should(Equal(true))
