@@ -2029,15 +2029,14 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 		return nil
 	}
 
-	nodeName := os.Getenv("NODE_NAME")
-	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix+"-"+nodeName, snapshotDir)
+	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix, snapshotDir)
 
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix+"-"+nodeName) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil
