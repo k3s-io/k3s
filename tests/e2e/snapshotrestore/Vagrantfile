@@ -5,7 +5,6 @@ NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
-EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
@@ -35,10 +34,10 @@ def provision(vm, role, role_num, node_num)
       k3s.args = "server "
       k3s.config = <<~YAML
         token: vagrant
+        cluster-init: true
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
         tls-san: #{NETWORK_PREFIX}.100.nip.io
-        #{db_type}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -52,7 +51,6 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1
-        #{db_type}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -67,7 +65,6 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1
-        #{db_type}
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
@@ -75,24 +72,10 @@ def provision(vm, role, role_num, node_num)
   end
   if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
-    if !EXTERNAL_DB.empty?
-      vm.provision "shell", inline: "docker start #{EXTERNAL_DB}"
-    end
   end
   # This step does not run by default and is designed to be called by higher level tools
 end
 
-def getDBType(role, role_num, vm)
-  if ( EXTERNAL_DB == "" || EXTERNAL_DB == "etcd" )
-    if role.include?("server") && role_num == 0
-      return "cluster-init: true"
-    end
-  else
-    puts "Unknown EXTERNAL_DB: " + EXTERNAL_DB
-    abort
-  end
-  return ""
-end
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
