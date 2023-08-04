@@ -22,40 +22,44 @@ if [ -d .git ]; then
     fi
 fi
 
-VERSION_CONTAINERD=$(grep github.com/containerd/containerd go.mod | head -n1 | awk '{print $4}')
+get-module-version(){
+  go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $1
+}
+
+VERSION_CONTAINERD=$(get-module-version github.com/containerd/containerd)
 if [ -z "$VERSION_CONTAINERD" ]; then
     VERSION_CONTAINERD="v0.0.0"
 fi
 
-VERSION_CRICTL=$(grep github.com/kubernetes-sigs/cri-tools go.mod | head -n1 | awk '{print $4}')
+VERSION_CRICTL=$(get-module-version github.com/kubernetes-sigs/cri-tools)
 if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
-VERSION_K8S_K3S=$(grep 'k8s.io/kubernetes =>' go.mod | head -n1 | awk '{print $4}')
+VERSION_K8S_K3S=$(get-module-version k8s.io/kubernetes)
 VERSION_K8S=${VERSION_K8S_K3S%"-k3s1"}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
 
-VERSION_RUNC=$(grep github.com/opencontainers/runc go.mod | head -n1 | awk '{print $4}')
+VERSION_RUNC=$(get-module-version github.com/opencontainers/runc)
 if [ -z "$VERSION_RUNC" ]; then
     VERSION_RUNC="v0.0.0"
 fi
 
-VERSION_FLANNEL=$(grep github.com/flannel-io/flannel go.mod | head -n1 | awk '{print $2}')
+VERSION_FLANNEL=$(get-module-version github.com/flannel-io/flannel)
 if [ -z "$VERSION_FLANNEL" ]; then
   VERSION_FLANNEL="v0.0.0"
 fi
 
-VERSION_CRI_DOCKERD=$(grep github.com/Mirantis/cri-dockerd go.mod | head -n1 | awk '{print $4}')
+VERSION_CRI_DOCKERD=$(get-module-version github.com/Mirantis/cri-dockerd)
 if [ -z "$VERSION_CRI_DOCKERD" ]; then
   VERSION_CRI_DOCKERD="v0.0.0"
 fi
 
 VERSION_CNIPLUGINS="v1.3.0-k3s1"
 
-VERSION_KUBE_ROUTER=$(grep github.com/k3s-io/kube-router go.mod | head -n1 | awk '{print $4}')
+VERSION_KUBE_ROUTER=$(get-module-version github.com/cloudnativelabs/kube-router/v2)
 if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
