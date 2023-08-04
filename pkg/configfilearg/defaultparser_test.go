@@ -1,6 +1,7 @@
 package configfilearg
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
@@ -68,6 +69,60 @@ func Test_UnitMustParse(t *testing.T) {
 			DefaultParser.DefaultConfig = tt.config
 			if got := MustParse(tt.args); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MustParse() = %+v\nWant = %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_UnitMustFindString(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		target   string
+		setup    func() error // Optional, delete if unused
+		teardown func() error // Optional, delete if unused
+		want     string
+	}{
+		{
+			name:   "Target not found in config file",
+			args:   []string{"--foo", "bar"},
+			target: "token",
+
+			want: "",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/data.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Target found in config file",
+			args:   []string{"--foo", "bar"},
+			target: "token",
+
+			want: "12345",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Override flag found, function is short-circuited",
+			args:   []string{"--foo", "bar", "-h"},
+			target: "token",
+
+			want: "-h",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer tt.teardown()
+			if err := tt.setup(); err != nil {
+				t.Errorf("Setup for MustFindString() failed = %v", err)
+				return
+			}
+			if got := MustFindString(tt.args, tt.target); got != tt.want {
+				t.Errorf("MustFindString() = %+v\nWant = %+v", got, tt.want)
 			}
 		})
 	}
