@@ -1703,21 +1703,26 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 			}
 		}()
 
-		for {
-			select {
-			case <-ctx.Done():
-				logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
-				return e.ReconcileSnapshotData(ctx)
-			case <-time.After(time.Millisecond * 100):
-				continue
-			case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
-				if err.Err != nil {
-					logrus.Errorf("Unable to delete snapshot: %v", err.Err)
-				}
-				if !ok {
+		err = func() error {
+			for {
+				select {
+				case <-ctx.Done():
+					logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
 					return e.ReconcileSnapshotData(ctx)
+				case <-time.After(time.Millisecond * 100):
+					continue
+				case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
+					if err.Err != nil {
+						logrus.Errorf("Unable to delete snapshot: %v", err.Err)
+					}
+					if !ok {
+						return e.ReconcileSnapshotData(ctx)
+					}
 				}
 			}
+		}()
+		if err != nil {
+			return err
 		}
 	}
 
