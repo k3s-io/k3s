@@ -35,6 +35,11 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-20.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        itest: [certrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption]
+      max-parallel: 3
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -58,16 +63,16 @@ jobs:
       run: | 
         chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/... -run Integration
+        sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/{{ matrix.itest }}/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
     - name: Generate coverage report
-      run: go tool covdata textfmt -i $GOCOVERDIR -o coverage.out
+      run: go tool covdata textfmt -i $GOCOVERDIR -o {{ matrix.itest }}.out
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./coverage.out
+        files: ./{{ matrix.itest }}.out
         flags: inttests # optional
         verbose: true # optional (default = false)
