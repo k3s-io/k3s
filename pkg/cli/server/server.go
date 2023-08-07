@@ -168,20 +168,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
 	
-	// verify if the user set up cluster reset and want to backup from s3
-	if cfg.EtcdDisableSnapshots && cfg.ClusterReset && cfg.EtcdS3 {
-		serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
-		serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
-		serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
-		serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
-		serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
-		serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
-		serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
-		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
-		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
-		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
-		serverConfig.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
-	} else if !cfg.EtcdDisableSnapshots {
+	if !cfg.EtcdDisableSnapshots || cfg.ClusterReset {
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
 		serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 		serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
