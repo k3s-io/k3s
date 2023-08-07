@@ -14,7 +14,7 @@ var server *testutil.K3sServer
 var serverArgs = []string{"--cluster-init",
 	"--kube-apiserver-arg", "advertise-port=1234",
 	"--kube-controller-manager-arg", "allocate-node-cidrs=false",
-	"--kube-scheduler-arg", "authentication-kubeconfig=test",
+	"--kube-scheduler-arg", "allow-metric-labels=metric1,label1='v3'",
 	"--kube-cloud-controller-manager-arg", "allocate-node-cidrs=false",
 	"--kubelet-arg", "address=127.0.0.1",
 	"--kube-proxy-arg", "cluster-cidr=127.0.0.1/16",
@@ -52,7 +52,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 		})
 		It("should find kube-scheduler starting", func() {
 			Eventually(func() error {
-				match, err := testutil.SearchK3sLog(server, "Running kube-scheduler --authentication-kubeconfig=test")
+				match, err := testutil.SearchK3sLog(server, "Running kube-scheduler --allow-metric-labels=metric1,label1='v3'")
 				if err != nil {
 					return err
 				}
