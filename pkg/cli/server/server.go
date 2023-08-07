@@ -167,7 +167,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
-
+	
 	if !cfg.EtcdDisableSnapshots {
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
 		serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
@@ -196,6 +196,20 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.ClusterResetRestorePath = cfg.ClusterResetRestorePath
 	serverConfig.ControlConfig.SystemDefaultRegistry = cfg.SystemDefaultRegistry
+
+	if serverConfig.ControlConfig.ClusterReset && cfg.EtcdS3 {
+		serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
+		serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
+		serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
+		serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
+		serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
+		serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
+		serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
+		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
+		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
+		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
+		serverConfig.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
+	}
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
 		serverConfig.ControlConfig.SupervisorPort = serverConfig.ControlConfig.HTTPSPort
