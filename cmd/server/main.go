@@ -54,6 +54,7 @@ func main() {
 			token.Delete,
 			token.Generate,
 			token.List,
+			token.Rotate,
 		),
 		cmds.NewEtcdSnapshotCommands(
 			etcdsnapshot.Delete,

@@ -3,6 +3,7 @@ package cmds
 import (
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/urfave/cli"
 )
 
@@ -12,6 +13,7 @@ const TokenCommand = "token"
 type Token struct {
 	Description string
 	Kubeconfig  string
+	ServerURL   string
 	Token       string
 	Output      string
 	Groups      cli.StringSlice
@@ -32,7 +34,7 @@ var (
 	}
 )
 
-func NewTokenCommands(create, delete, generate, list func(ctx *cli.Context) error) cli.Command {
+func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            TokenCommand,
 		Usage:           "Manage bootstrap tokens",
@@ -91,6 +93,27 @@ func NewTokenCommands(create, delete, generate, list func(ctx *cli.Context) erro
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,
 				Action:          list,
+			},
+			{
+				Name:  "rotate",
+				Usage: "Rotate original server token with a new bootstrap token",
+				Flags: append(TokenFlags,
+					&cli.StringFlag{
+						Name:        "token,t",
+						Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
+						Destination: &TokenConfig.Token,
+						EnvVar:      version.ProgramUpper + "_TOKEN",
+					},
+					&cli.StringFlag{
+						Name:        "server, s",
+						Usage:       "(cluster) Server to connect to",
+						Destination: &TokenConfig.ServerURL,
+						EnvVar:      version.ProgramUpper + "_URL",
+						Value:       "https://127.0.0.1:6443",
+					}),
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          rotate,
 			},
 		},
 	}

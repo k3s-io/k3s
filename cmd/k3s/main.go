@@ -57,6 +57,7 @@ func main() {
 			tokenCommand,
 			tokenCommand,
 			tokenCommand,
+			tokenCommand,
 		),
 		cmds.NewEtcdSnapshotCommands(
 			etcdsnapshotCommand,
