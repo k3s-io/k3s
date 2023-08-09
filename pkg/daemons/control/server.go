@@ -178,8 +178,10 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	} else {
 		argsMap["bind-address"] = cfg.APIServerBindAddress
 	}
-	argsMap["enable-aggregator-routing"] = "true"
-	argsMap["egress-selector-config-file"] = runtime.EgressSelectorConfig
+	if cfg.EgressSelectorMode != config.EgressSelectorModeDisabled {
+		argsMap["enable-aggregator-routing"] = "true"
+		argsMap["egress-selector-config-file"] = runtime.EgressSelectorConfig
+	}
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
 	argsMap["service-account-key-file"] = runtime.ServiceKey

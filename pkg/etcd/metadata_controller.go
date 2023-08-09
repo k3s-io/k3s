@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/util"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -51,7 +52,7 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if m.etcd.config.DisableETCD {
 		if node.Annotations[NodeNameAnnotation] == "" &&
 			node.Annotations[NodeAddressAnnotation] == "" &&
-			node.Labels[EtcdRoleLabel] == "" {
+			node.Labels[util.ETCDRoleLabelKey] == "" {
 			return node, nil
 		}
 
@@ -65,14 +66,14 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 
 		delete(node.Annotations, NodeNameAnnotation)
 		delete(node.Annotations, NodeAddressAnnotation)
-		delete(node.Labels, EtcdRoleLabel)
+		delete(node.Labels, util.ETCDRoleLabelKey)
 
 		return m.nodeController.Update(node)
 	}
 
 	if node.Annotations[NodeNameAnnotation] == m.etcd.name &&
 		node.Annotations[NodeAddressAnnotation] == m.etcd.address &&
-		node.Labels[EtcdRoleLabel] == "true" {
+		node.Labels[util.ETCDRoleLabelKey] == "true" {
 		return node, nil
 	}
 
@@ -86,7 +87,7 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 
 	node.Annotations[NodeNameAnnotation] = m.etcd.name
 	node.Annotations[NodeAddressAnnotation] = m.etcd.address
-	node.Labels[EtcdRoleLabel] = "true"
+	node.Labels[util.ETCDRoleLabelKey] = "true"
 
 	return m.nodeController.Update(node)
 }

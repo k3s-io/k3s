@@ -73,10 +73,6 @@ const (
 	maxBackupRetention     = 5
 	maxConcurrentSnapshots = 1
 	compressedExtension    = ".zip"
-
-	MasterLabel       = "node-role.kubernetes.io/master"
-	ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
-	EtcdRoleLabel     = "node-role.kubernetes.io/etcd"
 )
 
 var (
@@ -1429,7 +1425,6 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot data to configmap")
 		}
-
 		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply local snapshot retention policy")
 		}
@@ -1708,21 +1703,26 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 			}
 		}()
 
-		for {
-			select {
-			case <-ctx.Done():
-				logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
-				return e.ReconcileSnapshotData(ctx)
-			case <-time.After(time.Millisecond * 100):
-				continue
-			case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
-				if err.Err != nil {
-					logrus.Errorf("Unable to delete snapshot: %v", err.Err)
-				}
-				if !ok {
+		err = func() error {
+			for {
+				select {
+				case <-ctx.Done():
+					logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
 					return e.ReconcileSnapshotData(ctx)
+				case <-time.After(time.Millisecond * 100):
+					continue
+				case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
+					if err.Err != nil {
+						logrus.Errorf("Unable to delete snapshot: %v", err.Err)
+					}
+					if !ok {
+						return e.ReconcileSnapshotData(ctx)
+					}
 				}
 			}
+		}()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -2029,15 +2029,14 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 		return nil
 	}
 
-	nodeName := os.Getenv("NODE_NAME")
-	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix+"-"+nodeName, snapshotDir)
+	logrus.Infof("Applying local snapshot retention policy: retention: %d, snapshotPrefix: %s, directory: %s", retention, snapshotPrefix, snapshotDir)
 
 	var snapshotFiles []os.FileInfo
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(info.Name(), snapshotPrefix+"-"+nodeName) {
+		if strings.HasPrefix(info.Name(), snapshotPrefix) {
 			snapshotFiles = append(snapshotFiles, info)
 		}
 		return nil

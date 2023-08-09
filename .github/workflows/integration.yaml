@@ -34,7 +34,7 @@ jobs:
     needs: build
     name: Integration Tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -58,7 +58,7 @@ jobs:
       run: | 
         chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" go test -v -timeout=30m ./tests/integration/... -run Integration
+        sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3

@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -304,7 +305,7 @@ func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if _, ok := node.Labels[ControlPlaneRoleLabelKey]; !ok {
+	if _, ok := node.Labels[util.ControlPlaneRoleLabelKey]; !ok {
 		return "", "", fmt.Errorf("cannot manage secrets encryption on non control-plane node %s", nodeName)
 	}
 	if ann, ok := node.Annotations[secretsencrypt.EncryptionHashAnnotation]; ok {
@@ -323,7 +324,7 @@ func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.In
 	var firstHash string
 	var firstNodeName string
 	first := true
-	labelSelector := labels.Set{ControlPlaneRoleLabelKey: "true"}.String()
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
 	nodes, err := core.V1().Node().List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return err

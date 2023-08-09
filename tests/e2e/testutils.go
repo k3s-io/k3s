@@ -493,6 +493,9 @@ func UpgradeCluster(nodeNames []string, local bool) error {
 }
 
 func GetCoverageReport(nodeNames []string) error {
+	if os.Getenv("E2E_GOCOVER") == "" {
+		return nil
+	}
 	covDirs := []string{}
 	for _, nodeName := range nodeNames {
 		covDir := nodeName + "-cov"
@@ -504,7 +507,7 @@ func GetCoverageReport(nodeNames []string) error {
 		}
 	}
 	coverageFile := "coverage.out"
-	cmd := "go tool covdata textfmt -i " + strings.Join(covDirs, ",") + " -o " + coverageFile
+	cmd := "go tool covdata textfmt -i=" + strings.Join(covDirs, ",") + " -o=" + coverageFile
 	if out, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
 	}

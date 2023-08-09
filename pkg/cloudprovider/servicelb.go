@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/condition"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
@@ -484,12 +485,12 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					},
 					Tolerations: []core.Toleration{
 						{
-							Key:      "node-role.kubernetes.io/master",
+							Key:      util.MasterRoleLabelKey,
 							Operator: "Exists",
 							Effect:   "NoSchedule",
 						},
 						{
-							Key:      "node-role.kubernetes.io/control-plane",
+							Key:      util.ControlPlaneRoleLabelKey,
 							Operator: "Exists",
 							Effect:   "NoSchedule",
 						},

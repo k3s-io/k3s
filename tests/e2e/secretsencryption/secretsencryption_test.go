@@ -306,12 +306,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if os.Getenv("E2E_GOCOVER") != "" {
-		Expect(e2e.GetCoverageReport(serverNodeNames)).To(Succeed())
-	}
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
+		Expect(e2e.GetCoverageReport(serverNodeNames)).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

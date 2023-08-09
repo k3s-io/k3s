@@ -39,12 +39,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const (
-	MasterRoleLabelKey       = "node-role.kubernetes.io/master"
-	ControlPlaneRoleLabelKey = "node-role.kubernetes.io/control-plane"
-	ETCDRoleLabelKey         = "node-role.kubernetes.io/etcd"
-)
-
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
 	return filepath.Join(dataDir, "server"), err
@@ -580,10 +574,10 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 		if node.Labels == nil {
 			node.Labels = make(map[string]string)
 		}
-		v, ok := node.Labels[ControlPlaneRoleLabelKey]
+		v, ok := node.Labels[util.ControlPlaneRoleLabelKey]
 		if !ok || v != "true" {
-			node.Labels[ControlPlaneRoleLabelKey] = "true"
-			node.Labels[MasterRoleLabelKey] = "true"
+			node.Labels[util.ControlPlaneRoleLabelKey] = "true"
+			node.Labels[util.MasterRoleLabelKey] = "true"
 		}
 
 		if config.ControlConfig.EncryptSecrets {
