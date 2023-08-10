@@ -21,6 +21,61 @@ import (
 // After this many attempts, the lock is deleted and the counter reset.
 const maxBootstrapWaitAttempts = 5
 
+func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
+	logrus.Info("Rotating bootstrap token")
+
+	token := config.Token
+	logrus.Info("SAVE")
+	logrus.Info("Using token: ", token)
+	if token == "" {
+		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+		if err != nil {
+			return err
+		}
+		token = tokenFromFile
+		logrus.Info("Token from file: ", token)
+	}
+	normalizedToken, err := normalizeToken(token)
+	if err != nil {
+		return err
+	}
+	logrus.Info("Normalized token from file: ", normalizedToken)
+
+	storageClient, err := client.New(config.Runtime.EtcdConfig)
+	if err != nil {
+		return err
+	}
+	defer storageClient.Close()
+
+	emptyStringKey := storageKey("")
+	tokenKey := storageKey(normalizedToken)
+
+	var bootstrapList []client.Value
+	if err := wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		bootstrapList, err = storageClient.List(ctx, "/bootstrap", 0)
+		if err != nil {
+			if errors.Is(err, rpctypes.ErrGPRCNotSupportedForLearner) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	normalizedOldToken, err := normalizeToken(oldToken)
+	if err != nil {
+		return err
+	}
+	// check for empty string key and for old token format with k10 prefix
+	if err := migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, normalizedOldToken); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
@@ -32,17 +87,21 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 		return err
 	}
 	token := config.Token
+	logrus.Info("SAVE")
+	logrus.Info("Using token: ", token)
 	if token == "" {
 		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 		if err != nil {
 			return err
 		}
 		token = tokenFromFile
+		logrus.Info("Token from file: ", token)
 	}
 	normalizedToken, err := normalizeToken(token)
 	if err != nil {
 		return err
 	}
+	logrus.Info("Normalized token from file: ", normalizedToken)
 
 	data, err := encrypt(normalizedToken, buf.Bytes())
 	if err != nil {
@@ -59,7 +118,7 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 	if err != nil {
 		return err
 	}
-
+	// I think I need to inject a new token via Save
 	// If there's an empty bootstrap key, then we've locked it and can override.
 	if currentKey != nil && len(currentKey.Data) == 0 {
 		logrus.Info("Bootstrap key lock is held")
@@ -236,6 +295,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 	}
 	for _, bootstrapKV := range bootstrapList {
 		// ensure bootstrap is stored in the current token's key
+		logrus.Infof("checking bootstrap key %s against %s", string(bootstrapKV.Key), tokenKey)
 		if string(bootstrapKV.Key) == tokenKey {
 			return &bootstrapKV, false, nil
 		}
@@ -283,6 +343,7 @@ func normalizeToken(token string) (string, error) {
 func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
+	logrus.Info("migrateOldTokens: t: ", token, " tK: ", tokenKey, " ot: ", oldToken, " otK: ", oldTokenKey)
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
 		if string(bootstrapKV.Key) == emptyStringKey {
@@ -296,6 +357,7 @@ func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storage
 				return err
 			}
 		}
+		logrus.Info("Comparing ", string(bootstrapKV.Key), " to ", oldTokenKey)
 	}
 
 	return nil

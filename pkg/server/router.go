@@ -85,6 +85,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverAuthed.Path(prefix + "/cert/cacerts").Handler(caCertReplaceHandler(serverConfig))
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
+	serverAuthed.Path(prefix + "/token").Handler(tokenRequestHandler(ctx, serverConfig))
 
 	systemAuthed := mux.NewRouter().SkipClean(true)
 	systemAuthed.NotFoundHandler = serverAuthed

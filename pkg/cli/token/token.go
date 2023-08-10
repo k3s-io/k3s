@@ -153,11 +153,11 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.ServerTokenRequest{Rotate: pointer.String("rotate")})
+	b, err := json.Marshal(server.ServerTokenRequest{Action: pointer.String("rotate")})
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/token/rotate", b); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/token", b); err != nil {
 		return err
 	}
 	fmt.Println("rotating token")
