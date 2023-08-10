@@ -108,36 +108,36 @@ chmod +x push.sh
 ```
 ### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.27 is shown below):
 ```sh
-git push $REMOTE staging/src/k8s.io/api/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/apiextensions-apiserver/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/apimachinery/v1.27.4k3s1
-git push $REMOTE staging/src/k8s.io/apiserver/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/cli-runtime/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/client-go/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/cloud-provider/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/cluster-bootstrap/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/code-generator/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/component-base/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/component-helpers/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/controller-manager/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/cri-api/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/csi-translation-lib/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/dynamic-resource-allocation/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kms/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kube-aggregator/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kube-controller-manager/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kube-proxy/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kube-scheduler/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kubectl/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/kubelet/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/legacy-cloud-providers/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/metrics/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/mount-utils/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/pod-security-admission/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/sample-apiserver/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/sample-cli-plugin/v1.27.4-k3s1
-git push $REMOTE staging/src/k8s.io/sample-controller/v1.27.4-k3s1
-git push $REMOTE v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/api/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.27.4k3s1
+git push ${REMOTE} staging/src/k8s.io/apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/client-go/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/code-generator/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-base/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-helpers/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cri-api/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/dynamic-resource-allocation/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kms/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubectl/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubelet/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/metrics/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/mount-utils/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/pod-security-admission/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.27.4-k3s1
+git push ${REMOTE} v1.27.4-k3s1
 ```
 ## Push tags to k3s-io remote
 ```
@@ -215,9 +215,9 @@ The resulting run can be viewed here:
 
 It may be necessary to create a new release candidate to accommodate changes in dependencies such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, repeat the previous process for tagging and increment the rc version.
 
-# Create system-agent-installer-k3s Release Images
+# Check system-agent-installer-k3s Release Images
 The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
-[Go to the repo](https://github.com/rancher/system-agent-installer-k3s) and manually create a new release and tag it with the corresponding version numbers. This will kick off a build of the image.
+To ensure this synchronization, visit the [repository](https://github.com/rancher/system-agent-installer-k3s) and verify the creation of new releases and corresponding tags that align with the version numbers.
 
 Build progress can be tracked [here](https://hub.docker.com/r/rancher/system-agent-installer-k3s/tags). 
 
