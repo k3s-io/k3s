@@ -90,12 +90,16 @@ echo -e ${BUILD_CONTAINER} | docker build -t ${GOIMAGE}-dev -
 
 # Rebasing pulls in the tags.sh script.
 # Now create the tags by executing tag.sh with the given version variables.
-docker run --rm -u $(id -u) \
--v ${GOPATH}/src:/go/src \
--v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig \
--e GIT_TRACE=1 \
--e HOME=/go \
--w /go/src/github.com/kubernetes/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
+docker run --rm -u $(id -u):$(id -g) \
+  -v ${GOPATH}/src:/go/src:rw \
+  -v ${GOPATH}/pkg:/go/pkg:rw \
+  -v ${GOPATH}/.cache:/go/.cache:rw \
+  -v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig:rw \
+  -e GIT_TRACE=1 \
+  -e HOME=/go \
+  -e GOCACHE=/go/.cache \
+  -w /go/src/github.com/kubernetes/kubernetes \
+  ${GOIMAGE}-dev chown -R $(id -u) .git | ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
 ```
 After tag.sh runs, you should see a list of `git push` commands at the end of the output.
 Save this output to a file called ```push.sh``` and mark it as executable by running the following command:
