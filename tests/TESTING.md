@@ -6,6 +6,7 @@ Testing in K3s comes in 5 forms:
 - [Smoke](#smoke-tests)
 - [Performance](#performance)
 - [End-to-End (E2E)](#end-to-end-e2e-tests)
+- [Distros-test-framework](#distros-test-framework)
 
 This document will explain *when* each test should be written and *how* each test should be
 generated, formatted, and run.
@@ -144,6 +145,13 @@ E2E tests cover multi-node K3s configuration and administration: bringup, update
 
 See [e2e/README.md](./e2e/README.md) for more info.
 
+___
+
+## Distros Test Framework
+
+The acceptance tests from distros test framework are a customizable way to create clusters and perform validations on them such that the requirements of specific features and functions can be validated.
+
+See [distros-test-framework/README](https://github.com/rancher/distros-test-framework#readme) for more info.
 ___
 
 ## Contributing New Or Updated Tests
