@@ -2048,7 +2048,7 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 	}
 	sort.Slice(snapshotFiles, func(i, j int) bool {
 		stringI, stringJ := strings.Split(snapshotFiles[i].Name(), "-"), strings.Split(snapshotFiles[j].Name(), "-")
-		dateI, dateJ := stringI[len(stringI) - 1], stringJ[len(stringJ) - 1]
+		dateI, dateJ := stringI[len(stringI)-1], stringJ[len(stringJ)-1]
 		return dateI < dateJ
 	})
 
