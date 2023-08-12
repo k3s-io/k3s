@@ -2046,7 +2046,9 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 		return nil
 	}
 	sort.Slice(snapshotFiles, func(i, j int) bool {
-		return snapshotFiles[i].Name() < snapshotFiles[j].Name()
+		stringI, stringJ := strings.Split(snapshotFiles[i].Name(), "-"), strings.Split(snapshotFiles[j].Name(), "-")
+		dateI, dateJ := stringI[len(stringI) - 1], stringJ[len(stringJ) - 1]
+		return dateI < dateJ
 	})
 
 	delCount := len(snapshotFiles) - retention

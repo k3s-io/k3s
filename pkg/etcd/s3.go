@@ -250,7 +250,9 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	}
 
 	sort.Slice(snapshotFiles, func(i, j int) bool {
-		return snapshotFiles[i].Key < snapshotFiles[j].Key
+		stringI, stringJ := strings.Split(snapshotFiles[i].Key, "-"), strings.Split(snapshotFiles[j].Key, "-")
+		dateI, dateJ := stringI[len(stringI) - 1], stringJ[len(stringJ) - 1]
+		return dateI < dateJ
 	})
 
 	delCount := len(snapshotFiles) - s.config.EtcdSnapshotRetention
