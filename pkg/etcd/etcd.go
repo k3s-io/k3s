@@ -2048,8 +2048,8 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 	}
 	sort.Slice(snapshotFiles, func(firstSnapshot, secondSnapshot int) bool {
 		// it takes the name from the snapshot file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
-		firstSnapshotNameSplited, secondSnapshotNameSplited := strings.Split(snapshotFiles[firstSnapshot].Name(), "-"), strings.Split(snapshotFiles[secondSnapshot].Name(), "-")
-		firstSnapshotDate, secondSnapshotDate := firstSnapshotNameSplited[len(firstSnapshotNameSplited)-1], secondSnapshotNameSplited[len(secondSnapshotNameSplited)-1]
+		firstSnapshotName, secondSnapshotName := strings.Split(snapshotFiles[firstSnapshot].Name(), "-"), strings.Split(snapshotFiles[secondSnapshot].Name(), "-")
+		firstSnapshotDate, secondSnapshotDate := firstSnapshotName[len(firstSnapshotName)-1], secondSnapshotName[len(secondSnapshotName)-1]
 		return firstSnapshotDate < secondSnapshotDate
 	})
 
