@@ -249,11 +249,11 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 		return nil
 	}
 
-	sort.Slice(snapshotFiles, func(firstIndex, secondIndex int) bool {
-		// it takes the name from the file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
-		nameSplitedFirstIndex, nameSplitedSecondIndex := strings.Split(snapshotFiles[firstIndex].Key, "-"), strings.Split(snapshotFiles[secondIndex].Key, "-")
-		dateFirstIndex, dateSecondIndex := nameSplitedFirstIndex[len(nameSplitedFirstIndex)-1], nameSplitedSecondIndex[len(nameSplitedSecondIndex)-1]
-		return dateFirstIndex < dateSecondIndex
+	sort.Slice(snapshotFiles, func(firstSnapshot, secondSnapshot int) bool {
+		// it takes the key from the snapshot file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
+		firstSnapshotNameSplited, secondSnapshotNameSplited := strings.Split(snapshotFiles[firstSnapshot].Key, "-"), strings.Split(snapshotFiles[secondSnapshot].Key, "-")
+		firstSnapshotDate, secondSnapshotDate := firstSnapshotNameSplited[len(firstSnapshotNameSplited)-1], secondSnapshotNameSplited[len(secondSnapshotNameSplited)-1]
+		return firstSnapshotDate < secondSnapshotDate
 	})
 
 	delCount := len(snapshotFiles) - s.config.EtcdSnapshotRetention

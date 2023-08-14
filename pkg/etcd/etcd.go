@@ -2046,11 +2046,11 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 	if len(snapshotFiles) <= retention {
 		return nil
 	}
-	sort.Slice(snapshotFiles, func(i, j int) bool {
-		// it takes the key from the file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
-		stringI, stringJ := strings.Split(snapshotFiles[i].Name(), "-"), strings.Split(snapshotFiles[j].Name(), "-")
-		dateI, dateJ := stringI[len(stringI)-1], stringJ[len(stringJ)-1]
-		return dateI < dateJ
+	sort.Slice(snapshotFiles, func(firstSnapshot, secondSnapshot int) bool {
+		// it takes the name from the snapshot file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
+		firstSnapshotNameSplited, secondSnapshotNameSplited := strings.Split(snapshotFiles[firstSnapshot].Name(), "-"), strings.Split(snapshotFiles[secondSnapshot].Name(), "-")
+		firstSnapshotDate, secondSnapshotDate := firstSnapshotNameSplited[len(firstSnapshotNameSplited)-1], secondSnapshotNameSplited[len(secondSnapshotNameSplited)-1]
+		return firstSnapshotDate < secondSnapshotDate
 	})
 
 	delCount := len(snapshotFiles) - retention
