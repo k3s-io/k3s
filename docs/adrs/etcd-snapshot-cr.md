@@ -22,6 +22,8 @@ When this occurs, the K3s service log shows errors such as:
 level=error msg="failed to save local snapshot data to configmap: ConfigMap \"k3s-etcd-snapshots\" is invalid: []: Too long: must have at most 1048576 bytes"
 ```
 
+A side-effect of this is that snapshot metadata is lost if the ConfigMap cannot be updated, as the list is the only place that it is stored.
+
 Reference:
 * https://github.com/rancher/rke2/issues/4495
 * https://github.com/k3s-io/k3s/blob/36645e7311e9bdbbf2adb79ecd8bd68556bc86f6/pkg/etcd/etcd.go#L1503-L1516
@@ -41,10 +43,12 @@ it into a neutral project for use by both projects.
    will manage creation of an new Custom Resource Definition with similar fields.
 2. Metadata on each snapshot will be stored in a distinct Custom Resource.
 3. The new Custom Resource will be cluster-scoped, as etcd and its snapshots are a cluster-level resource.
-4. Downstream consumers of etcd snapshot lists will migrate to watching the Custom Resource, instead of the ConfigMap.
-5. K3s will observe a three minor version transition period, where both the new Custom Resource, and the existing
+4. Snapshot metadata will also be written alongside snapshot files created on disk and/or uploaded to S3. The metadata
+   files will have the same basename as their corresponding snapshot file.
+5. Downstream consumers of etcd snapshot lists will migrate to watching Custom Resource types, instead of the ConfigMap.
+6. K3s will observe a three minor version transition period, where both the new Custom Resources, and the existing
    ConfigMap, will both be used.
-6. During the transition period, older snapshot metadata may be removed from the ConfigMap while those snapshots still
+7. During the transition period, older snapshot metadata may be removed from the ConfigMap while those snapshots still
    exist and are referenced by new Custom Resources, if the ConfigMap exceeds a preset size or key count limit.
 
 ## Consequences
