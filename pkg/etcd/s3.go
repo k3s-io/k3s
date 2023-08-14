@@ -250,6 +250,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	}
 
 	sort.Slice(snapshotFiles, func(i, j int) bool {
+		// it takes the key from the file ex: etcd-snapshot-example-{date}, makes the split using "-" to find the date, takes the date and sort by date
 		stringI, stringJ := strings.Split(snapshotFiles[i].Key, "-"), strings.Split(snapshotFiles[j].Key, "-")
 		dateI, dateJ := stringI[len(stringI)-1], stringJ[len(stringJ)-1]
 		return dateI < dateJ
