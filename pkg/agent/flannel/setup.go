@@ -202,14 +202,9 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 
 	var backendConf string
-	parts := strings.SplitN(nodeConfig.FlannelBackend, "=", 2)
-	backend := parts[0]
 	backendOptions := make(map[string]string)
-	if len(parts) > 1 {
-		logrus.Fatalf("The additional options through flannel-backend are deprecated and were removed in k3s v1.27, use flannel-conf instead")
-	}
 
-	switch backend {
+	switch nodeConfig.FlannelBackend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
 	case config.FlannelBackendHostGW:
