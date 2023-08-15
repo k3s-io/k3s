@@ -24,7 +24,6 @@ const (
 	FlannelBackendNone            = "none"
 	FlannelBackendVXLAN           = "vxlan"
 	FlannelBackendHostGW          = "host-gw"
-	FlannelBackendIPSEC           = "ipsec"
 	FlannelBackendWireguardNative = "wireguard-native"
 	FlannelBackendTailscale       = "tailscale"
 	EgressSelectorModeAgent       = "agent"

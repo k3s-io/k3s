@@ -68,12 +68,6 @@ const (
 	"Type": "host-gw"
 }`
 
-	ipsecBackend = `{
-	"Type": "ipsec",
-	"UDPEncap": true,
-	"PSK": "%psk%"
-}`
-
 	tailscaledBackend = `{
 	"Type": "extension",
 	"PostStartupCommand": "tailscale set --accept-routes --advertise-routes=%Routes%",
@@ -220,8 +214,6 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		backendConf = vxlanBackend
 	case config.FlannelBackendHostGW:
 		backendConf = hostGWBackend
-	case config.FlannelBackendIPSEC:
-		logrus.Fatal("The ipsec backend is deprecated and was removed in k3s v1.27; please switch to wireguard-native. Check our docs for information on how to migrate.")
 	case config.FlannelBackendTailscale:
 		var routes string
 		switch netMode {
