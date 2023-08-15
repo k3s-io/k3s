@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
@@ -313,6 +314,10 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
+	if err := verifyRotateKeysSupport(server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+
 	if err := addAndRotateKeys(server); err != nil {
 		return err
 	}
@@ -375,6 +380,22 @@ func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
 		return split[0], split[1], nil
 	}
 	return "", "", fmt.Errorf("missing annotation on node %s", nodeName)
+}
+
+// verifyRotateKeysSupport checks that the k3s version is at least v1.28.0 on all control-plane nodes
+func verifyRotateKeysSupport(core core.Interface) error {
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
+	nodes, err := core.V1().Node().List(metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return err
+	}
+	for _, node := range nodes.Items {
+		kubver := node.Status.NodeInfo.KubeletVersion
+		if semver.Compare(kubver, "v1.28.0") < 0 {
+			return fmt.Errorf("node %s is running k3s version %s that does not support rotate-keys", node.ObjectMeta.Name, kubver)
+		}
+	}
+	return nil
 }
 
 // verifyEncryptionHashAnnotation checks that all nodes are on the same stage,
