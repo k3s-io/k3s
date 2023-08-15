@@ -47,7 +47,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 	if err != nil {
 		return nil, nil, err
 	}
-	cert, key, err := factory.LoadCerts(c.config.Runtime.ServerCA, c.config.Runtime.ServerCAKey)
+	certs, key, err := factory.LoadCertsChain(c.config.Runtime.ServerCA, c.config.Runtime.ServerCAKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -56,7 +56,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 		registerAddressHandlers(ctx, c)
 	}
 	storage := tlsStorage(ctx, c.config.DataDir, c.config.Runtime)
-	return wrapHandler(dynamiclistener.NewListener(tcp, storage, cert, key, dynamiclistener.Config{
+	return wrapHandler(dynamiclistener.NewListenerWithChain(tcp, storage, certs, key, dynamiclistener.Config{
 		ExpirationDaysCheck: config.CertificateRenewDays,
 		Organization:        []string{version.Program},
 		SANs:                c.config.SANs,
