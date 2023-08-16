@@ -460,6 +460,14 @@ download_hash() {
     HASH_EXPECTED=${HASH_EXPECTED%%[[:blank:]]*}
 }
 
+# --- check if it is a number type  ---
+is_number() {
+  case $1 in
+    ''|*[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
 # --- check hash against installed version ---
 installed_hash_matches() {
     if [ -x ${BIN_DIR}/k3s ]; then
@@ -573,11 +581,11 @@ setup_selinux() {
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
-    elif [ "${VERSION_ID%%.*}" = "7" ]; then
+    elif is_number "${VERSION_ID:-}" && [ "${VERSION_ID%%.*}" = "7" ]; then
         rpm_target=el7
         rpm_site_infix=centos/7
         package_installer=yum
-    elif [ "${VERSION_ID%%.*}" = "8" ] || [ "${VERSION_ID%%.*}" -gt "36" ]; then
+    elif is_number "${VERSION_ID:-}" && { [ "${VERSION_ID%%.*}" = "8" ] || [ "${VERSION_ID%%.*}" -gt "36" ]; }; then
         rpm_target=el8
         rpm_site_infix=centos/8
         package_installer=yum
