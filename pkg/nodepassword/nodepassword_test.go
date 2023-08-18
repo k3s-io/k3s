@@ -8,12 +8,14 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/rancher/wrangler/pkg/generic"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/rest"
 )
 
 const migrateNumNodes = 10
@@ -166,6 +168,14 @@ func (m *mockSecretClient) Patch(namespace, name string, pt types.PatchType, dat
 	return nil, errorNotImplemented()
 }
 
+func (m *mockSecretClient) UpdateStatus(secret *v1.Secret) (*v1.Secret, error) {
+	return nil, errorNotImplemented()
+}
+
+func (m *mockSecretClient) WithImpersonation(rest.ImpersonationConfig) (generic.ClientInterface[*v1.Secret, *v1.SecretList], error) {
+	return nil, errorNotImplemented()
+}
+
 // --------------------------
 
 // mock node client interface
@@ -196,6 +206,10 @@ func (m *mockNodeClient) Watch(opts metav1.ListOptions) (watch.Interface, error)
 	return nil, errorNotImplemented()
 }
 func (m *mockNodeClient) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Node, err error) {
+	return nil, errorNotImplemented()
+}
+
+func (m *mockNodeClient) WithImpersonation(rest.ImpersonationConfig) (generic.NonNamespacedClientInterface[*v1.Node, *v1.NodeList], error) {
 	return nil, errorNotImplemented()
 }
 
