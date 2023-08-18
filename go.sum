@@ -1200,8 +1200,8 @@ github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcp
 github.com/rancher/remotedialer v0.3.0/go.mod h1:BwwztuvViX2JrLLUwDlsYt5DiyUwHLlzynRwkZLAY0Q=
 github.com/rancher/wharfie v0.5.3 h1:6hiO26H7YTgChbLAE6JppxFRjaH3tbKfMItv/LqV0Q0=
 github.com/rancher/wharfie v0.5.3/go.mod h1:Ebpai7digxegLroBseeC54XRBt5we3DgFS6kAE2ho+o=
-github.com/rancher/wrangler v1.1.1-0.20230807182002-35cb42e6a915 h1:CNwXnngrb5PgPe4nr7G5jS298YkhS6udMnNvyBOboFQ=
-github.com/rancher/wrangler v1.1.1-0.20230807182002-35cb42e6a915/go.mod h1:0oPjv01nvzeavcmeuT0xMlGKs9IJaNk5NCPPQq1n8Ro=
+github.com/rancher/wrangler v1.1.1-0.20230818201331-3604a6be798d h1:RQBqHXyAN5gWqUazV637kqmYcy8M8K5bdvXszNciLcY=
+github.com/rancher/wrangler v1.1.1-0.20230818201331-3604a6be798d/go.mod h1:XzP4tZsV3hRksIZHaeglVtMFgz3YNh3q/TgKdP37Sl8=
 github.com/rasky/go-xdr v0.0.0-20170217172119-4930550ba2e2/go.mod h1:Nfe4efndBz4TibWycNE+lqyJZiMX4ycx+QKV8Ta0f/o=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
