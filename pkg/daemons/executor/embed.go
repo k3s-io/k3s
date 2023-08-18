@@ -35,7 +35,7 @@ import (
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app"
+	apiapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -113,12 +113,12 @@ func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
 }
 
 func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
-	startupConfig := <-app.StartupConfig
+	startupConfig := <-apiapp.StartupConfig
 	return startupConfig.Authenticator, startupConfig.Handler, nil
 }
 
 func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
-	command := app.NewAPIServerCommand(ctx.Done())
+	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
