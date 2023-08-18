@@ -31,6 +31,7 @@ import (
 	cloudproviderapi "k8s.io/cloud-provider/api"
 	ccmapp "k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/names"
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
@@ -196,7 +197,15 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		return cloud
 	}
 
-	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, ccmapp.DefaultInitFuncConstructors, cliflag.NamedFlagSets{}, ctx.Done())
+	controllerAliases := names.CCMControllerAliases()
+
+	command := ccmapp.NewCloudControllerManagerCommand(
+		ccmOptions,
+		cloudInitializer,
+		ccmapp.DefaultInitFuncConstructors,
+		controllerAliases,
+		cliflag.NamedFlagSets{},
+		ctx.Done())
 	command.SetArgs(args)
 
 	go func() {

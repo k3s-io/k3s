@@ -22,7 +22,7 @@ import (
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
+	"k8s.io/kubernetes/pkg/registry/core/node"
 
 	// for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
@@ -41,7 +41,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 	cfg.Runtime.Tunnel = tunnel
 
-	proxyutil.DisableProxyHostnameCheck = true
+	node.DisableProxyHostnameCheck = true
 
 	authArgs := []string{
 		"--basic-auth-file=" + cfg.Runtime.PasswdFile,
