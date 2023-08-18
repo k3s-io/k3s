@@ -521,8 +521,6 @@ github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/fvbommel/sortorder v1.1.0 h1:fUmoe+HLsBTctBDoaBwpQo5N+nrCp8g/BjKb/6ZQmYw=
 github.com/fvbommel/sortorder v1.1.0/go.mod h1:uk88iVf1ovNn1iLfgUVU2F9o5eO30ui720w+kxuqRs0=
-github.com/galal-hussein/wrangler v1.0.1-0.20230815232959-288095854c19 h1:tKtkETYahMTy6j4omOrJ1kHbEEKg4mbyvPe7/nsAXqM=
-github.com/galal-hussein/wrangler v1.0.1-0.20230815232959-288095854c19/go.mod h1:XzP4tZsV3hRksIZHaeglVtMFgz3YNh3q/TgKdP37Sl8=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-bindata/go-bindata v3.1.2+incompatible h1:5vjJMVhowQdPzjE1LdxyFF7YFTXg5IgGVW4gBr5IbvE=
@@ -1202,6 +1200,8 @@ github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcp
 github.com/rancher/remotedialer v0.3.0/go.mod h1:BwwztuvViX2JrLLUwDlsYt5DiyUwHLlzynRwkZLAY0Q=
 github.com/rancher/wharfie v0.5.3 h1:6hiO26H7YTgChbLAE6JppxFRjaH3tbKfMItv/LqV0Q0=
 github.com/rancher/wharfie v0.5.3/go.mod h1:Ebpai7digxegLroBseeC54XRBt5we3DgFS6kAE2ho+o=
+github.com/rancher/wrangler v1.1.1-0.20230807182002-35cb42e6a915 h1:CNwXnngrb5PgPe4nr7G5jS298YkhS6udMnNvyBOboFQ=
+github.com/rancher/wrangler v1.1.1-0.20230807182002-35cb42e6a915/go.mod h1:0oPjv01nvzeavcmeuT0xMlGKs9IJaNk5NCPPQq1n8Ro=
 github.com/rasky/go-xdr v0.0.0-20170217172119-4930550ba2e2/go.mod h1:Nfe4efndBz4TibWycNE+lqyJZiMX4ycx+QKV8Ta0f/o=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=

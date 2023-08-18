@@ -20,7 +20,7 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.8
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
-	github.com/rancher/wrangler => github.com/galal-hussein/wrangler v1.0.1-0.20230815232959-288095854c19
+	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230807182002-35cb42e6a915
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.9-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.9-k3s1
 	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.305.9-k3s1
