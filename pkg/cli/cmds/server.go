@@ -39,72 +39,73 @@ type Server struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	DataDir                  string
-	DisableAgent             bool
-	KubeConfigOutput         string
-	KubeConfigMode           string
-	HelmJobImage             string
-	TLSSan                   cli.StringSlice
-	BindAddress              string
-	EnablePProf              bool
-	ExtraAPIArgs             cli.StringSlice
-	ExtraEtcdArgs            cli.StringSlice
-	ExtraSchedulerArgs       cli.StringSlice
-	ExtraControllerArgs      cli.StringSlice
-	ExtraCloudControllerArgs cli.StringSlice
-	Rootless                 bool
-	DatastoreEndpoint        string
-	DatastoreCAFile          string
-	DatastoreCertFile        string
-	DatastoreKeyFile         string
-	AdvertiseIP              string
-	AdvertisePort            int
-	DisableScheduler         bool
-	ServerURL                string
-	MultiClusterCIDR         bool
-	FlannelBackend           string
-	FlannelIPv6Masq          bool
-	FlannelExternalIP        bool
-	EgressSelectorMode       string
-	DefaultLocalStoragePath  string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	ClusterInit              bool
-	ClusterReset             bool
-	ClusterResetRestorePath  string
-	EncryptSecrets           bool
-	EncryptForce             bool
-	EncryptOutput            string
-	EncryptSkip              bool
-	SystemDefaultRegistry    string
-	StartupHooks             []StartupHook
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotRetention    int
-	EtcdSnapshotCompress     bool
-	EtcdListFormat           string
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3BucketName         string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
-	ServiceLBNamespace       string
+	APIServerPort                    int
+	APIServerBindAddress             string
+	DataDir                          string
+	DisableAgent                     bool
+	KubeConfigOutput                 string
+	KubeConfigMode                   string
+	HelmJobImage                     string
+	TLSSan                           cli.StringSlice
+	BindAddress                      string
+	EnablePProf                      bool
+	ExtraAPIArgs                     cli.StringSlice
+	ExtraEtcdArgs                    cli.StringSlice
+	ExtraSchedulerArgs               cli.StringSlice
+	ExtraControllerArgs              cli.StringSlice
+	ExtraCloudControllerArgs         cli.StringSlice
+	Rootless                         bool
+	DatastoreEndpoint                string
+	DatastoreCAFile                  string
+	DatastoreCertFile                string
+	DatastoreKeyFile                 string
+	AdvertiseIP                      string
+	AdvertisePort                    int
+	DisableScheduler                 bool
+	ServerURL                        string
+	MultiClusterCIDR                 bool
+	FlannelBackend                   string
+	FlannelIPv6Masq                  bool
+	FlannelExternalIP                bool
+	EgressSelectorMode               string
+	DefaultLocalStoragePath          string
+	DefaultLocalPathStorageClassName string
+	DisableCCM                       bool
+	DisableNPC                       bool
+	DisableHelmController            bool
+	DisableKubeProxy                 bool
+	DisableAPIServer                 bool
+	DisableControllerManager         bool
+	DisableETCD                      bool
+	ClusterInit                      bool
+	ClusterReset                     bool
+	ClusterResetRestorePath          string
+	EncryptSecrets                   bool
+	EncryptForce                     bool
+	EncryptOutput                    string
+	EncryptSkip                      bool
+	SystemDefaultRegistry            string
+	StartupHooks                     []StartupHook
+	EtcdSnapshotName                 string
+	EtcdDisableSnapshots             bool
+	EtcdExposeMetrics                bool
+	EtcdSnapshotDir                  string
+	EtcdSnapshotCron                 string
+	EtcdSnapshotRetention            int
+	EtcdSnapshotCompress             bool
+	EtcdListFormat                   string
+	EtcdS3                           bool
+	EtcdS3Endpoint                   string
+	EtcdS3EndpointCA                 string
+	EtcdS3SkipSSLVerify              bool
+	EtcdS3AccessKey                  string
+	EtcdS3SecretKey                  string
+	EtcdS3BucketName                 string
+	EtcdS3Region                     string
+	EtcdS3Folder                     string
+	EtcdS3Timeout                    time.Duration
+	EtcdS3Insecure                   bool
+	ServiceLBNamespace               string
 }
 
 var (
@@ -435,6 +436,12 @@ var ServerFlags = []cli.Flag{
 		Name:        "default-local-storage-path",
 		Usage:       "(storage) Default local storage path for local provisioner storage class",
 		Destination: &ServerConfig.DefaultLocalStoragePath,
+	},
+	&cli.StringFlag{
+		Name:        "default-local-path-storage-class-name",
+		Usage:       "(storage) Default local path storage storage class name",
+		Destination: &ServerConfig.DefaultLocalPathStorageClassName,
+		Value:       "local-path",
 	},
 	&cli.StringSliceFlag{
 		Name:  "disable",

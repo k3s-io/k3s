@@ -395,6 +395,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	} else {
 		serverConfig.ControlConfig.DefaultLocalStoragePath = cfg.DefaultLocalStoragePath
 	}
+	serverConfig.ControlConfig.DefaultLocalPathStorageClassName = cfg.DefaultLocalPathStorageClassName
+	if cfg.DefaultLocalPathStorageClassName == "" {
+		serverConfig.ControlConfig.DefaultLocalPathStorageClassName = "local-path"
+	}
 
 	serverConfig.ControlConfig.Skips = map[string]bool{}
 	serverConfig.ControlConfig.Disables = map[string]bool{}

@@ -273,12 +273,13 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 	templateVars := map[string]string{
-		"%{CLUSTER_DNS}%":                 controlConfig.ClusterDNS.String(),
-		"%{CLUSTER_DOMAIN}%":              controlConfig.ClusterDomain,
-		"%{DEFAULT_LOCAL_STORAGE_PATH}%":  controlConfig.DefaultLocalStoragePath,
-		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),
-		"%{SYSTEM_DEFAULT_REGISTRY_RAW}%": controlConfig.SystemDefaultRegistry,
-		"%{PREFERRED_ADDRESS_TYPES}%":     addrTypesPrioTemplate(controlConfig.FlannelExternalIP),
+		"%{CLUSTER_DNS}%":                           controlConfig.ClusterDNS.String(),
+		"%{CLUSTER_DOMAIN}%":                        controlConfig.ClusterDomain,
+		"%{DEFAULT_LOCAL_STORAGE_PATH}%":            controlConfig.DefaultLocalStoragePath,
+		"%{DEFAULT_LOCAL_PATH_STORAGE_CLASS_NAME}%": controlConfig.DefaultLocalPathStorageClassName,
+		"%{SYSTEM_DEFAULT_REGISTRY}%":               registryTemplate(controlConfig.SystemDefaultRegistry),
+		"%{SYSTEM_DEFAULT_REGISTRY_RAW}%":           controlConfig.SystemDefaultRegistry,
+		"%{PREFERRED_ADDRESS_TYPES}%":               addrTypesPrioTemplate(controlConfig.FlannelExternalIP),
 	}
 
 	skip := controlConfig.Skips

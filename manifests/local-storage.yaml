@@ -9,18 +9,18 @@ kind: ClusterRole
 metadata:
   name: local-path-provisioner-role
 rules:
-- apiGroups: [""]
-  resources: ["nodes", "persistentvolumeclaims", "configmaps"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["endpoints", "persistentvolumes", "pods"]
-  verbs: ["*"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create", "patch"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes", "persistentvolumeclaims", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["endpoints", "persistentvolumes", "pods"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -31,9 +31,9 @@ roleRef:
   kind: ClusterRole
   name: local-path-provisioner-role
 subjects:
-- kind: ServiceAccount
-  name: local-path-provisioner-service-account
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: local-path-provisioner-service-account
+    namespace: kube-system
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,31 +57,31 @@ spec:
       priorityClassName: "system-node-critical"
       serviceAccountName: local-path-provisioner-service-account
       tolerations:
-          - key: "CriticalAddonsOnly"
-            operator: "Exists"
-          - key: "node-role.kubernetes.io/control-plane"
-            operator: "Exists"
-            effect: "NoSchedule"
-          - key: "node-role.kubernetes.io/master"
-            operator: "Exists"
-            effect: "NoSchedule"
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
-      - name: local-path-provisioner
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.24
-        imagePullPolicy: IfNotPresent
-        command:
-        - local-path-provisioner
-        - start
-        - --config
-        - /etc/config/config.json
-        volumeMounts:
-        - name: config-volume
-          mountPath: /etc/config/
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+        - name: local-path-provisioner
+          image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.24
+          imagePullPolicy: IfNotPresent
+          command:
+            - local-path-provisioner
+            - start
+            - --config
+            - /etc/config/config.json
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config/
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
       volumes:
         - name: config-volume
           configMap:
@@ -90,7 +90,7 @@ spec:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: local-path
+  name: %{DEFAULT_LOCAL_PATH_STORAGE_CLASS_NAME}%
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: rancher.io/local-path

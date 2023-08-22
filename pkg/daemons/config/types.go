@@ -160,64 +160,65 @@ type Control struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	AgentToken               string `json:"-"`
-	Token                    string `json:"-"`
-	ServiceNodePortRange     *utilnet.PortRange
-	KubeConfigOutput         string
-	KubeConfigMode           string
-	HelmJobImage             string
-	DataDir                  string
-	Datastore                endpoint.Config `json:"-"`
-	Disables                 map[string]bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	DisableKubeProxy         bool
-	DisableScheduler         bool
-	DisableServiceLB         bool
-	Rootless                 bool
-	ServiceLBNamespace       string
-	EnablePProf              bool
-	ExtraAPIArgs             []string
-	ExtraControllerArgs      []string
-	ExtraCloudControllerArgs []string
-	ExtraEtcdArgs            []string
-	ExtraSchedulerAPIArgs    []string
-	NoLeaderElect            bool
-	JoinURL                  string
-	IPSECPSK                 string
-	DefaultLocalStoragePath  string
-	Skips                    map[string]bool
-	SystemDefaultRegistry    string
-	ClusterInit              bool
-	ClusterReset             bool
-	ClusterResetRestorePath  string
-	EncryptForce             bool
-	EncryptSkip              bool
-	TLSMinVersion            uint16
-	TLSCipherSuites          []uint16
-	EtcdSnapshotName         string        `json:"-"`
-	EtcdDisableSnapshots     bool          `json:"-"`
-	EtcdExposeMetrics        bool          `json:"-"`
-	EtcdSnapshotDir          string        `json:"-"`
-	EtcdSnapshotCron         string        `json:"-"`
-	EtcdSnapshotRetention    int           `json:"-"`
-	EtcdSnapshotCompress     bool          `json:"-"`
-	EtcdListFormat           string        `json:"-"`
-	EtcdS3                   bool          `json:"-"`
-	EtcdS3Endpoint           string        `json:"-"`
-	EtcdS3EndpointCA         string        `json:"-"`
-	EtcdS3SkipSSLVerify      bool          `json:"-"`
-	EtcdS3AccessKey          string        `json:"-"`
-	EtcdS3SecretKey          string        `json:"-"`
-	EtcdS3BucketName         string        `json:"-"`
-	EtcdS3Region             string        `json:"-"`
-	EtcdS3Folder             string        `json:"-"`
-	EtcdS3Timeout            time.Duration `json:"-"`
-	EtcdS3Insecure           bool          `json:"-"`
-	ServerNodeName           string
+	APIServerPort                    int
+	APIServerBindAddress             string
+	AgentToken                       string `json:"-"`
+	Token                            string `json:"-"`
+	ServiceNodePortRange             *utilnet.PortRange
+	KubeConfigOutput                 string
+	KubeConfigMode                   string
+	HelmJobImage                     string
+	DataDir                          string
+	Datastore                        endpoint.Config `json:"-"`
+	Disables                         map[string]bool
+	DisableAPIServer                 bool
+	DisableControllerManager         bool
+	DisableETCD                      bool
+	DisableKubeProxy                 bool
+	DisableScheduler                 bool
+	DisableServiceLB                 bool
+	Rootless                         bool
+	ServiceLBNamespace               string
+	EnablePProf                      bool
+	ExtraAPIArgs                     []string
+	ExtraControllerArgs              []string
+	ExtraCloudControllerArgs         []string
+	ExtraEtcdArgs                    []string
+	ExtraSchedulerAPIArgs            []string
+	NoLeaderElect                    bool
+	JoinURL                          string
+	IPSECPSK                         string
+	DefaultLocalStoragePath          string
+	DefaultLocalPathStorageClassName string
+	Skips                            map[string]bool
+	SystemDefaultRegistry            string
+	ClusterInit                      bool
+	ClusterReset                     bool
+	ClusterResetRestorePath          string
+	EncryptForce                     bool
+	EncryptSkip                      bool
+	TLSMinVersion                    uint16
+	TLSCipherSuites                  []uint16
+	EtcdSnapshotName                 string        `json:"-"`
+	EtcdDisableSnapshots             bool          `json:"-"`
+	EtcdExposeMetrics                bool          `json:"-"`
+	EtcdSnapshotDir                  string        `json:"-"`
+	EtcdSnapshotCron                 string        `json:"-"`
+	EtcdSnapshotRetention            int           `json:"-"`
+	EtcdSnapshotCompress             bool          `json:"-"`
+	EtcdListFormat                   string        `json:"-"`
+	EtcdS3                           bool          `json:"-"`
+	EtcdS3Endpoint                   string        `json:"-"`
+	EtcdS3EndpointCA                 string        `json:"-"`
+	EtcdS3SkipSSLVerify              bool          `json:"-"`
+	EtcdS3AccessKey                  string        `json:"-"`
+	EtcdS3SecretKey                  string        `json:"-"`
+	EtcdS3BucketName                 string        `json:"-"`
+	EtcdS3Region                     string        `json:"-"`
+	EtcdS3Folder                     string        `json:"-"`
+	EtcdS3Timeout                    time.Duration `json:"-"`
+	EtcdS3Insecure                   bool          `json:"-"`
+	ServerNodeName                   string
 
 	BindAddress string
 	SANs        []string
