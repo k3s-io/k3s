@@ -30,6 +30,10 @@
 				"text": "imported but not used"
 			},
 			{
+				"linters": "typecheck",
+				"text": "build constraints exclude all Go files"
+			},
+			{
 				"linters": "revive",
 				"text": "should have comment"
 			},

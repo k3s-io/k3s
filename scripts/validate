@@ -46,4 +46,5 @@ if ! command -v golangci-lint; then
 fi
 
 echo Running: golangci-lint
-golangci-lint run -v
+# https://github.com/golangci/golangci-lint/issues/2788
+CGO_ENABLED=0 golangci-lint run -v

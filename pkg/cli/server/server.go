@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
-	"k8s.io/kubernetes/pkg/controlplane"
+	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
@@ -348,7 +348,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	// the apiserver service does not yet support dual-stack operation
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
+	_, apiServerServiceIP, err := options.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
 	if err != nil {
 		return err
 	}

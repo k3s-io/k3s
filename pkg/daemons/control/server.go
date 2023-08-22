@@ -21,8 +21,9 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logsapi "k8s.io/component-base/logs/api/v1"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
+	"k8s.io/kubernetes/pkg/registry/core/node"
 
 	// for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
@@ -31,6 +32,7 @@ import (
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	if err := prepare(ctx, cfg); err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
@@ -41,7 +43,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 	cfg.Runtime.Tunnel = tunnel
 
-	proxyutil.DisableProxyHostnameCheck = true
+	node.DisableProxyHostnameCheck = true
 
 	authArgs := []string{
 		"--basic-auth-file=" + cfg.Runtime.PasswdFile,

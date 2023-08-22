@@ -45,7 +45,5 @@ type version struct {
 }
 
 func (v *version) Addon() AddonController {
-	return &AddonGenericController{
-		generic.NewController[*v1.Addon, *v1.AddonList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, v.controllerFactory),
-	}
+	return generic.NewController[*v1.Addon, *v1.AddonList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, v.controllerFactory)
 }
