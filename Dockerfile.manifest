@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.20.6-alpine3.18
+ARG GOLANG=golang:1.20.7-alpine3.18
 FROM ${GOLANG}
 
 COPY --from=plugins/manifest:1.2.3 /bin/* /bin/
