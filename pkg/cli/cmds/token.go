@@ -15,6 +15,7 @@ type Token struct {
 	Kubeconfig  string
 	ServerURL   string
 	Token       string
+	NewToken    string
 	Output      string
 	Groups      cli.StringSlice
 	Usages      cli.StringSlice
@@ -100,7 +101,7 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 				Flags: append(TokenFlags,
 					&cli.StringFlag{
 						Name:        "token,t",
-						Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
+						Usage:       "Existing token used to join a server or agent to a cluster",
 						Destination: &TokenConfig.Token,
 						EnvVar:      version.ProgramUpper + "_TOKEN",
 					},
@@ -110,6 +111,11 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 						Destination: &TokenConfig.ServerURL,
 						EnvVar:      version.ProgramUpper + "_URL",
 						Value:       "https://127.0.0.1:6443",
+					},
+					&cli.StringFlag{
+						Name:        "new-token",
+						Usage:       "New token that replaces existing token",
+						Destination: &TokenConfig.NewToken,
 					}),
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,

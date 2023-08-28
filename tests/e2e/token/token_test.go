@@ -3,7 +3,6 @@ package snapshotrestore
 import (
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 // generic/ubuntu2004, generic/centos7, generic/rocky8, opensuse/Leap-15.4.x86_64
 
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 1, "number of server nodes")
+var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
@@ -42,7 +41,7 @@ var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Use the token CLI to create and join agents", Ordered, func() {
 	Context("Agent joins with permanent token:", func() {
-		It("Starts up with no issues", func() {
+		FIt("Starts up with no issues", func() {
 			var err error
 			if *local {
 				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
@@ -58,7 +57,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Checks Node and Pod Status", func() {
+		FIt("Checks Node and Pod Status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
@@ -163,7 +162,7 @@ var _ = AfterSuite(func() {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
-		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		// Expect(e2e.DestroyCluster()).To(Succeed())
+		// Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
 })

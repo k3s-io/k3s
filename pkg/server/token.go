@@ -17,7 +17,8 @@ import (
 )
 
 type ServerTokenRequest struct {
-	Action *string `json:"stage,omitempty"`
+	Action   *string `json:"stage,omitempty"`
+	NewToken *string `json:"newToken,omitempty"`
 }
 
 func getServerTokenRequest(req *http.Request) (ServerTokenRequest, error) {
@@ -36,20 +37,16 @@ func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handl
 			resp.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logrus.Info("Received token request")
 		var err error
-		b := []byte{}
-		var token string
 		sTokenReq, err := getServerTokenRequest(req)
+		logrus.Info("Received token request: ", *sTokenReq.Action, *sTokenReq.NewToken)
 		if err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))
 			return
 		}
-
 		if *sTokenReq.Action == "rotate" {
-			token, err = tokenRotate(ctx, server)
-			b = []byte(token)
+			err = tokenRotate(ctx, server, *sTokenReq.NewToken)
 		} else {
 			err = fmt.Errorf("unknown action %s requested", *sTokenReq.Action)
 		}
@@ -59,56 +56,59 @@ func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handl
 			return
 		}
 		resp.WriteHeader(http.StatusOK)
-		resp.Write(b)
 	})
 }
 
-func tokenRotate(ctx context.Context, server *config.Control) (string, error) {
+func tokenRotate(ctx context.Context, server *config.Control, newToken string) error {
 	passwd, err := passwd.Read(server.Runtime.PasswdFile)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	logrus.Info("BEFORE ", passwd)
 	if err != nil {
-		return "", err
+		return err
 	}
 	oldToken, found := passwd.Pass("server")
 	if !found {
-		return "", fmt.Errorf("server token not found")
+		return fmt.Errorf("server token not found")
 	}
-	newToken, err := util.Random(16)
-	if err != nil {
-		return "", err
+	if newToken == "" {
+		newToken, err = util.Random(16)
+		if err != nil {
+			return err
+		}
 	}
+
 	// if err := passwd.EnsureUser("server", version.Program+":server", newToken); err != nil {
-	// 	return "", err
+	// 	return err
 	// }
 	// logrus.Info("AFTER ", passwd)
 
-	// if err := passwd.Write(server.Runtime.PasswdFile); err != nil {
-	// 	return "", err
-	// }
+	if err := passwd.Write(server.Runtime.PasswdFile); err != nil {
+		return err
+	}
 
 	serverTokenFile := filepath.Join(server.DataDir, "token")
 	b, err := os.ReadFile(serverTokenFile)
 	if err != nil {
-		return "", err
+		return err
 	}
-	logrus.Info("OLD TOKEN ", string(b))
+	logrus.Debug("Old Token File: ", string(b))
+
 	if err := writeToken("server:"+newToken, serverTokenFile, server.Runtime.ServerCA); err != nil {
-		return "", err
+		return err
 	}
 
 	b, err = os.ReadFile(serverTokenFile)
 	if err != nil {
-		return "", err
+		return err
 	}
-	logrus.Info("NEW TOKEN ", string(b))
+	logrus.Debug("New Token File: ", string(b))
 
-	cluster.RotateBootstrapToken(ctx, server, oldToken)
-	// if err := cluster.Save(ctx, server, true); err != nil {
-	// 	return "", err
-	// }
-	return newToken, nil
+	if err := cluster.RotateBootstrapToken(ctx, server, oldToken); err != nil {
+		return err
+	}
+	server.Token = newToken
+	return cluster.Save(ctx, server, true)
 }

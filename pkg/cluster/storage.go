@@ -22,19 +22,13 @@ import (
 const maxBootstrapWaitAttempts = 5
 
 func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
-	logrus.Info("Rotating bootstrap token")
 
-	token := config.Token
-	logrus.Info("SAVE")
-	logrus.Info("Using token: ", token)
-	if token == "" {
-		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
-		if err != nil {
-			return err
-		}
-		token = tokenFromFile
-		logrus.Info("Token from file: ", token)
+	logrus.Info("RotateBootstrapToken")
+	token, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+	if err != nil {
+		return err
 	}
+	logrus.Info("Token from file: ", token)
 	normalizedToken, err := normalizeToken(token)
 	if err != nil {
 		return err
