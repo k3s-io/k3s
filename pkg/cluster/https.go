@@ -52,8 +52,10 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 		return nil, nil, err
 	}
 	c.config.SANs = append(c.config.SANs, "kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc."+c.config.ClusterDomain)
-	c.config.Runtime.ClusterControllerStarts["server-cn-filter"] = func(ctx context.Context) {
-		registerAddressHandlers(ctx, c)
+	if c.config.SANSecurity {
+		c.config.Runtime.ClusterControllerStarts["server-cn-filter"] = func(ctx context.Context) {
+			registerAddressHandlers(ctx, c)
+		}
 	}
 	storage := tlsStorage(ctx, c.config.DataDir, c.config.Runtime)
 	return wrapHandler(dynamiclistener.NewListenerWithChain(tcp, storage, certs, key, dynamiclistener.Config{
