@@ -47,6 +47,7 @@ type Server struct {
 	KubeConfigMode           string
 	HelmJobImage             string
 	TLSSan                   cli.StringSlice
+	TLSSanSecurity           bool
 	BindAddress              string
 	EnablePProf              bool
 	ExtraAPIArgs             cli.StringSlice
@@ -201,6 +202,11 @@ var ServerFlags = []cli.Flag{
 		Name:  "tls-san",
 		Usage: "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
 		Value: &ServerConfig.TLSSan,
+	},
+	&cli.BoolTFlag{
+		Name:        "tls-san-security",
+		Usage:       "(listener) Protect the server TLS cert by refusing to add Subject Alternative Names not associated with the kubernetes apiserver service, server nodes, or values of the tls-san option (default: true)",
+		Destination: &ServerConfig.TLSSanSecurity,
 	},
 	DataDirFlag,
 	ClusterCIDR,
