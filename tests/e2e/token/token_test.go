@@ -3,6 +3,7 @@ package snapshotrestore
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Use the token CLI to create and join agents", Ordered, func() {
 	Context("Agent joins with permanent token:", func() {
-		FIt("Starts up with no issues", func() {
+		It("Starts up with no issues", func() {
 			var err error
 			if *local {
 				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
@@ -57,7 +58,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		FIt("Checks Node and Pod Status", func() {
+		It("Checks Node and Pod Status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
@@ -103,7 +104,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(2))
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 1))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -143,7 +144,33 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(3))
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 2))
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "60s", "5s").Should(Succeed())
+		})
+	})
+	Context("Rotate server bootstrap token", func() {
+		serverToken := "1234"
+		It("Creates a new server token", func() {
+			Expect(e2e.RunCmdOnNode("k3s token rotate -t vagrant --new-token="+serverToken, serverNodeNames[0])).
+				To(ContainSubstring("token rotated, restart k3s with new token"))
+		})
+		It("Restarts servers with the new token", func() {
+			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)
+			for _, node := range serverNodeNames {
+				_, err := e2e.RunCmdOnNode(cmd, node)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			for _, node := range serverNodeNames {
+				_, err := e2e.RunCmdOnNode("systemctl restart k3s", node)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 2))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -162,7 +189,7 @@ var _ = AfterSuite(func() {
 		fmt.Println("FAILED!")
 	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
-		// Expect(e2e.DestroyCluster()).To(Succeed())
-		// Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(e2e.DestroyCluster()).To(Succeed())
+		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
 })

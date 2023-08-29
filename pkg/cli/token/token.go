@@ -164,7 +164,8 @@ func Rotate(app *cli.Context) error {
 	if err = info.Put("/v1-"+version.Program+"/token", b); err != nil {
 		return err
 	}
-	fmt.Println("rotating token")
+	time.Sleep(1 * time.Second)
+	fmt.Println("token rotated, restart k3s with new token")
 	return nil
 }
 
