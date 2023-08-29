@@ -239,8 +239,6 @@ func genUsers(config *config.Control) error {
 		return err
 	}
 
-	logrus.Info("HELP ", passwd)
-
 	if err := migratePassword(passwd); err != nil {
 		return err
 	}
@@ -250,11 +248,8 @@ func genUsers(config *config.Control) error {
 	if err != nil {
 		return err
 	}
-	logrus.Info("HELP 1 ", serverPass)
 
 	nodePass := getNodePass(config, serverPass)
-
-	logrus.Info("HELP 2 ", nodePass)
 
 	if err := passwd.EnsureUser("node", version.Program+":agent", nodePass); err != nil {
 		return err

@@ -105,7 +105,7 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 	if err != nil {
 		return err
 	}
-	// I think I need to inject a new token via Save
+
 	// If there's an empty bootstrap key, then we've locked it and can override.
 	if currentKey != nil && len(currentKey.Data) == 0 {
 		logrus.Info("Bootstrap key lock is held")
@@ -282,7 +282,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 	}
 	for _, bootstrapKV := range bootstrapList {
 		// ensure bootstrap is stored in the current token's key
-		logrus.Infof("checking bootstrap key %s against %s", string(bootstrapKV.Key), tokenKey)
+		logrus.Debugf("checking bootstrap key %s against %s", string(bootstrapKV.Key), tokenKey)
 		if string(bootstrapKV.Key) == tokenKey {
 			return &bootstrapKV, false, nil
 		}
@@ -330,9 +330,9 @@ func normalizeToken(token string) (string, error) {
 func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
-	logrus.Info("migrateOldTokens: t: ", token, " tK: ", tokenKey, " ot: ", oldToken, " otK: ", oldTokenKey)
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
+		logrus.Debug("Comparing ", string(bootstrapKV.Key), " to ", oldTokenKey)
 		if string(bootstrapKV.Key) == emptyStringKey {
 			logrus.Warn("Bootstrap data encrypted with empty string, deleting and resaving with token")
 			if err := doMigrateToken(ctx, storageClient, bootstrapKV, "", emptyStringKey, token, tokenKey); err != nil {
@@ -344,7 +344,6 @@ func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storage
 				return err
 			}
 		}
-		logrus.Info("Comparing ", string(bootstrapKV.Key), " to ", oldTokenKey)
 	}
 
 	return nil
