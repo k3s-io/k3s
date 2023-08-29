@@ -23,17 +23,15 @@ const maxBootstrapWaitAttempts = 5
 
 func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
 
-	logrus.Info("RotateBootstrapToken")
 	token, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 	if err != nil {
 		return err
 	}
-	logrus.Info("Token from file: ", token)
+
 	normalizedToken, err := normalizeToken(token)
 	if err != nil {
 		return err
 	}
-	logrus.Info("Normalized token from file: ", normalizedToken)
 
 	storageClient, err := client.New(config.Runtime.EtcdConfig)
 	if err != nil {
@@ -41,7 +39,6 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 	}
 	defer storageClient.Close()
 
-	emptyStringKey := storageKey("")
 	tokenKey := storageKey(normalizedToken)
 
 	var bootstrapList []client.Value
@@ -62,8 +59,8 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 	if err != nil {
 		return err
 	}
-	// check for empty string key and for old token format with k10 prefix
-	if err := migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, normalizedOldToken); err != nil {
+	// resuse the existing migration function to reencrypt bootstrap data with new token
+	if err := migrateOldTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
 		return err
 	}
 
@@ -81,21 +78,17 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 		return err
 	}
 	token := config.Token
-	logrus.Info("SAVE")
-	logrus.Info("Using token: ", token)
 	if token == "" {
 		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 		if err != nil {
 			return err
 		}
 		token = tokenFromFile
-		logrus.Info("Token from file: ", token)
 	}
 	normalizedToken, err := normalizeToken(token)
 	if err != nil {
 		return err
 	}
-	logrus.Info("Normalized token from file: ", normalizedToken)
 
 	data, err := encrypt(normalizedToken, buf.Bytes())
 	if err != nil {

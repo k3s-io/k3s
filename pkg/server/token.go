@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/cluster"
@@ -65,7 +64,6 @@ func tokenRotate(ctx context.Context, server *config.Control, newToken string) e
 		return err
 	}
 
-	logrus.Info("BEFORE ", passwd)
 	if err != nil {
 		return err
 	}
@@ -83,28 +81,15 @@ func tokenRotate(ctx context.Context, server *config.Control, newToken string) e
 	// if err := passwd.EnsureUser("server", version.Program+":server", newToken); err != nil {
 	// 	return err
 	// }
-	// logrus.Info("AFTER ", passwd)
 
 	if err := passwd.Write(server.Runtime.PasswdFile); err != nil {
 		return err
 	}
 
 	serverTokenFile := filepath.Join(server.DataDir, "token")
-	b, err := os.ReadFile(serverTokenFile)
-	if err != nil {
-		return err
-	}
-	logrus.Debug("Old Token File: ", string(b))
-
 	if err := writeToken("server:"+newToken, serverTokenFile, server.Runtime.ServerCA); err != nil {
 		return err
 	}
-
-	b, err = os.ReadFile(serverTokenFile)
-	if err != nil {
-		return err
-	}
-	logrus.Debug("New Token File: ", string(b))
 
 	if err := cluster.RotateBootstrapToken(ctx, server, oldToken); err != nil {
 		return err
