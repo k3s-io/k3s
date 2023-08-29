@@ -60,7 +60,7 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 		return err
 	}
 	// resuse the existing migration function to reencrypt bootstrap data with new token
-	if err := migrateOldTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
+	if err := migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
 		return err
 	}
 
@@ -271,7 +271,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 		logrus.Warn("found multiple bootstrap keys in storage")
 	}
 	// check for empty string key and for old token format with k10 prefix
-	if err := migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
+	if err := migrateTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
 		return nil, false, err
 	}
 
@@ -324,10 +324,10 @@ func normalizeToken(token string) (string, error) {
 	return password, nil
 }
 
-// migrateOldTokens will list all keys that has prefix /bootstrap and will check for key that is
+// migrateTokens will list all keys that has prefix /bootstrap and will check for key that is
 // hashed with empty string and keys that is hashed with old token format before normalizing
 // then migrate those and resave only with the normalized token
-func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
+func migrateTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
 	for _, bootstrapKV := range bootstrapList {
@@ -339,7 +339,9 @@ func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storage
 				return err
 			}
 		} else if string(bootstrapKV.Key) == oldTokenKey && oldTokenKey != tokenKey {
-			logrus.Warn("bootstrap data encrypted with old token format string, deleting and resaving with token")
+			if emptyStringKey != "" {
+				logrus.Warn("bootstrap data encrypted with old token format string, deleting and resaving with token")
+			}
 			if err := doMigrateToken(ctx, storageClient, bootstrapKV, oldToken, oldTokenKey, token, tokenKey); err != nil {
 				return err
 			}

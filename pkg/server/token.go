@@ -12,6 +12,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,7 +39,7 @@ func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handl
 		}
 		var err error
 		sTokenReq, err := getServerTokenRequest(req)
-		logrus.Info("Received token request: ", *sTokenReq.Action, *sTokenReq.NewToken)
+		logrus.Debug("Received token request")
 		if err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte(err.Error()))
@@ -78,9 +79,16 @@ func tokenRotate(ctx context.Context, server *config.Control, newToken string) e
 		}
 	}
 
-	// if err := passwd.EnsureUser("server", version.Program+":server", newToken); err != nil {
-	// 	return err
-	// }
+	if err := passwd.EnsureUser("server", version.Program+":server", newToken); err != nil {
+		return err
+	}
+
+	// If the agent token is the same a server, we need to change both
+	if agentToken, found := passwd.Pass("node"); found && agentToken == oldToken && server.AgentToken == "" {
+		if err := passwd.EnsureUser("node", version.Program+":agent", newToken); err != nil {
+			return err
+		}
+	}
 
 	if err := passwd.Write(server.Runtime.PasswdFile); err != nil {
 		return err
