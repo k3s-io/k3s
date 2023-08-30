@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"sync"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
@@ -26,6 +27,8 @@ func registerAddressHandlers(ctx context.Context, c *Cluster) {
 }
 
 type addressesHandler struct {
+	sync.RWMutex
+
 	nodeController controllerv1.NodeController
 	allowed        map[string]bool
 }
@@ -36,6 +39,9 @@ func (a *addressesHandler) filterCN(cns ...string) []string {
 	if !a.nodeController.Informer().HasSynced() {
 		return cns
 	}
+
+	a.RLock()
+	defer a.RUnlock()
 
 	filteredCNs := make([]string, 0, len(cns))
 	for _, cn := range cns {
@@ -52,6 +58,9 @@ func (a *addressesHandler) filterCN(cns ...string) []string {
 func (a *addressesHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 	if node != nil {
 		if node.Labels[util.ControlPlaneRoleLabelKey] != "" || node.Labels[util.ETCDRoleLabelKey] != "" {
+			a.Lock()
+			defer a.Unlock()
+
 			for _, address := range node.Status.Addresses {
 				a.allowed[address.String()] = true
 			}
