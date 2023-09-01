@@ -157,13 +157,13 @@ func Rotate(app *cli.Context) error {
 		Action:   pointer.String("rotate"),
 		NewToken: pointer.String(cmds.TokenConfig.NewToken),
 	})
-	fmt.Println(cmds.TokenConfig.NewToken)
 	if err != nil {
 		return err
 	}
 	if err = info.Put("/v1-"+version.Program+"/token", b); err != nil {
 		return err
 	}
+	// wait for etcd db propagation delay
 	time.Sleep(1 * time.Second)
 	fmt.Println("token rotated, restart k3s with new token")
 	return nil
