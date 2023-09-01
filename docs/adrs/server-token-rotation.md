@@ -4,7 +4,7 @@ Date: 2023-08-13
 
 ## Status
 
-Proposed 
+Accepted 
 
 ## Context
 
@@ -69,10 +69,10 @@ OR
 1b)  On server 1 run:
 
 ```
-k3s token rotate -t <OLD_TOKEN> <NEW_TOKEN>
+k3s token rotate -t <OLD_TOKEN> --new-token <NEW_TOKEN>
 ```
 
-2) If 1a) Retrieve the new token value from the /var/lib/rancher/k3s/server/token file on server 1
+2) If 1a) Retrieve the new random token value from the /var/lib/rancher/k3s/server/token file on server 1
 ```
 vi /var/lib/rancher/k3s/server/token
 ```
@@ -87,6 +87,7 @@ systemctl start k3s
 
 ## Decision
 
+We will procced forward with the above implementation.
 
 ## Consequences
 
