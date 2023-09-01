@@ -116,6 +116,10 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 						Name:        "new-token",
 						Usage:       "New token that replaces existing token",
 						Destination: &TokenConfig.NewToken,
+					},
+					&cli.BoolFlag{
+						Name:  "f,force",
+						Usage: "Bypass user prompt warnings",
 					}),
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,
