@@ -124,7 +124,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		})
 
 	})
-	
+
 	Context("Cluster is reset normally", func() {
 		It("Resets the cluster", func() {
 			for _, nodeName := range serverNodeNames {
