@@ -26,8 +26,6 @@ def provision(vm, role, role_num, node_num)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
   vm.provision "shell", inline: "ping -c 2 k3s.io"
-  
-  db_type = getDBType(role, role_num, vm)
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
