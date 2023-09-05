@@ -8,10 +8,6 @@ To ensure proper GPG Signing usage, we recommend the following:
 
  - Disable GPG signing in the git config before running all scripts. The method for disabling GPG signing may vary depending on your specific situation. One approach is to unset the related configuration using the following command:
 ```sh
-git config --unset-all user.signingkey
-```
-Or disable locally for the current repository
-```sh
 git config --local commit.gpgSign false
 ```
 
