@@ -50,6 +50,10 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 
+	// Override default rate limits to prevent long delays in policy setup
+	restConfig.QPS = 100
+	restConfig.Burst = 150
+
 	client, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
