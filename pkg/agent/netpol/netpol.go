@@ -65,7 +65,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	krConfig.HostnameOverride = nodeConfig.AgentConfig.NodeName
-	krConfig.MetricsEnabled = false
+	krConfig.MetricsEnabled = true
 	krConfig.RunFirewall = true
 	krConfig.RunRouter = false
 	krConfig.RunServiceProxy = false
