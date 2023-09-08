@@ -74,6 +74,7 @@ func main() {
 			"k3s.cattle.io": {
 				Types: []interface{}{
 					v1.Addon{},
+					v1.ETCDSnapshotFile{},
 				},
 				GenerateTypes:   true,
 				GenerateClients: true,
