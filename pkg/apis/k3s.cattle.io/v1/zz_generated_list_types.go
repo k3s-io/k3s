@@ -40,3 +40,20 @@ func NewAddon(namespace, name string, obj Addon) *Addon {
 	obj.Namespace = namespace
 	return &obj
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ETCDSnapshotFileList is a list of ETCDSnapshotFile resources
+type ETCDSnapshotFileList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []ETCDSnapshotFile `json:"items"`
+}
+
+func NewETCDSnapshotFile(namespace, name string, obj ETCDSnapshotFile) *ETCDSnapshotFile {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("ETCDSnapshotFile").ToAPIVersionAndKind()
+	obj.Name = name
+	obj.Namespace = namespace
+	return &obj
+}
