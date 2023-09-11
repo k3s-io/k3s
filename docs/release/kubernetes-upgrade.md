@@ -4,6 +4,24 @@ This document details the K3S kubernetes patch release process.
 # Before You Begin
 You’ll be primarily using git and go. Git can be installed via the local package manager. Make sure Go is installed and configured correctly, utilizing a “gopath”. This can be set via an environment variable called GOPATH. eg. export GOPATH=”${HOME}/go”, typically.
 
+To ensure proper GPG Signing usage, we recommend the following:
+
+ - Disable GPG signing in the git config before running all scripts. The method for disabling GPG signing may vary depending on your specific situation. One approach is to unset the related configuration using the following command:
+```sh
+git config --local commit.gpgSign false
+```
+
+If you require GPG signing for your tags, configure it based on your specific requirements. Please note that the script assumes that GPG signing is either disabled or configured correctly in the git configuration. 
+
+When running the script inside a Docker container, there might be a user mismatch between the container user and the git repository directory user. This can result in permission issues when performing Git operations.
+
+To avoid this problem, you can add a safe directory setting in the git configuration by following these steps:
+
+- Create or edit the global git configuration file by running the following command:
+```sh
+git config --global core.safelyUseIncompatibleGitCredentialHelper true
+```
+
 ## Clone and Setup Remotes
 Clone from upstream then add k3s-io fork and your personal fork.
 ```sh
@@ -68,15 +86,16 @@ echo -e ${BUILD_CONTAINER} | docker build -t ${GOIMAGE}-dev -
 
 # Rebasing pulls in the tags.sh script.
 # Now create the tags by executing tag.sh with the given version variables.
-docker run --rm -u $(id -u) \
---mount type=tmpfs,destination=${GOPATH}/pkg \
--v ${GOPATH}/src:/go/src \
--v ${GOPATH}/.cache:/go/.cache \
--v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig \
--e GIT_TRACE=1 \
--e HOME=/go \
--e GOCACHE=/go/.cache \
--w /go/src/github.com/kubernetes/kubernetes ${GOIMAGE}-dev ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
+docker run --rm -u $(id -u):$(id -g) \
+  -v ${GOPATH}/src:/go/src:rw \
+  -v ${GOPATH}/pkg:/go/pkg:rw \
+  -v ${GOPATH}/.cache:/go/.cache:rw \
+  -v ${GLOBAL_GIT_CONFIG_PATH}:/go/.gitconfig:rw \
+  -e GIT_TRACE=1 \
+  -e HOME=/go \
+  -e GOCACHE=/go/.cache \
+  -w /go/src/github.com/kubernetes/kubernetes \
+  ${GOIMAGE}-dev chown -R $(id -u) .git | ./tag.sh ${NEW_K3S_VER} 2>&1 | tee ~/tags-${NEW_K3S_VER}.log
 ```
 After tag.sh runs, you should see a list of `git push` commands at the end of the output.
 Save this output to a file called ```push.sh``` and mark it as executable by running the following command:
@@ -85,36 +104,36 @@ chmod +x push.sh
 ```
 ### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.27 is shown below):
 ```sh
-git push ${REMOTE} staging/src/k8s.io/api/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/apiserver/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/client-go/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/code-generator/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/component-base/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/component-helpers/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/cri-api/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.22.12-k3s1
-git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kms/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubectl/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/kubelet/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/metrics/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/mount-utils/v1.27.0-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.27.3-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.27-k3s1
-git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.27.3-k3s1
-git push ${REMOTE} v1.27.3-k3s1
+git push ${REMOTE} staging/src/k8s.io/api/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/apimachinery/v1.27.4k3s1
+git push ${REMOTE} staging/src/k8s.io/apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cli-runtime/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/client-go/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cloud-provider/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cluster-bootstrap/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/code-generator/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-base/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/component-helpers/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/controller-manager/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/cri-api/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/csi-translation-lib/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/dynamic-resource-allocation/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kms/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-aggregator/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-controller-manager/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-proxy/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kube-scheduler/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubectl/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/kubelet/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/legacy-cloud-providers/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/metrics/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/mount-utils/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/pod-security-admission/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-apiserver/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-cli-plugin/v1.27.4-k3s1
+git push ${REMOTE} staging/src/k8s.io/sample-controller/v1.27.4-k3s1
+git push ${REMOTE} v1.27.4-k3s1
 ```
 ## Push tags to k3s-io remote
 ```
@@ -182,13 +201,40 @@ Once CI passes and you receive two approvals, you may now squash-merge the PR an
 Releases are kicked off and created by tagging a new tag.
 To create a new release in Github UI perform the following:
 
-1. Set title and tag according to the release version you're working on. E.g. v1.22.5-rc1+k3s1.
+1. Set title and tag according to the release version you're working on. E.g. v1.27.4-rc1+k3s1.
 2. Leave description blank.
 3. Check the pre-release field.
 4. Publish
 
 The resulting run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
+
+It may be necessary to create a new release candidate to accommodate changes in dependencies such as modifications in https://github.com/k3s-io/k3s-upgrade. To do this, repeat the previous process for tagging and increment the rc version.
+
+# Check system-agent-installer-k3s Release Images
+The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
+To ensure this synchronization, visit the [repository](https://github.com/rancher/system-agent-installer-k3s) and verify the creation of new releases and corresponding tags that align with the version numbers.
+
+Build progress can be tracked [here](https://hub.docker.com/r/rancher/system-agent-installer-k3s/tags). 
+
+# Create Release Images
+The k3s-upgrade repository bundles a k3s binary and script that allows a user to upgrade to a new k3s release. This process is normally automated, however this can fail. If the automation does fail, do the following:
+
+Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image. 
+
+1. Draft a new release
+2. Enter the tag (e.g. v1.22.5-rc1+k3s1).
+3. Check k3s and k3s-upgrade images Exist
+
+This process will take some time but upon completion, the images will be listed here.
+
+The k3s images will be published [here](https://hub.docker.com/r/rancher/k3s).
+The upgrade images will be published [here](https://hub.docker.com/r/rancher/k3s-upgrade).
+
+Verifying Component Release Versions
+With each release, k3s publishes release notes that include a table of the components and their versions.
+
+
 
 # Create GA Release Candidate
 Once QA has verified that the RC is good (or that any fixes have been added in follow up release candidates), it is time for the general release.
@@ -210,22 +256,6 @@ Once QA signs off on a RC:
 The resulting CI/CD run can be viewed here: 
 [k3s-io/k3s Drone Dashboard](https://drone-publish.k3s.io/k3s-io/k3s)
 
-# Create Release Images
-The k3s-upgrade repository bundles a k3s binary and script that allows a user to upgrade to a new k3s release. This process is normally automated, however this can fail. If the automation does fail, do the following:
-
-Go to the [k3s-upgrade repository](https://github.com/k3s-io/k3s-upgrade) and manually create a new tag for the release. This will kick off a build of the image. 
-
-1. Draft a new release
-2. Enter the tag (e.g. v1.22.5-rc1+k3s1).
-3. Check k3s and k3s-upgrade images Exist
-
-This process will take some time but upon completion, the images will be listed here.
-
-The k3s images will be published [here](https://hub.docker.com/r/rancher/k3s).
-The upgrade images will be published [here](https://hub.docker.com/r/rancher/k3s-upgrade).
-
-Verifying Component Release Versions
-With each release, k3s publishes release notes that include a table of the components and their versions.
 
 # Update Rancher KDM
 This step is specific to Rancher and serves to update Rancher's [Kontainer Driver Metadata](https://github.com/rancher/kontainer-driver-metadata/).
@@ -259,10 +289,7 @@ A later version can point to those arguments with no change:
     serverArgs: *serverArgs-v1
 ```
 If you are unsure of the new minor versions min/max constraints you can ask the Project manager and/or QA.
-# Create system-agent-installer-k3s Release Images
-The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
-[Go to the repo](https://github.com/rancher/system-agent-installer-k3s) and manually create a new release and tag it with the corresponding version numbers. This will kick off a build of the image.
-Build progress can be tracked here.
+
 # Update Channel Server
 Once the release is verified, the channel server config needs to be updated to reflect the new version for “stable”. [channel.yaml can be found at the root of the K3s repo.](https://github.com/k3s-io/k3s/blob/master/channel.yaml)
 
