@@ -8,6 +8,9 @@ fi
 
 cd $(dirname $0)/..
 
+echo Running: install script signature checks
+sha256sum -c install.sh.sha256sum
+
 echo Running: go mod tidy
 go mod tidy
 
