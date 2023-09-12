@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	. "github.com/onsi/gomega/gstruct"
-	v1 "k8s.io/api/core/v1"
 )
 
 var startupServer *testutil.K3sServer
@@ -85,12 +85,18 @@ var _ = Describe("startup tests", Ordered, func() {
 		It("creates dummy interfaces", func() {
 			Expect(testutil.RunCommand("ip link add dummy2 type dummy")).To(Equal(""))
 			Expect(testutil.RunCommand("ip link add dummy3 type dummy")).To(Equal(""))
+			Expect(testutil.RunCommand("ip link add dummy4 type dummy")).To(Equal(""))
 			Expect(testutil.RunCommand("ip addr add 11.22.33.44/24 dev dummy2")).To(Equal(""))
 			Expect(testutil.RunCommand("ip addr add 55.66.77.88/24 dev dummy3")).To(Equal(""))
+			Expect(testutil.RunCommand("ip addr add 11.11.22.22/24 dev dummy4")).To(Equal(""))
 		})
 		It("is created with node-ip arguments", func() {
 			var err error
-			startupServerArgs = []string{"--node-ip", "11.22.33.44", "--node-external-ip", "55.66.77.88"}
+			startupServerArgs = []string{
+				"--node-ip", "11.22.33.44",
+				"--node-external-ip", "55.66.77.88",
+				"--advertise-address", "11.11.22.22",
+			}
 			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -110,13 +116,20 @@ var _ = Describe("startup tests", Ordered, func() {
 				{
 					Type:    "ExternalIP",
 					Address: "55.66.77.88",
-				}}))
+				},
+			}))
+		})
+		It("get the kubectl and see if has the right advertise ip", func() {
+			apiInfo, err := testutil.GetEndpointsAddresses()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiInfo).To(ContainSubstring("11.11.22.22"))
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 			Expect(testutil.RunCommand("ip link del dummy2")).To(Equal(""))
 			Expect(testutil.RunCommand("ip link del dummy3")).To(Equal(""))
+			Expect(testutil.RunCommand("ip link del dummy4")).To(Equal(""))
 		})
 	})
 	When("a server with different data-dir is created", func() {
@@ -250,6 +263,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+
 })
 
 var failed bool
