@@ -143,6 +143,8 @@ github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdn
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
+github.com/brandond/kube-router/v2 v2.0.0-20230914060203-079f06df7f5d h1:tx/zTZC9S8yWMNan4I0tf+IPMfNOCULxKtdfZVRr4fg=
+github.com/brandond/kube-router/v2 v2.0.0-20230914060203-079f06df7f5d/go.mod h1:zhLSRTL1M+0BqeDTRzT42ZtlFJH/d9xaGvXGQR4c2Gc=
 github.com/bronze1man/goStrongswanVici v0.0.0-20201105010758-936f38b697fd h1:qn6a8rGrW+7p4ghypmYHZUKewXURuUDYxKqZxEoFjPc=
 github.com/bronze1man/goStrongswanVici v0.0.0-20201105010758-936f38b697fd/go.mod h1:fWUtBEPt2yjrr3WFhOqvajM8JSEU8bEeBcoeSCsKRpc=
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
@@ -626,8 +628,6 @@ github.com/k3s-io/klog v1.0.0-k3s2 h1:yyvD2bQbxG7m85/pvNctLX2bUDmva5kOBvuZ77tTGB
 github.com/k3s-io/klog v1.0.0-k3s2/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 github.com/k3s-io/klog/v2 v2.80.1-k3s1 h1:mGMXURxxmabQurmtRhXuQTJ9jC0pvIhESSxRSymepS8=
 github.com/k3s-io/klog/v2 v2.80.1-k3s1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
-github.com/k3s-io/kube-router/v2 v2.0.1-0.20230508174102-b42e5faded1c h1:7IaKAByGXNvZAmhYlaHH2LiqOGWtPNVg8vKV1Xvlrek=
-github.com/k3s-io/kube-router/v2 v2.0.1-0.20230508174102-b42e5faded1c/go.mod h1:zhLSRTL1M+0BqeDTRzT42ZtlFJH/d9xaGvXGQR4c2Gc=
 github.com/k3s-io/kubernetes v1.26.8-k3s1 h1:d0I9SEQCe2vilxiS9JXz8p1HNB9vB8lhr9u7G/YTgj4=
 github.com/k3s-io/kubernetes v1.26.8-k3s1/go.mod h1:EBE8dfGfk2sZ3yzZVQjr1wQ/k28/wwaajL/1+77Cjmg=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.26.8-k3s1 h1:gS4kucc+D21BKul2s3YiBpRr7dfTmNxmFbaXSfk8EW0=
