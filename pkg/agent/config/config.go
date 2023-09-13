@@ -363,7 +363,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if controlConfig.FlannelBackend != config.FlannelBackendNone && len(envInfo.FlannelIface) > 0 {
 		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to find interface")
+			return nil, errors.Wrapf(err, "unable to find interface %s", envInfo.FlannelIface)
 		}
 	}
 
