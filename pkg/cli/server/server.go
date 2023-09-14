@@ -50,7 +50,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		err error
 	)
 
-	// hide process arguments from ps output, since they may contain
+	// hide process arguments from ps output since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " server")
 
