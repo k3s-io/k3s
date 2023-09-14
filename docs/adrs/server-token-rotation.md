@@ -53,7 +53,7 @@ Admins can then use the new token value to rejoin existing server nodes or join 
 Similar to the `k3s certificate rotate` and the `k3s secret-encrypt rotate-keys` subcommands,
 the `k3s token rotate` subcommand will be wrapper for an API request to the server to perform the decryption
 with the old token, and then reencryption of the bootstrap data with the new token. After reenecryption, the 
-bootstrap data will be updated with the modified token and passwrd files, allowing propgation of the files to
+bootstrap data will be updated with the modified token and password files, allowing propagation of the files to
 existing servers upon restart.
 
 ### Token Rotation Workflow
@@ -87,8 +87,8 @@ systemctl start k3s
 
 ## Decision
 
-We will procced forward with the above implementation.
+We will proceed forward with the above implementation.
 
 ## Consequences
 
-Documentation the is explicit around the cluster token is compromised. Tt's strongly recommend to do a clean cluster reinstall, since this is the only way to be sure of the cluster's security state - eliminating the possibility that backdoors could have been planted by a malicious user".
+Documentation is explicit around what to do if the cluster token is compromised. It's strongly recommend to do a clean cluster reinstall, since this is the only way to be sure of the cluster's security state - eliminating the possibility that backdoors could have been planted by a malicious user.
