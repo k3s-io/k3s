@@ -5,7 +5,7 @@ go 1.19
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.25
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.4-k3s1 // k3s/release-1.27
-	github.com/cloudnativelabs/kube-router/v2 => github.com/brandond/kube-router/v2 v2.0.0-20230914060203-079f06df7f5d
+	github.com/cloudnativelabs/kube-router/v2 => github.com/brandond/kube-router/v2 v2.0.0-20230914231636-f157365f4bc9
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.3-k3s1
 	github.com/containerd/stargz-snapshotter => github.com/k3s-io/stargz-snapshotter v0.14.3-k3s1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -124,7 +124,6 @@ require (
 	github.com/opencontainers/selinux v1.11.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.14.0
 	github.com/rancher/dynamiclistener v0.3.6-rc2
 	github.com/rancher/lasso v0.0.0-20221227210133-6ea88ca2fbcc
 	github.com/rancher/remotedialer v0.3.0
@@ -345,6 +344,7 @@ require (
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
+	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
