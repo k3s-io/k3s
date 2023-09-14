@@ -33,6 +33,7 @@ func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error 
 		if path == "" {
 			continue
 		}
+
 		data, err := os.ReadFile(path)
 		if err != nil {
 			logrus.Warnf("failed to read %s", path)
@@ -79,7 +80,7 @@ func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRunt
 		}
 
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
+			return errors.Wrap(err, "failed to mkdir "+filepath.Dir(path))
 		}
 		if err := os.WriteFile(path, bsf.Content, 0600); err != nil {
 			return errors.Wrapf(err, "failed to write to %s", path)
