@@ -55,7 +55,7 @@ VERSIONFLAGS="
     -X ${PKG_ETCD}/api/version.GitSHA=HEAD
 "
 if [ -n "${DEBUG}" ]; then
-  GCFLAGS="-N -l"
+  GCFLAGS="-N -l -d=inlstaticinit=0"
 else
   LDFLAGS="-w -s"
 fi

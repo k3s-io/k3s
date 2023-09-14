@@ -24,7 +24,7 @@ RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
+        curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
     fi
 
 ARG SELINUX=true
