@@ -92,7 +92,6 @@ if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
     export GOARM="7"
     # Context: https://github.com/golang/go/issues/58425#issuecomment-1426415912
     export GOEXPERIMENT=nounified
-    GCFLAGS="-d=inlstaticinit=0"
 fi
 
 if [ ${ARCH} = s390x ]; then
