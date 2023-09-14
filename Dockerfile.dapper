@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.20.8-alpine3.18
+ARG GOLANG=golang:1.20.8-alpine3.17
 FROM ${GOLANG}
 
 ARG http_proxy=$http_proxy
@@ -11,10 +11,9 @@ ENV no_proxy=$no_proxy
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
-    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
-    && \
+    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq && \
     if [ "$(go env GOARCH)" = "amd64" ]; then \
-    apk -U --no-cache add mingw-w64-gcc; \
+        apk -U --no-cache add mingw-w64-gcc; \
     fi
 
 RUN python3 -m pip install awscli
