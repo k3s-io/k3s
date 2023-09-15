@@ -22,6 +22,7 @@ server-pre-hook(){
     local testID=$(basename $TEST_DIR)
     export SERVER_DOCKER_ARGS="\
         --mount type=volume,src=k3s-server-$1-${testID,,}-rancher,dst=/var/lib/rancher/k3s \
+        --mount type=volume,src=k3s-server-$1-${testID,,}-log,dst=/var/log \
         --mount type=volume,src=k3s-server-$1-${testID,,}-etc,dst=/etc/rancher"
 }
 export -f server-pre-hook
@@ -30,6 +31,7 @@ agent-pre-hook(){
     local testID=$(basename $TEST_DIR)
     export AGENT_DOCKER_ARGS="\
         --mount type=volume,src=k3s-agent-$1-${testID,,}-rancher,dst=/var/lib/rancher/k3s \
+        --mount type=volume,src=k3s-agent-$1-${testID,,}-log,dst=/var/log \
         --mount type=volume,src=k3s-agent-$1-${testID,,}-etc,dst=/etc/rancher"
 }
 export -f agent-pre-hook
@@ -66,8 +68,15 @@ start-test() {
 
     # Confirm that the nodes are running the current build and that the pod we created earlier is still there
     . ./scripts/version.sh || true
-    kubectl get node -o wide | grep -F $VERSION
+
+    verify-valid-versions $(cat $TEST_DIR/servers/1/metadata/name)
+
     kubectl get pod -n kube-system volume-test -o wide
+
+    if ! kubectl get node -o wide | grep -qF $VERSION; then
+      echo "Expected version $VERSION not found in node list"
+      return 1
+    fi
 }
 export -f start-test
 
