@@ -5,7 +5,7 @@ go 1.19
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.25
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.4-k3s1 // k3s/release-1.27
-	github.com/cloudnativelabs/kube-router/v2 => github.com/brandond/kube-router/v2 v2.0.0-20230914231636-f157365f4bc9
+	github.com/cloudnativelabs/kube-router/v2 => github.com/brandond/kube-router/v2 v2.0.0-20230915164328-567753b41cea
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.3-k3s1
 	github.com/containerd/stargz-snapshotter => github.com/k3s-io/stargz-snapshotter v0.14.3-k3s1
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
