@@ -24,7 +24,7 @@ curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VE
 
 git clone --single-branch --branch=${VERSION_RUNC} --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR}
 
-git clone --single-branch --branch=${VERSION_CONTAINERD} --depth=1 https://github.com/k3s-io/containerd ${CONTAINERD_DIR}
+git clone --single-branch --branch=${VERSION_CONTAINERD} --depth=1 https://${PKG_CONTAINERD_K3S} ${CONTAINERD_DIR}
 
 for CHART_FILE in $(grep -rlF HelmChart manifests/ | xargs yq eval --no-doc .spec.chart | xargs -n1 basename); do
   CHART_NAME=$(echo $CHART_FILE | grep -oE '^(-*[a-z])+')
