@@ -26,9 +26,14 @@ get-module-version(){
   go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $1
 }
 
-# We're building k3s against containerd 1.5 in go.mod because 1.6 has dependency
-# conflicts with Kubernetes, but we still need to bundle containerd 1.6.
-VERSION_CONTAINERD="v1.7.3-k3s1"
+get-module-path(){
+  go list -m -f '{{if .Replace}}{{.Replace.Path}}{{else}}{{.Path}}{{end}}' $1
+}
+
+# We're building k3s against containerd 1.5 in go.mod because newer releases have
+# dependency conflicts with Kubernetes, but we still need to bundle containerd 1.7
+VERSION_CONTAINERD="v1.7.6-k3s1"
+PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd)
 
 VERSION_CRICTL=$(get-module-version github.com/kubernetes-sigs/cri-tools)
 if [ -z "$VERSION_CRICTL" ]; then
