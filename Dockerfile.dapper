@@ -7,6 +7,7 @@ ARG no_proxy=$no_proxy
 ENV http_proxy=$http_proxy
 ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
+ENV test_drone=true
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
