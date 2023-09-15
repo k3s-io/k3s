@@ -45,7 +45,7 @@ go test ./pkg/... -run Unit
 ```
 
 Note: As unit tests call functions directly, they are the primary drivers of K3s's code coverage
-metric.
+metric. Test
 
 ___
 
