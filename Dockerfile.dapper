@@ -57,6 +57,7 @@ ENV DAPPER_OUTPUT ./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/dep
 ENV DAPPER_DOCKER_SOCKET true
 ENV HOME ${DAPPER_SOURCE}
 ENV CROSS true
+ENV TEST true
 ENV STATIC_BUILD true
 WORKDIR ${DAPPER_SOURCE}
 
