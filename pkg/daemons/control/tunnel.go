@@ -23,6 +23,7 @@ import (
 	"github.com/yl2chen/cidranger"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
@@ -173,7 +174,7 @@ func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request)
 	bconn, err := t.dialBackend(req.Context(), req.Host)
 	if err != nil {
 		responsewriters.ErrorNegotiated(
-			apierrors.NewServiceUnavailable(err.Error()),
+			newBadGateway(err.Error()),
 			scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
 		)
 		return
@@ -299,4 +300,15 @@ func (crw *connReadWriteCloser) Write(b []byte) (n int, err error) {
 func (crw *connReadWriteCloser) Close() (err error) {
 	crw.once.Do(func() { err = crw.conn.Close() })
 	return
+}
+
+func newBadGateway(message string) *apierrors.StatusError {
+	return &apierrors.StatusError{
+		ErrStatus: metav1.Status{
+			Status:  metav1.StatusFailure,
+			Code:    http.StatusBadGateway,
+			Reason:  metav1.StatusReasonInternalError,
+			Message: message,
+		},
+	}
 }
