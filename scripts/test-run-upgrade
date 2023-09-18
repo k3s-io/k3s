@@ -41,9 +41,11 @@ start-test() {
     kubectl get node -o wide
     kubectl create -f scripts/airgap/volume-test.yaml
 
-    # Add post-hook sleeps to give the kubelet time to update the version after startup
+    # Add post-hook sleeps to give the kubelet time to update the version after startup.
+    # Server gets an extra 60 seconds to handle the metrics-server service being unavailable:
+    # https://github.com/kubernetes/kubernetes/issues/120739
     server-post-hook(){
-        sleep 15
+        sleep 75
     }
     export -f server-post-hook
     agent-post-hook(){
