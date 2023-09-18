@@ -534,8 +534,8 @@ cleanup-test-env(){
       export SERVER_ARGS=''
       export WAIT_SERVICES="${all_services[*]}"
 
-      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS AGENT_DOCKER_ARGS
-      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS SERVER_DOCKER_ARGS
+      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS AGENT_DOCKER_ARGS K3S_IMAGE_AGENT
+      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS SERVER_DOCKER_ARGS K3S_IMAGE_SERVER
 
       unset -f server-pre-hook server-post-hook agent-pre-hook agent-post-hook cluster-pre-hook cluster-post-hook test-post-hook test-cleanup-hook
 }
