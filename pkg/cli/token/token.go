@@ -1,7 +1,6 @@
 package token
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -20,7 +19,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,13 +149,7 @@ func Rotate(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	if !app.Bool("force") {
-		warning := fmt.Sprint("\033[33mWARNING\033[0m: This will replace the existing token with a new one.",
-			"Recommend keeping a record of the old token. If restoring from a snapshot, you must use the token associated with that snapshot.")
-		if !askContinue(warning) {
-			return nil
-		}
-	}
+	fmt.Println("\033[33mWARNING\033[0m: Recommended to keep a record of the old token. If restoring from a snapshot, you must use the token associated with that snapshot.")
 	info, err := serverAccess(&cmds.TokenConfig)
 	if err != nil {
 		return err
@@ -176,26 +168,6 @@ func Rotate(app *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	fmt.Println("Token rotated, restart k3s with new token")
 	return nil
-}
-
-func askContinue(prefix string) bool {
-	reader := bufio.NewReader(os.Stdin)
-
-	for i := 0; i < 3; i++ {
-		fmt.Printf("%s Continue: [y/n]: \n", prefix)
-
-		resp, err := reader.ReadString('\n')
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		resp = strings.ToLower(strings.TrimSpace(resp))
-		if resp == "y" || resp == "yes" {
-			return true
-		} else if resp == "n" || resp == "no" {
-			return false
-		}
-	}
-	return false
 }
 
 func serverAccess(cfg *cmds.Token) (*clientaccess.Info, error) {
