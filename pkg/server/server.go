@@ -273,8 +273,16 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
+
+	dnsIPFamilyPolicy := "PreferDualStack"
+	if len(controlConfig.ClusterDNSs) == 1 {
+		dnsIPFamilyPolicy = "SingleStack"
+	}
+
 	templateVars := map[string]string{
 		"%{CLUSTER_DNS}%":                 controlConfig.ClusterDNS.String(),
+		"%{CLUSTER_DNS_LIST}%":            fmt.Sprintf("[%s]", util.JoinIPs(controlConfig.ClusterDNSs)),
+		"%{CLUSTER_DNS_IPFAMILYPOLICY}%":  dnsIPFamilyPolicy,
 		"%{CLUSTER_DOMAIN}%":              controlConfig.ClusterDomain,
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%":  controlConfig.DefaultLocalStoragePath,
 		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),

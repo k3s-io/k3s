@@ -205,6 +205,7 @@ spec:
   selector:
     k8s-app: kube-dns
   clusterIP: %{CLUSTER_DNS}%
+  clusterIPs: %{CLUSTER_DNS_LIST}%
   ports:
   - name: dns
     port: 53
@@ -215,3 +216,4 @@ spec:
   - name: metrics
     port: 9153
     protocol: TCP
+  ipFamilyPolicy: %{CLUSTER_DNS_IPFAMILYPOLICY}%

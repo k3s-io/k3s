@@ -368,12 +368,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// If there are no IPv4 ServiceCIDRs, an IPv6 ServiceCIDRs will be used.
 	// If neither of IPv4 or IPv6 are found an error is raised.
 	if len(cmds.ServerConfig.ClusterDNS) == 0 {
-		clusterDNS, err := utilsnet.GetIndexedIP(serverConfig.ControlConfig.ServiceIPRange, 10)
-		if err != nil {
-			return errors.Wrap(err, "cannot configure default cluster-dns address")
+		for _, svcCIDR := range serverConfig.ControlConfig.ServiceIPRanges {
+			clusterDNS, err := utilsnet.GetIndexedIP(svcCIDR, 10)
+			if err != nil {
+				return errors.Wrap(err, "cannot configure default cluster-dns address")
+			}
+			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, clusterDNS)
 		}
-		serverConfig.ControlConfig.ClusterDNS = clusterDNS
-		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
 		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS) {
 			parsed := net.ParseIP(ip)
@@ -382,14 +383,15 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			}
 			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
 		}
-		// Set ClusterDNS to the first IPv4 address, for legacy clients
-		// unless only IPv6 range given
-		clusterDNS, _, _, err := util.GetFirstIP(serverConfig.ControlConfig.ClusterDNSs)
-		if err != nil {
-			return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
-		}
-		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 	}
+
+	// Set ClusterDNS to the first IPv4 address, for legacy clients
+	// unless only IPv6 range given
+	clusterDNS, _, _, err := util.GetFirstIP(serverConfig.ControlConfig.ClusterDNSs)
+	if err != nil {
+		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
+	}
+	serverConfig.ControlConfig.ClusterDNS = clusterDNS
 
 	if err := validateNetworkConfiguration(serverConfig); err != nil {
 		return err
@@ -582,18 +584,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 // validateNetworkConfig ensures that the network configuration values make sense.
 func validateNetworkConfiguration(serverConfig server.Config) error {
-	// Dual-stack operation requires fairly extensive manual configuration at the moment - do some
-	// preflight checks to make sure that the user isn't trying to use flannel/npc, or trying to
-	// enable dual-stack DNS (which we don't currently support since it's not easy to template)
-	dualDNS, err := utilsnet.IsDualStackIPs(serverConfig.ControlConfig.ClusterDNSs)
-	if err != nil {
-		return errors.Wrap(err, "failed to validate cluster-dns")
-	}
-
-	if dualDNS == true {
-		return errors.New("dual-stack cluster-dns is not supported")
-	}
-
 	switch serverConfig.ControlConfig.EgressSelectorMode {
 	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
 	case config.EgressSelectorModeAgent, config.EgressSelectorModeDisabled:
