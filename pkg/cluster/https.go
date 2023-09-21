@@ -15,7 +15,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener"
 	"github.com/rancher/dynamiclistener/factory"
@@ -33,9 +32,14 @@ import (
 // and will sync the certs into the Kubernetes datastore, with a local disk cache.
 func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, error) {
 	if c.managedDB != nil {
-		if _, err := os.Stat(etcd.ResetFile(c.config)); err == nil {
-			// delete the dynamic listener file if it exists after restoration to fix restoration
-			// on fresh nodes
+		resetDone, err := c.managedDB.IsReset()
+		if err != nil {
+			return nil, nil, err
+		}
+		if resetDone {
+			// delete the dynamic listener TLS secret cache after restoring,
+			// to ensure that dynamiclistener doesn't sync the old secret over the top
+			// of whatever was just restored.
 			os.Remove(filepath.Join(c.config.DataDir, "tls/dynamic-cert.json"))
 		}
 	}
@@ -104,8 +108,8 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 		return err
 	}
 
-	// Config the cluster database and allow it to add additional request handlers
-	handler, err = c.initClusterDB(ctx, handler)
+	// Register database request handlers and controller callbacks
+	handler, err = c.registerDBHandlers(handler)
 	if err != nil {
 		return err
 	}
