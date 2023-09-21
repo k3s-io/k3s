@@ -302,14 +302,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
-	// configure ClusterIPRanges
-	_, _, IPv6only, _ := util.GetFirstIP(nodeIPs)
+	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
+	_, defaultClusterCIDR, defaultServiceCIDR, _ := util.GetDefaultAddresses(nodeIPs[0])
 	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
-		clusterCIDR := "10.42.0.0/16"
-		if IPv6only {
-			clusterCIDR = "fd00:42::/56"
-		}
-		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
+		cmds.ServerConfig.ClusterCIDR.Set(defaultClusterCIDR)
 	}
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
@@ -319,21 +315,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
 	}
 
-	// set ClusterIPRange to the first IPv4 block, for legacy clients
-	// unless only IPv6 range given
-	clusterIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ClusterIPRanges)
-	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-cidr")
-	}
-	serverConfig.ControlConfig.ClusterIPRange = clusterIPRange
+	// set ClusterIPRange to the first address (first defined IPFamily is preferred)
+	serverConfig.ControlConfig.ClusterIPRange = serverConfig.ControlConfig.ClusterIPRanges[0]
 
-	// configure ServiceIPRanges
+	// configure ServiceIPRanges. Use default 10.43.0.0/16 or fd00:43::/112 if user did not set it
 	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
-		serviceCIDR := "10.43.0.0/16"
-		if IPv6only {
-			serviceCIDR = "fd00:43::/112"
-		}
-		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
+		cmds.ServerConfig.ServiceCIDR.Set(defaultServiceCIDR)
 	}
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
@@ -343,13 +330,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
 	}
 
-	// set ServiceIPRange to the first IPv4 block, for legacy clients
-	// unless only IPv6 range given
-	serviceIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ServiceIPRanges)
-	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4/IPv6 service-cidr")
-	}
-	serverConfig.ControlConfig.ServiceIPRange = serviceIPRange
+	// set ServiceIPRange to the first address (first defined IPFamily is preferred)
+	serverConfig.ControlConfig.ServiceIPRange = serverConfig.ControlConfig.ServiceIPRanges[0]
 
 	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
 	if err != nil {
@@ -385,13 +367,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	// Set ClusterDNS to the first IPv4 address, for legacy clients
-	// unless only IPv6 range given
-	clusterDNS, _, _, err := util.GetFirstIP(serverConfig.ControlConfig.ClusterDNSs)
-	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
-	}
-	serverConfig.ControlConfig.ClusterDNS = clusterDNS
+	serverConfig.ControlConfig.ClusterDNS = serverConfig.ControlConfig.ClusterDNSs[0]
 
 	if err := validateNetworkConfiguration(serverConfig); err != nil {
 		return err
