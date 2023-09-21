@@ -170,17 +170,17 @@ func Test_UnitETCD_Register(t *testing.T) {
 				if err := testutil.GenerateRuntime(cnf); err != nil {
 					return err
 				}
-				if err := os.MkdirAll(DBDir(cnf), 0700); err != nil {
+				if err := os.MkdirAll(dbDir(cnf), 0700); err != nil {
 					return err
 				}
-				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(dbDir(cnf), "tombstone")
 				if _, err := os.Create(tombstoneFile); err != nil {
 					return err
 				}
 				return nil
 			},
 			teardown: func(cnf *config.Control) error {
-				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(dbDir(cnf), "tombstone")
 				os.Remove(tombstoneFile)
 				testutil.CleanupDataDir(cnf)
 				return nil
@@ -244,7 +244,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				e.config.EtcdDisableSnapshots = true
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config)
+				client, err := getClient(ctxInfo.ctx, e.config)
 				e.client = client
 
 				return err
@@ -275,7 +275,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config)
+				client, err := getClient(ctxInfo.ctx, e.config)
 				e.client = client
 
 				return err
@@ -308,7 +308,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := testutil.GenerateRuntime(e.config); err != nil {
 					return err
 				}
-				client, err := GetClient(ctxInfo.ctx, e.config)
+				client, err := getClient(ctxInfo.ctx, e.config)
 				if err != nil {
 					return err
 				}
