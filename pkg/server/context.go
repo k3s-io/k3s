@@ -38,21 +38,26 @@ func (c *Context) Start(ctx context.Context) error {
 	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
-func NewContext(ctx context.Context, cfg string) (*Context, error) {
+func NewContext(ctx context.Context, cfg string, forServer bool) (*Context, error) {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
 		return nil, err
 	}
 	restConfig.UserAgent = util.GetUserAgent(version.Program + "-supervisor")
 
-	if err := crds(ctx, restConfig); err != nil {
-		return nil, errors.Wrap(err, "failed to register CRDs")
-	}
-
 	k8s, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	var recorder record.EventRecorder
+	if forServer {
+		recorder = util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll)
+		if err := crds(ctx, restConfig); err != nil {
+			return nil, errors.Wrap(err, "failed to register CRDs")
+		}
+	}
+
 	return &Context{
 		K3s:   k3s.NewFactoryFromConfigOrDie(restConfig),
 		Helm:  helm.NewFactoryFromConfigOrDie(restConfig),
@@ -61,7 +66,7 @@ func NewContext(ctx context.Context, cfg string) (*Context, error) {
 		Apps:  apps.NewFactoryFromConfigOrDie(restConfig),
 		Batch: batch.NewFactoryFromConfigOrDie(restConfig),
 		Core:  core.NewFactoryFromConfigOrDie(restConfig),
-		Event: util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll),
+		Event: recorder,
 	}, nil
 }
 
