@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/rancher/wrangler/pkg/leader"
@@ -251,7 +250,7 @@ func (c *Control) BindAddressOrLoopback(chooseHostInterface, urlSafe bool) strin
 // service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster. If the urlSafe
 // parameter is true, IPv6 addresses are enclosed in square brackets, as per RFC2732.
 func (c *Control) Loopback(urlSafe bool) string {
-	if IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.ServiceIPRanges); IPv6OnlyService {
+	if utilsnet.IsIPv6CIDR(c.ServiceIPRange) {
 		if urlSafe {
 			return "[::1]"
 		}
