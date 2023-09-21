@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
@@ -107,6 +108,9 @@ var (
 
 type NodeControllerGetter func() controllerv1.NodeController
 
+// explicit interface check
+var _ managed.Driver = &ETCD{}
+
 type ETCD struct {
 	client      *clientv3.Client
 	config      *config.Control
@@ -163,22 +167,16 @@ func (e *ETCD) EndpointName() string {
 	return "etcd"
 }
 
-// SetControlConfig sets the given config on the etcd struct.
-func (e *ETCD) SetControlConfig(ctx context.Context, config *config.Control) error {
+// SetControlConfig passes the cluster config into the etcd datastore. This is necessary
+// because the config may not yet be fully built at the time the Driver instance is registered.
+func (e *ETCD) SetControlConfig(config *config.Control) error {
+	if e.config != nil {
+		return errors.New("control config already set")
+	}
+
 	e.config = config
 
-	client, err := getClient(ctx, e.config)
-	if err != nil {
-		return err
-	}
-	e.client = client
-
-	go func() {
-		<-ctx.Done()
-		e.client.Close()
-	}()
-
-	address, err := getAdvertiseAddress(config.PrivateIP)
+	address, err := getAdvertiseAddress(e.config.PrivateIP)
 	if err != nil {
 		return err
 	}
@@ -192,6 +190,13 @@ func (e *ETCD) SetControlConfig(ctx context.Context, config *config.Control) err
 // If it is still a learner or not a part of the cluster, an error is raised.
 // If it cannot be defragmented or has any alarms that cannot be disarmed, an error is raised.
 func (e *ETCD) Test(ctx context.Context) error {
+	if e.config == nil {
+		return errors.New("control config not set")
+	}
+	if e.client == nil {
+		return errors.New("etcd datastore is not started")
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
 
@@ -247,7 +252,7 @@ func dbDir(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "etcd")
 }
 
-// walDir returns the path to etcddbDir/member/wal
+// walDir returns the path to etcdDBDir/member/wal
 func walDir(config *config.Control) string {
 	return filepath.Join(dbDir(config), "member", "wal")
 }
@@ -256,20 +261,50 @@ func sqliteFile(config *config.Control) string {
 	return filepath.Join(config.DataDir, "db", "state.db")
 }
 
-// nameFile returns the path to etcddbDir/name.
+// nameFile returns the path to etcdDBDir/name.
 func nameFile(config *config.Control) string {
 	return filepath.Join(dbDir(config), "name")
 }
 
-// ResetFile returns the path to etcddbDir/reset-flag.
-func ResetFile(config *config.Control) string {
-	return filepath.Join(config.DataDir, "db", "reset-flag")
+// clearReset removes the reset file
+func (e *ETCD) clearReset() error {
+	if err := os.Remove(e.ResetFile()); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+// IsReset checks to see if the reset file exists, indicating that a cluster-reset has been completed successfully.
+func (e *ETCD) IsReset() (bool, error) {
+	if e.config == nil {
+		return false, errors.New("control config not set")
+	}
+
+	if _, err := os.Stat(e.ResetFile()); err != nil {
+		if !os.IsNotExist(err) {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
+}
+
+// ResetFile returns the path to etcdDBDir/reset-flag.
+func (e *ETCD) ResetFile() string {
+	if e.config == nil {
+		panic("control config not set")
+	}
+	return filepath.Join(e.config.DataDir, "db", "reset-flag")
 }
 
 // IsInitialized checks to see if a WAL directory exists. If so, we assume that etcd
 // has already been brought up at least once.
-func (e *ETCD) IsInitialized(ctx context.Context, config *config.Control) (bool, error) {
-	dir := walDir(config)
+func (e *ETCD) IsInitialized() (bool, error) {
+	if e.config == nil {
+		return false, errors.New("control config not set")
+	}
+
+	dir := walDir(e.config)
 	if s, err := os.Stat(dir); err == nil && s.IsDir() {
 		return true, nil
 	} else if os.IsNotExist(err) {
@@ -287,12 +322,13 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
-			// resetting the apiaddresses to nil since we are doing a restoration
-			if _, err := e.client.Put(ctx, AddressKey, ""); err != nil {
-				logrus.Warnf("failed to reset api addresses key in etcd: %v", err)
-				continue
-			}
 			if err := e.Test(ctx); err == nil {
+				// reset the apiaddresses to nil since we are doing a restoration
+				if _, err := e.client.Put(ctx, AddressKey, ""); err != nil {
+					logrus.Warnf("failed to reset api addresses key in etcd: %v", err)
+					continue
+				}
+
 				members, err := e.client.MemberList(ctx)
 				if err != nil {
 					continue
@@ -338,6 +374,10 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		}
 	}()
 
+	if err := e.startClient(ctx); err != nil {
+		return err
+	}
+
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
 		if e.config.EtcdS3 {
@@ -367,7 +407,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 		return err
 	}
 	// touch a file to avoid multiple resets
-	if err := os.WriteFile(ResetFile(e.config), []byte{}, 0600); err != nil {
+	if err := os.WriteFile(e.ResetFile(), []byte{}, 0600); err != nil {
 		return err
 	}
 	return e.newCluster(ctx, true)
@@ -375,9 +415,13 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 
 // Start starts the datastore
 func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
-	isInitialized, err := e.IsInitialized(ctx, e.config)
+	isInitialized, err := e.IsInitialized()
 	if err != nil {
-		return errors.Wrapf(err, "configuration validation failed")
+		return errors.Wrapf(err, "failed to check for initialized etcd datastore")
+	}
+
+	if err := e.startClient(ctx); err != nil {
+		return err
 	}
 
 	if !e.config.EtcdDisableSnapshots {
@@ -435,6 +479,35 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 				return
 			}
 		}
+	}()
+
+	return nil
+}
+
+// startClient sets up the config's datastore endpoints, and starts an etcd client connected to the server endpoint.
+// The client is destroyed when the context is closed.
+func (e *ETCD) startClient(ctx context.Context) error {
+	if e.client != nil {
+		return errors.New("etcd datastore already started")
+	}
+
+	endpoints := getEndpoints(e.config)
+	e.config.Datastore.Endpoint = endpoints[0]
+	e.config.Datastore.BackendTLSConfig.CAFile = e.config.Runtime.ETCDServerCA
+	e.config.Datastore.BackendTLSConfig.CertFile = e.config.Runtime.ClientETCDCert
+	e.config.Datastore.BackendTLSConfig.KeyFile = e.config.Runtime.ClientETCDKey
+
+	client, err := getClient(ctx, e.config, endpoints...)
+	if err != nil {
+		return err
+	}
+	e.client = client
+
+	go func() {
+		<-ctx.Done()
+		client := e.client
+		e.client = nil
+		client.Close()
 	}()
 
 	return nil
@@ -516,33 +589,8 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	})
 }
 
-// Register configures a new etcd client and adds db info routes for the http request handler.
-func (e *ETCD) Register(ctx context.Context, config *config.Control, handler http.Handler) (http.Handler, error) {
-	e.config = config
-
-	client, err := getClient(ctx, e.config)
-	if err != nil {
-		return nil, err
-	}
-	e.client = client
-
-	go func() {
-		<-ctx.Done()
-		e.client.Close()
-	}()
-
-	address, err := getAdvertiseAddress(config.PrivateIP)
-	if err != nil {
-		return nil, err
-	}
-	e.address = address
-
-	endpoints := getEndpoints(config)
-	e.config.Datastore.Endpoint = endpoints[0]
-	e.config.Datastore.BackendTLSConfig.CAFile = e.config.Runtime.ETCDServerCA
-	e.config.Datastore.BackendTLSConfig.CertFile = e.config.Runtime.ClientETCDCert
-	e.config.Datastore.BackendTLSConfig.KeyFile = e.config.Runtime.ClientETCDKey
-
+// Register adds db info routes for the http request handler, and registers cluster controller callbacks
+func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 	e.config.Runtime.ClusterControllerStarts["etcd-node-metadata"] = func(ctx context.Context) {
 		registerMetadataHandlers(ctx, e)
 	}
@@ -659,7 +707,6 @@ func getClientConfig(ctx context.Context, control *config.Control, endpoints ...
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
-		AutoSyncInterval:     defaultKeepAliveTimeout,
 		PermitWithoutStream:  true,
 	}
 
@@ -877,6 +924,23 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		if err := os.RemoveAll(tmpDataDir); err != nil {
 			logrus.Warnf("Failed to remove etcd temp dir: %v", err)
 		}
+	}()
+
+	if e.client != nil {
+		return errors.New("etcd datastore already started")
+	}
+
+	client, err := getClient(ctx, e.config)
+	if err != nil {
+		return err
+	}
+	e.client = client
+
+	go func() {
+		<-ctx.Done()
+		client := e.client
+		e.client = nil
+		client.Close()
 	}()
 
 	if err := cp.Copy(etcdDataDir, tmpDataDir, cp.Options{PreserveOwner: true}); err != nil {
@@ -1198,24 +1262,9 @@ func snapshotDir(config *config.Control, create bool) (string, error) {
 // preSnapshotSetup checks to see if the necessary components are in place
 // to perform an Etcd snapshot. This is necessary primarily for on-demand
 // snapshots since they're performed before normal Etcd setup is completed.
-func (e *ETCD) preSnapshotSetup(ctx context.Context, config *config.Control) error {
+func (e *ETCD) preSnapshotSetup(ctx context.Context) error {
 	if e.snapshotSem == nil {
 		e.snapshotSem = semaphore.NewWeighted(maxConcurrentSnapshots)
-	}
-	if e.client == nil {
-		if e.config == nil {
-			e.config = config
-		}
-		client, err := getClient(ctx, e.config)
-		if err != nil {
-			return err
-		}
-		e.client = client
-
-		go func() {
-			<-ctx.Done()
-			e.client.Close()
-		}()
 	}
 	return nil
 }
@@ -1308,8 +1357,8 @@ func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFile string) (string, err
 // Snapshot attempts to save a new snapshot to the configured directory, and then clean up any old and failed
 // snapshots in excess of the retention limits. This method is used in the internal cron snapshot
 // system as well as used to do on-demand snapshots.
-func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
-	if err := e.preSnapshotSetup(ctx, config); err != nil {
+func (e *ETCD) Snapshot(ctx context.Context) error {
+	if err := e.preSnapshotSetup(ctx); err != nil {
 		return err
 	}
 	if !e.snapshotSem.TryAcquire(maxConcurrentSnapshots) {
@@ -1337,7 +1386,22 @@ func (e *ETCD) Snapshot(ctx context.Context, config *config.Control) error {
 	}
 
 	endpoints := getEndpoints(e.config)
-	status, err := e.client.Status(ctx, endpoints[0])
+	var client *clientv3.Client
+	var err error
+
+	// Use the internal client if possible, or create a new one
+	// if run from the CLI.
+	if e.client != nil {
+		client = e.client
+	} else {
+		client, err = getClient(ctx, e.config, endpoints...)
+		if err != nil {
+			return err
+		}
+		defer client.Close()
+	}
+
+	status, err := client.Status(ctx, endpoints[0])
 	if err != nil {
 		return errors.Wrap(err, "failed to check etcd status for snapshot")
 	}
@@ -1963,7 +2027,7 @@ func (e *ETCD) setSnapshotFunction(ctx context.Context) {
 		// having all the nodes take a snapshot at the exact same time can lead to excessive retry thrashing
 		// when updating the snapshot list configmap.
 		time.Sleep(time.Duration(rand.Float64() * float64(snapshotJitterMax)))
-		if err := e.Snapshot(ctx, e.config); err != nil {
+		if err := e.Snapshot(ctx); err != nil {
 			logrus.Error(err)
 		}
 	})))

@@ -92,11 +92,11 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
-	initialized, err := e.IsInitialized(ctx, &serverConfig.ControlConfig)
+	initialized, err := e.IsInitialized()
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
@@ -180,7 +180,7 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
@@ -246,7 +246,7 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
