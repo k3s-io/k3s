@@ -115,7 +115,7 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
