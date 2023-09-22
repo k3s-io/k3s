@@ -260,6 +260,7 @@ A later version can point to those arguments with no change:
     maxChannelServerVersion: v2.6.99
     serverArgs: *serverArgs-v1
 ```
+
 ##### QA may request change for the specs based on rcs:
 ```yaml
 - version: v1.28.2-rc1+k3s1
@@ -300,3 +301,4 @@ channels:
 - name: stable
   latest: <new-k8s-version>+k3s1 # Replace this semver with the version corresponding to the release
 ```
+##### After completing all these processes, ensure that you publish in the release Slack thread that patch releases have been completed and the code freeze has ended.
