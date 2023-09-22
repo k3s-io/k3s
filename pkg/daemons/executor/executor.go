@@ -37,6 +37,7 @@ type ETCDConfig struct {
 	InitialOptions                  `json:",inline"`
 	Name                            string      `json:"name,omitempty"`
 	ListenClientURLs                string      `json:"listen-client-urls,omitempty"`
+	ListenClientHTTPURLs            string      `json:"listen-client-http-urls,omitempty"`
 	ListenMetricsURLs               string      `json:"listen-metrics-urls,omitempty"`
 	ListenPeerURLs                  string      `json:"listen-peer-urls,omitempty"`
 	AdvertiseClientURLs             string      `json:"advertise-client-urls,omitempty"`
