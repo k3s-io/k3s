@@ -881,6 +881,14 @@ func (e *ETCD) listenMetricsURLs(reset bool) string {
 	return metricsURLs
 }
 
+// listenClientHTTPURLs returns a list of URLs to bind to for http client connections.
+// This should no longer be used, but we must set it in order to free the listen URLs
+// for dedicated use by GRPC.
+// Ref: https://github.com/etcd-io/etcd/issues/15402
+func (e *ETCD) listenClientHTTPURLs() string {
+	return fmt.Sprintf("https://%s:2382", e.config.Loopback(true))
+}
+
 // cluster calls the executor to start etcd running with the provided configuration.
 func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.InitialOptions) error {
 	ctx, e.cancel = context.WithCancel(ctx)
@@ -911,6 +919,7 @@ func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.Initial
 		Logger:                          "zap",
 		LogOutputs:                      []string{"stderr"},
 		ExperimentalInitialCorruptCheck: true,
+		ListenClientHTTPURLs:            e.listenClientHTTPURLs(),
 	}, e.config.ExtraEtcdArgs)
 }
 
@@ -949,7 +958,13 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 
 	endpoints := getEndpoints(e.config)
 	clientURL := endpoints[0]
+	// peer URL is usually 1 more than client
 	peerURL, err := addPort(endpoints[0], 1)
+	if err != nil {
+		return err
+	}
+	// client http URL is usually 3 more than client, after peer and metrics
+	clientHTTPURL, err := addPort(endpoints[0], 3)
 	if err != nil {
 		return err
 	}
@@ -962,6 +977,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		ForceNewCluster:                 true,
 		AdvertiseClientURLs:             clientURL,
 		ListenClientURLs:                clientURL,
+		ListenClientHTTPURLs:            clientHTTPURL,
 		ListenPeerURLs:                  peerURL,
 		Logger:                          "zap",
 		HeartbeatInterval:               500,
