@@ -8,6 +8,10 @@ on:
   #   branches:
   #     - fix-release-dispach-error
 
+env:
+  messsage: ${{ vars.K3S_RELEASE_TOKEN }}
+
+
 jobs:
   display-release-token:
     name: Display RELEASE_TOKEN
@@ -22,6 +26,7 @@ jobs:
     
     steps:
       - name: Run test validator
-        run: echo $K3S_RELEASE_TOKEN
+        run: |
+          echo "permission test : $messsage"
 
   
