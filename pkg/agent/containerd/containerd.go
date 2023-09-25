@@ -93,7 +93,7 @@ func Run(ctx context.Context, cfg *config.Node) error {
 
 		addDeathSig(cmd)
 		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "containerd: %s\n", err)
+			logrus.Errorf("containerd exited: %s", err)
 		}
 		os.Exit(1)
 	}()
