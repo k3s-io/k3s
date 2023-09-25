@@ -9,8 +9,8 @@ on:
   #     - fix-release-dispach-error
 
 env:
-  messsage: ${{ vars.K3S_RELEASE_TOKEN }}
-
+  messsage1: ${{ secrets.K3S_RELEASE_TOKEN }}
+  messsage2: ${{ vars.K3S_RELEASE_TOKEN }}
 
 jobs:
   display-release-token:
@@ -27,6 +27,6 @@ jobs:
     steps:
       - name: Run test validator
         run: |
-          echo "permission test : $messsage"
+          echo permission test : $messsage1   |||  $messsage2
 
   
