@@ -60,7 +60,11 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		cmds.AgentConfig.NodeIP.Set(util.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
+		ip, err :=  util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+		if err != nil {
+			return err
+		}
+		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
 	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
