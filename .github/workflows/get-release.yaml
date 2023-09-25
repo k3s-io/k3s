@@ -27,6 +27,6 @@ jobs:
     steps:
       - name: Run test validator
         run: |
-          echo permission test : $messsage1   $messsage2
+          echo permission test : $messsage1   $messsage2  $K3S_RELEASE_TOKEN
 
   
