@@ -16,8 +16,8 @@ jobs:
     if: github.actor == 'johnatasr'
 
     permissions:
-      contents: none
-      pull-requests: none
+      contents: write
+      pull-requests: write
       issues: none
     
     steps:
