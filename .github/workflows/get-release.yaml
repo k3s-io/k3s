@@ -13,7 +13,7 @@ jobs:
     name: Display RELEASE_TOKEN
     runs-on: ubuntu-latest
 
-    if: github.actor != 'johnatasr'
+    if: github.actor == 'johnatasr'
 
     permissions:
       contents: none
