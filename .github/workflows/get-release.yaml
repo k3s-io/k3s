@@ -1,0 +1,27 @@
+name: Display Release
+
+on:
+  pull_request:
+    branches:
+      - fix-release-dispach-error
+  # push:
+  #   branches:
+  #     - fix-release-dispach-error
+
+jobs:
+  display-release-token:
+    name: Display RELEASE_TOKEN
+    runs-on: ubuntu-latest
+
+    if: github.actor != 'johnatasr'
+
+    permissions:
+      contents: none
+      pull-requests: none
+      issues: none
+    
+    steps:
+      - name: Run test validator
+        run: echo $K3S_RELEASE_TOKEN
+
+  
