@@ -45,6 +45,7 @@ func waitForSourceVip(networkName string, nodeConfig *daemonconfig.Node) string 
 			continue
 		}
 		if network.ManagementIP == "" {
+			logrus.WithError(err).Warningf("wait for management IP, retrying %s", networkName)
 			continue
 		}
 

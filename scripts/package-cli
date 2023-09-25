@@ -24,7 +24,6 @@ cni_binaries=(
 
 if [ ${OS} = windows ]; then
     cni_binaries=(
-        "win-bridge"
         "win-overlay"
         "flannel"
         "host-local"

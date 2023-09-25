@@ -187,6 +187,16 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	var backendConf string
 	backendOptions := make(map[string]string)
 
+	// precheck and error out unsupported flannel backends.
+	switch nodeConfig.FlannelBackend {
+	case config.FlannelBackendHostGW:
+	case config.FlannelBackendTailscale:
+	case config.FlannelBackendWireguardNative:
+		if goruntime.GOOS == "windows" {
+			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.FlannelBackend)
+		}
+	}
+
 	switch nodeConfig.FlannelBackend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
