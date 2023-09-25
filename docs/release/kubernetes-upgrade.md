@@ -262,7 +262,7 @@ If you are unsure of the new minor versions min/max constraints you can ask the 
 # Create system-agent-installer-k3s Release Images
 The system-agent-installer-k3s repository is used with Rancher v2prov system. Any K3s version set in Rancher KDM must be published here as well (RCs and full releases).
 [Go to the repo](https://github.com/rancher/system-agent-installer-k3s) and manually create a new release and tag it with the corresponding version numbers. This will kick off a build of the image.
-Build progress can be tracked here.
+Build progress can be tracked [here](https://drone-publish.rancher.io/rancher/system-agent-installer-k3s).
 # Update Channel Server
 Once the release is verified, the channel server config needs to be updated to reflect the new version for “stable”. [channel.yaml can be found at the root of the K3s repo.](https://github.com/k3s-io/k3s/blob/master/channel.yaml)
 
