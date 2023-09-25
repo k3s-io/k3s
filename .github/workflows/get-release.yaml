@@ -2,8 +2,8 @@ name: Display Release
 
 on:
   pull_request:
-    branches:
-      - fix-release-dispach-error
+    # branches:
+    #   - fix-release-dispach-error
   # push:
   #   branches:
   #     - fix-release-dispach-error
