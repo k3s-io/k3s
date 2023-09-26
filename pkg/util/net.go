@@ -301,14 +301,13 @@ func IPStringToIPNet(address string) (*net.IPNet, error) {
 }
 
 // GetIPFromInterface is the public function that returns the IP of an interface
-func GetIPFromInterface(ifaceName string) string {
+func GetIPFromInterface(ifaceName string) (string, error) {
 	ip, err := getIPFromInterface(ifaceName)
 	if err != nil {
-		logrus.Warn(fmt.Errorf("unable to get global unicast ip from interface name: %w", err))
-	} else {
-		logrus.Infof("Found ip %s from iface %s", ip, ifaceName)
+		return "", fmt.Errorf("interface %s does not have a correct global unicast ip: %w", ifaceName, err)
 	}
-	return ip
+	logrus.Infof("Found ip %s from iface %s", ip, ifaceName)
+	return ip, nil
 }
 
 // getIPFromInterface is the private function that returns de IP of an interface
