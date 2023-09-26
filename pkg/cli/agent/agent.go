@@ -60,7 +60,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		ip, err :=  util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 		if err != nil {
 			return err
 		}
