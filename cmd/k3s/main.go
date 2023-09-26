@@ -222,16 +222,20 @@ func getAssetAndDir(dataDir string) (string, string) {
 // extract checks for and if necessary unpacks the bindata archive, returning the unique path
 // to the extracted bindata asset.
 func extract(dataDir string) (string, error) {
-	// first look for global asset folder so we don't create a HOME version if not needed
-	_, dir := getAssetAndDir(datadir.DefaultDataDir)
+	// check if content already exists in requested data-dir
+	asset, dir := getAssetAndDir(dataDir)
 	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s")); err == nil {
 		return dir, nil
 	}
 
-	asset, dir := getAssetAndDir(dataDir)
-	// check if target content already exists
-	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s")); err == nil {
-		return dir, nil
+	// check if content exists in default path as a fallback, prior
+	// to extracting. This will prevent re-extracting into the user's home
+	// dir if the assets already exist in the default path.
+	if dataDir != datadir.DefaultDataDir {
+		_, defaultDir := getAssetAndDir(datadir.DefaultDataDir)
+		if _, err := os.Stat(filepath.Join(defaultDir, "bin", "k3s")); err == nil {
+			return defaultDir, nil
+		}
 	}
 
 	// acquire a data directory lock
