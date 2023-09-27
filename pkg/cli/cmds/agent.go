@@ -117,7 +117,7 @@ var (
 	}
 	ImageServiceEndpointFlag = &cli.StringFlag{
 		Name:        "image-service-endpoint",
-		Usage:       "(agent/runtime) Disable embedded containerd image service and use remote image service socket at the given path. If not specified, it will the same with --container-runtime-endpoint by default.",
+		Usage:       "(agent/runtime) Disable embedded containerd image service and use remote image service socket at the given path. If not specified, defaults to --container-runtime-endpoint.",
 		Destination: &AgentConfig.ImageServiceEndpoint,
 	}
 	PrivateRegistryFlag = &cli.StringFlag{
