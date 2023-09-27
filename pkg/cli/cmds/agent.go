@@ -28,6 +28,7 @@ type Agent struct {
 	Snapshotter              string
 	Docker                   bool
 	ContainerRuntimeEndpoint string
+	ImageServiceEndpoint     string
 	NoFlannel                bool
 	FlannelIface             string
 	FlannelConf              string
@@ -115,6 +116,11 @@ var (
 		Name:        "container-runtime-endpoint",
 		Usage:       "(agent/runtime) Disable embedded containerd and use the CRI socket at the given path; when used with --docker this sets the docker socket path",
 		Destination: &AgentConfig.ContainerRuntimeEndpoint,
+	}
+	ImageServiceEndpointFlag = &cli.StringFlag{
+		Name:        "image-service-endpoint",
+		Usage:       "(agent/runtime) Disable embedded containerd image service and use remote image service socket at the given path. If not specified, defaults to --container-runtime-endpoint.",
+		Destination: &AgentConfig.ImageServiceEndpoint,
 	}
 	PrivateRegistryFlag = &cli.StringFlag{
 		Name:        "private-registry",
@@ -271,6 +277,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			LBServerPortFlag,
 			ProtectKernelDefaultsFlag,
 			CRIEndpointFlag,
+			ImageServiceEndpointFlag,
 			PauseImageFlag,
 			SnapshotterFlag,
 			PrivateRegistryFlag,
