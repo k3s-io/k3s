@@ -474,6 +474,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			cfg.DisableAgent = true
 		}
 
+		// If the user uses the cluster-reset argument in a cluster that has a ServerURL, we must return an error
+		// to remove the server flag on the configuration or in the cli
+		if serverConfig.ControlConfig.JoinURL != "" {
+			return errors.New("cannot perform cluster-reset while server URL is set - remove server from configuration before resetting")
+		}
+
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
 		if err != nil {
 			return err
