@@ -491,6 +491,7 @@ var ServerFlags = []cli.Flag{
 	ImageCredProvConfigFlag,
 	DockerFlag,
 	CRIEndpointFlag,
+	ImageServiceEndpointFlag,
 	PauseImageFlag,
 	SnapshotterFlag,
 	PrivateRegistryFlag,
