@@ -37,5 +37,9 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
 	}
 
 	crp := "runtime-endpoint: " + cre + "\n"
+	ise := nodeConfig.ImageServiceEndpoint
+	if ise != "" && ise != cre {
+		crp += "image-endpoint: " + cre + "\n"
+	}
 	return os.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
 }
