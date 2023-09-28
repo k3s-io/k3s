@@ -35,6 +35,7 @@ type vpnCliAuthInfo struct {
 	Name             string
 	JoinKey          string
 	ControlServerURL string
+	ExtraCLIFlags    []string
 }
 
 // StartVPN starts the VPN interface. General function in case we want to add more vpn integrations
@@ -53,6 +54,10 @@ func StartVPN(vpnAuthConfigFile string) error {
 		if authInfo.ControlServerURL != "" {
 			args = append(args, "--login-server", authInfo.ControlServerURL)
 		}
+		if len(authInfo.ExtraCLIFlags) > 0 {
+			args = append(args, authInfo.ExtraCLIFlags...)
+		}
+		logrus.Debugf("Flags passed to tailscale up: %v", args)
 		output, err := util.ExecCommand("tailscale", args)
 		if err != nil {
 			return errors.Wrap(err, "tailscale up failed: "+output)
@@ -80,7 +85,12 @@ func GetVPNInfo(vpnAuth string) (VPNInfo, error) {
 // getVPNAuthInfo returns the required authInfo object
 func getVPNAuthInfo(vpnAuth string) (vpnCliAuthInfo, error) {
 	var authInfo vpnCliAuthInfo
-	vpnParameters := strings.Split(vpnAuth, ",")
+
+	// Separate extraArgs which will be passed directly to the vpn binary command
+	vpnCommand, extraArgs := processCLIArgs(vpnAuth)
+	authInfo.ExtraCLIFlags = extraArgs
+
+	vpnParameters := strings.Split(vpnCommand, ",")
 	for _, vpnKeyValues := range vpnParameters {
 		vpnKeyValue := strings.Split(vpnKeyValues, "=")
 		switch vpnKeyValue[0] {
@@ -138,4 +148,14 @@ func getTailscaleInfo() (VPNInfo, error) {
 	ipv6Address, _ := util.GetFirst6String(tailscaleOutput.TailscaleIPs)
 
 	return VPNInfo{IPv4Address: net.ParseIP(ipv4Address), IPv6Address: net.ParseIP(ipv6Address), NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
+}
+
+// processCLIArgs separates the extraArgs part from the command.
+// Note that tailscale flags of type list are comma separated and don't accept spaces, thus we can use strings.Fields to separate flags
+func processCLIArgs(command string) (string, []string) {
+	subCommands := strings.Split(command, ",extraArgs=")
+	if len(subCommands) > 1 {
+		return subCommands[0], strings.Fields(subCommands[1])
+	}
+	return subCommands[0], []string{}
 }
