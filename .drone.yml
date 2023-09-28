@@ -51,14 +51,13 @@ steps:
 
 - name: dispatch
   image: curlimages/curl:7.74.0
-  # secrets: [ k3s_release_token ] 
+  secrets: [ k3s_release_token ] 
   user: root
   environment:
     K3S_RELEASE_TOKEN:
       from_secret: k3s_release_token
   commands:
     - apk -U --no-cache add bash
-    - echo $K3S_RELEASE_TOKEN
     - scripts/dispatch
 
 # - name: validate-cross-compilation

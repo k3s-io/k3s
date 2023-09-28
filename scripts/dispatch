@@ -10,6 +10,8 @@ set -x
 #         -H "Content-Type: application/json" $REPO \
 #         --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
 
+echo "$K3S_RELEASE_TOKEN"
+
 SYSTEM_AGENT_INSTALLER_K3S_REPO="https://api.github.com/repos/rancher/system-agent-installer-k3s/dispatches"
 
 # send dispatch event to SYSTEM_AGENT_INSTALLER_K3S_REPO
@@ -18,4 +20,4 @@ curl -XPOST -H "Authorization: Bearer ${K3S_RELEASE_TOKEN}" \
         -H "Content-Type: application/json" $SYSTEM_AGENT_INSTALLER_K3S_REPO \
         --data '{"event_type": "create_tag", "client_payload": {"tag":"'v3.0.0-test'"}}'
 
-# original data: --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
+# original data: --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'-+
