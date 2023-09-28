@@ -654,6 +654,13 @@ platform:
 clone:
   retries: 3
 
+trigger:
+  instance:
+    - drone-publish.k3s.io
+  event:
+    exclude:
+    - cron
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -678,14 +685,13 @@ steps:
     event:
     - pull_request
 
-trigger:
-  instance:
-    - drone-publish.k3s.io
+# trigger:
+#   instance:
+#     - drone-publish.k3s.io
   # ref:
   #   - refs/head/master
   #   - refs/tags/*
-  event:
-    - pull_request
+  # event:
     # - tag
 
 # depends_on:
