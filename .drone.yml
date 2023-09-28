@@ -59,6 +59,9 @@ steps:
   commands:
     - apk -U --no-cache add bash
     - scripts/dispatch
+  when:
+    event:
+    - tag
 
 # - name: validate-cross-compilation
 #   image: rancher/dapper:v0.5.0
