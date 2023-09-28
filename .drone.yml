@@ -1,34 +1,36 @@
-# ---
-# kind: pipeline
-# name: amd64
+---
+kind: pipeline
+name: amd64
 
-# platform:
-#   os: linux
-#   arch: amd64
+platform:
+  os: linux
+  arch: amd64
 
-# trigger:
-#   event:
-#     exclude:
-#     - cron
+trigger:
+  instance:
+  - drone-publish.k3s.io
+  event:
+    exclude:
+    - cron
 
-# clone:
-#   retries: 3
+clone:
+  retries: 3
 
-# steps:
-# - name: skipfiles
-#   image: plugins/git
-#   commands:
-#   - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-#   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-#   - if [ -z "$DIFF" ]; then
-#         echo "All files in PR are on ignore list";
-#         exit 78;
-#     else
-#         echo "Some files in PR are not ignored, $DIFF";
-#     fi;
-#   when:
-#     event:
-#     - pull_request
+steps:
+- name: skipfiles
+  image: plugins/git
+  commands:
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
+  - if [ -z "$DIFF" ]; then
+        echo "All files in PR are on ignore list";
+        exit 78;
+    else
+        echo "Some files in PR are not ignored, $DIFF";
+    fi;
+  when:
+    event:
+    - pull_request
 
 # - name: build
 #   image: rancher/dapper:v0.5.0
@@ -46,6 +48,18 @@
 #   volumes:
 #   - name: docker
 #     path: /var/run/docker.sock
+
+- name: dispatch
+  image: curlimages/curl:7.74.0
+  # secrets: [ k3s_release_token ] 
+  user: root
+  environment:
+    K3S_RELEASE_TOKEN:
+      from_secret: k3s_release_token
+  commands:
+    - apk -U --no-cache add bash
+    - echo $K3S_RELEASE_TOKEN
+    - scripts/dispatch
 
 # - name: validate-cross-compilation
 #   image: rancher/dapper:v0.5.0
@@ -146,10 +160,10 @@
 #     event:
 #     - tag
 
-# volumes:
-# - name: docker
-#   host:
-#     path: /var/run/docker.sock
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
 
 # ---
 # kind: pipeline
@@ -643,56 +657,54 @@
 # - s390x
 # - arm
 
----
-kind: pipeline
-name: dispatch
+# ---
+# kind: pipeline
+# name: dispatch
 
-platform:
-  os: linux
-  arch: amd64
+# platform:
+#   os: linux
+#   arch: amd64
 
-clone:
-  retries: 3
+# clone:
+#   retries: 3
 
-trigger:
-  instance:
-    - drone-publish.k3s.io
-  event:
-    exclude:
-    - cron
+# steps:
+# - name: skipfiles
+#   image: plugins/git
+#   commands:
+#   - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+#   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
+#   - if [ -z "$DIFF" ]; then
+#         echo "All files in PR are on ignore list";
+#         exit 78;
+#     else
+#         echo "Some files in PR are not ignored, $DIFF";
+#     fi;
+#   when:
+#     event:
+#     - push
+#     - pull_request
 
-steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - echo test
-  when:
-    event:
-    - push
-    - pull_request
-
-- name: dispatch
-  image: curlimages/curl:7.74.0
-  user: root
-  environment:
-    K3S_RELEASE_TOKEN:
-      from_secret: k3s_release_token
-  commands:
-    - apk -U --no-cache add bash
-    - scripts/dispatch
-    - echo $K3S_RELEASE_TOKEN
-  when:
-    event:
-    - pull_request
+# - name: dispatch
+#   image: curlimages/curl:7.74.0
+#   user: root
+#   environment:
+#     PAT_USERNAME:
+#       from_secret: pat_username
+#     PAT_TOKEN:
+#       from_secret: github_token
+#   commands:
+#     - apk -U --no-cache add bash
+#     - scripts/dispatch
 
 # trigger:
 #   instance:
 #     - drone-publish.k3s.io
-  # ref:
-  #   - refs/head/master
-  #   - refs/tags/*
-  # event:
-    # - tag
+#   ref:
+#     - refs/head/master
+#     - refs/tags/*
+#   event:
+#     - tag
 
 # depends_on:
 # - manifest
