@@ -30,7 +30,7 @@ steps:
     fi;
   when:
     event:
-    - pull_request
+    - tag
 
 # - name: build
 #   image: rancher/dapper:v0.5.0
