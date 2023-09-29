@@ -98,9 +98,11 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 	logrus.Infof("Uploading snapshot %s to S3", snapshot)
 	basename := filepath.Base(snapshot)
 	sf := &snapshotFile{
-		Name:      basename,
-		NodeName:  "s3",
-		CreatedAt: &metav1.Time{},
+		Name:     basename,
+		NodeName: "s3",
+		CreatedAt: &metav1.Time{
+			Time: now,
+		},
 		S3: &s3Config{
 			Endpoint:      s.config.EtcdS3Endpoint,
 			EndpointCA:    s.config.EtcdS3EndpointCA,
@@ -126,11 +128,9 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 	}
 	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotKey, snapshot, opts)
 	if err != nil {
-		sf.CreatedAt.Time = now
 		sf.Status = failedSnapshotStatus
 		sf.Message = base64.StdEncoding.EncodeToString([]byte(err.Error()))
 	} else {
-		sf.CreatedAt.Time = uploadInfo.LastModified
 		sf.Status = successfulSnapshotStatus
 		sf.Size = uploadInfo.Size
 	}
