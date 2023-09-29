@@ -144,7 +144,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
 		})
 
-		It("Resets non boostrap nodes", func() {
+		It("Resets non bootstrap nodes", func() {
 			for _, nodeName := range serverNodeNames {
 				if nodeName != serverNodeNames[0] {
 					cmd := "k3s server --cluster-reset"
