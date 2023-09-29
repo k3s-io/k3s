@@ -96,7 +96,7 @@ Save this output to a file called ```push.sh``` and mark it as executable by run
 ```sh
 chmod +x push.sh
 ```
-### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.27 is shown below):
+### tag.sh example output (The kubernetes versions will correspond to those of the patch release, 1.28 is shown below):
 ```sh
 git push ${REMOTE} staging/src/k8s.io/api/v1.28.2-k3s1
 git push ${REMOTE} staging/src/k8s.io/apiextensions-apiserver/v1.28.2-k3s1
