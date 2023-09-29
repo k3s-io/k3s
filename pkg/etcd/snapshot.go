@@ -312,8 +312,6 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 
 		if e.config.EtcdS3 {
 			logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
-			// Set sf to nil so that we can attempt to now upload the snapshot to S3 if needed
-			sf = nil
 			if err := e.initS3IfNil(ctx); err != nil {
 				logrus.Warnf("Unable to initialize S3 client: %v", err)
 				sf = &snapshotFile{
@@ -336,21 +334,23 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 					},
 					metadataSource: extraMetadata,
 				}
-			}
-			// sf should be nil if we were able to successfully initialize the S3 client.
-			if sf == nil {
+			} else {
+				// upload will return a snapshotFile even on error - if there was an
+				// error, it will be reflected in the status and message.
 				sf, err = e.s3.upload(ctx, snapshotPath, extraMetadata, now)
 				if err != nil {
-					return err
-				}
-				logrus.Infof("S3 upload complete for %s", snapshotName)
-				if err := e.s3.snapshotRetention(ctx); err != nil {
-					return errors.Wrap(err, "failed to apply s3 snapshot retention policy")
+					logrus.Errorf("Error received during snapshot upload to S3: %s", err)
+				} else {
+					logrus.Infof("S3 upload complete for %s", snapshotName)
 				}
 			}
 			if err := e.addSnapshotData(*sf); err != nil {
 				return errors.Wrap(err, "failed to save snapshot data to configmap")
 			}
+			if err := e.s3.snapshotRetention(ctx); err != nil {
+				logrus.Errorf("Failed to apply s3 snapshot retention policy: %v", err)
+			}
+
 		}
 	}
 
@@ -463,17 +463,11 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]snapshotFile, er
 			if obj.Size == 0 {
 				continue
 			}
-
-			ca, err := time.Parse(time.RFC3339, obj.LastModified.Format(time.RFC3339))
-			if err != nil {
-				return nil, err
-			}
-
 			sf := snapshotFile{
 				Name:     filepath.Base(obj.Key),
 				NodeName: "s3",
 				CreatedAt: &metav1.Time{
-					Time: ca,
+					Time: obj.LastModified,
 				},
 				Size: obj.Size,
 				S3: &s3Config{
@@ -634,7 +628,6 @@ func marshalSnapshotFile(sf snapshotFile) ([]byte, error) {
 		if m, err := json.Marshal(sf.metadataSource.Data); err != nil {
 			logrus.Debugf("Error attempting to marshal extra metadata contained in %s ConfigMap, error: %v", snapshotExtraMetadataConfigMapName, err)
 		} else {
-			logrus.Tracef("Marshalled extra metadata in %s ConfigMap was: %s", snapshotExtraMetadataConfigMapName, string(m))
 			sf.Metadata = base64.StdEncoding.EncodeToString(m)
 		}
 	}
