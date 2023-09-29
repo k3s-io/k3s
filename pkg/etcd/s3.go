@@ -20,6 +20,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -92,7 +93,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now time.Time) (*snapshotFile, error) {
+func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.ConfigMap, now time.Time) (*snapshotFile, error) {
 	logrus.Infof("Uploading snapshot %s to S3", snapshot)
 	basename := filepath.Base(snapshot)
 	var snapshotFileName string
@@ -115,7 +116,6 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 	if err != nil {
 		sf = snapshotFile{
 			Name:     filepath.Base(uploadInfo.Key),
-			Metadata: extraMetadata,
 			NodeName: "s3",
 			CreatedAt: &metav1.Time{
 				Time: now,
@@ -132,6 +132,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 				Folder:        s.config.EtcdS3Folder,
 				Insecure:      s.config.EtcdS3Insecure,
 			},
+			metadataSource: extraMetadata,
 		}
 		logrus.Errorf("Error received during snapshot upload to S3: %s", err)
 	} else {
@@ -142,7 +143,6 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 
 		sf = snapshotFile{
 			Name:     filepath.Base(uploadInfo.Key),
-			Metadata: extraMetadata,
 			NodeName: "s3",
 			CreatedAt: &metav1.Time{
 				Time: ca,
@@ -158,6 +158,7 @@ func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now tim
 				Folder:        s.config.EtcdS3Folder,
 				Insecure:      s.config.EtcdS3Insecure,
 			},
+			metadataSource: extraMetadata,
 		}
 	}
 	return &sf, nil
