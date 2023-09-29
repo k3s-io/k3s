@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -93,7 +94,7 @@ func (e *ETCD) preSnapshotSetup(ctx context.Context) error {
 
 // compressSnapshot compresses the given snapshot and provides the
 // caller with the path to the file.
-func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string) (string, error) {
+func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string, now time.Time) (string, error) {
 	logrus.Info("Compressing etcd snapshot file: " + snapshotName)
 
 	zippedSnapshotName := snapshotName + compressedExtension
@@ -130,7 +131,7 @@ func (e *ETCD) compressSnapshot(snapshotDir, snapshotName, snapshotPath string) 
 
 	header.Name = snapshotName
 	header.Method = zip.Deflate
-	header.Modified = time.Now()
+	header.Modified = now
 
 	writer, err := zipWriter.CreateHeader(header)
 	if err != nil {
@@ -239,7 +240,7 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 	}
 
 	nodeName := os.Getenv("NODE_NAME")
-	now := time.Now()
+	now := time.Now().Round(time.Second)
 	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, now.Unix())
 	snapshotPath := filepath.Join(snapshotDir, snapshotName)
 
@@ -273,7 +274,7 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 	}
 
 	if e.config.EtcdSnapshotCompress {
-		zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath)
+		zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath, now)
 		if err != nil {
 			return err
 		}
@@ -295,7 +296,7 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 			Location: "file://" + snapshotPath,
 			NodeName: nodeName,
 			CreatedAt: &metav1.Time{
-				Time: f.ModTime(),
+				Time: now,
 			},
 			Status:         successfulSnapshotStatus,
 			Size:           f.Size(),
@@ -397,36 +398,39 @@ type snapshotFile struct {
 // snapshots on disk along with their relevant
 // metadata.
 func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
+	nodeName := os.Getenv("NODE_NAME")
 	snapshots := make(map[string]snapshotFile)
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return snapshots, errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	dirEntries, err := os.ReadDir(snapshotDir)
-	if err != nil {
-		return nil, err
-	}
+	if err := filepath.Walk(snapshotDir, func(path string, file os.FileInfo, err error) error {
+		if file.IsDir() || err != nil {
+			return err
+		}
 
-	nodeName := os.Getenv("NODE_NAME")
-
-	for _, de := range dirEntries {
-		file, err := de.Info()
+		basename, compressed := strings.CutSuffix(file.Name(), compressedExtension)
+		ts, err := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
 		if err != nil {
-			return nil, err
+			ts = file.ModTime().Unix()
 		}
 		sf := snapshotFile{
 			Name:     file.Name(),
 			Location: "file://" + filepath.Join(snapshotDir, file.Name()),
 			NodeName: nodeName,
 			CreatedAt: &metav1.Time{
-				Time: file.ModTime(),
+				Time: time.Unix(ts, 0),
 			},
-			Size:   file.Size(),
-			Status: successfulSnapshotStatus,
+			Size:       file.Size(),
+			Status:     successfulSnapshotStatus,
+			Compressed: compressed,
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshots[sfKey] = sf
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return snapshots, nil
@@ -463,11 +467,19 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]snapshotFile, er
 			if obj.Size == 0 {
 				continue
 			}
+
+			filename := path.Base(obj.Key)
+			basename, compressed := strings.CutSuffix(filename, compressedExtension)
+			ts, err := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
+			if err != nil {
+				ts = obj.LastModified.Unix()
+			}
+
 			sf := snapshotFile{
-				Name:     filepath.Base(obj.Key),
+				Name:     filename,
 				NodeName: "s3",
 				CreatedAt: &metav1.Time{
-					Time: obj.LastModified,
+					Time: time.Unix(ts, 0),
 				},
 				Size: obj.Size,
 				S3: &s3Config{
@@ -479,7 +491,8 @@ func (e *ETCD) listS3Snapshots(ctx context.Context) (map[string]snapshotFile, er
 					Folder:        e.config.EtcdS3Folder,
 					Insecure:      e.config.EtcdS3Insecure,
 				},
-				Status: successfulSnapshotStatus,
+				Status:     successfulSnapshotStatus,
+				Compressed: compressed,
 			}
 			sfKey := generateSnapshotConfigMapKey(sf)
 			snapshots[sfKey] = sf
@@ -917,12 +930,15 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 
 	var snapshotFiles []snapshotFile
 	if err := filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		if info.IsDir() || err != nil {
 			return err
 		}
 		if strings.HasPrefix(info.Name(), snapshotPrefix) {
 			basename, compressed := strings.CutSuffix(info.Name(), compressedExtension)
-			ts, _ := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
+			ts, err := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
+			if err != nil {
+				ts = info.ModTime().Unix()
+			}
 			snapshotFiles = append(snapshotFiles, snapshotFile{Name: info.Name(), CreatedAt: &metav1.Time{Time: time.Unix(ts, 0)}, Compressed: compressed})
 		}
 		return nil
