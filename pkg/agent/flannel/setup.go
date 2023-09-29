@@ -182,12 +182,13 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "false")
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", emptyIPv6Network)
 	} else if netMode == (ipv4 + ipv6) {
-		confJSON = strings.ReplaceAll(confJSON, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
 		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "true")
 		for _, cidr := range nodeConfig.AgentConfig.ClusterCIDRs {
 			if utilsnet.IsIPv6(cidr.IP) {
 				// Only one ipv6 range available. This might change in future: https://github.com/kubernetes/enhancements/issues/2593
 				confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", cidr.String())
+			} else {
+				confJSON = strings.ReplaceAll(confJSON, "%CIDR%", cidr.String())
 			}
 		}
 	} else {
