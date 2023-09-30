@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -224,6 +225,64 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// listSnapshots provides a list of currently stored
+// snapshots in S3 along with their relevant
+// metadata.
+func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error) {
+	snapshots := make(map[string]snapshotFile)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var loo minio.ListObjectsOptions
+	if s.config.EtcdS3Folder != "" {
+		loo = minio.ListObjectsOptions{
+			Prefix:    s.config.EtcdS3Folder,
+			Recursive: true,
+		}
+	}
+
+	objects := s.client.ListObjects(ctx, s.config.EtcdS3BucketName, loo)
+
+	for obj := range objects {
+		if obj.Err != nil {
+			return nil, obj.Err
+		}
+		if obj.Size == 0 {
+			continue
+		}
+
+		filename := path.Base(obj.Key)
+		basename, compressed := strings.CutSuffix(filename, compressedExtension)
+		ts, err := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
+		if err != nil {
+			ts = obj.LastModified.Unix()
+		}
+
+		sf := snapshotFile{
+			Name:     filename,
+			NodeName: "s3",
+			CreatedAt: &metav1.Time{
+				Time: time.Unix(ts, 0),
+			},
+			Size: obj.Size,
+			S3: &s3Config{
+				Endpoint:      s.config.EtcdS3Endpoint,
+				EndpointCA:    s.config.EtcdS3EndpointCA,
+				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
+				Bucket:        s.config.EtcdS3BucketName,
+				Region:        s.config.EtcdS3Region,
+				Folder:        s.config.EtcdS3Folder,
+				Insecure:      s.config.EtcdS3Insecure,
+			},
+			Status:     successfulSnapshotStatus,
+			Compressed: compressed,
+		}
+		sfKey := generateSnapshotConfigMapKey(sf)
+		snapshots[sfKey] = sf
+	}
+	return snapshots, nil
 }
 
 func readS3EndpointCA(endpointCA string) ([]byte, error) {
