@@ -3,7 +3,6 @@ package control
 import (
 	"context"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -213,20 +212,6 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 }
 
 func defaults(config *config.Control) {
-	if config.ClusterIPRange == nil {
-		_, clusterIPNet, _ := net.ParseCIDR("10.42.0.0/16")
-		config.ClusterIPRange = clusterIPNet
-	}
-
-	if config.ServiceIPRange == nil {
-		_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
-		config.ServiceIPRange = serviceIPNet
-	}
-
-	if len(config.ClusterDNS) == 0 {
-		config.ClusterDNS = net.ParseIP("10.43.0.10")
-	}
-
 	if config.AdvertisePort == 0 {
 		config.AdvertisePort = config.HTTPSPort
 	}
