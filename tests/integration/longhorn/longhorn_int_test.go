@@ -45,7 +45,8 @@ var _ = Describe("longhorn", Ordered, func() {
 
 	When("longhorn is installed", func() {
 		It("installs components into the longhorn-system namespace", func() {
-			result, err := testutil.K3sCmd("kubectl apply -f ./testdata/longhorn.yaml")
+			longhornManifest := "https://raw.githubusercontent.com/longhorn/longhorn/v1.4.3/deploy/longhorn.yaml"
+			result, err := testutil.K3sCmd("kubectl apply -f ", longhornManifest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(ContainSubstring("namespace/longhorn-system created"))
 			Expect(result).To(ContainSubstring("daemonset.apps/longhorn-manager created"))
