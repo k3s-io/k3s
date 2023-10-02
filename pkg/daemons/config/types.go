@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/rancher/wrangler/pkg/leader"
@@ -341,6 +342,7 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
+	K3s        *k3s.Factory
 	Core       *core.Factory
 	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
