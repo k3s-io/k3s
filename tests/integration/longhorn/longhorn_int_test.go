@@ -107,7 +107,7 @@ var _ = Describe("longhorn", Ordered, func() {
 					return fmt.Errorf("pod volume-test \"%s\" reason: \"%s\" message \"%s\"", pod.Status.Phase, pod.Status.Reason, pod.Status.Message)
 				}
 				return nil
-			}, "120s", "5s").Should(Succeed())
+			}, "90s", "5s").Should(Succeed())
 		})
 	})
 
@@ -141,7 +141,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && server != nil {
 		if failed {
-			testutil.K3sSaveLog(server, false)
+			testutil.K3sSaveLog(server, true)
 		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
