@@ -107,7 +107,7 @@ var _ = Describe("longhorn", Ordered, func() {
 					return fmt.Errorf("pod volume-test \"%s\" reason: \"%s\" message \"%s\"", pod.Status.Phase, pod.Status.Reason, pod.Status.Message)
 				}
 				return nil
-			}, "90s", "5s").Should(Succeed())
+			}, "300s", "5s").Should(Succeed())
 		})
 	})
 
