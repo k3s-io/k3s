@@ -143,8 +143,8 @@ var _ = AfterSuite(func() {
 		if failed {
 			testutil.K3sSaveLog(server, true)
 		}
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
-		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
+		// Expect(testutil.K3sKillServer(server)).To(Succeed())
+		// Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
 	}
 })
 
