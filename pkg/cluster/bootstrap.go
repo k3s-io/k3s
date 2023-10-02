@@ -424,15 +424,6 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	return c.storageBootstrap(ctx)
 }
 
-// Snapshot is a proxy method to call the snapshot method on the managedb
-// interface for etcd clusters.
-func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
-	if c.managedDB == nil {
-		return errors.New("unable to perform etcd snapshot on non-etcd system")
-	}
-	return c.managedDB.Snapshot(ctx)
-}
-
 // compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
 func (c *Cluster) compareConfig() error {
 	token := c.config.AgentToken
