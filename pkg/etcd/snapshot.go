@@ -38,6 +38,7 @@ const (
 	maxConcurrentSnapshots = 1
 	pruneStepSize          = 5
 	compressedExtension    = ".zip"
+	metadataDir            = ".metadata"
 )
 
 var (
@@ -272,20 +273,20 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 		}
 	}
 
-	if e.config.EtcdSnapshotCompress {
-		zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath, now)
-		if err != nil {
-			return err
-		}
-		if err := os.Remove(snapshotPath); err != nil {
-			return err
-		}
-		snapshotPath = zipPath
-		logrus.Info("Compressed snapshot: " + snapshotPath)
-	}
-
-	// If the snapshot attempt was successful, sf will be nil as we did not set it.
+	// If the snapshot attempt was successful, sf will be nil as we did not set it to store the error message.
 	if sf == nil {
+		if e.config.EtcdSnapshotCompress {
+			zipPath, err := e.compressSnapshot(snapshotDir, snapshotName, snapshotPath, now)
+			if err != nil {
+				return errors.Wrap(err, "failed to compress snapshot")
+			}
+			if err := os.Remove(snapshotPath); err != nil {
+				return errors.Wrap(err, "failed to remove uncompressed snapshot")
+			}
+			snapshotPath = zipPath
+			logrus.Info("Compressed snapshot: " + snapshotPath)
+		}
+
 		f, err := os.Stat(snapshotPath)
 		if err != nil {
 			return errors.Wrap(err, "unable to retrieve snapshot information from local snapshot")
@@ -303,15 +304,19 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 			metadataSource: extraMetadata,
 		}
 
+		if err := saveSnapshotMetadata(snapshotPath, extraMetadata); err != nil {
+			return errors.Wrap(err, "failed to save local snapshot metadata")
+		}
+
 		if err := e.addSnapshotData(*sf); err != nil {
 			return errors.Wrap(err, "failed to save local snapshot data to configmap")
 		}
+
 		if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 			return errors.Wrap(err, "failed to apply local snapshot retention policy")
 		}
 
 		if e.config.EtcdS3 {
-			logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
 			if err := e.initS3IfNil(ctx); err != nil {
 				logrus.Warnf("Unable to initialize S3 client: %v", err)
 				sf = &snapshotFile{
@@ -335,6 +340,7 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 					metadataSource: extraMetadata,
 				}
 			} else {
+				logrus.Infof("Saving etcd snapshot %s to S3", snapshotName)
 				// upload will return a snapshotFile even on error - if there was an
 				// error, it will be reflected in the status and message.
 				sf, err = e.s3.upload(ctx, snapshotPath, extraMetadata, now)
@@ -414,10 +420,21 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
 		if err != nil {
 			ts = file.ModTime().Unix()
 		}
+
+		// try to read metadata from disk; don't warn if it is missing as it will not exist
+		// for snapshot files from old releases or if there was no metadata provided.
+		var metadata string
+		metadataFile := filepath.Join(filepath.Dir(path), "..", metadataDir, file.Name())
+		if m, err := os.ReadFile(metadataFile); err == nil {
+			logrus.Debugf("Loading snapshot metadata from %s", metadataFile)
+			metadata = base64.StdEncoding.EncodeToString(m)
+		}
+
 		sf := snapshotFile{
 			Name:     file.Name(),
 			Location: "file://" + filepath.Join(snapshotDir, file.Name()),
 			NodeName: nodeName,
+			Metadata: metadata,
 			CreatedAt: &metav1.Time{
 				Time: time.Unix(ts, 0),
 			},
@@ -462,7 +479,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 
 	if e.config.EtcdS3 {
 		if err := e.initS3IfNil(ctx); err != nil {
-			logrus.Warnf("Unable to initialize S3 client during prune: %v", err)
+			logrus.Warnf("Unable to initialize S3 client: %v", err)
 		} else {
 			if err := e.s3.snapshotRetention(ctx); err != nil {
 				logrus.Errorf("Error applying S3 snapshot retention policy: %v", err)
@@ -478,6 +495,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) (map[string]snapshotFile, erro
 	snapshotFiles := map[string]snapshotFile{}
 	if e.config.EtcdS3 {
 		if err := e.initS3IfNil(ctx); err != nil {
+			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			return nil, err
 		}
 		sfs, err := e.s3.listSnapshots(ctx)
@@ -506,13 +524,30 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
 
-	if e.config.EtcdS3 {
-		logrus.Info("Removing the given etcd snapshot(s) from S3")
-		logrus.Debugf("Removing the given etcd snapshot(s) from S3: %v", snapshots)
+	logrus.Info("Removing the given locally stored etcd snapshot(s)")
+	logrus.Debugf("Attempting to remove the given locally stored etcd snapshot(s): %v", snapshots)
 
-		if e.initS3IfNil(ctx); err != nil {
+	for _, s := range snapshots {
+		// check if the given snapshot exists. If it does,
+		// remove it, otherwise continue.
+		sf := filepath.Join(snapshotDir, s)
+		if _, err := os.Stat(sf); os.IsNotExist(err) {
+			logrus.Infof("Snapshot %s, does not exist", s)
+			continue
+		}
+		if err := os.Remove(sf); err != nil {
 			return err
 		}
+		logrus.Debug("Removed snapshot ", s)
+	}
+
+	if e.config.EtcdS3 {
+		if e.initS3IfNil(ctx); err != nil {
+			logrus.Warnf("Unable to initialize S3 client: %v", err)
+			return err
+		}
+		logrus.Info("Removing the given etcd snapshot(s) from S3")
+		logrus.Debugf("Removing the given etcd snapshot(s) from S3: %v", snapshots)
 
 		objectsCh := make(chan minio.ObjectInfo)
 
@@ -564,23 +599,6 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	logrus.Info("Removing the given locally stored etcd snapshot(s)")
-	logrus.Debugf("Attempting to remove the given locally stored etcd snapshot(s): %v", snapshots)
-
-	for _, s := range snapshots {
-		// check if the given snapshot exists. If it does,
-		// remove it, otherwise continue.
-		sf := filepath.Join(snapshotDir, s)
-		if _, err := os.Stat(sf); os.IsNotExist(err) {
-			logrus.Infof("Snapshot %s, does not exist", s)
-			continue
-		}
-		if err := os.Remove(sf); err != nil {
-			return err
-		}
-		logrus.Debug("Removed snapshot ", s)
 	}
 
 	return e.ReconcileSnapshotData(ctx)
@@ -735,6 +753,11 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 		var s3ListSuccessful bool
 
 		if e.config.EtcdS3 {
+			if err := e.initS3IfNil(ctx); err != nil {
+				logrus.Warnf("Unable to initialize S3 client: %v", err)
+				return err
+			}
+
 			if s3Snapshots, err := e.s3.listSnapshots(ctx); err != nil {
 				logrus.Errorf("Error retrieving S3 snapshots for reconciliation: %v", err)
 			} else {
@@ -906,8 +929,12 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 
 	for _, df := range snapshotFiles[retention:] {
 		snapshotPath := filepath.Join(snapshotDir, df.Name)
+		metadataPath := filepath.Join(snapshotDir, "..", metadataDir, df.Name)
 		logrus.Infof("Removing local snapshot %s", snapshotPath)
 		if err := os.Remove(snapshotPath); err != nil {
+			return err
+		}
+		if err := os.Remove(metadataPath); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -918,4 +945,25 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 func isTooLargeError(err error) bool {
 	// There are no helpers for unpacking field validation errors, so we just check for "Too long" in the error string.
 	return apierrors.IsRequestEntityTooLargeError(err) || (apierrors.IsInvalid(err) && strings.Contains(err.Error(), "Too long"))
+}
+
+// saveSnapshotMetadata writes extra metadata to disk.
+// The upload is silently skipped if no extra metadata is provided.
+func saveSnapshotMetadata(snapshotPath string, extraMetadata *v1.ConfigMap) error {
+	if extraMetadata == nil || len(extraMetadata.Data) == 0 {
+		return nil
+	}
+
+	dir := filepath.Join(filepath.Dir(snapshotPath), "..", metadataDir)
+	filename := filepath.Base(snapshotPath)
+	metadataPath := filepath.Join(dir, filename)
+	logrus.Infof("Saving snapshot metadata to %s", metadataPath)
+	m, err := json.Marshal(extraMetadata.Data)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	return os.WriteFile(metadataPath, m, 0700)
 }
