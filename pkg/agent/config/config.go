@@ -408,20 +408,18 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 		// Pass ipv4, ipv6 or both depending on nodeIPs mode
 		var vpnIPs []net.IP
-		dualNode, err := utilsnet.IsDualStackIPs(nodeIPs)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to validate node-ip: %v", nodeIPs)
-		}
-		if dualNode && vpnInfo.IPv4Address != nil && vpnInfo.IPv6Address != nil {
-			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
-		} else {
-			if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-			} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+		if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+			if vpnInfo.IPv6Address != nil {
 				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-			} else {
-				return nil, errors.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 			}
+		} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+			if vpnInfo.IPv4Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+			}
+		} else {
+			return nil, errors.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 		}
 
 		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters

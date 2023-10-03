@@ -248,14 +248,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			return err
 		}
 
-		logrus.Debugf("Processing vpn node-ip based on the detected nodeIPs: %v", nodeIPs)
-		dualNode, err := utilsnet.IsDualStackIPs(nodeIPs)
-		if err != nil {
-			return errors.Wrapf(err, "failed to validate node-ip: %v", nodeIPs)
-		}
-
 		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
-		if !dualNode && utilsnet.IsIPv6(nodeIPs[0]) {
+		if utilsnet.IsIPv6(nodeIPs[0]) {
 			if vpnInfo.IPv6Address != nil {
 				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
 				if serverConfig.ControlConfig.AdvertiseIP != "" {
