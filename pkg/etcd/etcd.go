@@ -576,6 +576,7 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 		e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program+"-etcd"] = func(ctx context.Context) {
 			registerEndpointsHandlers(ctx, e)
 			registerMemberHandlers(ctx, e)
+			registerSnapshotHandlers(ctx, e)
 		}
 	}
 

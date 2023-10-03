@@ -144,6 +144,7 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 		},
 		Compressed:     strings.HasSuffix(snapshot, compressedExtension),
 		metadataSource: extraMetadata,
+		nodeSource:     s.nodeName,
 	}
 
 	uploadInfo, err := s.uploadSnapshot(ctx, snapshotKey, snapshot)
@@ -338,8 +339,9 @@ func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error)
 	defer cancel()
 
 	opts := minio.ListObjectsOptions{
-		Prefix:    s.config.EtcdS3Folder,
-		Recursive: true,
+		Prefix:       s.config.EtcdS3Folder,
+		Recursive:    true,
+		WithMetadata: true,
 	}
 
 	objects := s.client.ListObjects(ctx, s.config.EtcdS3BucketName, opts)
@@ -389,6 +391,7 @@ func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error)
 			},
 			Status:     successfulSnapshotStatus,
 			Compressed: compressed,
+			nodeSource: obj.UserMetadata[nodeNameKey],
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshots[sfKey] = sf
