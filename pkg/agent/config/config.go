@@ -556,22 +556,18 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Certificate = servingCert
 
 	nodeConfig.AgentConfig.NodeIPs = nodeIPs
-	nodeIP, listenAddress, _, err := util.GetFirstIP(nodeIPs)
+	listenAddress, _, _, err := util.GetDefaultAddresses(nodeIPs[0])
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-ip")
 	}
-	nodeConfig.AgentConfig.NodeIP = nodeIP.String()
+	nodeConfig.AgentConfig.NodeIP = nodeIPs[0].String()
 	nodeConfig.AgentConfig.ListenAddress = listenAddress
 	nodeConfig.AgentConfig.NodeExternalIPs = nodeExternalIPs
 
 	// if configured, set NodeExternalIP to the first IPv4 address, for legacy clients
 	// unless only IPv6 address given
 	if len(nodeConfig.AgentConfig.NodeExternalIPs) > 0 {
-		nodeExternalIP, _, _, err := util.GetFirstIP(nodeConfig.AgentConfig.NodeExternalIPs)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-external-ip")
-		}
-		nodeConfig.AgentConfig.NodeExternalIP = nodeExternalIP.String()
+		nodeConfig.AgentConfig.NodeExternalIP = nodeConfig.AgentConfig.NodeExternalIPs[0].String()
 	}
 
 	if nodeConfig.FlannelBackend == config.FlannelBackendNone {
