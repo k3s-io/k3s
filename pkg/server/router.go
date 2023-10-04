@@ -42,7 +42,8 @@ import (
 )
 
 const (
-	staticURL = "/static/"
+	staticURL   = "/static/"
+	registryURL = "/v2/"
 )
 
 var (
@@ -93,9 +94,11 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	systemAuthed.Methods(http.MethodConnect).Handler(serverConfig.Runtime.Tunnel)
 
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
+	registryDir := filepath.Join(serverConfig.DataDir, "registry")
 	router := mux.NewRouter().SkipClean(true)
 	router.NotFoundHandler = systemAuthed
 	router.PathPrefix(staticURL).Handler(serveStatic(staticURL, staticDir))
+	router.PathPrefix(registryURL).Handler(serveRegistry(registryURL, registryDir))
 	router.Path("/cacerts").Handler(cacerts(serverConfig.Runtime.ServerCA))
 	router.Path("/ping").Handler(ping())
 
@@ -399,6 +402,32 @@ func ping() http.Handler {
 
 func serveStatic(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
+}
+
+func serveRegistry(urlPrefix, registryDir string) http.Handler {
+	h := http.StripPrefix(urlPrefix, http.FileServer(http.Dir(registryDir)))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentPath := registryDir + "/" + path.Clean(strings.TrimPrefix(r.URL.Path, urlPrefix))
+		testPath := strings.Split(contentPath, "/")
+		if testPath[len(testPath)-2] == "manifests" {
+			if content, err := os.ReadFile(contentPath); err == nil {
+				var decoded map[string]any
+				if err = json.Unmarshal(content, &decoded); err == nil {
+					if mediaType, ok := decoded["mediaType"].(string); ok {
+						w.Header().Set("Content-Type", mediaType)
+					}
+				}
+			}
+		} else {
+			if requestContentType := r.Header.Get("Accept"); requestContentType != "" {
+				w.Header().Set("Content-Type", requestContentType)
+			} else {
+				w.Header().Del("Content-Type")
+			}
+		}
+		h.ServeHTTP(w, r)
+		logrus.Infof("registry: %s %s", r.Method, r.RequestURI)
+	})
 }
 
 func sendError(err error, resp http.ResponseWriter, req *http.Request, status ...int) {
