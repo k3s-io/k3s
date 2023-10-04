@@ -15,11 +15,13 @@ replace (
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.3
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
+	github.com/k3s-io/helm-controller => github.com/brandond/helm-controller v0.15.5-0.20231004230310-66e379778960
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.8
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
-	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230818201331-3604a6be798d
+	github.com/rancher/dynamiclistener => github.com/brandond/dynamiclistener v0.3.7-0.20231004225517-a991ea038cb7
+	github.com/rancher/wrangler/v2 => github.com/brandond/wrangler/v2 v2.1.1-0.20231004213015-9ac906f037c3
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.9-k3s1
 	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.9-k3s1
 	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.305.9-k3s1
@@ -123,10 +125,10 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/dynamiclistener v0.3.6-rc2
-	github.com/rancher/lasso v0.0.0-20230629200414-8a54b32e6792
+	github.com/rancher/lasso v0.0.0-20230830164424-d684fdeb6f29
 	github.com/rancher/remotedialer v0.3.0
 	github.com/rancher/wharfie v0.5.3
-	github.com/rancher/wrangler v1.1.1
+	github.com/rancher/wrangler/v2 v2.1.1-0.20230906224618-0a0c44968689
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.3

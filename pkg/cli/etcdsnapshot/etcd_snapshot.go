@@ -17,7 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/server"
 	util2 "github.com/k3s-io/k3s/pkg/util"
-	"github.com/rancher/wrangler/pkg/signals"
+	"github.com/rancher/wrangler/v2/pkg/signals"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )

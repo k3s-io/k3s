@@ -24,7 +24,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/signals"
+	"github.com/rancher/wrangler/v2/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"

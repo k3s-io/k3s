@@ -15,6 +15,6 @@ type Addon struct {
 }
 
 type AddonSpec struct {
-	Source   string `json:"source,omitempty"`
-	Checksum string `json:"checksum,omitempty"`
+	Source   string `json:"source,omitempty" column:""`
+	Checksum string `json:"checksum,omitempty" column:""`
 }
