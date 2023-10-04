@@ -45,9 +45,6 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 	if err := wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
 		bootstrapList, err = storageClient.List(ctx, "/bootstrap", 0)
 		if err != nil {
-			if errors.Is(err, rpctypes.ErrGPRCNotSupportedForLearner) {
-				return false, nil
-			}
 			return false, err
 		}
 		return true, nil
@@ -59,7 +56,7 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 	if err != nil {
 		return err
 	}
-	// resuse the existing migration function to reencrypt bootstrap data with new token
+	// reuse the existing migration function to reencrypt bootstrap data with new token
 	if err := migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
 		return err
 	}
