@@ -23,7 +23,6 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults if File.exists?(vagrant_defaults)
 
   defaultOSConfigure(vm)
-  dockerInstall(vm)
   addCoverageDir(vm, role, GOCOVER)
 
   vm.provision "shell", inline: "ping -c 2 k3s.io"

@@ -94,10 +94,9 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("Various Startup Configurations", Ordered, func() {
-	Context("Verify CRI-Dockerd :", func() {
+	Context("Verify standard startup :", func() {
 		It("Starts K3s with no issues", func() {
-			dockerYAML := "docker: true"
-			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), dockerYAML)
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
 			fmt.Println("CLUSTER CONFIG")
