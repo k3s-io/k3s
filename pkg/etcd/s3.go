@@ -205,7 +205,7 @@ func (s *S3) uploadSnapshotMetadata(ctx context.Context, key, path string) (info
 	return s.client.FPutObject(ctx, s.config.EtcdS3BucketName, key, path, opts)
 }
 
-// download downloads the given snapshot from the configured S3
+// Download downloads the given snapshot from the configured S3
 // compatible backend.
 func (s *S3) Download(ctx context.Context) error {
 	snapshotKey := path.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
@@ -297,12 +297,12 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 
 	for _, df := range snapshotFiles[s.config.EtcdSnapshotRetention:] {
 		logrus.Infof("Removing S3 snapshot: s3://%s/%s", s.config.EtcdS3BucketName, df.Key)
-		if err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
+		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
 			return err
 		}
 		metadataKey := path.Join(path.Dir(df.Key), metadataDir, path.Base(df.Key))
-		if err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); err != nil {
-			if resp := minio.ToErrorResponse(err); resp.StatusCode == http.StatusNotFound {
+		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); err != nil {
+			if isNotExist(err) {
 				return nil
 			}
 			return err
@@ -312,13 +312,29 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	return nil
 }
 
+func (s *S3) deleteSnapshot(ctx context.Context, key string) error {
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+
+	key = path.Join(s.config.EtcdS3Folder, key)
+	err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, key, minio.RemoveObjectOptions{})
+	if err == nil || isNotExist(err) {
+		metadataKey := path.Join(path.Dir(key), metadataDir, path.Base(key))
+		if merr := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); merr != nil && !isNotExist(merr) {
+			err = merr
+		}
+	}
+
+	return err
+}
+
 // listSnapshots provides a list of currently stored
 // snapshots in S3 along with their relevant
 // metadata.
 func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error) {
 	snapshots := map[string]snapshotFile{}
 	metadatas := []string{}
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
 	opts := minio.ListObjectsOptions{
