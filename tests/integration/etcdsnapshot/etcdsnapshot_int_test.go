@@ -58,7 +58,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-				To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+				To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
 		})
 	})
 	When("saving a custom name", func() {
@@ -73,7 +73,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-				To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+				To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
 		})
 	})
 	When("using etcd snapshot prune", func() {
@@ -113,7 +113,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			for _, snapshotName := range reg.FindAllString(lsResult, -1) {
 				Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-					To(ContainSubstring("Removing the given locally stored etcd snapshot"))
+					To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
 			}
 		})
 	})
