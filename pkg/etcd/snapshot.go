@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -516,92 +517,58 @@ func (e *ETCD) ListSnapshots(ctx context.Context) (map[string]snapshotFile, erro
 	return snapshotFiles, err
 }
 
-// deleteSnapshots removes the given snapshots from
-// either local storage or S3.
+// DeleteSnapshots removes the given snapshots from local storage and S3.
 func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
-
-	logrus.Info("Removing the given locally stored etcd snapshot(s)")
-	logrus.Debugf("Attempting to remove the given locally stored etcd snapshot(s): %v", snapshots)
-
-	for _, s := range snapshots {
-		// check if the given snapshot exists. If it does,
-		// remove it, otherwise continue.
-		sf := filepath.Join(snapshotDir, s)
-		if _, err := os.Stat(sf); os.IsNotExist(err) {
-			logrus.Infof("Snapshot %s, does not exist", s)
-			continue
-		}
-		if err := os.Remove(sf); err != nil {
+	if e.config.EtcdS3 {
+		if err := e.initS3IfNil(ctx); err != nil {
 			return err
 		}
-		logrus.Debug("Removed snapshot ", s)
 	}
 
-	if e.config.EtcdS3 {
-		if e.initS3IfNil(ctx); err != nil {
-			logrus.Warnf("Unable to initialize S3 client: %v", err)
-			return err
+	for _, s := range snapshots {
+		if err := e.deleteSnapshot(filepath.Join(snapshotDir, s)); err != nil {
+			if isNotExist(err) {
+				logrus.Infof("Snapshot %s not found locally", s)
+			} else {
+				logrus.Errorf("Failed to delete local snapshot %s: %v", s, err)
+			}
+		} else {
+			logrus.Infof("Snapshot %s deleted locally", s)
 		}
-		logrus.Info("Removing the given etcd snapshot(s) from S3")
-		logrus.Debugf("Removing the given etcd snapshot(s) from S3: %v", snapshots)
 
-		objectsCh := make(chan minio.ObjectInfo)
-
-		ctx, cancel := context.WithTimeout(ctx, e.config.EtcdS3Timeout)
-		defer cancel()
-
-		go func() {
-			defer close(objectsCh)
-
-			opts := minio.ListObjectsOptions{
-				Recursive: true,
-			}
-
-			for obj := range e.s3.client.ListObjects(ctx, e.config.EtcdS3BucketName, opts) {
-				if obj.Err != nil {
-					logrus.Errorf("Failed to list snapshots from S3: %v", obj.Err)
-					return
+		if e.config.EtcdS3 {
+			if err := e.s3.deleteSnapshot(s); err != nil {
+				if isNotExist(err) {
+					logrus.Infof("Snapshot %s not found in S3", s)
+				} else {
+					logrus.Errorf("Failed to delete S3 snapshot %s: %v", s, err)
 				}
-
-				// iterate through the given snapshots and only
-				// add them to the channel for remove if they're
-				// actually found from the bucket listing.
-				for _, snapshot := range snapshots {
-					if snapshot == obj.Key {
-						objectsCh <- obj
-					}
-				}
+			} else {
+				logrus.Infof("Snapshot %s deleted from S3", s)
 			}
-		}()
-
-		err = func() error {
-			for {
-				select {
-				case <-ctx.Done():
-					logrus.Errorf("Unable to delete snapshot: %v", ctx.Err())
-					return e.ReconcileSnapshotData(ctx)
-				case <-time.After(time.Millisecond * 100):
-					continue
-				case err, ok := <-e.s3.client.RemoveObjects(ctx, e.config.EtcdS3BucketName, objectsCh, minio.RemoveObjectsOptions{}):
-					if err.Err != nil {
-						logrus.Errorf("Unable to delete snapshot: %v", err.Err)
-					}
-					if !ok {
-						return e.ReconcileSnapshotData(ctx)
-					}
-				}
-			}
-		}()
-		if err != nil {
-			return err
 		}
 	}
 
 	return e.ReconcileSnapshotData(ctx)
+}
+
+func (e *ETCD) deleteSnapshot(snapshotPath string) error {
+	dir := filepath.Join(filepath.Dir(snapshotPath), "..", metadataDir)
+	filename := filepath.Base(snapshotPath)
+	metadataPath := filepath.Join(dir, filename)
+
+	err := os.Remove(snapshotPath)
+	if err == nil || os.IsNotExist(err) {
+		if merr := os.Remove(metadataPath); err != nil && !isNotExist(err) {
+			err = merr
+		}
+	}
+
+	return err
 }
 
 func marshalSnapshotFile(sf snapshotFile) ([]byte, error) {
@@ -945,6 +912,13 @@ func snapshotRetention(retention int, snapshotPrefix string, snapshotDir string)
 func isTooLargeError(err error) bool {
 	// There are no helpers for unpacking field validation errors, so we just check for "Too long" in the error string.
 	return apierrors.IsRequestEntityTooLargeError(err) || (apierrors.IsInvalid(err) && strings.Contains(err.Error(), "Too long"))
+}
+
+func isNotExist(err error) bool {
+	if resp := minio.ToErrorResponse(err); resp.StatusCode == http.StatusNotFound || os.IsNotExist(err) {
+		return true
+	}
+	return false
 }
 
 // saveSnapshotMetadata writes extra metadata to disk.
