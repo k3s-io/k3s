@@ -359,6 +359,27 @@ func K3sSaveLog(server *K3sServer, dump bool) error {
 	return nil
 }
 
+func GetEndpointsAddresses() (string, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return "", err
+	}
+
+	endpoints, err := client.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	var addresses []string
+	for _, subset := range endpoints.Subsets {
+		for _, address := range subset.Addresses {
+			addresses = append(addresses, address.IP)
+		}
+	}
+
+	return strings.Join(addresses, ","), nil
+}
+
 // RunCommand Runs command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
