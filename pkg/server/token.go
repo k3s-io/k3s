@@ -16,17 +16,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type ServerTokenRequest struct {
-	Action   *string `json:"stage,omitempty"`
+type TokenRotateRequest struct {
 	NewToken *string `json:"newToken,omitempty"`
 }
 
-func getServerTokenRequest(req *http.Request) (ServerTokenRequest, error) {
+func getServerTokenRequest(req *http.Request) (TokenRotateRequest, error) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
-		return ServerTokenRequest{}, err
+		return TokenRotateRequest{}, err
 	}
-	result := ServerTokenRequest{}
+	result := TokenRotateRequest{}
 	err = json.Unmarshal(b, &result)
 	return result, err
 }
@@ -45,13 +44,7 @@ func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handl
 			resp.Write([]byte(err.Error()))
 			return
 		}
-		if *sTokenReq.Action == "rotate" {
-			err = tokenRotate(ctx, server, *sTokenReq.NewToken)
-		} else {
-			err = fmt.Errorf("unknown action %s requested", *sTokenReq.Action)
-		}
-
-		if err != nil {
+		if err = tokenRotate(ctx, server, *sTokenReq.NewToken); err != nil {
 			genErrorMessage(resp, http.StatusInternalServerError, err, "token")
 			return
 		}

@@ -154,8 +154,7 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.ServerTokenRequest{
-		Action:   pointer.String("rotate"),
+	b, err := json.Marshal(server.TokenRotateRequest{
 		NewToken: pointer.String(cmds.TokenConfig.NewToken),
 	})
 	if err != nil {
