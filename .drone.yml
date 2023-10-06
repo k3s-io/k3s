@@ -673,12 +673,15 @@ steps:
 
 - name: dispatch
   image: curlimages/curl:7.74.0
+  secrets: [ pat_username, github_token, k3s_release_token ] 
   user: root
   environment:
     PAT_USERNAME:
       from_secret: pat_username
     PAT_TOKEN:
       from_secret: github_token
+    K3S_RELEASE_TOKEN:
+      from_secret: release_token_k3s
   commands:
     - apk -U --no-cache add bash
     - scripts/dispatch
