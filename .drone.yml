@@ -657,7 +657,7 @@ steps:
 
 - name: dispatch
   image: curlimages/curl:7.74.0
-  secrets: [ pat_username, github_token, k3s_release_token ] 
+  secrets: [ pat_username, github_token, release_token_k3s ] 
   user: root
   environment:
     PAT_USERNAME:
