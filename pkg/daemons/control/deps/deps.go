@@ -243,6 +243,7 @@ func genUsers(config *config.Control) error {
 		return err
 	}
 
+	// if no token is provided on bootstrap, we generate a random token
 	serverPass, err := getServerPass(passwd, config)
 	if err != nil {
 		return err
