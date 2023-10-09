@@ -85,7 +85,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	enableIPv4 := dualCluster || clusterIPv4
 
 	// dualStack or IPv6 are not supported on Windows node
-	if (goruntime.GOOS == "windows") && (enableIPv6 || dualNode) {
+	if (goruntime.GOOS == "windows") && enableIPv6 {
 		return fmt.Errorf("dual-stack or IPv6 are not supported on Windows node")
 	}
 
