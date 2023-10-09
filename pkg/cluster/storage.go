@@ -21,6 +21,49 @@ import (
 // After this many attempts, the lock is deleted and the counter reset.
 const maxBootstrapWaitAttempts = 5
 
+func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
+
+	token, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+	if err != nil {
+		return err
+	}
+
+	normalizedToken, err := normalizeToken(token)
+	if err != nil {
+		return err
+	}
+
+	storageClient, err := client.New(config.Runtime.EtcdConfig)
+	if err != nil {
+		return err
+	}
+	defer storageClient.Close()
+
+	tokenKey := storageKey(normalizedToken)
+
+	var bootstrapList []client.Value
+	if err := wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		bootstrapList, err = storageClient.List(ctx, "/bootstrap", 0)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	normalizedOldToken, err := normalizeToken(oldToken)
+	if err != nil {
+		return err
+	}
+	// reuse the existing migration function to reencrypt bootstrap data with new token
+	if err := migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
 // snapshot of the cluster's CA certs and keys, encryption passphrases, etc - encrypted with the join token.
 // This is used when bootstrapping a cluster from a managed database or external etcd cluster.
@@ -225,7 +268,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 		logrus.Warn("found multiple bootstrap keys in storage")
 	}
 	// check for empty string key and for old token format with k10 prefix
-	if err := migrateOldTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
+	if err := migrateTokens(ctx, bootstrapList, storageClient, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
 		return nil, false, err
 	}
 
@@ -236,6 +279,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 	}
 	for _, bootstrapKV := range bootstrapList {
 		// ensure bootstrap is stored in the current token's key
+		logrus.Debugf("checking bootstrap key %s against %s", string(bootstrapKV.Key), tokenKey)
 		if string(bootstrapKV.Key) == tokenKey {
 			return &bootstrapKV, false, nil
 		}
@@ -277,21 +321,24 @@ func normalizeToken(token string) (string, error) {
 	return password, nil
 }
 
-// migrateOldTokens will list all keys that has prefix /bootstrap and will check for key that is
+// migrateTokens will list all keys that has prefix /bootstrap and will check for key that is
 // hashed with empty string and keys that is hashed with old token format before normalizing
 // then migrate those and resave only with the normalized token
-func migrateOldTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
+func migrateTokens(ctx context.Context, bootstrapList []client.Value, storageClient client.Client, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
 	for _, bootstrapKV := range bootstrapList {
 		// checking for empty string bootstrap key
+		logrus.Debug("Comparing ", string(bootstrapKV.Key), " to ", oldTokenKey)
 		if string(bootstrapKV.Key) == emptyStringKey {
 			logrus.Warn("Bootstrap data encrypted with empty string, deleting and resaving with token")
 			if err := doMigrateToken(ctx, storageClient, bootstrapKV, "", emptyStringKey, token, tokenKey); err != nil {
 				return err
 			}
 		} else if string(bootstrapKV.Key) == oldTokenKey && oldTokenKey != tokenKey {
-			logrus.Warn("bootstrap data encrypted with old token format string, deleting and resaving with token")
+			if emptyStringKey != "" {
+				logrus.Warn("bootstrap data encrypted with old token format string, deleting and resaving with token")
+			}
 			if err := doMigrateToken(ctx, storageClient, bootstrapKV, oldToken, oldTokenKey, token, tokenKey); err != nil {
 				return err
 			}
