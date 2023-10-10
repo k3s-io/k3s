@@ -17,7 +17,7 @@ import (
 // generic/ubuntu2004, generic/centos7, generic/rocky8, opensuse/Leap-15.4.x86_64
 
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var serverCount = flag.Int("serverCount", 1, "number of server nodes")
+var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
@@ -104,7 +104,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(2))
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 1))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -122,7 +122,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 		It("Cleans up 20s token automatically", func() {
 			Eventually(func() (string, error) {
 				return e2e.RunCmdOnNode("k3s token list", serverNodeNames[0])
-			}, "20s", "5s").ShouldNot(ContainSubstring("20sect"))
+			}, "25s", "5s").ShouldNot(ContainSubstring("20sect"))
 		})
 		var tempToken string
 		It("Creates a 10m agent token", func() {
@@ -144,7 +144,49 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(3))
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 2))
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "60s", "5s").Should(Succeed())
+		})
+	})
+	Context("Rotate server bootstrap token", func() {
+		serverToken := "1234"
+		It("Creates a new server token", func() {
+			Expect(e2e.RunCmdOnNode("k3s token rotate -t vagrant --new-token="+serverToken, serverNodeNames[0])).
+				To(ContainSubstring("Token rotated, restart k3s with new token"))
+		})
+		It("Restarts servers with the new token", func() {
+			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)
+			for _, node := range serverNodeNames {
+				_, err := e2e.RunCmdOnNode(cmd, node)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			for _, node := range serverNodeNames {
+				_, err := e2e.RunCmdOnNode("systemctl restart k3s", node)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 2))
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "60s", "5s").Should(Succeed())
+		})
+		It("Rejoins an agent with the new server token", func() {
+			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)
+			_, err := e2e.RunCmdOnNode(cmd, agentNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			_, err = e2e.RunCmdOnNode("systemctl restart k3s-agent", agentNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).Should(Equal(len(serverNodeNames) + 2))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
