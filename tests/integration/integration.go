@@ -280,6 +280,9 @@ func K3sStopServer(server *K3sServer) error {
 // K3sKillServer terminates the running K3s server and its children.
 // Equivalent to k3s-killall.sh
 func K3sKillServer(server *K3sServer) error {
+	if server == nil {
+		return nil
+	}
 	if server.log != nil {
 		server.log.Close()
 		os.Remove(server.log.Name())
