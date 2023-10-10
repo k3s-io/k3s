@@ -691,6 +691,12 @@ platform:
   os: linux
   arch: amd64
 
+clone:
+  retries: 3
+
+depends_on:
+- amd64
+
 steps:
 - name: skipfiles
   image: plugins/git
@@ -732,7 +738,8 @@ steps:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
-  # Cleanup any VMs running, happens if a previous test panics
+  # Cleanup VMs running, happens if a previous test panics
+  # Cleanup inactive domains, happens if previous test is canceled
   - |
     VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
     if [ -n "$VMS" ]; then
@@ -740,6 +747,13 @@ steps:
       do
         virsh destroy $vm
         virsh undefine $vm --remove-all-storage
+      done
+    fi 
+    VMS=$(virsh list --name --inactive | grep '_server-\|_agent-' || true)
+    if [ -n "$VMS" ]; then
+      for vm in $VMS
+      do
+        virsh undefine $vm
       done
     fi 
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
