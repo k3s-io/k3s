@@ -54,6 +54,7 @@ func main() {
 			token.Delete,
 			token.Generate,
 			token.List,
+			token.Rotate,
 		),
 		cmds.NewEtcdSnapshotCommands(
 			etcdsnapshot.Delete,
@@ -69,11 +70,9 @@ func main() {
 			secretsencrypt.Rotate,
 			secretsencrypt.Reencrypt,
 		),
-		cmds.NewCertCommand(
-			cmds.NewCertSubcommands(
-				cert.Rotate,
-				cert.RotateCA,
-			),
+		cmds.NewCertCommands(
+			cert.Rotate,
+			cert.RotateCA,
 		),
 		cmds.NewCompletionCommand(completion.Run),
 	}
