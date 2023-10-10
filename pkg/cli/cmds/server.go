@@ -190,7 +190,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "advertise-address",
-		Usage:       "(listener) IPv4 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
+		Usage:       "(listener) IPv4/IPv6 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
 		Destination: &ServerConfig.AdvertiseIP,
 	},
 	&cli.IntFlag{

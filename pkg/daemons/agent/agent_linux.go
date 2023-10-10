@@ -4,6 +4,7 @@
 package agent
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,8 +14,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
+	utilsnet "k8s.io/utils/net"
 )
 
 const socketPrefix = "unix://"
@@ -32,8 +33,8 @@ func createRootlessConfig(argsMap map[string]string, controllers map[string]bool
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
-	if IPv6only {
+	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
+	if isIPv6 {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
@@ -53,8 +54,8 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 
 func kubeletArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
-	if IPv6only {
+	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
+	if isIPv6 {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
@@ -122,9 +123,12 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
-	defaultIP, err := net.ChooseHostInterface()
-	if err != nil || defaultIP.String() != cfg.NodeIP {
-		argsMap["node-ip"] = cfg.NodeIP
+	if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
+		dualStack, err := utilsnet.IsDualStackIPs(cfg.NodeIPs)
+		if err == nil && dualStack {
+			argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "CloudDualStackNodeIPs=true")
+		}
+		argsMap["node-ip"] = nodeIPs
 	}
 	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
 	if !controllers["cpu"] {
