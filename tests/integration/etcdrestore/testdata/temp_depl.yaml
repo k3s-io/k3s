@@ -6,6 +6,9 @@ metadata:
     app: nginx
 spec:
   replicas: 3
+  revisionHistoryLimit: 0
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: nginx
