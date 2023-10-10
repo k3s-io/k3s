@@ -45,10 +45,13 @@ it into a neutral project for use by both projects.
 3. The new Custom Resource will be cluster-scoped, as etcd and its snapshots are a cluster-level resource.
 4. Snapshot metadata will also be written alongside snapshot files created on disk and/or uploaded to S3. The metadata
    files will have the same basename as their corresponding snapshot file.
-5. Downstream consumers of etcd snapshot lists will migrate to watching Custom Resource types, instead of the ConfigMap.
-6. K3s will observe a three minor version transition period, where both the new Custom Resources, and the existing
+5. A hash of the server token will be stored as an annotation on the Custom Resource, and stored as metadata on snapshots uploaded to S3.
+   This hash should be compared to a current etcd snapshot's token hash to determine if the server token must be rolled back as part of the
+   snapshot restore process.
+6. Downstream consumers of etcd snapshot lists will migrate to watching Custom Resource types, instead of the ConfigMap.
+7. K3s will observe a three minor version transition period, where both the new Custom Resources, and the existing
    ConfigMap, will both be used.
-7. During the transition period, older snapshot metadata may be removed from the ConfigMap while those snapshots still
+8. During the transition period, older snapshot metadata may be removed from the ConfigMap while those snapshots still
    exist and are referenced by new Custom Resources, if the ConfigMap exceeds a preset size or key count limit.
 
 ## Consequences

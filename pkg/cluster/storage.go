@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/bootstrap"
-	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -23,12 +21,12 @@ const maxBootstrapWaitAttempts = 5
 
 func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
 
-	token, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+	token, err := util.ReadTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 	if err != nil {
 		return err
 	}
 
-	normalizedToken, err := normalizeToken(token)
+	normalizedToken, err := util.NormalizeToken(token)
 	if err != nil {
 		return err
 	}
@@ -52,7 +50,7 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 		return err
 	}
 
-	normalizedOldToken, err := normalizeToken(oldToken)
+	normalizedOldToken, err := util.NormalizeToken(oldToken)
 	if err != nil {
 		return err
 	}
@@ -76,13 +74,13 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 	}
 	token := config.Token
 	if token == "" {
-		tokenFromFile, err := readTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+		tokenFromFile, err := util.ReadTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 		if err != nil {
 			return err
 		}
 		token = tokenFromFile
 	}
-	normalizedToken, err := normalizeToken(token)
+	normalizedToken, err := util.NormalizeToken(token)
 	if err != nil {
 		return err
 	}
@@ -165,7 +163,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 
 	token := c.config.Token
 	if token == "" {
-		tokenFromFile, err := readTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
+		tokenFromFile, err := util.ReadTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
 		if err != nil {
 			return err
 		}
@@ -181,7 +179,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		}
 		token = tokenFromFile
 	}
-	normalizedToken, err := normalizeToken(token)
+	normalizedToken, err := util.NormalizeToken(token)
 	if err != nil {
 		return err
 	}
@@ -286,39 +284,6 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient client.Client
 	}
 
 	return nil, false, errors.New("bootstrap data already found and encrypted with different token")
-}
-
-// readTokenFromFile will attempt to get the token from <data-dir>/token if it the file not found
-// in case of fresh installation it will try to use the runtime serverToken saved in memory
-// after stripping it from any additional information like the username or cahash, if the file
-// found then it will still strip the token from any additional info
-func readTokenFromFile(serverToken, certs, dataDir string) (string, error) {
-	tokenFile := filepath.Join(dataDir, "token")
-
-	b, err := os.ReadFile(tokenFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			token, err := clientaccess.FormatToken(serverToken, certs)
-			if err != nil {
-				return token, err
-			}
-			return token, nil
-		}
-		return "", err
-	}
-
-	// strip the token from any new line if its read from file
-	return string(bytes.TrimRight(b, "\n")), nil
-}
-
-// normalizeToken will normalize the token read from file or passed as a cli flag
-func normalizeToken(token string) (string, error) {
-	_, password, ok := clientaccess.ParseUsernamePassword(token)
-	if !ok {
-		return password, errors.New("failed to normalize server token; must be in format K10<CA-HASH>::<USERNAME>:<PASSWORD> or <PASSWORD>")
-	}
-
-	return password, nil
 }
 
 // migrateTokens will list all keys that has prefix /bootstrap and will check for key that is
