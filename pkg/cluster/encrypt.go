@@ -5,9 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
@@ -19,14 +17,7 @@ import (
 // storageKey returns the etcd key for storing bootstrap data for a given passphrase.
 // The key is derived from the sha256 hash of the passphrase.
 func storageKey(passphrase string) string {
-	return "/bootstrap/" + keyHash(passphrase)
-}
-
-// keyHash returns the first 12 characters of the sha256 sum of the passphrase.
-func keyHash(passphrase string) string {
-	d := sha256.New()
-	d.Write([]byte(passphrase))
-	return hex.EncodeToString(d.Sum(nil)[:])[:12]
+	return "/bootstrap/" + util.ShortHash(passphrase, 12)
 }
 
 // encrypt encrypts a byte slice using aes+gcm with a pbkdf2 key derived from the passphrase and a random salt.
