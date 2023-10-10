@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -193,9 +194,23 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 		defer w.Flush()
 
+		// Sort snapshots by creation time and key
+		sfKeys := make([]string, 0, len(sf))
+		for k := range sf {
+			sfKeys = append(sfKeys, k)
+		}
+		sort.Slice(sfKeys, func(i, j int) bool {
+			iKey := sfKeys[i]
+			jKey := sfKeys[j]
+			if sf[iKey].CreatedAt.Equal(sf[jKey].CreatedAt) {
+				return iKey < jKey
+			}
+			return sf[iKey].CreatedAt.Before(sf[jKey].CreatedAt)
+		})
+
 		fmt.Fprint(w, "Name\tLocation\tSize\tCreated\n")
-		for _, s := range sf {
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", s.Name, s.Location, s.Size, s.CreatedAt.Format(time.RFC3339))
+		for _, k := range sfKeys {
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", sf[k].Name, sf[k].Location, sf[k].Size, sf[k].CreatedAt.Format(time.RFC3339))
 		}
 	}
 
