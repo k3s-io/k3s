@@ -54,7 +54,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 		It("deletes a snapshot", func() {
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
-			reg, err := regexp.Compile(`on-demand[^\s]+`)
+			reg, err := regexp.Compile(`(?m)^on-demand[^\s]+`)
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
@@ -69,7 +69,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 		It("deletes that snapshot", func() {
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
-			reg, err := regexp.Compile(`ALIVEBEEF[^\s]+`)
+			reg, err := regexp.Compile(`(?m)^ALIVEBEEF[^\s]+`)
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
@@ -91,7 +91,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 		It("lists all 3 snapshots", func() {
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
-			reg, err := regexp.Compile(`:///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
+			reg, err := regexp.Compile(`(?m):///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
 			Expect(err).ToNot(HaveOccurred())
 			sepLines := reg.FindAllString(lsResult, -1)
 			Expect(sepLines).To(HaveLen(3))
@@ -101,7 +101,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 				To(ContainSubstring("Removing local snapshot"))
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
-			reg, err := regexp.Compile(`:///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
+			reg, err := regexp.Compile(`(?m):///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
 			Expect(err).ToNot(HaveOccurred())
 			sepLines := reg.FindAllString(lsResult, -1)
 			Expect(sepLines).To(HaveLen(2))
@@ -109,7 +109,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 		It("cleans up remaining snapshots", func() {
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
-			reg, err := regexp.Compile(`PRUNE_TEST[^\s]+`)
+			reg, err := regexp.Compile(`(?m)^PRUNE_TEST[^\s]+`)
 			Expect(err).ToNot(HaveOccurred())
 			for _, snapshotName := range reg.FindAllString(lsResult, -1) {
 				Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
