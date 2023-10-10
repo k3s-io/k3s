@@ -57,6 +57,7 @@ var (
 	labelStorageNode                   = "etcd." + version.Program + ".cattle.io/snapshot-storage-node"
 	annotationLocalReconciled          = "etcd." + version.Program + ".cattle.io/local-snapshots-timestamp"
 	annotationS3Reconciled             = "etcd." + version.Program + ".cattle.io/s3-snapshots-timestamp"
+	annotationTokenHash                = "etcd." + version.Program + ".cattle.io/snapshot-token-hash"
 
 	// snapshotDataBackoff will retry at increasing steps for up to ~30 seconds.
 	// If the ConfigMap update fails, the list won't be reconciled again until next time
@@ -252,6 +253,11 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get config for etcd snapshot")
 	}
 
+	tokenHash, err := util.GetTokenHash(e.config)
+	if err != nil {
+		return errors.Wrap(err, "failed to get server token hash for etcd snapshot")
+	}
+
 	nodeName := os.Getenv("NODE_NAME")
 	now := time.Now().Round(time.Second)
 	snapshotName := fmt.Sprintf("%s-%s-%d", e.config.EtcdSnapshotName, nodeName, now.Unix())
@@ -314,6 +320,7 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 			Size:           f.Size(),
 			Compressed:     e.config.EtcdSnapshotCompress,
 			metadataSource: extraMetadata,
+			tokenHash:      tokenHash,
 		}
 
 		if err := saveSnapshotMetadata(snapshotPath, extraMetadata); err != nil {
@@ -412,6 +419,7 @@ type snapshotFile struct {
 	// to populate other fields before serialization to the legacy configmap.
 	metadataSource *v1.ConfigMap `json:"-"`
 	nodeSource     string        `json:"-"`
+	tokenHash      string        `json:"-"`
 }
 
 // listLocalSnapshots provides a list of the currently stored
@@ -1016,6 +1024,10 @@ func (sf *snapshotFile) fromETCDSnapshotFile(esf *apisv1.ETCDSnapshotFile) {
 		}
 	}
 
+	if tokenHash := esf.Annotations[annotationTokenHash]; tokenHash != "" {
+		sf.tokenHash = tokenHash
+	}
+
 	if esf.Spec.S3 == nil {
 		sf.NodeName = esf.Spec.NodeName
 	} else {
@@ -1078,6 +1090,14 @@ func (sf *snapshotFile) toETCDSnapshotFile(esf *apisv1.ETCDSnapshotFile) {
 
 	if esf.ObjectMeta.Labels == nil {
 		esf.ObjectMeta.Labels = map[string]string{}
+	}
+
+	if esf.ObjectMeta.Annotations == nil {
+		esf.ObjectMeta.Annotations = map[string]string{}
+	}
+
+	if sf.tokenHash != "" {
+		esf.ObjectMeta.Annotations[annotationTokenHash] = sf.tokenHash
 	}
 
 	if sf.S3 == nil {
