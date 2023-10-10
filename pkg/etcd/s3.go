@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -31,6 +32,7 @@ import (
 
 var (
 	clusterIDKey = textproto.CanonicalMIMEHeaderKey(version.Program + "-cluster-id")
+	tokenHashKey = textproto.CanonicalMIMEHeaderKey(version.Program + "-token-hash")
 	nodeNameKey  = textproto.CanonicalMIMEHeaderKey(version.Program + "-node-name")
 )
 
@@ -39,6 +41,7 @@ type S3 struct {
 	config    *config.Control
 	client    *minio.Client
 	clusterID string
+	tokenHash string
 	nodeName  string
 }
 
@@ -109,10 +112,16 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 		clusterID = string(ns.UID)
 	}
 
+	tokenHash, err := util.GetTokenHash(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get server token hash for etcd snapshot")
+	}
+
 	return &S3{
 		config:    config,
 		client:    c,
 		clusterID: clusterID,
+		tokenHash: tokenHash,
 		nodeName:  os.Getenv("NODE_NAME"),
 	}, nil
 }
@@ -154,6 +163,7 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 	} else {
 		sf.Status = successfulSnapshotStatus
 		sf.Size = uploadInfo.Size
+		sf.tokenHash = s.tokenHash
 	}
 	if _, err := s.uploadSnapshotMetadata(ctx, metadataKey, metadata); err != nil {
 		logrus.Warnf("Failed to upload snapshot metadata to S3: %v", err)
@@ -170,6 +180,7 @@ func (s *S3) uploadSnapshot(ctx context.Context, key, path string) (info minio.U
 		UserMetadata: map[string]string{
 			clusterIDKey: s.clusterID,
 			nodeNameKey:  s.nodeName,
+			tokenHashKey: s.tokenHash,
 		},
 	}
 	if strings.HasSuffix(key, compressedExtension) {
@@ -392,6 +403,7 @@ func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error)
 			Status:     successfulSnapshotStatus,
 			Compressed: compressed,
 			nodeSource: obj.UserMetadata[nodeNameKey],
+			tokenHash:  obj.UserMetadata[tokenHashKey],
 		}
 		sfKey := generateSnapshotConfigMapKey(sf)
 		snapshots[sfKey] = sf
