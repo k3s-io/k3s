@@ -20,6 +20,7 @@ func main() {
 			token.Delete,
 			token.Generate,
 			token.List,
+			token.Rotate,
 		),
 	}
 

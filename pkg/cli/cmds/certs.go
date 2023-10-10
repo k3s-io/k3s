@@ -54,33 +54,29 @@ var (
 	}
 )
 
-func NewCertCommand(subcommands []cli.Command) cli.Command {
+func NewCertCommands(rotate, rotateCA func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            CertCommand,
 		Usage:           "Manage K3s certificates",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
-		Subcommands:     subcommands,
-	}
-}
-
-func NewCertSubcommands(rotate, rotateCA func(ctx *cli.Context) error) []cli.Command {
-	return []cli.Command{
-		{
-			Name:            "rotate",
-			Usage:           "Rotate " + version.Program + " component certificates on disk",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          rotate,
-			Flags:           CertRotateCommandFlags,
-		},
-		{
-			Name:            "rotate-ca",
-			Usage:           "Write updated " + version.Program + " CA certificates to the datastore",
-			SkipFlagParsing: false,
-			SkipArgReorder:  true,
-			Action:          rotateCA,
-			Flags:           CertRotateCACommandFlags,
+		Subcommands: []cli.Command{
+			{
+				Name:            "rotate",
+				Usage:           "Rotate " + version.Program + " component certificates on disk",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          rotate,
+				Flags:           CertRotateCommandFlags,
+			},
+			{
+				Name:            "rotate-ca",
+				Usage:           "Write updated " + version.Program + " CA certificates to the datastore",
+				SkipFlagParsing: false,
+				SkipArgReorder:  true,
+				Action:          rotateCA,
+				Flags:           CertRotateCACommandFlags,
+			},
 		},
 	}
 }
