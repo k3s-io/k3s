@@ -65,9 +65,9 @@ Docker tests run clusters of K3s nodes as containers and test basic functionalit
 
 ___
 
-## Smoke Tests
+## Install Tests
 
-Smoke tests are a collection of tests defined under the [tests](./tests) and fall into two categories: install and snapshotter. These tests are used to validate the installation and operation of K3s on a variety of operating systems. The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path" scenarios. The test themses are Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
+Install tests are a collection of tests defined under the [tests/install](./tests/install). These tests are used to validate the installation and operation of K3s on a variety of operating systems. The test themselves are Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
 - [Install Script](install) :arrow_right: scheduled nightly and on an install script change
   - [CentOS 7](install/centos-7) (stand-in for RHEL 7)
@@ -76,16 +76,11 @@ Smoke tests are a collection of tests defined under the [tests](./tests) and fal
   - [Fedora 37](install/fedora)
   - [Leap 15.5](install/opensuse-leap) (stand-in for SLES)
   - [Ubuntu 22.04](install/ubuntu-2204)
-- [Snapshotter](snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
-  - [BTRFS](snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
-    - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)
 
 ## Format
 When adding new installer test(s) please copy the prevalent style for the `Vagrantfile`.
 Ideally, the boxes used for additional assertions will support the default `libvirt` provider which
-enables them to be used by our Github Actions Workflow(s). See:
-- [install.yaml](../.github/workflows/install.yaml).
-- [snapshotter.yaml](../.github/workflows/snapshotter.yaml).
+enables them to be used by our GitHub Actions [Install Test Workflow](../.github/workflows/install.yaml).
 
 ### Framework
 
@@ -130,11 +125,6 @@ vagrant provision --provision-with=k3s-wait-for-traefik
 vagrant provision --provision-with=k3s-status
 vagrant provision --provision-with=k3s-procps
 ```
-
-The **Snapshotter** test requires that k3s binary is built at `dist/artifacts/k3s`.
-It is invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
-Take a look at the individual Vagrantfiles and/or the Github Actions workflows that harness them to get
-an idea of how they can be invoked.
 
 ___
 
