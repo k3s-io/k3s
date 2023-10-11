@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -289,6 +290,8 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	re := regexp.MustCompile(`(?m)==> vagrant:.*\n`)
+	kubeConfig = re.ReplaceAllString(kubeConfig, "")
 	nodeIP, err := FetchNodeExternalIP(serverName)
 	if err != nil {
 		return "", err
