@@ -961,9 +961,13 @@ EOF
 
 # --- write systemd or openrc service file ---
 create_service_file() {
-    [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file
+    [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file && restore_systemd_service_file_context
     [ "${HAS_OPENRC}" = true ] && create_openrc_service_file
     return 0
+}
+
+restore_systemd_service_file_context() {
+    restorecon -R -i ${FILE_K3S_SERVICE} || true
 }
 
 # --- get hashes of the current k3s bin and service files
