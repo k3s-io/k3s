@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         # TODO fix embeddedmirror and add it to the matrix
-        etest: [startup, s3, externalip, privateregistry]
+        etest: [startup, s3, btrfs, externalip, privateregistry]
       max-parallel: 3
     steps:
       - name: "Checkout"
