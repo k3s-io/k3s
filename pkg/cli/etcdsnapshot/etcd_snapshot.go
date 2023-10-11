@@ -64,7 +64,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) error {
 	sc.ControlConfig.Runtime.ETCDServerCA = filepath.Join(dataDir, "tls", "etcd", "server-ca.crt")
 	sc.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
 	sc.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
-	sc.ControlConfig.Runtime.KubeConfigSupervisor = filepath.Join(dataDir, "cred", "supervisor.kubeconfig")
+	sc.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
 
 	return nil
 }
@@ -98,11 +98,11 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
-	initialized, err := e.IsInitialized(ctx, &serverConfig.ControlConfig)
+	initialized, err := e.IsInitialized()
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigSupervisor)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
@@ -146,11 +146,11 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigSupervisor)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
@@ -252,11 +252,11 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 
 	ctx := signals.SetupSignalContext()
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(ctx, &serverConfig.ControlConfig); err != nil {
+	if err := e.SetControlConfig(&serverConfig.ControlConfig); err != nil {
 		return err
 	}
 
-	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigSupervisor)
+	sc, err := server.NewContext(ctx, serverConfig.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return err
 	}
