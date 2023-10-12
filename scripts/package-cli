@@ -40,6 +40,7 @@ cp contrib/util/check-config.sh bin/check-config
 rm -rf build/data
 mkdir -p build/data build/out
 mkdir -p dist/artifacts
+mkdir -p ./etc
 
 (
     set +x
