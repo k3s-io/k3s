@@ -30,7 +30,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/slice"
+	"github.com/rancher/wrangler/v2/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	utilsnet "k8s.io/utils/net"
