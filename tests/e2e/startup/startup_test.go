@@ -236,7 +236,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Runs an interactive command a pod", func() {
-			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.34.1 -- uname -a"
+			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.36.1 -- uname -a"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
