@@ -126,7 +126,7 @@ if [ ! -x ${INSTALLBIN}/cni ]; then
 fi
 
 echo Building k3s
-CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server/main.go
+CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s ./cmd/server
 ln -s k3s ./bin/k3s-agent
 ln -s k3s ./bin/k3s-server
 ln -s k3s ./bin/k3s-token
