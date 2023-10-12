@@ -32,7 +32,7 @@ get-module-path(){
 
 # We're building k3s against containerd 1.5 in go.mod because newer releases have
 # dependency conflicts with Kubernetes, but we still need to bundle containerd 1.7
-VERSION_CONTAINERD="v1.7.6-k3s1"
+VERSION_CONTAINERD="v1.7.7-k3s1"
 PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd)
 
 VERSION_CRICTL=$(get-module-version github.com/kubernetes-sigs/cri-tools)
