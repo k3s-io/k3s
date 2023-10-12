@@ -234,8 +234,10 @@ github.com/containerd/go-runc v1.0.0 h1:oU+lLv1ULm5taqgV/CJivypVODI4SUz1znWjv3nN
 github.com/containerd/go-runc v1.0.0/go.mod h1:cNU0ZbCgCQVZK4lgG3P+9tn9/PaJNmoDXPpoJhDR+Ok=
 github.com/containerd/imgcrypt v1.1.7 h1:WSf9o9EQ0KGHiUx2ESFZ+PKf4nxK9BcvV/nJDX8RkB4=
 github.com/containerd/imgcrypt v1.1.7/go.mod h1:FD8gqIcX5aTotCtOmjeCsi3A1dHmTZpnMISGKSczt4k=
-github.com/containerd/nri v0.3.0 h1:2ZM4WImye1ypSnE7COjOvPAiLv84kaPILBDvb1tbDK8=
-github.com/containerd/nri v0.3.0/go.mod h1:Zw9q2lP16sdg0zYybemZ9yTDy8g7fPCIB3KXOGlggXI=
+github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
+github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
+github.com/containerd/nri v0.4.0 h1:PjgIBm0RtUiFyEO6JqPBQZRQicbsIz41Fz/5VSC0zgw=
+github.com/containerd/nri v0.4.0/go.mod h1:Zw9q2lP16sdg0zYybemZ9yTDy8g7fPCIB3KXOGlggXI=
 github.com/containerd/stargz-snapshotter v0.14.4-0.20230913082252-7275d45b185c h1:Qr2w9ZeMciAfruOt2be10s4W13vQiTD3gAEqz3zxUrg=
 github.com/containerd/stargz-snapshotter v0.14.4-0.20230913082252-7275d45b185c/go.mod h1:ytZHGHs/q9DsZCyA+27rSYQEsbGgToUwXtl/5znV9qQ=
 github.com/containerd/stargz-snapshotter/estargz v0.10.0/go.mod h1:aE5PCyhFMwR8sbrErO5eM2GcvkyXTTJremG883D4qF0=
@@ -631,8 +633,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/k3s-io/containerd v1.7.6-k3s1.27 h1:BGoNTvkH/rxURf5UCvE4hIDY2emZ3o1DPNlTAmCoJpI=
-github.com/k3s-io/containerd v1.7.6-k3s1.27/go.mod h1:dWUW/BzVXrFhxzfRZ1Jmr/yLlRvjryZlb1ns2SCHsgs=
+github.com/k3s-io/containerd v1.7.7-k3s1.27 h1:obFQjBCahWKETAmAVFdq4Ph8VduSK0Eho9bWjpd6hjs=
+github.com/k3s-io/containerd v1.7.7-k3s1.27/go.mod h1:CrxVnLZTD61NLkOVNd7Cedb7E5huJzcmTVpunlITQJY=
 github.com/k3s-io/cri-dockerd v0.3.4-k3s1 h1:eCeVCeXzf10fyanv1gniSwidBjdO83/akv+M72uEnZc=
 github.com/k3s-io/cri-dockerd v0.3.4-k3s1/go.mod h1:0KDOU8lLjp+ETJFFCcVBRQbJ8puRoDxaHBDj8C87Fk4=
 github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1 h1:yWVy9pS0T1BWBMZBPRy2Q29gaLmaGknQHSnx+HStrVM=
