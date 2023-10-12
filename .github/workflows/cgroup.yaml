@@ -59,7 +59,7 @@ jobs:
         run: vagrant up
       - name: On Failure, Validate VMs deployed
         if: ${{ failure() }}
-        run: vboxmanage list vms
+        run: vboxmanage list vms --long
       - name: "K3s Prepare"
         run: vagrant provision --provision-with=k3s-prepare
       - name: ⏬ "K3s Install"
