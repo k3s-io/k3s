@@ -1372,8 +1372,17 @@ func (e *ETCD) GetMembersNames(ctx context.Context) ([]string, error) {
 	return memberNames, nil
 }
 
-// RemoveSelf will remove the member if it exists in the cluster
+// RemoveSelf will remove the member if it exists in the cluster.  This should
+// only be called on a node that may have previously run etcd, but will not
+// currently run etcd, to ensure that it is not a member of the cluster.
+// This is also called by tests to do cleanup between runs.
 func (e *ETCD) RemoveSelf(ctx context.Context) error {
+	if e.client == nil {
+		if err := e.startClient(ctx); err != nil {
+			return err
+		}
+	}
+
 	if err := e.RemovePeer(ctx, e.name, e.address, true); err != nil {
 		return err
 	}
