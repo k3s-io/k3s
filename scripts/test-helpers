@@ -430,7 +430,7 @@ provision-cluster() {
         provision-server
         timeout --foreground 120s bash -c "wait-for-kubeconfig $i"
     done
-    export KUBECONFIG=$TEST_DIR/servers/1/kubeconfig.yaml
+    export KUBECONFIG=$TEST_DIR/servers/${KUBECONFIG_SERVER:-1}/kubeconfig.yaml
 
     if [ $NUM_AGENTS -gt 0 ]; then
         for _ in $(seq 1 $NUM_AGENTS); do
