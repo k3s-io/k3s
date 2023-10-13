@@ -13,7 +13,7 @@ PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"
 PKG_K8S_BASE="k8s.io/component-base"
 PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
-PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router"
+PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router/v2"
 PKG_CRI_DOCKERD="github.com/Mirantis/cri-dockerd"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
