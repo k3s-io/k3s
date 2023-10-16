@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +83,11 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 	enableIPv6 := dualCluster || clusterIPv6
 	enableIPv4 := dualCluster || clusterIPv4
+
+	// dualStack or IPv6 are not supported on Windows node
+	if (goruntime.GOOS == "windows") && enableIPv6 {
+		return fmt.Errorf("dual-stack or IPv6 are not supported on Windows node")
+	}
 
 	conntrackConfig, err := getConntrackConfig(nodeConfig)
 	if err != nil {

@@ -15,7 +15,7 @@ echo Running: go mod tidy
 go mod tidy
 
 echo Running: go generate
-go generate
+GOOS=linux CC=gcc CXX=g++ go generate
 
 echo Running validation
 
