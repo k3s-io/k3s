@@ -165,7 +165,7 @@ func Rotate(app *cli.Context) error {
 	}
 	// wait for etcd db propagation delay
 	time.Sleep(1 * time.Second)
-	fmt.Println("Token rotated, restart k3s with new token")
+	fmt.Println("Token rotated, restart", version.Program, "nodes with new token")
 	return nil
 }
 
