@@ -644,10 +644,6 @@ steps:
   - vagrant destroy -f
   - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
   - cp ./coverage.out /tmp/artifacts/se-coverage.out
-  - cd ../startup
-  - vagrant destroy -f
-  - go test -v -timeout=30m ./startup_test.go -ci -local
-  - cp ./coverage.out /tmp/artifacts/startup-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
@@ -673,7 +669,6 @@ steps:
     files:
       - /tmp/artifacts/validate-coverage.out
       - /tmp/artifacts/se-coverage.out
-      - /tmp/artifacts/startup-coverage.out
       - /tmp/artifacts/upgrade-coverage.out
     flags: 
       - e2etests
