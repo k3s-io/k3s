@@ -25,8 +25,8 @@ def provision(vm, role, role_num, node_num)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
   
-  vm.provision "shell", inline: "ping -c 2 k3s.io"
-  
+
+
   if role.include?("server")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "

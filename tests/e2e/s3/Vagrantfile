@@ -24,8 +24,6 @@ def provision(vm, role, role_num, node_num)
 
   defaultOSConfigure(vm)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
-  
-  vm.provision "shell", inline: "ping -c 2 k3s.io"
 
   runS3mock = <<~'SCRIPT'
     docker run -p 9090:9090 -p 9191:9191 -d -e initialBuckets=test -e debug=true -t adobe/s3mock
