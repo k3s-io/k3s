@@ -51,6 +51,7 @@ func main() {
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
 		cmds.NewCheckConfigCommand(externalCLIAction("check-config", dataDir)),
+		cmds.NewKillAllCommand(externalCLIAction("test", dataDir)),
 		cmds.NewTokenCommands(
 			tokenCommand,
 			tokenCommand,
