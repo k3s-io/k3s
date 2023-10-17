@@ -111,11 +111,11 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	}
 	// Bring up the first server node
 	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
-
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
 	}
+
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
@@ -170,17 +170,21 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	}
 	testOptions += " E2E_RELEASE_VERSION=skip"
 
-	// Bring up the all of the nodes in parallel
+	// Provision the first server node. In GitHub Actions, this also imports the VM image into libvirt, which
+	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
+	cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
+	fmt.Println(cmd)
+	if _, err := RunCommand(cmd); err != nil {
+		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
+	}
+
+	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
-	for i, node := range append(serverNodeNames, agentNodeNames...) {
-		if i == 0 {
-			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, node)
-		} else {
-			cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
-		}
+	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
-				return fmt.Errorf("failed initializing nodes: %s: %v", cmd, err)
+				return newNodeError(cmd, node, err)
 			}
 			return nil
 		})
@@ -190,10 +194,10 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	if err := errg.Wait(); err != nil {
 		return nil, nil, err
 	}
+
 	if err := scpK3sBinary(append(serverNodeNames, agentNodeNames...)); err != nil {
 		return nil, nil, err
 	}
-
 	// Install K3s on all nodes in parallel
 	errg, _ = errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodeNames, agentNodeNames...) {
@@ -467,6 +471,9 @@ func RunCommand(cmd string) (string, error) {
 		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
 	}
 	out, err := c.CombinedOutput()
+	if err != nil {
+		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
+	}
 	return string(out), err
 }
 
