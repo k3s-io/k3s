@@ -25,13 +25,13 @@ jobs:
   test:
     name: "Smoke Test"
     needs: build
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         vm: [centos-7, rocky-8, rocky-9, fedora, opensuse-leap, ubuntu-2004, ubuntu-2204]
-      max-parallel: 2
+      max-parallel: 3
     defaults:
       run:
         working-directory: tests/install/${{ matrix.vm }}
@@ -42,51 +42,61 @@ jobs:
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.vagrant.d/boxes
-            ~/.vagrant.d/gems
+            /root/.vagrant.d/boxes
+            /root/.vagrant.d/gems
           key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
         id: vagrant-cache
         continue-on-error: true
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Plugin(s)"
-        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+        run: sudo vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: "Download k3s binary"
         uses: actions/download-artifact@v3
         with:
           name: k3s
           path: tests/install/${{ matrix.vm }}
       - name: "Vagrant Up"
-        run: vagrant up --no-provision
-      - name: "Upload k3s binary"
+        run: sudo vagrant up --no-provision
+      - name: "Upload k3s binary to VM"
         run: |
           chmod +x k3s
-          vagrant scp k3s /tmp/k3s
-          vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
-          vagrant provision --provision-with=k3s-upload
+          sudo vagrant scp k3s /tmp/k3s
+          sudo vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
+          sudo vagrant provision --provision-with=k3s-upload
       - name: Add binary to PATH
         if: matrix.vm == 'centos-7' || matrix.vm == 'rocky-8' || matrix.vm == 'rocky-9'
-        run: vagrant provision --provision-with=add-bin-path
+        run: sudo vagrant provision --provision-with=add-bin-path
       - name: "⏩ Install K3s"
         run: |
-          vagrant provision --provision-with=k3s-prepare
-          vagrant provision --provision-with=k3s-install
+          sudo vagrant provision --provision-with=k3s-prepare
+          sudo vagrant provision --provision-with=k3s-install
           if [ ${{ matrix.vm }} = 'opensuse-microos' ]; then vagrant reload --no-provision; fi
       - name: "⏳ Node"
-        run: vagrant provision --provision-with=k3s-wait-for-node
+        run: sudo vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"
-        run: vagrant provision --provision-with=k3s-wait-for-coredns
+        run: sudo vagrant provision --provision-with=k3s-wait-for-coredns
       - name: "⏳ Local Storage"
-        run: vagrant provision --provision-with=k3s-wait-for-local-storage
+        run: sudo vagrant provision --provision-with=k3s-wait-for-local-storage
         continue-on-error: true
       - name: "⏳ Metrics Server"
-        run: vagrant provision --provision-with=k3s-wait-for-metrics-server
+        run: sudo vagrant provision --provision-with=k3s-wait-for-metrics-server
         continue-on-error: true
       - name: "⏳ Traefik"
-        run: vagrant provision --provision-with=k3s-wait-for-traefik
+        run: sudo vagrant provision --provision-with=k3s-wait-for-traefik
         continue-on-error: true
       - name: "k3s-status"
-        run: vagrant provision --provision-with=k3s-status
+        run: sudo vagrant provision --provision-with=k3s-status
       - name: "k3s-procps"
-        run: vagrant provision --provision-with=k3s-procps
+        run: sudo vagrant provision --provision-with=k3s-procps
+      - name: Cleanup VM
+        run: sudo vagrant destroy -f
+      - name: On Failure, launch debug session
+        uses: lhotari/action-upterm@v1
+        if: ${{ failure() }}
+        with:
+          ## If no one connects after 5 minutes, shut down server.
+          wait-timeout-minutes: 5

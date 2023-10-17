@@ -10,7 +10,7 @@ permissions:
 jobs:
   test:
     name: "Smoke Test"
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -32,14 +32,16 @@ jobs:
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.vagrant.d/boxes
-            ~/.vagrant.d/gems
+            /root/.vagrant.d/boxes
+            /root/.vagrant.d/gems
           key: install-${{ matrix.vm }}-${{ hashFiles('tests/install/${{ matrix.vm }}/Vagrantfile') }}
         id: vagrant-cache
         continue-on-error: true
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup.yaml
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up ⏩ Install K3s"
