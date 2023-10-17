@@ -313,6 +313,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
 		"bind-address":                 cfg.Loopback(false),
+		"feature-gates":                "CloudDualStackNodeIPs=true",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
