@@ -123,12 +123,21 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
-	if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
+	// If the embedded CCM is disabled, don't assume that dual-stack node IPs are safe.
+	// When using an external CCM, the user wants dual-stack node IPs, they will need to set the node-ip kubelet arg directly.
+	// This should be fine since most cloud providers have their own way of finding node IPs that doesn't depend on the kubelet
+	// setting them.
+	if cfg.DisableCCM {
 		dualStack, err := utilsnet.IsDualStackIPs(cfg.NodeIPs)
-		if err == nil && dualStack {
-			argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "CloudDualStackNodeIPs=true")
+		if err == nil && !dualStack {
+			argsMap["node-ip"] = cfg.NodeIP
 		}
-		argsMap["node-ip"] = nodeIPs
+	} else {
+		// Cluster is using the embedded CCM, we know that the feature-gate will be enabled there as well.
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "CloudDualStackNodeIPs=true")
+		if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
+			argsMap["node-ip"] = util.JoinIPs(cfg.NodeIPs)
+		}
 	}
 	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
 	if !controllers["cpu"] {
