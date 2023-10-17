@@ -29,8 +29,7 @@ jobs:
   test:
     name: "Smoke Test"
     needs: build
-    # nested virtualization is only available on macOS hosts
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -51,23 +50,25 @@ jobs:
         uses: actions/download-artifact@v3
         with: { name: k3s, path: dist/artifacts/ }
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.vagrant.d/boxes
-            ~/.vagrant.d/gems
+            /root/.vagrant.d/boxes
+            /root/.vagrant.d/gems
           key: vagrant-box-${{ matrix.vm }}
         id: vagrant-cache
         continue-on-error: true
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Plugin(s)"
-        run: vagrant plugin install vagrant-k3s
+        run: sudo vagrant plugin install vagrant-k3s
       - name: "Vagrant Up ⏩ Install K3s"
-        run: vagrant up
+        run: sudo vagrant up
       - name: "⏳ Node"
-        run: vagrant provision --provision-with=k3s-wait-for-node
+        run: sudo vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"
-        run: vagrant provision --provision-with=k3s-wait-for-coredns
+        run: sudo vagrant provision --provision-with=k3s-wait-for-coredns
       - name: "k3s-status" # kubectl get node,all -A -o wide
-        run: vagrant provision --provision-with=k3s-status
+        run: sudo vagrant provision --provision-with=k3s-status
       - name: "k3s-snapshots" # if no snapshots then we fail
-        run: vagrant provision --provision-with=k3s-snapshots
+        run: sudo vagrant provision --provision-with=k3s-snapshots
