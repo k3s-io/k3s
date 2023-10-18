@@ -32,6 +32,7 @@ const (
 
 var (
 	snapshotConfigMapName = version.Program + "-etcd-snapshots"
+	errNotReconciled      = errors.New("no nodes have reconciled ETCDSnapshotFile resources")
 )
 
 type etcdSnapshotHandler struct {
@@ -58,7 +59,13 @@ func registerSnapshotHandlers(ctx context.Context, etcd *ETCD) {
 
 func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*apisv1.ETCDSnapshotFile, error) {
 	if key == reconcileKey {
-		return nil, e.reconcile()
+		err := e.reconcile()
+		if err == errNotReconciled {
+			logrus.Debugf("Failed to reconcile snapshot ConfigMap: %v, requeuing", err)
+			e.snapshots.Enqueue(key)
+			return nil, nil
+		}
+		return nil, err
 	}
 	if esf == nil || !esf.DeletionTimestamp.IsZero() {
 		return nil, nil
@@ -190,7 +197,7 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	}
 
 	if len(syncedNodes) == 0 {
-		return errors.New("no nodes have reconciled ETCDSnapshotFile resources")
+		return errNotReconciled
 	}
 
 	// Get a list of existing snapshots
