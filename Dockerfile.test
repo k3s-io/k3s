@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.20.8-alpine3.18
+ARG GOLANG=golang:1.20.10-alpine3.18
 FROM ${GOLANG} as test-base
 
 RUN apk -U --no-cache add bash jq
@@ -44,7 +44,7 @@ RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
     chmod +x ./kubectl; \
     mv ./kubectl /usr/local/bin/kubectl
-RUN GO_VERSION=go1.20.8; \
+RUN GO_VERSION=go1.20.10; \
     curl -O -L "https://golang.org/dl/${GO_VERSION}.linux-amd64.tar.gz"; \
     rm -rf /usr/local/go; \
     tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz;
