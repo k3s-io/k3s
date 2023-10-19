@@ -87,7 +87,7 @@ func registerCrds(ctx context.Context, config *Config, restConfig *rest.Config) 
 
 func crds(config *Config) []crd.CRD {
 	defaultCrds := addoncrd.List()
-	if config == nil || !config.ControlConfig.DisableHelmController {
+	if !config.ControlConfig.DisableHelmController {
 		defaultCrds = append(defaultCrds, helmcrd.List()...)
 	}
 	return defaultCrds
