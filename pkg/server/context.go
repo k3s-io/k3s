@@ -38,7 +38,11 @@ func (c *Context) Start(ctx context.Context) error {
 	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
-func NewContext(ctx context.Context, serverConfig *Config, cfg string, forServer bool) (*Context, error) {
+func NewContext(ctx context.Context, config *Config, forServer bool) (*Context, error) {
+	cfg := config.ControlConfig.Runtime.KubeConfigAdmin
+	if forServer {
+		cfg = config.ControlConfig.Runtime.KubeConfigSupervisor
+	}
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
 		return nil, err
@@ -53,7 +57,7 @@ func NewContext(ctx context.Context, serverConfig *Config, cfg string, forServer
 	var recorder record.EventRecorder
 	if forServer {
 		recorder = util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll)
-		if err := registerCrds(ctx, serverConfig, restConfig); err != nil {
+		if err := registerCrds(ctx, config, restConfig); err != nil {
 			return nil, errors.Wrap(err, "failed to register CRDs")
 		}
 	}
@@ -70,20 +74,20 @@ func NewContext(ctx context.Context, serverConfig *Config, cfg string, forServer
 	}, nil
 }
 
-func registerCrds(ctx context.Context, serverConfig *Config, restConfig *rest.Config) error {
+func registerCrds(ctx context.Context, config *Config, restConfig *rest.Config) error {
 	factory, err := crd.NewFactoryFromClient(restConfig)
 	if err != nil {
 		return err
 	}
 
-	factory.BatchCreateCRDs(ctx, crds(serverConfig)...)
+	factory.BatchCreateCRDs(ctx, crds(config)...)
 
 	return factory.BatchWait()
 }
 
-func crds(serverConfig *Config) []crd.CRD {
+func crds(config *Config) []crd.CRD {
 	defaultCrds := addoncrd.List()
-	if serverConfig == nil || !serverConfig.ControlConfig.DisableHelmController {
+	if config == nil || !config.ControlConfig.DisableHelmController {
 		defaultCrds = append(defaultCrds, helmcrd.List()...)
 	}
 	return defaultCrds

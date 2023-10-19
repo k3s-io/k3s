@@ -97,7 +97,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := NewContext(ctx, config, controlConfig.Runtime.KubeConfigSupervisor, true)
+	sc, err := NewContext(ctx, config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to create new server context")
 	}
