@@ -86,7 +86,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, config *server.Config) (*e
 		return nil, fmt.Errorf("etcd database not found in %s", config.ControlConfig.DataDir)
 	}
 
-	sc, err := server.NewContext(ctx, config.ControlConfig.Runtime.KubeConfigAdmin, false)
+	sc, err := server.NewContext(ctx, config, config.ControlConfig.Runtime.KubeConfigAdmin, false)
 	if err != nil {
 		return nil, err
 	}

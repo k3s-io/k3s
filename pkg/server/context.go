@@ -38,7 +38,7 @@ func (c *Context) Start(ctx context.Context) error {
 	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
-func NewContext(ctx context.Context, cfg string, forServer bool) (*Context, error) {
+func NewContext(ctx context.Context, serverConfig *Config, cfg string, forServer bool) (*Context, error) {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func NewContext(ctx context.Context, cfg string, forServer bool) (*Context, erro
 	var recorder record.EventRecorder
 	if forServer {
 		recorder = util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll)
-		if err := crds(ctx, restConfig); err != nil {
+		if err := registerCrds(ctx, serverConfig, restConfig); err != nil {
 			return nil, errors.Wrap(err, "failed to register CRDs")
 		}
 	}
@@ -70,14 +70,21 @@ func NewContext(ctx context.Context, cfg string, forServer bool) (*Context, erro
 	}, nil
 }
 
-func crds(ctx context.Context, config *rest.Config) error {
-	factory, err := crd.NewFactoryFromClient(config)
+func registerCrds(ctx context.Context, serverConfig *Config, restConfig *rest.Config) error {
+	factory, err := crd.NewFactoryFromClient(restConfig)
 	if err != nil {
 		return err
 	}
 
-	types := append(helmcrd.List(), addoncrd.List()...)
-	factory.BatchCreateCRDs(ctx, types...)
+	factory.BatchCreateCRDs(ctx, crds(serverConfig)...)
 
 	return factory.BatchWait()
+}
+
+func crds(serverConfig *Config) []crd.CRD {
+	defaultCrds := addoncrd.List()
+	if serverConfig == nil || !serverConfig.ControlConfig.DisableHelmController {
+		defaultCrds = append(defaultCrds, helmcrd.List()...)
+	}
+	return defaultCrds
 }
