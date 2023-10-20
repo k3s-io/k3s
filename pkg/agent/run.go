@@ -30,15 +30,16 @@ import (
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -336,38 +337,30 @@ func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typ
 			return false, errors.New("event object not of type v1.Node")
 		}
 
-		updateNode := false
-		if labels, changed := updateMutableLabels(agentConfig, node.Labels); changed {
-			node.Labels = labels
-			updateNode = true
-		}
+		patch := jsonpatch.NewBuilder()
+		updateMutableLabels(agentConfig, node, patch)
 
 		if !agentConfig.DisableCCM {
-			if annotations, changed := updateAddressAnnotations(nodeConfig, node.Annotations); changed {
-				node.Annotations = annotations
-				updateNode = true
-			}
-			if labels, changed := updateLegacyAddressLabels(agentConfig, node.Labels); changed {
-				node.Labels = labels
-				updateNode = true
-			}
+			updateAddressAnnotations(nodeConfig, node, patch)
+			updateLegacyAddressLabels(agentConfig, node, patch)
 		}
 
 		// inject node config
-		if changed, err := nodeconfig.SetNodeConfigAnnotations(nodeConfig, node); err != nil {
+		if err := nodeconfig.SetNodeConfigAnnotations(nodeConfig, node, patch); err != nil {
 			return false, err
-		} else if changed {
-			updateNode = true
 		}
 
-		if changed, err := nodeconfig.SetNodeConfigLabels(nodeConfig, node); err != nil {
+		if err := nodeconfig.SetNodeConfigLabels(nodeConfig, node, patch); err != nil {
 			return false, err
-		} else if changed {
-			updateNode = true
 		}
 
-		if updateNode {
-			if _, err := nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
+		if patch.Len() > 0 {
+			b, err := patch.Marshal()
+			if err != nil {
+				return false, err
+			}
+
+			if _, err := nodes.Patch(ctx, node.Name, types.JSONPatchType, b, metav1.PatchOptions{}); err != nil {
 				logrus.Infof("Failed to set annotations and labels on node %s: %v", agentConfig.NodeName, err)
 				return false, nil
 			}
@@ -384,66 +377,58 @@ func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typ
 	return nil
 }
 
-func updateMutableLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
-	result := map[string]string{}
-
+func updateMutableLabels(agentConfig *daemonconfig.Agent, node *v1.Node, patch jsonpatch.PatchBuilder) {
+	ls := labels.Set(node.Labels)
+	patch = patch.WithPath("metadata", "labels")
 	for _, m := range agentConfig.NodeLabels {
-		var (
-			v string
-			p = strings.SplitN(m, `=`, 2)
-			k = p[0]
-		)
-		if len(p) > 1 {
-			v = p[1]
-		}
-		result[k] = v
+		k, v, _ := strings.Cut(m, "=")
+		patch.AddIfNotEqual(ls, k, v)
 	}
-	result = labels.Merge(nodeLabels, result)
-	return result, !equality.Semantic.DeepEqual(nodeLabels, result)
 }
 
-func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[string]string) (map[string]string, bool) {
-	ls := labels.Set(nodeLabels)
+func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, node *v1.Node, patch jsonpatch.PatchBuilder) {
+	ls := labels.Set(node.Labels)
+	patch = patch.WithPath("metadata", "labels")
 	if ls.Has(cp.InternalIPKey) || ls.Has(cp.HostnameKey) {
-		result := map[string]string{
-			cp.InternalIPKey: agentConfig.NodeIP,
-			cp.HostnameKey:   agentConfig.NodeName,
-		}
+		patch.AddIfNotEqual(ls, cp.InternalIPKey, agentConfig.NodeIP)
+		patch.AddIfNotEqual(ls, cp.HostnameKey, agentConfig.NodeName)
 
-		if agentConfig.NodeExternalIP != "" {
-			result[cp.ExternalIPKey] = agentConfig.NodeExternalIP
+		if agentConfig.NodeExternalIP == "" {
+			patch.RemoveIfHas(ls, cp.ExternalIPKey)
+		} else {
+			patch.AddIfNotEqual(ls, cp.ExternalIPKey, agentConfig.NodeExternalIP)
 		}
-
-		result = labels.Merge(nodeLabels, result)
-		return result, !equality.Semantic.DeepEqual(nodeLabels, result)
 	}
-	return nil, false
 }
 
 // updateAddressAnnotations updates the node annotations with important information about IP addresses of the node
-func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map[string]string) (map[string]string, bool) {
+func updateAddressAnnotations(nodeConfig *daemonconfig.Node, node *v1.Node, patch jsonpatch.PatchBuilder) {
 	agentConfig := &nodeConfig.AgentConfig
-	result := map[string]string{
-		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
-		cp.HostnameKey:   agentConfig.NodeName,
-	}
+	ls := labels.Set(node.Annotations)
+	patch = patch.WithPath("metadata", "annotations")
 
-	if agentConfig.NodeExternalIP != "" {
-		result[cp.ExternalIPKey] = util.JoinIPs(agentConfig.NodeExternalIPs)
+	nodeIPs := util.JoinIPs(agentConfig.NodeIPs)
+	patch.AddIfNotEqual(ls, cp.InternalIPKey, nodeIPs)
+	patch.AddIfNotEqual(ls, cp.HostnameKey, agentConfig.NodeName)
+
+	if agentConfig.NodeExternalIP == "" {
+		patch.RemoveIfHas(ls, cp.ExternalIPKey)
+		patch.RemoveIfHas(ls, flannel.FlannelExternalIPv4Annotation)
+		patch.RemoveIfHas(ls, flannel.FlannelExternalIPv6Annotation)
+	} else {
+		nodeExternalIPs := util.JoinIPs(agentConfig.NodeExternalIPs)
+		patch.AddIfNotEqual(ls, cp.ExternalIPKey, nodeExternalIPs)
 		if nodeConfig.FlannelExternalIP {
 			for _, ipAddress := range agentConfig.NodeExternalIPs {
+				s := ipAddress.String()
 				if utilsnet.IsIPv4(ipAddress) {
-					result[flannel.FlannelExternalIPv4Annotation] = ipAddress.String()
-				}
-				if utilsnet.IsIPv6(ipAddress) {
-					result[flannel.FlannelExternalIPv6Annotation] = ipAddress.String()
+					patch.AddIfNotEqual(ls, flannel.FlannelExternalIPv4Annotation, s)
+				} else if utilsnet.IsIPv6(ipAddress) {
+					patch.AddIfNotEqual(ls, flannel.FlannelExternalIPv6Annotation, s)
 				}
 			}
 		}
 	}
-
-	result = labels.Merge(nodeAnnotations, result)
-	return result, !equality.Semantic.DeepEqual(nodeAnnotations, result)
 }
 
 // setupTunnelAndRunAgent should start the setup tunnel before starting kubelet and kubeproxy

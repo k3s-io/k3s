@@ -10,9 +10,11 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -74,57 +76,45 @@ func getNodeEnv() (string, error) {
 // environment variables as annotations on the node object. It also stores a
 // hash of the combined args + variables. These are used by other components
 // to determine if the node configuration has been changed.
-func SetNodeConfigAnnotations(nodeConfig *config.Node, node *corev1.Node) (bool, error) {
+func SetNodeConfigAnnotations(nodeConfig *config.Node, node *corev1.Node, patch jsonpatch.PatchBuilder) error {
+	ls := labels.Set(node.Annotations)
+	patch = patch.WithPath("metadata", "annotations")
 	nodeArgs, err := getNodeArgs()
 	if err != nil {
-		return false, err
+		return err
 	}
 	nodeEnv, err := getNodeEnv()
 	if err != nil {
-		return false, err
+		return err
 	}
 	h := sha256.New()
 	_, err = h.Write([]byte(nodeArgs + nodeEnv))
 	if err != nil {
-		return false, fmt.Errorf("Failed to hash the node config: %v", err)
-	}
-	if node.Annotations == nil {
-		node.Annotations = make(map[string]string)
+		return fmt.Errorf("Failed to hash the node config: %v", err)
 	}
 	configHash := h.Sum(nil)
 	encoded := base32.StdEncoding.EncodeToString(configHash[:])
-	if node.Annotations[NodeConfigHashAnnotation] == encoded {
-		return false, nil
-	}
 
-	node.Annotations[NodeEnvAnnotation] = nodeEnv
-	node.Annotations[NodeArgsAnnotation] = nodeArgs
-	node.Annotations[NodeConfigHashAnnotation] = encoded
-	return true, nil
+	patch.AddIfNotEqual(ls, NodeEnvAnnotation, nodeEnv)
+	patch.AddIfNotEqual(ls, NodeArgsAnnotation, nodeArgs)
+	patch.AddIfNotEqual(ls, NodeConfigHashAnnotation, encoded)
+	return nil
 }
 
 // SetNodeConfigLabels adds labels for functionality flags
 // that may not be present on down-level or up-level nodes.
 // These labels are used by other components to determine whether
 // or not a node supports particular functionality.
-func SetNodeConfigLabels(nodeConfig *config.Node, node *corev1.Node) (bool, error) {
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
-	}
-	_, hasLabel := node.Labels[ClusterEgressLabel]
+func SetNodeConfigLabels(nodeConfig *config.Node, node *corev1.Node, patch jsonpatch.PatchBuilder) error {
+	ls := labels.Set(node.Labels)
+	patch = patch.WithPath("metadata", "labels")
 	switch nodeConfig.EgressSelectorMode {
 	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
-		if !hasLabel {
-			node.Labels[ClusterEgressLabel] = "true"
-			return true, nil
-		}
+		patch.AddIfNotEqual(ls, ClusterEgressLabel, "true")
 	default:
-		if hasLabel {
-			delete(node.Labels, ClusterEgressLabel)
-			return true, nil
-		}
+		patch.RemoveIfHas(ls, ClusterEgressLabel)
 	}
-	return false, nil
+	return nil
 }
 
 func isSecret(key string) bool {
