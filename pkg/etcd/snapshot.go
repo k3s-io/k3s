@@ -22,6 +22,7 @@ import (
 	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
@@ -874,21 +875,11 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 
 	// Update our Node object to note the timestamp of the snapshot storages that have been reconciled
 	now := time.Now().Round(time.Second).Format(time.RFC3339)
-	patch := []map[string]string{
-		{
-			"op":    "add",
-			"value": now,
-			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationLocalReconciled, "/", "~1"),
-		},
-	}
+	patch := jsonpatch.NewBuilder().Add(now, "metadata", "annotations", annotationLocalReconciled)
 	if e.config.EtcdS3 {
-		patch = append(patch, map[string]string{
-			"op":    "add",
-			"value": now,
-			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationS3Reconciled, "/", "~1"),
-		})
+		patch.Add(now, "metadata", "annotations", annotationS3Reconciled)
 	}
-	b, err := json.Marshal(patch)
+	b, err := patch.Marshal()
 	if err != nil {
 		return err
 	}
