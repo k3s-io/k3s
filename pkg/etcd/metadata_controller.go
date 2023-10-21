@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func registerMetadataHandlers(ctx context.Context, etcd *ETCD) {
@@ -66,24 +67,22 @@ func (m *metadataHandler) checkReset() {
 			logrus.Errorf("Failed to list etcd nodes: %v", err)
 			return
 		}
-		for _, n := range nodes.Items {
-			node := &n
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				_, remove := node.Annotations[removalAnnotation]
-				_, removed := node.Annotations[removedNodeNameAnnotation]
-				if remove || removed {
-					node = node.DeepCopy()
-					delete(node.Annotations, removalAnnotation)
-					delete(node.Annotations, removedNodeNameAnnotation)
-					node, err = m.nodeController.Update(node)
-					return err
+		for _, node := range nodes.Items {
+			ls := labels.Set(node.Annotations)
+			patch := jsonpatch.NewBuilder("metadata", "annotations").
+				RemoveIfHas(ls, removalAnnotation).
+				RemoveIfHas(ls, removedNodeNameAnnotation)
+			if patch.Len() > 0 {
+				b, err := patch.Marshal()
+				if err != nil {
+					logrus.Errorf("Failed to marshal JSON patch: %v", err)
+					continue
 				}
-				return nil
-			})
-			if err != nil {
-				logrus.Errorf("Failed to clear removal annotations from node %s after cluster reset: %v", node.Name, err)
-			} else {
-				logrus.Infof("Cleared etcd member removal annotations from node %s after cluster reset", node.Name)
+				if _, err = m.nodeController.Patch(node.Name, types.JSONPatchType, b); err != nil {
+					logrus.Errorf("Failed to clear removal annotations from node %s after cluster reset: %v", node.Name, err)
+				} else {
+					logrus.Infof("Cleared etcd member removal annotations from node %s after cluster reset", node.Name)
+				}
 			}
 		}
 		if err := m.etcd.clearReset(); err != nil {
@@ -94,46 +93,40 @@ func (m *metadataHandler) checkReset() {
 
 func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	if m.etcd.config.DisableETCD {
-		if node.Annotations[NodeNameAnnotation] == "" &&
-			node.Annotations[NodeAddressAnnotation] == "" &&
-			node.Labels[util.ETCDRoleLabelKey] == "" {
-			return node, nil
+		patch := jsonpatch.NewBuilder()
+		ls := labels.Set(node.Annotations)
+		patch.WithPath("metadata", "annotations").
+			RemoveIfHas(ls, NodeNameAnnotation).
+			RemoveIfHas(ls, NodeAddressAnnotation)
+		ls = labels.Set(node.Labels)
+		patch.WithPath("metadata", "labels").
+			RemoveIfHas(ls, util.ETCDRoleLabelKey)
+		if patch.Len() > 0 {
+			b, err := patch.Marshal()
+			if err != nil {
+				return node, err
+			}
+			return m.nodeController.Patch(node.Name, types.JSONPatchType, b)
 		}
-
-		node = node.DeepCopy()
-		if node.Annotations == nil {
-			node.Annotations = map[string]string{}
-		}
-		if node.Labels == nil {
-			node.Labels = map[string]string{}
-		}
-
-		delete(node.Annotations, NodeNameAnnotation)
-		delete(node.Annotations, NodeAddressAnnotation)
-		delete(node.Labels, util.ETCDRoleLabelKey)
-
-		return m.nodeController.Update(node)
+		return node, nil
 	}
 
 	m.once.Do(m.checkReset)
 
-	if node.Annotations[NodeNameAnnotation] == m.etcd.name &&
-		node.Annotations[NodeAddressAnnotation] == m.etcd.address &&
-		node.Labels[util.ETCDRoleLabelKey] == "true" {
-		return node, nil
+	patch := jsonpatch.NewBuilder()
+	ls := labels.Set(node.Annotations)
+	patch.WithPath("metadata", "annotations").
+		AddIfNotEqual(ls, NodeNameAnnotation, m.etcd.name).
+		AddIfNotEqual(ls, NodeAddressAnnotation, m.etcd.address)
+	ls = labels.Set(node.Labels)
+	patch.WithPath("metadata", "labels").
+		AddIfNotEqual(ls, util.ETCDRoleLabelKey, "true")
+	if patch.Len() > 0 {
+		b, err := patch.Marshal()
+		if err != nil {
+			return node, err
+		}
+		return m.nodeController.Patch(node.Name, types.JSONPatchType, b)
 	}
-
-	node = node.DeepCopy()
-	if node.Annotations == nil {
-		node.Annotations = map[string]string{}
-	}
-	if node.Labels == nil {
-		node.Labels = map[string]string{}
-	}
-
-	node.Annotations[NodeNameAnnotation] = m.etcd.name
-	node.Annotations[NodeAddressAnnotation] = m.etcd.address
-	node.Labels[util.ETCDRoleLabelKey] = "true"
-
-	return m.nodeController.Update(node)
+	return node, nil
 }

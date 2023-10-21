@@ -18,10 +18,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
@@ -274,21 +276,22 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	server.EncryptForce = force
 	server.EncryptSkip = skip
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
 
 	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
 	if err != nil {
 		return err
 	}
+
 	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
-	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
-	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
+	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, secretsencrypt.EncryptionHashAnnotation)
+	b, err := patch.Marshal()
+	if err != nil {
 		return err
 	}
-	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
+		return err
+	}
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	return nil
 }
 
@@ -334,21 +337,22 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 
 func setReencryptAnnotation(server *config.Control) error {
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
 
 	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
 	if err != nil {
 		return err
 	}
+
 	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
-	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
-	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
+	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, secretsencrypt.EncryptionHashAnnotation)
+	b, err := patch.Marshal()
+	if err != nil {
 		return err
 	}
-	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
+		return err
+	}
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	return nil
 }
 

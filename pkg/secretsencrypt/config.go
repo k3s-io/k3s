@@ -9,11 +9,14 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	"github.com/k3s-io/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 )
 
@@ -149,12 +152,12 @@ func getEncryptionHashFile(runtime *config.ControlRuntime) (string, error) {
 	return string(curEncryptionByte), nil
 }
 
-func BootstrapEncryptionHashAnnotation(node *corev1.Node, runtime *config.ControlRuntime) error {
+func BootstrapEncryptionHashAnnotation(node *corev1.Node, runtime *config.ControlRuntime, patch jsonpatch.PatchBuilder) error {
 	existingAnn, err := getEncryptionHashFile(runtime)
 	if err != nil {
 		return err
 	}
-	node.Annotations[EncryptionHashAnnotation] = existingAnn
+	patch.WithPath("metadata", "annotations").AddIfNotEqual(labels.Set(node.Annotations), EncryptionHashAnnotation, existingAnn)
 	return nil
 }
 
@@ -163,13 +166,16 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 	if err != nil {
 		return err
 	}
-	if node.Annotations == nil {
-		return fmt.Errorf("node annotations do not exist for %s", node.ObjectMeta.Name)
-	}
 	ann := stage + "-" + encryptionConfigHash
-	node.Annotations[EncryptionHashAnnotation] = ann
-	if _, err = runtime.Core.Core().V1().Node().Update(node); err != nil {
-		return err
+	patch := jsonpatch.NewBuilder("metadata", "annotations").AddIfNotEqual(labels.Set(node.Annotations), EncryptionHashAnnotation, ann)
+	if patch.Len() > 0 {
+		b, err := patch.Marshal()
+		if err != nil {
+			return err
+		}
+		if _, err = runtime.Core.Core().V1().Node().Patch(node.Name, types.JSONPatchType, b); err != nil {
+			return err
+		}
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
 	return os.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)

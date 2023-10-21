@@ -8,6 +8,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/jsonpatch"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +21,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -92,16 +92,13 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	}
 	ann = EncryptionReencryptActive + "-" + reencryptHash
 
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		node.Annotations[EncryptionHashAnnotation] = ann
-		_, err = h.nodes.Update(node)
-		return err
-	})
+	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, EncryptionHashAnnotation)
+	b, err := patch.Marshal()
 	if err != nil {
+		return node, err
+	}
+
+	if _, err := h.nodes.Patch(nodeName, types.JSONPatchType, b); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
@@ -113,15 +110,15 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 
 	// If skipping, revert back to the previous stage
 	if h.controlConfig.EncryptSkip {
-		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
+		patch := jsonpatch.NewBuilder()
+		BootstrapEncryptionHashAnnotation(node, h.controlConfig.Runtime, patch)
+		if patch.Len() > 0 {
+			b, err := patch.Marshal()
 			if err != nil {
-				return err
+				return node, err
 			}
-			BootstrapEncryptionHashAnnotation(node, h.controlConfig.Runtime)
-			_, err = h.nodes.Update(node)
-			return err
-		})
+			_, err = h.nodes.Patch(node.Name, types.JSONPatchType, b)
+		}
 		return node, err
 	}
 
@@ -142,14 +139,7 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		return WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished)
-	})
-	if err != nil {
+	if err = WriteEncryptionHashAnnotation(h.controlConfig.Runtime, node, EncryptionReencryptFinished); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
