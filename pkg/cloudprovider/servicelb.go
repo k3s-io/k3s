@@ -285,7 +285,10 @@ func (k *k3s) getStatus(svc *core.Service) (*core.LoadBalancerStatus, error) {
 		return nil, err
 	}
 
-	sort.Strings(expectedIPs)
+	expectedIPs, err = filterByIPFamily(expectedIPs, svc)
+	if err != nil {
+		return nil, err
+	}
 
 	loadbalancer := &core.LoadBalancerStatus{}
 	for _, ip := range expectedIPs {
@@ -392,6 +395,9 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 			ipv6Addresses = append(ipv6Addresses, ip)
 		}
 	}
+
+	sort.Strings(ipv4Addresses)
+	sort.Strings(ipv6Addresses)
 
 	for _, ipFamily := range svc.Spec.IPFamilies {
 		switch ipFamily {
