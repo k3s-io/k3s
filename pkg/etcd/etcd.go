@@ -25,6 +25,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
 	endpoint2 "github.com/k3s-io/kine/pkg/endpoint"
@@ -41,9 +42,15 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	nodeHelper "k8s.io/component-helpers/node/util"
+	nodeUtil "k8s.io/kubernetes/pkg/controller/util/node"
 )
 
 const (
@@ -1048,16 +1055,53 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			continue
 		}
 
+		nodes, err := e.getETCDNodes()
+		if err != nil {
+			logrus.Errorf("Error while listing nodes with etcd status: %v", err)
+			continue
+		}
+
+		client, err := util.GetClientSet(e.config.Runtime.KubeConfigSupervisor)
+		if err != nil {
+			logrus.Errorf("Failed to get k8s client for patch node status condition: %v", err)
+			continue
+		}
+
 		for _, member := range members.Members {
 			if member.IsLearner {
 				if err := e.trackLearnerProgress(ctx, progress, member); err != nil {
 					logrus.Errorf("Failed to track learner progress towards promotion: %v", err)
 				}
+
+				for _, node := range nodes.Items {
+					if strings.HasPrefix(member.Name, node.Name+"-") {
+						_, _, err := e.setEtcdStatusCondition(&node, client.CoreV1(), member.Name, false)
+						if err != nil {
+							logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
+						}
+					}
+				}
+
 				break
+			}
+
+			for _, node := range nodes.Items {
+				if strings.HasPrefix(member.Name, node.Name+"-") {
+					_, _, err := e.setEtcdStatusCondition(&node, client.CoreV1(), member.Name, true)
+					if err != nil {
+						logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
+					}
+				}
 			}
 		}
 	}
-	return
+}
+
+func (e *ETCD) getETCDNodes() (*v1.NodeList, error) {
+	nodes := e.config.Runtime.Core.Core().V1().Node()
+	etcdSelector := labels.Set{util.ETCDRoleLabelKey: "true"}
+
+	return nodes.List(metav1.ListOptions{LabelSelector: etcdSelector.String()})
 }
 
 // trackLearnerProcess attempts to promote a learner. If it cannot be promoted, progress through the raft index is tracked.
@@ -1114,6 +1158,48 @@ func (e *ETCD) trackLearnerProgress(ctx context.Context, progress *learnerProgre
 	}
 
 	return e.setLearnerProgress(ctx, progress)
+}
+
+func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client corev1.CoreV1Interface, memberName string, promoted bool) (*v1.Node, []byte, error) {
+	etcdStatusType := v1.NodeConditionType("EtcdIsVoter")
+
+	var newCondition v1.NodeCondition
+	if promoted {
+		newCondition = v1.NodeCondition{
+			Type:    etcdStatusType,
+			Status:  "True",
+			Reason:  "MemberNotLearner",
+			Message: "Node is a voting member of the etcd cluster",
+		}
+	} else {
+		newCondition = v1.NodeCondition{
+			Type:    etcdStatusType,
+			Status:  "False",
+			Reason:  "MemberIsLearner",
+			Message: "Node has not been promoted to voting member of the etcd cluster",
+		}
+	}
+
+	updatedNode := *node
+	if find, condition := nodeUtil.GetNodeCondition(&updatedNode.Status, etcdStatusType); find >= 0 {
+		if condition.Status == newCondition.Status {
+			logrus.Debugf("Member %s is not changing etcd status condition", memberName)
+			condition.LastHeartbeatTime = metav1.Now()
+			return nodeHelper.PatchNodeStatus(client, types.NodeName(node.Name), node, &updatedNode)
+		}
+
+		logrus.Debugf("Member %s is changing etcd condition", memberName)
+		condition = &newCondition
+		condition.LastHeartbeatTime = metav1.Now()
+		condition.LastTransitionTime = metav1.Now()
+		return nodeHelper.PatchNodeStatus(client, types.NodeName(node.Name), node, &updatedNode)
+	}
+
+	logrus.Infof("Adding etcd member %s status condition", memberName)
+	newCondition.LastHeartbeatTime = metav1.Now()
+	newCondition.LastTransitionTime = metav1.Now()
+	updatedNode.Status.Conditions = append(updatedNode.Status.Conditions, newCondition)
+	return nodeHelper.PatchNodeStatus(client, types.NodeName(node.Name), node, &updatedNode)
 }
 
 // getLearnerProgress returns the stored learnerProgress struct as retrieved from etcd
