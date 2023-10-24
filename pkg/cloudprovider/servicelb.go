@@ -285,10 +285,6 @@ func (k *k3s) getStatus(svc *core.Service) (*core.LoadBalancerStatus, error) {
 		return nil, err
 	}
 
-	expectedIPs, err = filterByIPFamily(expectedIPs, svc)
-	if err != nil {
-		return nil, err
-	}
 
 	loadbalancer := &core.LoadBalancerStatus{}
 	for _, ip := range expectedIPs {
