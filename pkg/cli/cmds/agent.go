@@ -209,6 +209,11 @@ var (
 		Destination: &AgentConfig.ImageCredProvConfig,
 		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
 	}
+	DisableAgentLBFlag = &cli.BoolFlag{
+		Name:        "disable-agent-lb",
+		Usage:       "(agent/node) Disable agent load balance proxy.",
+		Destination: &AgentConfig.DisableLoadBalancer,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -277,6 +282,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			DockerFlag,
 			VPNAuth,
 			VPNAuthFile,
+			DisableAgentLBFlag,
 		},
 	}
 }
