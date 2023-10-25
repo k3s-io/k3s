@@ -285,7 +285,6 @@ func (k *k3s) getStatus(svc *core.Service) (*core.LoadBalancerStatus, error) {
 		return nil, err
 	}
 
-
 	loadbalancer := &core.LoadBalancerStatus{}
 	for _, ip := range expectedIPs {
 		loadbalancer.Ingress = append(loadbalancer.Ingress, core.LoadBalancerIngress{
