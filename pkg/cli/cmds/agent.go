@@ -210,8 +210,8 @@ var (
 		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
 	}
 	DisableAgentLBFlag = &cli.BoolFlag{
-		Name:        "disable-agent-lb",
-		Usage:       "(agent/node) Disable agent load balance proxy.",
+		Name:        "disable-apiserver-lb",
+		Usage:       "(agent/networking) (experimental) Disable the agent's client-side load-balancer and connect directly to the configured server address",
 		Destination: &AgentConfig.DisableLoadBalancer,
 	}
 )
