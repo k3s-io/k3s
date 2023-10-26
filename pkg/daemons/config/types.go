@@ -60,15 +60,17 @@ type Node struct {
 }
 
 type Containerd struct {
-	Address  string
-	Log      string
-	Root     string
-	State    string
-	Config   string
-	Opt      string
-	Template string
-	SELinux  bool
-	Debug    bool
+	Address       string
+	Log           string
+	Root          string
+	State         string
+	Config        string
+	Opt           string
+	Template      string
+	BlockIOConfig string
+	RDTConfig     string
+	SELinux       bool
+	Debug         bool
 }
 
 type CRIDockerd struct {
