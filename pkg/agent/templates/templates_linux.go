@@ -82,6 +82,12 @@ enable_keychain = true
   conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 {{end}}
 
+{{- if or .NodeConfig.Containerd.BlockIOConfig .NodeConfig.Containerd.RDTConfig }}
+[plugins."io.containerd.service.v1.tasks-service"]
+  {{ if .NodeConfig.Containerd.BlockIOConfig }}blockio_config_file = "{{ .NodeConfig.Containerd.BlockIOConfig }}"{{end}}
+  {{ if .NodeConfig.Containerd.RDTConfig }}rdt_config_file = "{{ .NodeConfig.Containerd.RDTConfig }}"{{end}}
+{{end}}
+
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
   runtime_type = "io.containerd.runc.v2"
 
