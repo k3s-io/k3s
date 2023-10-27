@@ -354,10 +354,10 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
 		if e.config.EtcdS3 {
+			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
 			if err := e.initS3IfNil(ctx); err != nil {
 				return err
 			}
-			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
 			if err := e.s3.Download(ctx); err != nil {
 				return err
 			}
