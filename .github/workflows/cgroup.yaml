@@ -57,6 +57,11 @@ jobs:
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up"
         run: vagrant up
+      - name: On Failure, Dump VM logs
+        if: ${{ failure() }}
+        run: |
+          logsDir=$(vboxmanage list vms --long | grep Logs | awk '{print $3" "$4}')
+          cat "$logsDir"/VBox.log
       - name: "K3s Prepare"
         run: vagrant provision --provision-with=k3s-prepare
       - name: ⏬ "K3s Install"

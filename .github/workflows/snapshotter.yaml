@@ -59,6 +59,11 @@ jobs:
         run: vagrant plugin install vagrant-k3s
       - name: "Vagrant Up ⏩ Install K3s"
         run: vagrant up
+      - name: On Failure, Dump VM logs
+        if: ${{ failure() }}
+        run: |
+          logsDir=$(vboxmanage list vms --long | grep Logs | awk '{print $3" "$4}')
+          cat "$logsDir"/VBox.log
       - name: "⏳ Node"
         run: vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"
