@@ -8,26 +8,26 @@ import (
 	"reflect"
 	"testing"
 	"testing/fstest"
-
-	"github.com/k3s-io/k3s/pkg/agent/templates"
 )
 
 func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 	executable := &fstest.MapFile{Mode: 0755}
 	type args struct {
-		root fs.FS
+		root                 fs.FS
+		alreadyFoundRuntimes runtimeConfigs
 	}
 	tests := []struct {
 		name string
 		args args
-		want map[string]templates.ContainerdRuntimeConfig
+		want runtimeConfigs
 	}{
 		{
 			name: "No runtimes",
 			args: args{
-				root: fstest.MapFS{},
+				root:                 fstest.MapFS{},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{},
+			want: runtimeConfigs{},
 		},
 		{
 			name: "Nvidia runtime in /usr/bin",
@@ -35,8 +35,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 				root: fstest.MapFS{
 					"usr/bin/nvidia-container-runtime": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/bin/nvidia-container-runtime",
@@ -49,8 +50,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 				root: fstest.MapFS{
 					"usr/local/nvidia/toolkit/nvidia-container-runtime": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/local/nvidia/toolkit/nvidia-container-runtime",
@@ -64,8 +66,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/bin/nvidia-container-runtime":                  executable,
 					"usr/local/nvidia/toolkit/nvidia-container-runtime": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/local/nvidia/toolkit/nvidia-container-runtime",
@@ -78,8 +81,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 				root: fstest.MapFS{
 					"usr/bin/nvidia-container-runtime-experimental": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia-experimental": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/bin/nvidia-container-runtime-experimental",
@@ -93,8 +97,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/bin/nvidia-container-runtime-experimental":                  executable,
 					"usr/local/nvidia/toolkit/nvidia-container-runtime-experimental": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia-experimental": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/local/nvidia/toolkit/nvidia-container-runtime-experimental",
@@ -108,8 +113,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/bin/nvidia-container-runtime-experimental": executable,
 					"usr/bin/nvidia-container-runtime":              executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/bin/nvidia-container-runtime",
@@ -129,8 +135,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/bin/nvidia-container-runtime":                               executable,
 					"usr/bin/nvidia-container-runtime-experimental":                  executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/local/nvidia/toolkit/nvidia-container-runtime",
@@ -148,8 +155,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/local/nvidia/toolkit/nvidia-container-runtime":              executable,
 					"usr/local/nvidia/toolkit/nvidia-container-runtime-experimental": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/local/nvidia/toolkit/nvidia-container-runtime",
@@ -168,8 +176,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 					"usr/bin/nvidia-container-runtime-experimental":                  executable,
 					"usr/local/nvidia/toolkit/nvidia-container-runtime-experimental": executable,
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/bin/nvidia-container-runtime",
@@ -188,8 +197,9 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 						Mode: fs.ModeDir,
 					},
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{},
+			want: runtimeConfigs{},
 		},
 		{
 			name: "Runtime in both directories, but one is a directory",
@@ -200,8 +210,44 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 						Mode: fs.ModeDir,
 					},
 				},
+				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
+				"nvidia": {
+					RuntimeType: "io.containerd.runc.v2",
+					BinaryName:  "/usr/bin/nvidia-container-runtime",
+				},
+			},
+		},
+		{
+			name: "Preserve already found runtimes",
+			args: args{
+				root: fstest.MapFS{
+					"usr/bin/nvidia-container-runtime": executable,
+					"usr/local/nvidia/toolkit/nvidia-container-runtime": &fstest.MapFile{
+						Mode: fs.ModeDir,
+					},
+				},
+				alreadyFoundRuntimes: runtimeConfigs{
+					"slight": {
+						RuntimeType: "io.containerd.slight.v2",
+						BinaryName:  "/opt/kwasm/bin/containerd-shim-slight-v1",
+					},
+					"wasmtime": {
+						RuntimeType: "io.containerd.wasmtime.v2",
+						BinaryName:  "/opt/kwasm/bin/containerd-shim-wasmtime-v1",
+					},
+				},
+			},
+			want: runtimeConfigs{
+				"slight": {
+					RuntimeType: "io.containerd.slight.v2",
+					BinaryName:  "/opt/kwasm/bin/containerd-shim-slight-v1",
+				},
+				"wasmtime": {
+					RuntimeType: "io.containerd.wasmtime.v2",
+					BinaryName:  "/opt/kwasm/bin/containerd-shim-wasmtime-v1",
+				},
 				"nvidia": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/usr/bin/nvidia-container-runtime",
@@ -211,8 +257,10 @@ func Test_UnitFindNvidiaContainerRuntimes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := findNvidiaContainerRuntimes(tt.args.root); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findNvidiaContainerRuntimes() = %+v\nWant = %+v", got, tt.want)
+			foundRuntimes := tt.args.alreadyFoundRuntimes
+			findNvidiaContainerRuntimes(tt.args.root, foundRuntimes)
+			if !reflect.DeepEqual(foundRuntimes, tt.want) {
+				t.Errorf("findNvidiaContainerRuntimes() = %+v\nWant = %+v", foundRuntimes, tt.want)
 			}
 		})
 	}

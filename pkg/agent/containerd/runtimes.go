@@ -22,17 +22,13 @@ type runtimeConfigs map[string]templates.ContainerdRuntimeConfig
 // The binaries are searched at the locations specivied by locationsToCheck.
 // Note: check the given locations in order.
 // The given fs.FS should represent the filesystem root directory to search in.
-func findContainerRuntimes(root fs.FS,
-	potentialRuntimes map[string]templates.ContainerdRuntimeConfig,
-	locationsToCheck []string,
-) map[string]templates.ContainerdRuntimeConfig {
+func findContainerRuntimes(root fs.FS, potentialRuntimes runtimeConfigs, locationsToCheck []string, foundRuntimes runtimeConfigs) {
 	// Check these locations in order. The GPU operator's installation should
 	// take precedence over the package manager's installation.
 
 	// Fill in the binary location with just the name of the binary,
 	// and check against each of the possible locations. If a match is found,
 	// set the location to the full path.
-	foundRuntimes := map[string]templates.ContainerdRuntimeConfig{}
 RUNTIME:
 	for runtimeName, runtimeConfig := range potentialRuntimes {
 		for _, location := range locationsToCheck {
@@ -57,5 +53,4 @@ RUNTIME:
 			}
 		}
 	}
-	return foundRuntimes
 }

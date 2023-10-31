@@ -5,8 +5,6 @@ package containerd
 
 import (
 	"io/fs"
-
-	"github.com/k3s-io/k3s/pkg/agent/templates"
 )
 
 // findNvidiaContainerRuntimes returns a list of nvidia container runtimes that
@@ -14,7 +12,7 @@ import (
 // gpu operator and by system package managers. The gpu operator installation
 // takes precedence over the system package manager installation.
 // The given fs.FS should represent the filesystem root directory to search in.
-func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRuntimeConfig {
+func findNvidiaContainerRuntimes(root fs.FS, foundRuntimes runtimeConfigs) {
 	// Check these locations in order. The GPU operator's installation should
 	// take precedence over the package manager's installation.
 	locationsToCheck := []string{
@@ -25,7 +23,7 @@ func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRunt
 	// Fill in the binary location with just the name of the binary,
 	// and check against each of the possible locations. If a match is found,
 	// set the location to the full path.
-	potentialRuntimes := map[string]templates.ContainerdRuntimeConfig{
+	potentialRuntimes := runtimeConfigs{
 		"nvidia": {
 			RuntimeType: "io.containerd.runc.v2",
 			BinaryName:  "nvidia-container-runtime",
@@ -35,5 +33,5 @@ func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRunt
 			BinaryName:  "nvidia-container-runtime-experimental",
 		},
 	}
-	return findContainerRuntimes(root, potentialRuntimes, locationsToCheck)
+	findContainerRuntimes(root, potentialRuntimes, locationsToCheck, foundRuntimes)
 }

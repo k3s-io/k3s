@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"testing"
 	"testing/fstest"
-
-	"github.com/k3s-io/k3s/pkg/agent/templates"
 )
 
 func Test_UnitFindWasiRuntimes(t *testing.T) {
@@ -21,7 +19,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want map[string]templates.ContainerdRuntimeConfig
+		want runtimeConfigs
 	}{
 		{
 			name: "No runtimes",
@@ -29,7 +27,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				root:                 fstest.MapFS{},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{},
+			want: runtimeConfigs{},
 		},
 		{
 			name: "wasmtime runtime in /usr/sbin",
@@ -39,7 +37,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"wasmtime": {
 					RuntimeType: "io.containerd.wasmtime.v2",
 					BinaryName:  "/usr/sbin/containerd-shim-wasmtime-v1",
@@ -54,7 +52,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"lunatic": {
 					RuntimeType: "io.containerd.lunatic.v2",
 					BinaryName:  "/opt/kwasm/bin/containerd-shim-lunatic-v1",
@@ -70,7 +68,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"slight": {
 					RuntimeType: "io.containerd.slight.v2",
 					BinaryName:  "/opt/kwasm/bin/containerd-shim-slight-v1",
@@ -90,7 +88,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"wasmedge": {
 					RuntimeType: "io.containerd.wasmedge.v2",
 					BinaryName:  "/opt/kwasm/bin/containerd-shim-wasmedge-v1",
@@ -111,7 +109,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"lunatic": {
 					RuntimeType: "io.containerd.lunatic.v2",
 					BinaryName:  "/usr/bin/containerd-shim-lunatic-v1",
@@ -153,7 +151,7 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 				},
 				alreadyFoundRuntimes: runtimeConfigs{},
 			},
-			want: map[string]templates.ContainerdRuntimeConfig{
+			want: runtimeConfigs{
 				"slight": {
 					RuntimeType: "io.containerd.slight.v2",
 					BinaryName:  "/opt/kwasm/bin/containerd-shim-slight-v1",
@@ -191,8 +189,10 @@ func Test_UnitFindWasiRuntimes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := findWasiRuntimes(tt.args.root); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findWasiRuntimes() = %+v\nWant = %+v", got, tt.want)
+			foundRuntimes := tt.args.alreadyFoundRuntimes
+			findWasiRuntimes(tt.args.root, foundRuntimes)
+			if !reflect.DeepEqual(foundRuntimes, tt.want) {
+				t.Errorf("findWasiRuntimes() = %+v\nWant = %+v", foundRuntimes, tt.want)
 			}
 		})
 	}
