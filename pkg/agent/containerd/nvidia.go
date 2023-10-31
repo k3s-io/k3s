@@ -4,12 +4,9 @@
 package containerd
 
 import (
-	"errors"
 	"io/fs"
-	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/agent/templates"
-	"github.com/sirupsen/logrus"
 )
 
 // findNvidiaContainerRuntimes returns a list of nvidia container runtimes that
@@ -38,30 +35,5 @@ func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRunt
 			BinaryName:  "nvidia-container-runtime-experimental",
 		},
 	}
-	foundRuntimes := map[string]templates.ContainerdRuntimeConfig{}
-RUNTIME:
-	for runtimeName, runtimeConfig := range potentialRuntimes {
-		for _, location := range locationsToCheck {
-			binaryPath := filepath.Join(location, runtimeConfig.BinaryName)
-			logrus.Debugf("Searching for %s container runtime at /%s", runtimeName, binaryPath)
-			if info, err := fs.Stat(root, binaryPath); err == nil {
-				if info.IsDir() {
-					logrus.Debugf("Found %s container runtime at /%s, but it is a directory. Skipping.", runtimeName, binaryPath)
-					continue
-				}
-				runtimeConfig.BinaryName = filepath.Join("/", binaryPath)
-				logrus.Infof("Found %s container runtime at %s", runtimeName, runtimeConfig.BinaryName)
-				foundRuntimes[runtimeName] = runtimeConfig
-				// Skip to the next runtime to enforce precedence.
-				continue RUNTIME
-			} else {
-				if errors.Is(err, fs.ErrNotExist) {
-					logrus.Debugf("%s container runtime not found at /%s", runtimeName, binaryPath)
-				} else {
-					logrus.Errorf("Error searching for %s container runtime at /%s: %v", runtimeName, binaryPath, err)
-				}
-			}
-		}
-	}
-	return foundRuntimes
+	return findContainerRuntimes(root, potentialRuntimes, locationsToCheck)
 }
