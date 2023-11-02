@@ -125,7 +125,7 @@ enable_keychain = true
   runtime_type = "{{$v.RuntimeType}}"
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes."{{$k}}".options]
   BinaryName = "{{$v.BinaryName}}"
-  SystemdCgroup = {{ .SystemdCgroup }}
+  SystemdCgroup = {{ $.SystemdCgroup }}
 {{end}}
 `
 
