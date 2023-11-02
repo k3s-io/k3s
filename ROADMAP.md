@@ -4,14 +4,12 @@ This represents the larger, bigger impact features and enhancements we have plan
 
 Next
 ---
-- CLI support for etcd backup management
-- Multus CNI support
-- Experimental support for migration from SQLite to etcd
 - Embedded registry support
 - Windows OS Support
 
 Later
 ---
+- Multus CNI support
 - Align K3s with upstream Kubernetes by removing patches or upstreaming them
 - FIPS-140-2 Compliant binaries
 - Graduate encrypted networking support from experimental to GA
