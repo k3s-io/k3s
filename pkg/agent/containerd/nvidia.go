@@ -6,6 +6,7 @@ package containerd
 import (
 	"errors"
 	"io/fs"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/agent/templates"
@@ -22,7 +23,6 @@ func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRunt
 	// take precedence over the package manager's installation.
 	locationsToCheck := []string{
 		"usr/local/nvidia/toolkit", // Path when installing via GPU Operator
-		"usr/bin",                  // Path when installing via package manager
 	}
 
 	// Fill in the binary location with just the name of the binary,
@@ -41,6 +41,17 @@ func findNvidiaContainerRuntimes(root fs.FS) map[string]templates.ContainerdRunt
 	foundRuntimes := map[string]templates.ContainerdRuntimeConfig{}
 RUNTIME:
 	for runtimeName, runtimeConfig := range potentialRuntimes {
+		// Search PATH for runtime executable
+		if binaryPath, err := exec.LookPath(runtimeConfig.BinaryName); err == nil {
+			// < Go 1.19 can possibly return a relative path from the current directory
+			// >= 1.19 will have `errors.Is(err, ErrDot)` instead
+			runtimeConfig.BinaryName = filepath.Abs(binaryPath)
+			foundRuntimes[runtimeName] = runtimeConfig
+			// Only care about the first path found for the binary
+			continue RUNTIME
+		}
+
+		// Otherwise check some other hardcoded locations
 		for _, location := range locationsToCheck {
 			binaryPath := filepath.Join(location, runtimeConfig.BinaryName)
 			logrus.Debugf("Searching for %s container runtime at /%s", runtimeName, binaryPath)
