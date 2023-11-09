@@ -45,7 +45,7 @@ When QA approves the GA release you can move into the finalization phase.
 ## Finalization
 
 1. Update the channel server, per [channel server](expanded/channel_server.md)
-1. Copy the release notes into the release, per [release notes](expanded/release_notes.md)
+1. Copy the release notes into the release, make sure Release Notes already merged, per [release notes](expanded/release_notes.md)
 1. CI has completed, and artifacts have been created. Announce the GA and inform that k3s is thawed in the Slack release thread.
 1. Wait 24 hours, then uncheck the pre-release checkbox on the release.
 1. Edit the release, and check the "set as latest release" checkbox on the "latest" release.
