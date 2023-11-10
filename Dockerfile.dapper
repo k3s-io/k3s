@@ -11,16 +11,17 @@ ENV no_proxy=$no_proxy
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
-    zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq \
-    && \
-    if [ "$(go env GOARCH)" = "amd64" ]; then \
+    zstd pigz alpine-sdk btrfs-progs-dev btrfs-progs-static gawk yq && \
+    if [ "$(go env GOARCH)" = "arm64" ] || [ "$(go env GOARCH)" = "arm" ]; then \
+    apk -U --no-cache add binutils-gold; \
+    elif [ "$(go env GOARCH)" = "amd64" ]; then \
     apk -U --no-cache add mingw-w64-gcc; \
     fi
 
-RUN python3 -m pip install awscli
+RUN python3 -m pip install --break-system-packages awscli
 
 RUN TRIVY_VERSION="0.46.1" && \
-    if [ "$(go env GOARCH)" != "arm" ] && [ "$(go env GOARCH)" != "386" ]; then \
+    if [ "$(go env GOARCH)" != "arm" ] && [ "$(go env GOARCH)" != "riscv64" ]; then \
         if [ "$(go env GOARCH)" = "arm64" ]; then \
             # Turn arm64 into uppercase ARM64 for Trivy's download
             TRIVY_ARCH=$(go env GOARCH | tr "[:lower:]" "[:upper:]") && \
