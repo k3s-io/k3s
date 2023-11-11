@@ -17,7 +17,7 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
     apk -U --no-cache add mingw-w64-gcc; \
     fi
 
-RUN python3 -m pip install awscli
+RUN python3 -m pip install --break-system-packages awscli
 
 # this works for both go 1.17 and 1.18
 RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
