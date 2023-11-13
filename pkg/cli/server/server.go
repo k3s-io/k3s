@@ -190,6 +190,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		logrus.Info("ETCD snapshots are disabled")
 	}
 
+	if cfg.MultiClusterCIDR {
+		logrus.Warn("multiClusterCIDR alpha feature will be removed in future releases")
+	}
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
 		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
 	}
