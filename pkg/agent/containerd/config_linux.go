@@ -60,6 +60,10 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
+	extraRuntimes := runtimeConfigs{}
+	findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator)), extraRuntimes)
+	findWasiRuntimes(os.DirFS(string(os.PathSeparator)), extraRuntimes)
+
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
@@ -68,7 +72,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		IsRunningInUserNS:     isRunningInUserNS,
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
 		PrivateRegistryConfig: privRegistries.Registry,
-		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
+		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
 	}
 
