@@ -36,6 +36,7 @@ version = 2
 [plugins."io.containerd.grpc.v1.cri".containerd]
   snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
   disable_snapshot_annotations = {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}false{{else}}true{{end}}
+  {{ if .NodeConfig.DefaultRuntime }}default_runtime_name = "{{ .NodeConfig.DefaultRuntime }}"{{end}}
 {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}
 {{ if .NodeConfig.AgentConfig.ImageServiceSocket }}
 [plugins."io.containerd.snapshotter.v1.stargz"]
