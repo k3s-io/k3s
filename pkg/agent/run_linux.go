@@ -36,6 +36,11 @@ func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
 		}
 	}
 
+	// Send to node struct the value from cli/config default runtime
+	if cfg.DefaultRuntime != "" {
+		nodeConfig.DefaultRuntime = cfg.DefaultRuntime
+	}
+
 	crp := "runtime-endpoint: " + cre + "\n"
 	ise := nodeConfig.ImageServiceEndpoint
 	if ise != "" && ise != cre {
