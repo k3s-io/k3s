@@ -60,6 +60,13 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
+	extraRuntimes := findContainerRuntimes(os.DirFS(string(os.PathSeparator)))
+
+	// Verifies if the DefaultRuntime can be found
+	if _, ok := extraRuntimes[cfg.DefaultRuntime]; !ok && cfg.DefaultRuntime != "" {
+		return errors.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
+	}
+
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
@@ -68,7 +75,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		IsRunningInUserNS:     isRunningInUserNS,
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
 		PrivateRegistryConfig: privRegistries.Registry,
-		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
+		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
 	}
 
