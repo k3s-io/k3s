@@ -425,10 +425,18 @@ func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error)
 		if sf, ok := snapshots[sfKey]; ok {
 			logrus.Debugf("Loading snapshot metadata from s3://%s/%s", s.config.EtcdS3BucketName, metadataKey)
 			if obj, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, metadataKey, minio.GetObjectOptions{}); err != nil {
-				logrus.Warnf("Failed to get snapshot metadata: %v", err)
+				if isNotExist(err) {
+					logrus.Debugf("Failed to get snapshot metadata: %v", err)
+				} else {
+					logrus.Warnf("Failed to get snapshot metadata for %s: %v", filename, err)
+				}
 			} else {
 				if m, err := ioutil.ReadAll(obj); err != nil {
-					logrus.Warnf("Failed to read snapshot metadata: %v", err)
+					if isNotExist(err) {
+						logrus.Debugf("Failed to read snapshot metadata: %v", err)
+					} else {
+						logrus.Warnf("Failed to read snapshot metadata for %s: %v", filename, err)
+					}
 				} else {
 					sf.Metadata = base64.StdEncoding.EncodeToString(m)
 					snapshots[sfKey] = sf
