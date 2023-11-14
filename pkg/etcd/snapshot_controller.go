@@ -67,7 +67,9 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 		}
 		return nil, err
 	}
-	if esf == nil || !esf.DeletionTimestamp.IsZero() {
+
+	// Do not create entries for snapshots that have been deleted or do not have extra metadata
+	if esf == nil || !esf.DeletionTimestamp.IsZero() || len(esf.Spec.Metadata) == 0 {
 		return nil, nil
 	}
 
@@ -209,10 +211,12 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	snapshots := map[string]*apisv1.ETCDSnapshotFile{}
 	for i := range snapshotList.Items {
 		esf := &snapshotList.Items[i]
-		if esf.DeletionTimestamp.IsZero() {
-			sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
-			snapshots[sfKey] = esf
+		// Do not create entries for snapshots that have been deleted or do not have extra metadata
+		if !esf.DeletionTimestamp.IsZero() || len(esf.Spec.Metadata) == 0 {
+			continue
 		}
+		sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
+		snapshots[sfKey] = esf
 	}
 
 	// Make a copy of the configmap for change detection
