@@ -33,6 +33,7 @@ import (
 	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -42,22 +43,28 @@ const (
 
 // Get returns a pointer to a completed Node configuration struct,
 // containing a merging of the local CLI configuration with settings from the server.
+// Node configuration includes client certificates, which requires node password verification,
+// so this is somewhat computationally expensive on the server side, and is retried with jitter
+// to avoid having clients hammer on the server at fixed periods.
 // A call to this will bock until agent configuration is successfully returned by the
 // server.
 func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		agentConfig, err := get(ctx, &agent, proxy)
+	var agentConfig *config.Node
+	var err error
+
+	// This would be more clear as wait.PollImmediateUntilWithContext, but that function
+	// does not support jittering, so we instead use wait.JitterUntilWithContext, and cancel
+	// the context on success.
+	ctx, cancel := context.WithCancel(ctx)
+	wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
+		agentConfig, err = get(ctx, &agent, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve agent configuration; server is not ready: %v", err)
-			for range ticker.C {
-				continue RETRY
-			}
+		} else {
+			cancel()
 		}
-		return agentConfig
-	}
+	}, 5*time.Second, 1.0, true)
+	return agentConfig
 }
 
 // KubeProxyDisabled returns a bool indicating whether or not kube-proxy has been disabled in the
@@ -65,42 +72,40 @@ RETRY:
 // after all startup hooks have completed, so a call to this will block until after the server's
 // readyz endpoint returns OK.
 func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
+	var disabled bool
+	var err error
+
+	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		disabled, err = getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve kube-proxy configuration; server is not ready: %v", err)
-			for range ticker.C {
-				continue RETRY
-			}
+			return false, nil
 		}
-		return disabled
-	}
+		return true, nil
+	})
+	return disabled
 }
 
 // APIServers returns a list of apiserver endpoints, suitable for seeding client loadbalancer configurations.
 // This function will block until it can return a populated list of apiservers, or if the remote server returns
 // an error (indicating that it does not support this functionality).
 func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []string {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		addresses, err := getAPIServers(ctx, node, proxy)
+	var addresses []string
+	var err error
+
+	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		addresses, err = getAPIServers(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Failed to retrieve list of apiservers from server: %v", err)
-			return nil
+			return false, err
 		}
 		if len(addresses) == 0 {
 			logrus.Infof("Waiting for apiserver addresses")
-			for range ticker.C {
-				continue RETRY
-			}
+			return false, nil
 		}
-		return addresses
-	}
+		return true, nil
+	})
+	return addresses
 }
 
 type HTTPRequester func(u string, client *http.Client, username, password, token string) ([]byte, error)
