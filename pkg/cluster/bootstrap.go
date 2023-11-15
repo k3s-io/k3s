@@ -31,7 +31,7 @@ import (
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
 // It then checks to see if the cluster needs to load bootstrap data, and if so, loads data into the
 // ControlRuntimeBoostrap struct, either via HTTP or from the datastore.
-func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
+func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 	c.shouldBootstrap = shouldBootstrap
 
 	if c.managedDB != nil {
-		if !snapshot {
+		if !clusterReset {
 			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
 			// For secondary servers, we attempt to connect and reconcile with the datastore.
 			// If that fails we fallback to the local etcd cluster start
