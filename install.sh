@@ -967,8 +967,8 @@ create_service_file() {
 }
 
 restore_systemd_service_file_context() {
-    restorecon -R -i ${FILE_K3S_SERVICE} || true
-    restorecon -R -i ${FILE_K3S_ENV} || true
+    $SUDO restorecon -R -i ${FILE_K3S_SERVICE} 2>/dev/null || true
+    $SUDO restorecon -R -i ${FILE_K3S_ENV} 2>/dev/null || true
 }
 
 # --- get hashes of the current k3s bin and service files
