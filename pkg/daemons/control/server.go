@@ -262,7 +262,7 @@ func prepare(ctx context.Context, config *config.Control) error {
 
 	cluster := cluster.New(config)
 
-	if err := cluster.Bootstrap(ctx, false); err != nil {
+	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
 		return err
 	}
 
