@@ -51,9 +51,9 @@ func getSecretName(nodeName string) string {
 	return strings.ToLower(nodeName + ".node-password." + version.Program)
 }
 
-func verifyHash(secretClient coreclient.SecretClient, nodeName, pass string) error {
+func verifyHash(secretClient coreclient.SecretController, nodeName, pass string) error {
 	name := getSecretName(nodeName)
-	secret, err := secretClient.Get(metav1.NamespaceSystem, name, metav1.GetOptions{})
+	secret, err := secretClient.Cache().Get(metav1.NamespaceSystem, name)
 	if err != nil {
 		return &passwordError{node: nodeName, err: err}
 	}
@@ -67,7 +67,7 @@ func verifyHash(secretClient coreclient.SecretClient, nodeName, pass string) err
 }
 
 // Ensure will verify a node-password secret if it exists, otherwise it will create one
-func Ensure(secretClient coreclient.SecretClient, nodeName, pass string) error {
+func Ensure(secretClient coreclient.SecretController, nodeName, pass string) error {
 	err := verifyHash(secretClient, nodeName, pass)
 	if apierrors.IsNotFound(err) {
 		var hash string
@@ -88,12 +88,12 @@ func Ensure(secretClient coreclient.SecretClient, nodeName, pass string) error {
 }
 
 // Delete will remove a node-password secret
-func Delete(secretClient coreclient.SecretClient, nodeName string) error {
+func Delete(secretClient coreclient.SecretController, nodeName string) error {
 	return secretClient.Delete(metav1.NamespaceSystem, getSecretName(nodeName), &metav1.DeleteOptions{})
 }
 
 // MigrateFile moves password file entries to secrets
-func MigrateFile(secretClient coreclient.SecretClient, nodeClient coreclient.NodeClient, passwordFile string) error {
+func MigrateFile(secretClient coreclient.SecretController, nodeClient coreclient.NodeController, passwordFile string) error {
 	_, err := os.Stat(passwordFile)
 	if os.IsNotExist(err) {
 		return nil
@@ -108,11 +108,9 @@ func MigrateFile(secretClient coreclient.SecretClient, nodeClient coreclient.Nod
 	}
 
 	nodeNames := []string{}
-	nodeList, _ := nodeClient.List(metav1.ListOptions{})
-	if nodeList != nil {
-		for _, node := range nodeList.Items {
-			nodeNames = append(nodeNames, node.Name)
-		}
+	nodeList, _ := nodeClient.Cache().List(nil)
+	for _, node := range nodeList {
+		nodeNames = append(nodeNames, node.Name)
 	}
 	if len(nodeNames) == 0 {
 		nodeNames = append(nodeNames, passwd.Users()...)
