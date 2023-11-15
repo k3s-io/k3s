@@ -13,15 +13,14 @@ import (
 
 func Register(ctx context.Context,
 	modCoreDNS bool,
-	secretClient coreclient.SecretClient,
-	configMap coreclient.ConfigMapController,
+	secrets coreclient.SecretController,
+	configMaps coreclient.ConfigMapController,
 	nodes coreclient.NodeController,
 ) error {
 	h := &handler{
-		modCoreDNS:   modCoreDNS,
-		secretClient: secretClient,
-		configCache:  configMap.Cache(),
-		configClient: configMap,
+		modCoreDNS: modCoreDNS,
+		secrets:    secrets,
+		configMaps: configMaps,
 	}
 	nodes.OnChange(ctx, "node", h.onChange)
 	nodes.OnRemove(ctx, "node", h.onRemove)
@@ -30,10 +29,9 @@ func Register(ctx context.Context,
 }
 
 type handler struct {
-	modCoreDNS   bool
-	secretClient coreclient.SecretClient
-	configCache  coreclient.ConfigMapCache
-	configClient coreclient.ConfigMapClient
+	modCoreDNS bool
+	secrets    coreclient.SecretController
+	configMaps coreclient.ConfigMapController
 }
 
 func (h *handler) onChange(key string, node *core.Node) (*core.Node, error) {
@@ -78,7 +76,7 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed b
 		return nil
 	}
 
-	configMapCache, err := h.configCache.Get("kube-system", "coredns")
+	configMapCache, err := h.configMaps.Cache().Get("kube-system", "coredns")
 	if err != nil || configMapCache == nil {
 		logrus.Warn(errors.Wrap(err, "Unable to fetch coredns config map"))
 		return nil
@@ -120,7 +118,7 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed b
 	}
 	configMap.Data["NodeHosts"] = newHosts
 
-	if _, err := h.configClient.Update(configMap); err != nil {
+	if _, err := h.configMaps.Update(configMap); err != nil {
 		return err
 	}
 
@@ -135,5 +133,5 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed b
 }
 
 func (h *handler) removeNodePassword(nodeName string) error {
-	return nodepassword.Delete(h.secretClient, nodeName)
+	return nodepassword.Delete(h.secrets, nodeName)
 }
