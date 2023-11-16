@@ -196,7 +196,9 @@ Once CI passes and you receive two approvals, you may now squash-merge the PR an
 Releases are kicked off and created by tagging a new tag.
 To create a new release in Github UI perform the following:
 
-1. Set title and tag according to the release version you're working on. E.g. v1.28.2-rc1+k3s1.
+### In the case of a update to k3s, it should be incremented from `k3s1` to `k3s2`, for example, meaning the k3s version is being incremented.
+
+1. Set title and tag according to the release version you're working on. E.g. v1.28.2-rc1+k3s1, if release only for k3s e.g v1.28.2-rc1+k3s2
 2. Leave description blank.
 3. Check the pre-release field.
 4. Publish
@@ -283,7 +285,8 @@ Once QA signs off on a RC:
 2. Ensure prerelease is checked.
 3. Publish.
 4. Reiterate the previous checking processes and update KDM specifications accordingly with the GA release tags.
-##### `24 hours after` CI has completed and artifacts are created:
+5. CI has completed, and artifacts have been created. Announce the GA and inform that k3s is thawed in the Slack release thread.
+##### `After 24 hours`:
 1. Uncheck prerelease, and save.
 2. Update channel server
 

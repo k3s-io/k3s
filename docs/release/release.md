@@ -24,7 +24,7 @@ We made some new tags on the k3s-io/kubernetes repo, now we need to tell k3s to 
 
 1. The first part of cutting a release (either an RC or a GA) is to create the release itself, per [cut release](expanded/cut_release.md).
 1. Then we need to update KDM, per [update kdm](expanded/update_kdm.md).
-1. We create release images, per [release images](expanded/release_images.md).
+1. We check the release images, per [release images](expanded/release_images.md).
 1. Then we need to update or generate the release notes, per [release notes](expanded/release_notes.md).
 
 ## Create GA Release
@@ -35,7 +35,7 @@ This will be tested one more time before the release is considered ready for fin
 Follow the processes for an RC release:
 1. [Cut Release](expanded/cut_release.md)
 1. [Update KDM](expanded/update_kdm.md)
-1. [Create Release Images](expanded/release_images.md)
+1. [Check Release Images](expanded/release_images.md)
 1. [Update Release Notes](expanded/release_notes.md)
 
 Make sure you are in constant communication with QA during this time so that you can cut more RCs if necessary, 
@@ -45,7 +45,8 @@ When QA approves the GA release you can move into the finalization phase.
 ## Finalization
 
 1. Update the channel server, per [channel server](expanded/channel_server.md)
-1. Copy the release notes into the release, per [release notes](expanded/release_notes.md)
+1. Copy the release notes into the release, make sure Release Notes already merged, per [release notes](expanded/release_notes.md)
+1. CI has completed, and artifacts have been created. Announce the GA and inform that k3s is thawed in the Slack release thread.
 1. Wait 24 hours, then uncheck the pre-release checkbox on the release.
 1. Edit the release, and check the "set as latest release" checkbox on the "latest" release.
    - only one release can be latest
