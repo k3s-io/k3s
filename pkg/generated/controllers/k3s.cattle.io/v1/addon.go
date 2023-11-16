@@ -19,114 +19,21 @@ limitations under the License.
 package v1
 
 import (
-	"context"
-	"time"
-
 	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	"github.com/rancher/wrangler/pkg/generic"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/watch"
 )
 
 // AddonController interface for managing Addon resources.
 type AddonController interface {
-	generic.ControllerMeta
-	AddonClient
-
-	// OnChange runs the given handler when the controller detects a resource was changed.
-	OnChange(ctx context.Context, name string, sync AddonHandler)
-
-	// OnRemove runs the given handler when the controller detects a resource was changed.
-	OnRemove(ctx context.Context, name string, sync AddonHandler)
-
-	// Enqueue adds the resource with the given name to the worker queue of the controller.
-	Enqueue(namespace, name string)
-
-	// EnqueueAfter runs Enqueue after the provided duration.
-	EnqueueAfter(namespace, name string, duration time.Duration)
-
-	// Cache returns a cache for the resource type T.
-	Cache() AddonCache
+	generic.ControllerInterface[*v1.Addon, *v1.AddonList]
 }
 
 // AddonClient interface for managing Addon resources in Kubernetes.
 type AddonClient interface {
-	// Create creates a new object and return the newly created Object or an error.
-	Create(*v1.Addon) (*v1.Addon, error)
-
-	// Update updates the object and return the newly updated Object or an error.
-	Update(*v1.Addon) (*v1.Addon, error)
-
-	// Delete deletes the Object in the given name.
-	Delete(namespace, name string, options *metav1.DeleteOptions) error
-
-	// Get will attempt to retrieve the resource with the specified name.
-	Get(namespace, name string, options metav1.GetOptions) (*v1.Addon, error)
-
-	// List will attempt to find multiple resources.
-	List(namespace string, opts metav1.ListOptions) (*v1.AddonList, error)
-
-	// Watch will start watching resources.
-	Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error)
-
-	// Patch will patch the resource with the matching name.
-	Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Addon, err error)
+	generic.ClientInterface[*v1.Addon, *v1.AddonList]
 }
 
 // AddonCache interface for retrieving Addon resources in memory.
 type AddonCache interface {
-	// Get returns the resources with the specified name from the cache.
-	Get(namespace, name string) (*v1.Addon, error)
-
-	// List will attempt to find resources from the Cache.
-	List(namespace string, selector labels.Selector) ([]*v1.Addon, error)
-
-	// AddIndexer adds  a new Indexer to the cache with the provided name.
-	// If you call this after you already have data in the store, the results are undefined.
-	AddIndexer(indexName string, indexer AddonIndexer)
-
-	// GetByIndex returns the stored objects whose set of indexed values
-	// for the named index includes the given indexed value.
-	GetByIndex(indexName, key string) ([]*v1.Addon, error)
-}
-
-// AddonHandler is function for performing any potential modifications to a Addon resource.
-type AddonHandler func(string, *v1.Addon) (*v1.Addon, error)
-
-// AddonIndexer computes a set of indexed values for the provided object.
-type AddonIndexer func(obj *v1.Addon) ([]string, error)
-
-// AddonGenericController wraps wrangler/pkg/generic.Controller so that the function definitions adhere to AddonController interface.
-type AddonGenericController struct {
-	generic.ControllerInterface[*v1.Addon, *v1.AddonList]
-}
-
-// OnChange runs the given resource handler when the controller detects a resource was changed.
-func (c *AddonGenericController) OnChange(ctx context.Context, name string, sync AddonHandler) {
-	c.ControllerInterface.OnChange(ctx, name, generic.ObjectHandler[*v1.Addon](sync))
-}
-
-// OnRemove runs the given object handler when the controller detects a resource was changed.
-func (c *AddonGenericController) OnRemove(ctx context.Context, name string, sync AddonHandler) {
-	c.ControllerInterface.OnRemove(ctx, name, generic.ObjectHandler[*v1.Addon](sync))
-}
-
-// Cache returns a cache of resources in memory.
-func (c *AddonGenericController) Cache() AddonCache {
-	return &AddonGenericCache{
-		c.ControllerInterface.Cache(),
-	}
-}
-
-// AddonGenericCache wraps wrangler/pkg/generic.Cache so the function definitions adhere to AddonCache interface.
-type AddonGenericCache struct {
 	generic.CacheInterface[*v1.Addon]
-}
-
-// AddIndexer adds  a new Indexer to the cache with the provided name.
-// If you call this after you already have data in the store, the results are undefined.
-func (c AddonGenericCache) AddIndexer(indexName string, indexer AddonIndexer) {
-	c.CacheInterface.AddIndexer(indexName, generic.Indexer[*v1.Addon](indexer))
 }
