@@ -1056,16 +1056,15 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			continue
 		}
 
-		nodes, err := e.getETCDNodes()
-		if err != nil {
-			logrus.Errorf("Error while listing nodes with etcd status: %v", err)
-			continue
-		}
-
 		client, err := util.GetClientSet(e.config.Runtime.KubeConfigSupervisor)
 		if err != nil {
 			logrus.Errorf("Failed to get k8s client for patch node status condition: %v", err)
 			continue
+		}
+
+		nodes, err := e.getETCDNodes()
+		if err != nil {
+			logrus.Warnf("Failed to list nodes with etcd role: %v", err)
 		}
 
 		for _, member := range members.Members {
@@ -1073,22 +1072,20 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 				if err := e.trackLearnerProgress(ctx, progress, member); err != nil {
 					logrus.Errorf("Failed to track learner progress towards promotion: %v", err)
 				}
-
-				for _, node := range nodes.Items {
+				for _, node := range nodes {
 					if strings.HasPrefix(member.Name, node.Name+"-") {
-						_, _, err := e.setEtcdStatusCondition(&node, client.CoreV1(), member.Name, false)
+						_, _, err := e.setEtcdStatusCondition(node, client.CoreV1(), member.Name, false)
 						if err != nil {
 							logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
 						}
 					}
 				}
-
 				break
 			}
 
-			for _, node := range nodes.Items {
+			for _, node := range nodes {
 				if strings.HasPrefix(member.Name, node.Name+"-") {
-					_, _, err := e.setEtcdStatusCondition(&node, client.CoreV1(), member.Name, true)
+					_, _, err := e.setEtcdStatusCondition(node, client.CoreV1(), member.Name, true)
 					if err != nil {
 						logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
 					}
@@ -1098,11 +1095,15 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 	}
 }
 
-func (e *ETCD) getETCDNodes() (*v1.NodeList, error) {
+func (e *ETCD) getETCDNodes() ([]*v1.Node, error) {
+	if e.config.Runtime.Core == nil {
+		return nil, errors.New("runtime core not ready")
+	}
+
 	nodes := e.config.Runtime.Core.Core().V1().Node()
 	etcdSelector := labels.Set{util.ETCDRoleLabelKey: "true"}
 
-	return nodes.List(metav1.ListOptions{LabelSelector: etcdSelector.String()})
+	return nodes.Cache().List(etcdSelector.AsSelector())
 }
 
 // trackLearnerProcess attempts to promote a learner. If it cannot be promoted, progress through the raft index is tracked.
