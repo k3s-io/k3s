@@ -1,7 +1,9 @@
 package integration
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -124,6 +126,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(apiInfo).To(ContainSubstring("11.11.22.22"))
 		})
+
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
@@ -261,6 +264,29 @@ var _ = Describe("startup tests", Ordered, func() {
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
+	FWhen("a server with a dummy pod", func() {
+		It("is created with no arguments", func() {
+			var err error
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("dies cleanly", func() {
+			res, err := testutil.K3sCmd("k3s-killall")
+			Expect(err).ToNot(HaveOccurred())
+			fmt.Print(res)
+			cmd := exec.Command("ps aux", "|", "grep k3s")
+			out, err := cmd.Output()
+			Expect(err).ToNot(HaveOccurred())
+			fmt.Print(string(out))
+			//Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			//Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
 

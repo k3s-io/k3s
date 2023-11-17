@@ -1,18 +1,18 @@
 #!/bin/sh
-[ $(id -u) -eq 0 ] || exec sudo $0 $@
+
 
 for bin in /var/lib/rancher/k3s/data/**/bin/; do
-    [ -d $bin ] && export PATH=$PATH:$bin:$bin/aux
+    [ -d "$bin" ] && export PATH=$PATH:$bin:$bin/aux
 done
 
-set -x
+
 
 for service in /etc/systemd/system/k3s*.service; do
-    [ -s $service ] && systemctl stop $(basename $service)
+    [ -s "$service" ] && systemctl stop "$(basename "$service")"
 done
 
 for service in /etc/init.d/k3s*; do
-    [ -x $service ] && $service stop
+    [ -x "$service" ] && $service stop
 done
 
 pschildren() {
@@ -23,27 +23,30 @@ pschildren() {
 }
 
 pstree() {
-    for pid in $@; do
-        echo $pid
-        for child in $(pschildren $pid); do
-            pstree $child
+
+    for pid in "$@"; do
+        if [ -n "$$" ]; then
+        echo "$pid"
+        for child in $(pschildren "$pid"); do
+            pstree "$child"
         done
+        fi
     done
 }
 
 killtree() {
-    kill -9 $(
+    kill -9 "$(
         { set +x; } 2>/dev/null;
-        pstree $@;
+        pstree "$@";
         set -x;
-    ) 2>/dev/null
+    )" 2>/dev/null
 }
 
 remove_interfaces() {
     # Delete network interface(s) that match 'master cni0'
     ip link show 2>/dev/null | grep 'master cni0' | while read ignore iface ignore; do
         iface=${iface%%@*}
-        [ -z "$iface" ] || ip link delete $iface
+        [ -z "$iface" ] || ip link delete "$iface"
     done
 
     # Delete cni related interfaces
@@ -64,7 +67,7 @@ getshims() {
     ps -e -o pid= -o args= | sed -e 's/^ *//; s/\s\s*/\t/;' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1
 }
 
-killtree $({ set +x; } 2>/dev/null; getshims; set -x)
+
 
 do_unmount_and_remove() {
     set +x
@@ -73,6 +76,8 @@ do_unmount_and_remove() {
     done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount "$0" && rm -rf "$0"'
     set -x
 }
+
+killtree "$({ set +x; } 2>/dev/null; getshims; set -x)"
 
 do_unmount_and_remove '/run/k3s'
 do_unmount_and_remove '/var/lib/rancher/k3s'

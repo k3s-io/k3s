@@ -88,6 +88,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 			fmt.Println(out)
+			process, err := e2e.RunCmdOnNode("ps aux | grep k3s", serverNodeNames[0])
+			if err != nil {
+				fmt.Println(err.Error())
+				Expect(err).ToNot(HaveOccurred())
+			}
+			fmt.Println(process)
 		})
 	})
 
