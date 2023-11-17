@@ -305,9 +305,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			for _, nodeName := range serverNodeNames {
 				cmd := "k3s certificate rotate"
-				if _, err := e2e.RunCmdOnNode(cmd, nodeName); err != nil {
-					Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully")
-				}
+				_, err := e2e.RunCmdOnNode(cmd, nodeName)
+				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+nodeName)
 			}
 		})
 
@@ -320,12 +319,11 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Cluster could not be started successfully")
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
+				for _, nodeName := range serverNodeNames {
+					cmd := "test ! -e /var/lib/rancher/k3s/server/tls/dynamic-cert-regenerate"
+					_, err := e2e.RunCmdOnNode(cmd, nodeName)
+					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+nodeName)
 				}
-				fmt.Println("help")
 			}, "620s", "5s").Should(Succeed())
 
 			Eventually(func(g Gomega) {
@@ -340,41 +338,39 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 			}, "620s", "5s").Should(Succeed())
 		})
+
 		It("Validates certificates", func() {
 			const grepCert = "ls -lt /var/lib/rancher/k3s/server/ | grep tls"
-			var expectResult = []string{"client-ca.crt",
-				"client-ca.key",
-				"client-ca.nochain.crt",
+			// This is a list of files that should be IDENTICAL after certificates are rotated.
+			// Everything else should be changed.
+			var expectResult = []string{
+				"client-ca.crt", "client-ca.key", "client-ca.nochain.crt",
 				"client-supervisor.crt", "client-supervisor.key",
-				"dynamic-cert.json", "peer-ca.crt",
-				"peer-ca.key", "server-ca.crt",
-				"server-ca.key", "request-header-ca.crt",
-				"request-header-ca.key", "server-ca.crt",
-				"server-ca.key", "server-ca.nochain.crt",
+				"peer-ca.crt", "peer-ca.key",
+				"server-ca.crt", "server-ca.key",
+				"request-header-ca.crt", "request-header-ca.key",
+				"server-ca.crt", "server-ca.key", "server-ca.nochain.crt",
 				"service.current.key", "service.key",
 				"apiserver-loopback-client__.crt",
 				"apiserver-loopback-client__.key", "",
 			}
 
-			var finalResult string
-			var finalErr error
 			for _, nodeName := range serverNodeNames {
 				grCert, errGrep := e2e.RunCmdOnNode(grepCert, nodeName)
-				Expect(errGrep).NotTo(HaveOccurred(), "Certificate could not be created successfully")
+				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+nodeName)
 				re := regexp.MustCompile("tls-[0-9]+")
 				tls := re.FindAllString(grCert, -1)[0]
-				final := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
+				diff := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
 					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
-				finalResult, finalErr = e2e.RunCmdOnNode(final, nodeName)
-				Expect(finalErr).NotTo(HaveOccurred(), "Final Certification does not created successfully")
+				result, err := e2e.RunCmdOnNode(diff, nodeName)
+				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+nodeName)
+
+				certArray := strings.Split(result, "\n")
+				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+nodeName)
 			}
+
 			errRestartAgent := e2e.RestartCluster(agentNodeNames)
 			Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
-
-			finalCert := strings.Replace(finalResult, "\n", ",", -1)
-			finalCertArray := strings.Split(finalCert, ",")
-			Expect((finalCertArray)).Should((Equal(expectResult)), "Final certification does not match the expected results")
-
 		})
 
 	})
