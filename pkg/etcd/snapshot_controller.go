@@ -160,21 +160,6 @@ func (e *etcdSnapshotHandler) onRemove(key string, esf *apisv1.ETCDSnapshotFile)
 }
 
 func (e *etcdSnapshotHandler) reconcile() error {
-	logrus.Infof("Reconciling snapshot ConfigMap data")
-
-	snapshotConfigMap, err := e.configmaps.Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "failed to get snapshot ConfigMap")
-		}
-		snapshotConfigMap = &v1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      snapshotConfigMapName,
-				Namespace: metav1.NamespaceSystem,
-			},
-		}
-	}
-
 	// Get a list of all etcd nodes currently in the cluster.
 	// We will use this list to prune local entries for any node that does not exist.
 	nodes := e.etcd.config.Runtime.Core.Core().V1().Node()
@@ -202,6 +187,8 @@ func (e *etcdSnapshotHandler) reconcile() error {
 		return errNotReconciled
 	}
 
+	logrus.Infof("Reconciling snapshot ConfigMap data")
+
 	// Get a list of existing snapshots
 	snapshotList, err := e.snapshots.List(metav1.ListOptions{})
 	if err != nil {
@@ -217,6 +204,19 @@ func (e *etcdSnapshotHandler) reconcile() error {
 		}
 		sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
 		snapshots[sfKey] = esf
+	}
+
+	snapshotConfigMap, err := e.configmaps.Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, "failed to get snapshot ConfigMap")
+		}
+		snapshotConfigMap = &v1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      snapshotConfigMapName,
+				Namespace: metav1.NamespaceSystem,
+			},
+		}
 	}
 
 	// Make a copy of the configmap for change detection
