@@ -694,9 +694,6 @@ platform:
 clone:
   retries: 3
 
-depends_on:
-- amd64
-
 steps:
 - name: skipfiles
   image: plugins/git
