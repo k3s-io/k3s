@@ -582,9 +582,6 @@ platform:
 clone:
   retries: 3
 
-depends_on:
-- amd64
-
 steps:
 - name: build-e2e-image
   image: rancher/dapper:v0.5.0
