@@ -45,8 +45,8 @@ def provision(vm, role, role_num, node_num)
         node-ip: #{node_ip4},#{node_ip6}
         cluster-init: true
         token: vagrant
-        cluster-cidr: 10.42.0.0/16,2001:cafe:42:0::/56
-        service-cidr: 10.43.0.0/16,2001:cafe:42:1::/112
+        cluster-cidr: 10.42.0.0/16,2001:cafe:42::/56
+        service-cidr: 10.43.0.0/16,2001:cafe:43::/112
         bind-address: #{NETWORK4_PREFIX}.100
         flannel-iface: eth1
         kubelet-arg: "--node-ip=0.0.0.0" # Workaround for https://github.com/kubernetes/kubernetes/issues/111695 
@@ -62,8 +62,8 @@ def provision(vm, role, role_num, node_num)
         node-ip: #{node_ip4},#{node_ip6}
         server: https://#{NETWORK4_PREFIX}.100:6443
         token: vagrant
-        cluster-cidr: 10.42.0.0/16,2001:cafe:42:0::/56
-        service-cidr: 10.43.0.0/16,2001:cafe:42:1::/112
+        cluster-cidr: 10.42.0.0/16,2001:cafe:42::/56
+        service-cidr: 10.43.0.0/16,2001:cafe:43::/112
         flannel-iface: eth1
         kubelet-arg: "--node-ip=0.0.0.0" # Workaround for https://github.com/kubernetes/kubernetes/issues/111695
       YAML
