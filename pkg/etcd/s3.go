@@ -360,9 +360,8 @@ func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error)
 	defer cancel()
 
 	opts := minio.ListObjectsOptions{
-		Prefix:       s.config.EtcdS3Folder,
-		Recursive:    true,
-		WithMetadata: true,
+		Prefix:    s.config.EtcdS3Folder,
+		Recursive: true,
 	}
 
 	objects := s.client.ListObjects(ctx, s.config.EtcdS3BucketName, opts)
