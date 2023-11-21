@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.4"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.5"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -435,10 +435,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	name := generateName(svc)
 	oneInt := intstr.FromInt(1)
 	localTraffic := servicehelper.RequestsOnlyLocalTraffic(svc)
-	sourceRanges, err := servicehelper.GetLoadBalancerSourceRanges(svc)
+	sourceRangesSet, err := servicehelper.GetLoadBalancerSourceRanges(svc)
 	if err != nil {
 		return nil, err
 	}
+	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
 
 	var sysctls []core.Sysctl
 	for _, ipFamily := range svc.Spec.IPFamilies {
@@ -447,6 +448,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
 		case core.IPv6Protocol:
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+			// If using the default range, and IPv6 is enabled, also allow IPv6.
+			if sourceRanges == "0.0.0.0/0" {
+				sourceRanges += ",::/0"
+			}
 		}
 	}
 
@@ -532,7 +538,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				{
 					Name:  "SRC_RANGES",
-					Value: strings.Join(sourceRanges.StringSlice(), " "),
+					Value: sourceRanges,
 				},
 				{
 					Name:  "DEST_PROTO",
@@ -558,7 +564,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Name: "DEST_IPS",
 					ValueFrom: &core.EnvVarSource{
 						FieldRef: &core.ObjectFieldSelector{
-							FieldPath: "status.hostIP",
+							FieldPath: getHostIPsFieldPath(),
 						},
 					},
 				},
@@ -571,7 +577,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				core.EnvVar{
 					Name:  "DEST_IPS",
-					Value: strings.Join(svc.Spec.ClusterIPs, " "),
+					Value: strings.Join(svc.Spec.ClusterIPs, ","),
 				},
 			)
 		}
@@ -702,4 +708,8 @@ func ingressToString(ingresses []core.LoadBalancerIngress) []string {
 		}
 	}
 	return parts
+}
+
+func getHostIPsFieldPath() string {
+	return "status.hostIP"
 }
