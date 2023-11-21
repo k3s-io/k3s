@@ -368,14 +368,16 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 				} else {
 					logrus.Infof("S3 upload complete for %s", snapshotName)
 				}
+				// Attempt to apply retention even if the upload failed; failure may be due to bucket
+				// being full or some other condition that retention policy would resolve.
+				if err := e.s3.snapshotRetention(ctx); err != nil {
+					logrus.Errorf("Failed to apply s3 snapshot retention policy: %v", err)
+				}
 			}
+			// sf is either s3 snapshot metadata, or s3 failure record
 			if err := e.addSnapshotData(*sf); err != nil {
 				return errors.Wrap(err, "failed to sync ETCDSnapshotFile")
 			}
-			if err := e.s3.snapshotRetention(ctx); err != nil {
-				logrus.Errorf("Failed to apply s3 snapshot retention policy: %v", err)
-			}
-
 		}
 	}
 
@@ -547,6 +549,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	}
 	if e.config.EtcdS3 {
 		if err := e.initS3IfNil(ctx); err != nil {
+			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			return err
 		}
 	}
@@ -739,6 +742,7 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 	// Get snapshots from S3
 	if e.config.EtcdS3 {
 		if err := e.initS3IfNil(ctx); err != nil {
+			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			return err
 		}
 
