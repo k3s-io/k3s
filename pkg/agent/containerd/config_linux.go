@@ -60,9 +60,12 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
-	extraRuntimes := runtimeConfigs{}
-	findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator)), extraRuntimes)
-	findWasiRuntimes(os.DirFS(string(os.PathSeparator)), extraRuntimes)
+	extraRuntimes := findContainerRuntimes(os.DirFS(string(os.PathSeparator)))
+
+	// Verifies if the DefaultRuntime can be found
+	if _, ok := extraRuntimes[cfg.DefaultRuntime]; !ok && cfg.DefaultRuntime != "" {
+		return errors.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
+	}
 
 	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
