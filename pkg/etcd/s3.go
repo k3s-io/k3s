@@ -178,7 +178,7 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 	if _, err := s.uploadSnapshotMetadata(ctx, metadataKey, metadata); err != nil {
 		logrus.Warnf("Failed to upload snapshot metadata to S3: %v", err)
 	} else {
-		logrus.Infof("Uploaded snapshot metadata s3://%s/%s", s.config.EtcdS3BucketName, metadata)
+		logrus.Infof("Uploaded snapshot metadata s3://%s/%s", s.config.EtcdS3BucketName, metadataKey)
 	}
 	return sf, err
 }
