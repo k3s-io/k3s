@@ -139,7 +139,6 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
 func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.ConfigMap, now time.Time) (*snapshotFile, error) {
-	logrus.Infof("Uploading snapshot to s3://%s/%s", s.config.EtcdS3BucketName, snapshot)
 	basename := filepath.Base(snapshot)
 	metadata := filepath.Join(filepath.Dir(snapshot), "..", metadataDir, basename)
 	snapshotKey := path.Join(s.config.EtcdS3Folder, basename)
@@ -166,6 +165,7 @@ func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.Conf
 		nodeSource:     s.nodeName,
 	}
 
+	logrus.Infof("Uploading snapshot to s3://%s/%s", s.config.EtcdS3BucketName, snapshotKey)
 	uploadInfo, err := s.uploadSnapshot(ctx, snapshotKey, snapshot)
 	if err != nil {
 		sf.Status = failedSnapshotStatus
