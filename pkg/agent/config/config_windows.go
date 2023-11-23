@@ -19,6 +19,6 @@ func applyCRIDockerdAddress(nodeConfig *config.Node) {
 	nodeConfig.CRIDockerd.Address = "npipe:////.pipe/cri-dockerd"
 }
 
-func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, nodeConfig *config.Node) {
+func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdConfig *config.Containerd) {
 	// QoS-class resource management not supported on windows.
 }
