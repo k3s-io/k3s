@@ -471,6 +471,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
+	// Handle command deprecation
+	if err := cmds.HandleDeprecated(app); err != nil {
+		return err
+	}
+
 	logrus.Info("Starting " + version.Program + " " + app.App.Version)
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")

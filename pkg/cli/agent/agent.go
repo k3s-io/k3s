@@ -67,6 +67,11 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
+	// Handle command deprecation
+	if err := cmds.HandleDeprecated(ctx); err != nil {
+		return err
+	}
+
 	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)

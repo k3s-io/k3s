@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
@@ -51,18 +50,4 @@ func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(ctx, args)
-}
-
-// ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
-// files exist and are of the correct types. This is exported so that it may be used by downstream projects.
-func ImageCredProvAvailable(cfg *daemonconfig.Agent) bool {
-	if info, err := os.Stat(cfg.ImageCredProvBinDir); err != nil || !info.IsDir() {
-		logrus.Debugf("Kubelet image credential provider bin directory check failed: %v", err)
-		return false
-	}
-	if info, err := os.Stat(cfg.ImageCredProvConfig); err != nil || info.IsDir() {
-		logrus.Debugf("Kubelet image credential provider config file check failed: %v", err)
-		return false
-	}
-	return true
 }

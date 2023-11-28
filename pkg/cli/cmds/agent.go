@@ -47,8 +47,6 @@ type Agent struct {
 	ExtraKubeProxyArgs       cli.StringSlice
 	Labels                   cli.StringSlice
 	Taints                   cli.StringSlice
-	ImageCredProvBinDir      string
-	ImageCredProvConfig      string
 	AgentReady               chan<- struct{}
 	AgentShared
 }
@@ -198,16 +196,14 @@ var (
 		Value: &AgentConfig.Labels,
 	}
 	ImageCredProvBinDirFlag = &cli.StringFlag{
-		Name:        "image-credential-provider-bin-dir",
-		Usage:       "(agent/node) The path to the directory where credential provider plugin binaries are located",
-		Destination: &AgentConfig.ImageCredProvBinDir,
-		Value:       "/var/lib/rancher/credentialprovider/bin",
+		Name:   "image-credential-provider-bin-dir",
+		Usage:  "(agent/node) The path to the directory where credential provider plugin binaries are located",
+		Hidden: true,
 	}
 	ImageCredProvConfigFlag = &cli.StringFlag{
-		Name:        "image-credential-provider-config",
-		Usage:       "(agent/node) The path to the credential provider plugin config file",
-		Destination: &AgentConfig.ImageCredProvConfig,
-		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
+		Name:   "image-credential-provider-config",
+		Usage:  "(agent/node) The path to the credential provider plugin config file",
+		Hidden: true,
 	}
 	DisableAgentLBFlag = &cli.BoolFlag{
 		Name:        "disable-apiserver-lb",
@@ -252,8 +248,6 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			WithNodeIDFlag,
 			NodeLabels,
 			NodeTaints,
-			ImageCredProvBinDirFlag,
-			ImageCredProvConfigFlag,
 			SELinuxFlag,
 			LBServerPortFlag,
 			ProtectKernelDefaultsFlag,
@@ -278,11 +272,13 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				Destination: &AgentConfig.Rootless,
 			},
 			PreferBundledBin,
+			DisableAgentLBFlag,
 			// Deprecated/hidden below
 			DockerFlag,
 			VPNAuth,
 			VPNAuthFile,
-			DisableAgentLBFlag,
+			ImageCredProvBinDirFlag,
+			ImageCredProvConfigFlag,
 		},
 	}
 }

@@ -163,13 +163,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		argsMap["cloud-provider"] = "external"
 	}
 
-	if ImageCredProvAvailable(cfg) {
-		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
-		argsMap["image-credential-provider-bin-dir"] = cfg.ImageCredProvBinDir
-		argsMap["image-credential-provider-config"] = cfg.ImageCredProvConfig
-	}
-
 	if cfg.Rootless {
 		createRootlessConfig(argsMap, controllers)
 	}

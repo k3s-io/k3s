@@ -13,13 +13,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blang/semver/v4"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
@@ -390,16 +390,8 @@ func verifyRotateKeysSupport(core core.Interface) error {
 		return err
 	}
 	for _, node := range nodes.Items {
-		kubver, err := semver.ParseTolerant(node.Status.NodeInfo.KubeletVersion)
-		if err != nil {
-			return fmt.Errorf("failed to parse kubelet version %s: %v", node.Status.NodeInfo.KubeletVersion, err)
-		}
-		supportVer, err := semver.Make("1.28.0")
-		if err != nil {
-			return err
-		}
-		if kubver.LT(supportVer) {
-			return fmt.Errorf("node %s is running k3s version %s that does not support rotate-keys", node.ObjectMeta.Name, kubver.String())
+		if semver.Compare(node.Status.NodeInfo.KubeletVersion, "v1.28.0") == -1 {
+			return fmt.Errorf("node %s is running k3s version %s that does not support rotate-keys", node.ObjectMeta.Name, node.Status.NodeInfo.KubeletVersion)
 		}
 	}
 	return nil

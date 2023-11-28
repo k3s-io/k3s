@@ -115,8 +115,6 @@ type Agent struct {
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string
-	ImageCredProvBinDir     string
-	ImageCredProvConfig     string
 	IPSECPSK                string
 	FlannelCniConfFile      string
 	PrivateRegistry         string
