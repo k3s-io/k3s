@@ -115,7 +115,6 @@ type Agent struct {
 	CNIPlugin               bool
 	NodeTaints              []string
 	NodeLabels              []string
-	IPSECPSK                string
 	FlannelCniConfFile      string
 	PrivateRegistry         string
 	SystemDefaultRegistry   string
@@ -187,7 +186,6 @@ type Control struct {
 	ExtraSchedulerAPIArgs    []string
 	NoLeaderElect            bool
 	JoinURL                  string
-	IPSECPSK                 string
 	DefaultLocalStoragePath  string
 	Skips                    map[string]bool
 	SystemDefaultRegistry    string
@@ -273,7 +271,6 @@ type ControlRuntimeBootstrap struct {
 	PasswdFile         string
 	RequestHeaderCA    string
 	RequestHeaderCAKey string
-	IPSECKey           string
 	EncryptionConfig   string
 	EncryptionHash     string
 }

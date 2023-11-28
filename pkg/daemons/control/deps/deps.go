@@ -15,7 +15,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"time"
 
@@ -108,7 +107,6 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServerCAKey = filepath.Join(config.DataDir, "tls", "server-ca.key")
 	runtime.RequestHeaderCA = filepath.Join(config.DataDir, "tls", "request-header-ca.crt")
 	runtime.RequestHeaderCAKey = filepath.Join(config.DataDir, "tls", "request-header-ca.key")
-	runtime.IPSECKey = filepath.Join(config.DataDir, "cred", "ipsec.psk")
 
 	runtime.ServiceKey = filepath.Join(config.DataDir, "tls", "service.key")
 	runtime.PasswdFile = filepath.Join(config.DataDir, "cred", "passwd")
@@ -187,10 +185,6 @@ func GenServerDeps(config *config.Control) error {
 		return err
 	}
 
-	if err := genEncryptedNetworkInfo(config); err != nil {
-		return err
-	}
-
 	if err := genEncryptionConfigAndState(config); err != nil {
 		return err
 	}
@@ -260,26 +254,6 @@ func genUsers(config *config.Control) error {
 	}
 
 	return passwd.Write(runtime.PasswdFile)
-}
-
-func genEncryptedNetworkInfo(controlConfig *config.Control) error {
-	runtime := controlConfig.Runtime
-	if s, err := os.Stat(runtime.IPSECKey); err == nil && s.Size() > 0 {
-		psk, err := os.ReadFile(runtime.IPSECKey)
-		if err != nil {
-			return err
-		}
-		controlConfig.IPSECPSK = strings.TrimSpace(string(psk))
-		return nil
-	}
-
-	psk, err := util.Random(ipsecTokenSize)
-	if err != nil {
-		return err
-	}
-
-	controlConfig.IPSECPSK = psk
-	return os.WriteFile(runtime.IPSECKey, []byte(psk+"\n"), 0600)
 }
 
 func getServerPass(passwd *passwd.Passwd, config *config.Control) (string, error) {

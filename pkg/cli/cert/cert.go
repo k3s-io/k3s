@@ -288,7 +288,6 @@ func rotateCA(app *cli.Context, cfg *cmds.Server, sync *cmds.CertRotateCA) error
 
 	// Override these paths so that we don't get warnings when they don't exist, as the user is not expected to provide them.
 	tmpServer.Runtime.PasswdFile = "/dev/null"
-	tmpServer.Runtime.IPSECKey = "/dev/null"
 
 	buf := &bytes.Buffer{}
 	if err := bootstrap.ReadFromDisk(buf, &tmpServer.Runtime.ControlRuntimeBootstrap); err != nil {
