@@ -5,11 +5,9 @@ package containerd
 
 import (
 	"context"
-	"os"
 
 	"github.com/containerd/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
-	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	util3 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
@@ -38,31 +36,20 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		logrus.Warn("SELinux isn't supported on windows")
 	}
 
-	var containerdTemplate string
-
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         true,
 		SystemdCgroup:         false,
 		IsRunningInUserNS:     false,
 		PrivateRegistryConfig: privRegistries.Registry,
+		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}
 
-	containerdTemplateBytes, err := os.ReadFile(cfg.Containerd.Template)
-	if err == nil {
-		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
-		containerdTemplate = string(containerdTemplateBytes)
-	} else if os.IsNotExist(err) {
-		containerdTemplate = templates.ContainerdConfigTemplate
-	} else {
-		return err
-	}
-	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
-	if err != nil {
+	if err := writeContainerdConfig(cfg, containerdConfig); err != nil {
 		return err
 	}
 
-	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+	return writeContainerdHosts(cfg, containerdConfig)
 }
 
 func Client(address string) (*containerd.Client, error) {
