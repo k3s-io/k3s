@@ -70,6 +70,8 @@ type Containerd struct {
 	Template      string
 	BlockIOConfig string
 	RDTConfig     string
+	Registry      string
+	NoDefault     bool
 	SELinux       bool
 	Debug         bool
 }
