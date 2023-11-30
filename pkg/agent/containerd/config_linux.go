@@ -13,7 +13,6 @@ import (
 	stargz "github.com/containerd/stargz-snapshotter/service"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
-	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -67,7 +66,6 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		return errors.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
 	}
 
-	var containerdTemplate string
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
@@ -77,6 +75,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		PrivateRegistryConfig: privRegistries.Registry,
 		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
+		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()
@@ -90,21 +89,11 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
 	}
 
-	containerdTemplateBytes, err := os.ReadFile(cfg.Containerd.Template)
-	if err == nil {
-		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
-		containerdTemplate = string(containerdTemplateBytes)
-	} else if os.IsNotExist(err) {
-		containerdTemplate = templates.ContainerdConfigTemplate
-	} else {
-		return err
-	}
-	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
-	if err != nil {
+	if err := writeContainerdConfig(cfg, containerdConfig); err != nil {
 		return err
 	}
 
-	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+	return writeContainerdHosts(cfg, containerdConfig)
 }
 
 func Client(address string) (*containerd.Client, error) {
