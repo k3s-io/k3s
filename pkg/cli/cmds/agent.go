@@ -26,6 +26,7 @@ type Agent struct {
 	PauseImage               string
 	Snapshotter              string
 	Docker                   bool
+	ContainerdNoDefault      bool
 	ContainerRuntimeEndpoint string
 	DefaultRuntime           string
 	ImageServiceEndpoint     string
@@ -220,6 +221,11 @@ var (
 		Usage:       "(agent/networking) (experimental) Disable the agent's client-side load-balancer and connect directly to the configured server address",
 		Destination: &AgentConfig.DisableLoadBalancer,
 	}
+	DisableDefaultRegistryEndpointFlag = &cli.BoolFlag{
+		Name:        "disable-default-registry-endpoint",
+		Usage:       "(agent/containerd) Disables containerd's fallback default registry endpoint when a mirror is configured for that registry",
+		Destination: &AgentConfig.ContainerdNoDefault,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -269,6 +275,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			PauseImageFlag,
 			SnapshotterFlag,
 			PrivateRegistryFlag,
+			DisableDefaultRegistryEndpointFlag,
 			AirgapExtraRegistryFlag,
 			NodeIPFlag,
 			NodeExternalIPFlag,
