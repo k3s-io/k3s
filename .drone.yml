@@ -46,6 +46,17 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
+  
 
 - name: validate-cross-compilation
   image: rancher/dapper:v0.5.0
@@ -128,6 +139,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 - name: github_e2e_logs_release
   image: ibuildthecloud/github-release:v0.0.1
@@ -239,6 +260,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 - name: github_binary_release
   image: ibuildthecloud/github-release:v0.0.1
@@ -296,6 +327,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 volumes:
 - name: docker
@@ -348,6 +389,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 - name: github_binary_release
   image: ibuildthecloud/github-release:v0.0.1
@@ -405,6 +456,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 volumes:
 - name: docker
@@ -472,6 +533,16 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
 
 - name: github_binary_release
   image: rancher/drone-images:github-release-s390x
@@ -533,7 +604,17 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
-
+  when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
+    event:
+      - push
+      - tag
+      
 volumes:
 - name: docker
   host:
@@ -812,9 +893,19 @@ steps:
       - /tmp/artifacts/upgrade-coverage.out
     flags: 
       - e2etests
+  # when:
+  #   event:
+  #   - pull_request
   when:
+    instance:
+      - drone-publish.k3s.io
+    ref:
+      include:
+        - "refs/heads/master"
+        - "refs/heads/release-*"
     event:
-    - pull_request
+      - push
+      - tag
 
   volumes:
   - name: cache
