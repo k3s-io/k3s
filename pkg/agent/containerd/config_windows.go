@@ -11,7 +11,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	util3 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
-	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
@@ -27,11 +26,6 @@ func getContainerdArgs(cfg *config.Node) []string {
 // setupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
 func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
-	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
-	if err != nil {
-		return err
-	}
-
 	if cfg.SELinux {
 		logrus.Warn("SELinux isn't supported on windows")
 	}
@@ -41,7 +35,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		DisableCgroup:         true,
 		SystemdCgroup:         false,
 		IsRunningInUserNS:     false,
-		PrivateRegistryConfig: privRegistries.Registry,
+		PrivateRegistryConfig: cfg.AgentConfig.Registry,
 		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}
 
