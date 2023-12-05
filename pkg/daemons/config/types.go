@@ -43,6 +43,7 @@ type Node struct {
 	NoFlannel                bool
 	SELinux                  bool
 	MultiClusterCIDR         bool
+	EmbeddedRegistry         bool
 	FlannelBackend           string
 	FlannelConfFile          string
 	FlannelConfOverride      bool
@@ -184,6 +185,7 @@ type Control struct {
 	DisableKubeProxy         bool
 	DisableScheduler         bool
 	DisableServiceLB         bool
+	EmbeddedRegistry         bool
 	Rootless                 bool
 	ServiceLBNamespace       string
 	EnablePProf              bool
