@@ -14,7 +14,7 @@ DOCKER_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
 
 # export variables for drone-manifest
 export PLUGIN_TEMPLATE="${REPO}:${DOCKER_TAG}-ARCH"
-export PLUGIN_PLATFORMS="linux/amd64,linux/arm64,linux/arm,linux/s390x"
+export PLUGIN_PLATFORMS="linux/amd64,linux/arm64,linux/arm"
 
 # push current version manifest tag to docker hub
 PLUGIN_TARGET="${REPO}:${DOCKER_TAG}" drone-manifest
