@@ -502,6 +502,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		ImageServiceEndpoint:     envInfo.ImageServiceEndpoint,
+		EmbeddedRegistry:         controlConfig.EmbeddedRegistry,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
 		FlannelExternalIP:        controlConfig.FlannelExternalIP,
