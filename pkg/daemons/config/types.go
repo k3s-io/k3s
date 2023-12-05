@@ -12,6 +12,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/rancher/wrangler/pkg/leader"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -121,7 +122,7 @@ type Agent struct {
 	ImageCredProvConfig     string
 	IPSECPSK                string
 	FlannelCniConfFile      string
-	PrivateRegistry         string
+	Registry                *registries.Registry
 	SystemDefaultRegistry   string
 	AirgapExtraRegistry     []string
 	DisableCCM              bool
