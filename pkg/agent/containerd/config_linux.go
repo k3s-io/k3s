@@ -18,7 +18,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
-	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/kubernetes/pkg/kubelet/util"
@@ -40,11 +39,6 @@ func getContainerdArgs(cfg *config.Node) []string {
 // setupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
 func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
-	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
-	if err != nil {
-		return err
-	}
-
 	isRunningInUserNS := userns.RunningInUserNS()
 	_, _, controllers := cgroups.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
@@ -72,7 +66,7 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
-		PrivateRegistryConfig: privRegistries.Registry,
+		PrivateRegistryConfig: cfg.AgentConfig.Registry,
 		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
 		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
