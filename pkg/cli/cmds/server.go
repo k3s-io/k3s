@@ -76,6 +76,7 @@ type Server struct {
 	DisableAPIServer         bool
 	DisableControllerManager bool
 	DisableETCD              bool
+	EmbeddedRegistry         bool
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
@@ -482,6 +483,11 @@ var ServerFlags = []cli.Flag{
 		Hidden:      true,
 		Usage:       "(experimental/components) Disable running etcd",
 		Destination: &ServerConfig.DisableETCD,
+	},
+	&cli.BoolFlag{
+		Name:        "embedded-registry",
+		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd",
+		Destination: &ServerConfig.EmbeddedRegistry,
 	},
 	NodeNameFlag,
 	WithNodeIDFlag,
