@@ -44,6 +44,10 @@ set -o noglob
 #     Commit of k3s to download from temporary cloud storage.
 #     * (for developer & QA use)
 #
+#   - INSTALL_K3S_PR
+#     PR build of k3s to download from Github Artifacts.
+#     * (for developer & QA use)
+#
 #   - INSTALL_K3S_BIN_DIR
 #     Directory to install k3s binary, links, and uninstall script to, or use
 #     /usr/local/bin as the default
@@ -337,6 +341,7 @@ verify_downloader() {
 setup_tmp() {
     TMP_DIR=$(mktemp -d -t k3s-install.XXXXXXXXXX)
     TMP_HASH=${TMP_DIR}/k3s.hash
+    TMP_ZIP=${TMP_DIR}/k3s.zip
     TMP_BIN=${TMP_DIR}/k3s.bin
     cleanup() {
         code=$?
@@ -350,7 +355,9 @@ setup_tmp() {
 
 # --- use desired k3s version if defined or find version from channel ---
 get_release_version() {
-    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+    if [ -n "${INSTALL_K3S_PR}" ]; then
+        VERSION_K3S="PR ${INSTALL_K3S_PR}"
+    elif [ -n "${INSTALL_K3S_COMMIT}" ]; then
         VERSION_K3S="commit ${INSTALL_K3S_COMMIT}"
     elif [ -n "${INSTALL_K3S_VERSION}" ]; then
         VERSION_K3S=${INSTALL_K3S_VERSION}
@@ -457,9 +464,46 @@ installed_hash_matches() {
     return 1
 }
 
+# Use the GitHub API to identify the artifact associated with a given PR
+get_pr_artifact_url() {
+    GITHUB_API_URL=https://api.github.com/repos/k3s-io/k3s
+
+    # Check if jq is installed
+    if ! [ -x "$(command -v jq)" ]; then
+        echo "jq is required to use INSTALL_K3S_PR. Please install jq and try again"
+        exit 1
+    fi
+
+    # Set the authentication header if GITHUB_TOKEN is provided
+    if [ -n "$GITHUB_TOKEN" ]; then
+        OPT_AUTH="-H 'Authorization: Bearer $GITHUB_TOKEN'"
+    fi
+
+    # GET request to the GitHub API to retrieve the latest commit SHA from the pull request
+    COMMIT_ID=$(curl -s $OPT_AUTH "$GITHUB_API_URL/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
+
+    # GET request to the GitHub API to retrieve the Build workflow associated with the commit
+    wf_raw=$(curl -s $OPT_AUTH "$GITHUB_API_URL/commits/$COMMIT_ID/check-runs")
+    build_workflow=$(printf "%s" "$wf_raw" | jq -r '.check_runs[] |  select(.name == "build / Build")')
+
+    # Extract the Run ID from the build workflow and lookup artifacts associated with the run
+    RUN_ID=$(echo "$build_workflow" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}')
+    artifacts=$(curl -s $OPT_AUTH "$GITHUB_API_URL/actions/runs/$RUN_ID/artifacts")
+
+    # Print the Url for the "k3s" artifact
+    artifacts_url=$(echo "$artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
+    echo "Artifact Url: $artifacts_url"
+}
+
 # --- download binary from github url ---
 download_binary() {
-    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+    if [ -n "${INSTALL_K3S_PR}" ]; then
+        BIN_URL=$(get_pr_artifact_url)
+        info "Downloading K3s artifact ${BIN_URL}"
+        download ${TMP_ZIP} ${BIN_URL}
+        unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
+        return
+    elif [ -n "${INSTALL_K3S_COMMIT}" ]; then
         BIN_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}
     else
         BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
