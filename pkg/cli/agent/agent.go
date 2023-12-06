@@ -2,21 +2,27 @@ package agent
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/erikdubbelboer/gspt"
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
+	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/datadir"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	apiauth "k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
 func Run(ctx *cli.Context) error {
@@ -97,6 +103,38 @@ func Run(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Until the agent is run and retrieves config from the server, we won't know
+	// if the embedded registry is enabled. If it is not enabled, these are not
+	// used as the registry is never started.
+	conf := spegel.DefaultRegistry
+	conf.Bootstrapper = spegel.NewAgentBootstrapper(cfg.ServerURL, cfg.Token, cfg.DataDir)
+	conf.HandlerFunc = func(conf *spegel.Config, router *mux.Router) error {
+		// Create and bind a new authenticator using the configured client CA
+		authArgs := []string{"--client-ca-file=" + conf.ClientCAFile}
+		auth, err := authenticator.FromArgs(authArgs)
+		if err != nil {
+			return err
+		}
+		conf.AuthFunc = func() apiauth.Request {
+			return auth
+		}
+
+		// Create a new server and listen on the configured port
+		server := &http.Server{
+			Handler: router,
+			Addr:    ":" + conf.RegistryPort,
+			TLSConfig: &tls.Config{
+				ClientAuth: tls.RequestClientCert,
+			},
+		}
+		go func() {
+			if err := server.ListenAndServeTLS(conf.ServerCertFile, conf.ServerKeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logrus.Fatalf("registry server failed: %v", err)
+			}
+		}()
+		return nil
 	}
 
 	return agent.Run(contextCtx, cfg)
