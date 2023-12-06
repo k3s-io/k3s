@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
@@ -36,6 +38,7 @@ func writeContainerdConfig(cfg *config.Node, containerdConfig templates.Containe
 
 // writeContainerdHosts merges registry mirrors/configs, and renders and saves hosts.toml from the filled template
 func writeContainerdHosts(cfg *config.Node, containerdConfig templates.ContainerdConfig) error {
+	mirrorAddr := net.JoinHostPort(spegel.DefaultRegistry.InternalAddress, spegel.DefaultRegistry.RegistryPort)
 	registry := containerdConfig.PrivateRegistryConfig
 	hosts := map[string]templates.HostConfig{}
 
@@ -57,12 +60,17 @@ func writeContainerdHosts(cfg *config.Node, containerdConfig templates.Container
 		// structure, which is defined in rancher/wharfie.
 		for _, endpoint := range mirror.Endpoints {
 			if endpointURL, err := url.Parse(endpoint); err == nil {
-				config.Endpoints = append(config.Endpoints, templates.RegistryEndpoint{
+				re := templates.RegistryEndpoint{
 					OverridePath: endpointURL.Path != "" && endpointURL.Path != "/" && !strings.HasSuffix(endpointURL.Path, "/v2"),
 					Config:       registry.Configs[endpointURL.Host],
 					Rewrites:     mirror.Rewrites,
 					URI:          endpoint,
-				})
+				}
+				// Do not apply rewrites to the embedded registry endpoint
+				if endpointURL.Host == mirrorAddr {
+					re.Rewrites = nil
+				}
+				config.Endpoints = append(config.Endpoints, re)
 			}
 		}
 		hosts[host] = config

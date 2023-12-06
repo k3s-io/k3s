@@ -11,6 +11,7 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -20,6 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
@@ -28,6 +30,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane"
 	utilsnet "k8s.io/utils/net"
@@ -548,6 +551,23 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if cfg.DisableAgent {
 		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
 		return agent.RunStandalone(ctx, agentConfig)
+	}
+
+	if cfg.EmbeddedRegistry {
+		conf := spegel.DefaultRegistry
+		conf.Bootstrapper = spegel.NewChainingBootstrapper(
+			spegel.NewServerBootstrapper(&serverConfig.ControlConfig),
+			spegel.NewAgentBootstrapper(cfg.ServerURL, token, agentConfig.DataDir),
+			spegel.NewSelfBootstrapper(),
+		)
+		conf.HandlerFunc = func(_ *spegel.Config, router *mux.Router) error {
+			router.NotFoundHandler = serverConfig.ControlConfig.Runtime.Handler
+			serverConfig.ControlConfig.Runtime.Handler = router
+			return nil
+		}
+		conf.AuthFunc = func() authenticator.Request {
+			return serverConfig.ControlConfig.Runtime.Authenticator
+		}
 	}
 
 	return agent.Run(ctx, agentConfig)
