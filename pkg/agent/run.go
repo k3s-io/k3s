@@ -30,6 +30,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
 	"github.com/k3s-io/k3s/pkg/rootless"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
@@ -101,6 +102,16 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	syssetup.Configure(enableIPv6, conntrackConfig)
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
+
+	if nodeConfig.EmbeddedRegistry {
+		if nodeConfig.Docker || nodeConfig.ContainerRuntimeEndpoint != "" {
+			return errors.New("embedded registry mirror requires embedded containerd")
+		}
+
+		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to start embedded registry")
+		}
+	}
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
