@@ -150,6 +150,7 @@ type CriticalControlArgs struct {
 	DisableServiceLB      bool         `cli:"disable-service-lb"`
 	EncryptSecrets        bool         `cli:"secrets-encryption"`
 	MultiClusterCIDR      bool         `cli:"multi-cluster-cidr"`
+	EmbeddedRegistry      bool         `cli:"embedded-registry"`
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
@@ -184,7 +185,6 @@ type Control struct {
 	DisableKubeProxy         bool
 	DisableScheduler         bool
 	DisableServiceLB         bool
-	EmbeddedRegistry         bool
 	Rootless                 bool
 	ServiceLBNamespace       string
 	EnablePProf              bool
