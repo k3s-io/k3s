@@ -51,7 +51,10 @@ import (
 )
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
-	nodeConfig := config.Get(ctx, cfg, proxy)
+	nodeConfig, err := config.Get(ctx, cfg, proxy)
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve agent configuration")
+	}
 
 	dualCluster, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
@@ -233,7 +236,11 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	nodeConfig := config.Get(ctx, cfg, proxy)
+	nodeConfig, err := config.Get(ctx, cfg, proxy)
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve agent configuration")
+	}
+
 	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
 		return err
 	}
