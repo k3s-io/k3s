@@ -48,8 +48,8 @@ const (
 // so this is somewhat computationally expensive on the server side, and is retried with jitter
 // to avoid having clients hammer on the server at fixed periods.
 // A call to this will bock until agent configuration is successfully returned by the
-// server.
-func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
+// server, or the context is cancelled.
+func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	var agentConfig *config.Node
 	var err error
 
@@ -65,7 +65,7 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node 
 			cancel()
 		}
 	}, 5*time.Second, 1.0, true)
-	return agentConfig
+	return agentConfig, err
 }
 
 // KubeProxyDisabled returns a bool indicating whether or not kube-proxy has been disabled in the
