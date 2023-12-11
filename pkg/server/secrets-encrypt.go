@@ -228,7 +228,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate)
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare)
 	})
 	if err != nil {
 		return err
