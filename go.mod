@@ -6,7 +6,7 @@ replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.0
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.4-k3s3 // k3s/release-1.28
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.0-20230925161250-364f994b140b
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.10-k3s1
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.11-k3s2
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/docker => github.com/docker/docker v24.0.0-rc.2.0.20230801142700-69c9adb7d386+incompatible
