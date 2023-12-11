@@ -1,4 +1,4 @@
-FROM alpine:3.18 as base
+FROM alpine:3.19 as base
 RUN apk add -U ca-certificates tar zstd tzdata
 COPY build/out/data.tar.zst /
 RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware && \
