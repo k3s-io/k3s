@@ -660,8 +660,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/k3s-io/containerd v1.7.10-k3s1.27 h1:rrclXavjNzywEK6aIozNr/tyNhYWGcM5eM07B9XUwbU=
-github.com/k3s-io/containerd v1.7.10-k3s1.27/go.mod h1:bqKO8PJAbtNpsqOM6fl5AICYSahNGKPH2K/YQQpk6Ts=
+github.com/k3s-io/containerd v1.7.11-k3s2.27 h1:p7mKeooDKqLkqiOcNUz1qFjolKOPdwGwZgdzU0GZBmw=
+github.com/k3s-io/containerd v1.7.11-k3s2.27/go.mod h1:bqKO8PJAbtNpsqOM6fl5AICYSahNGKPH2K/YQQpk6Ts=
 github.com/k3s-io/cri-dockerd v0.3.4-k3s1 h1:eCeVCeXzf10fyanv1gniSwidBjdO83/akv+M72uEnZc=
 github.com/k3s-io/cri-dockerd v0.3.4-k3s1/go.mod h1:0KDOU8lLjp+ETJFFCcVBRQbJ8puRoDxaHBDj8C87Fk4=
 github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1 h1:yWVy9pS0T1BWBMZBPRy2Q29gaLmaGknQHSnx+HStrVM=
