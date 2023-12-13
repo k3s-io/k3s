@@ -252,6 +252,10 @@ func (e *etcdSnapshotHandler) reconcile() error {
 		}
 	}
 
+	if len(snapshots) > 0 && snapshotConfigMap.Data == nil {
+		snapshotConfigMap.Data = map[string]string{}
+	}
+
 	// Ensure keys for existing snapshots
 	for sfKey, esf := range snapshots {
 		sf := snapshotFile{}
