@@ -43,7 +43,7 @@ RUN rm -rf /go/src /go/pkg
 
 # Install golangci-lint for amd64
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2;  \
     fi
     
 # Set SELINUX environment variable
