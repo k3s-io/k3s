@@ -20,6 +20,9 @@ import (
 )
 
 func Run(ctx *cli.Context) error {
+	// Validate build env
+	cmds.MustValidateGolang()
+
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " agent")
