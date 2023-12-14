@@ -14,7 +14,7 @@ ENTRYPOINT ["/bin/test-mods"]
 
 FROM test-base as test-k3s
 
-RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils yq
 
 RUN python3 -m pip install awscli
 

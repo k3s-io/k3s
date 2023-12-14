@@ -26,10 +26,8 @@ if [ -n "$DIRTY" ]; then
 fi
 
 echo Running: go version
-DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
-GOLANG_VERSION=$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)
-if ! go version | grep -s "go version go${GOLANG_VERSION} "; then
-  echo "Unexpected $(go version) - Kubernetes ${VERSION_K8S} should be built with go version go${GOLANG_VERSION}"
+if ! go version | grep -s "go version ${VERSION_GOLANG} "; then
+  echo "Unexpected $(go version) - Kubernetes ${VERSION_K8S} should be built with go version ${VERSION_GOLANG}"
   exit 1
 fi
 
