@@ -168,6 +168,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.VLevel = cmds.LogConfig.VLevel
+	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
 
 	if !cfg.EtcdDisableSnapshots || cfg.ClusterReset {
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress

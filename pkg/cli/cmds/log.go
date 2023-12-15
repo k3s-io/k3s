@@ -1,10 +1,7 @@
 package cmds
 
 import (
-	"flag"
 	"fmt"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -74,11 +71,6 @@ func checkUnixTimestamp() error {
 }
 
 func setupLogging() {
-	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	fs.Set("v", strconv.Itoa(LogConfig.VLevel))
-	fs.Set("vmodule", LogConfig.VModule)
-	fs.Set("alsologtostderr", strconv.FormatBool(Debug))
-	fs.Set("logtostderr", strconv.FormatBool(!Debug))
 	if Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}

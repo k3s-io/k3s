@@ -125,6 +125,13 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["controllers"] = argsMap["controllers"] + ",-service,-route,-cloud-node-lifecycle"
 	}
 
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
@@ -144,6 +151,14 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
+
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
@@ -212,6 +227,13 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
 		argsMap["encryption-provider-config-automatic-reload"] = "true"
 	}
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
@@ -326,6 +348,13 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	if cfg.DisableServiceLB {
 		argsMap["controllers"] = argsMap["controllers"] + ",-service"
 	}
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
 	logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))
