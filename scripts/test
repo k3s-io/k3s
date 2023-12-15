@@ -5,6 +5,13 @@ cd $(dirname $0)/..
 . ./scripts/version.sh
 . ./scripts/test-helpers
 
+# sysctl commands
+sysctl -w fs.inotify.max_queued_events=16384
+sysctl -w fs.inotify.max_user_instances=128
+sysctl -w fs.inotify.max_user_watches=497557
+sysctl -w user.max_inotify_instances=128
+sysctl -w user.max_inotify_watches=497557
+
 artifacts=$(pwd)/dist/artifacts
 mkdir -p $artifacts
 
