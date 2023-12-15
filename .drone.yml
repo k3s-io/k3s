@@ -102,6 +102,8 @@ steps:
     repo: "rancher/k3s"
     username:
       from_secret: docker_username
+    build_args_from_env:
+      - DRONE_TAG
   when:
     instance:
     - drone-publish.k3s.io
@@ -270,6 +272,8 @@ steps:
     repo: "rancher/k3s"
     username:
       from_secret: docker_username
+    build_args_from_env:
+      - DRONE_TAG
   when:
     instance:
     - drone-publish.k3s.io
@@ -379,6 +383,8 @@ steps:
     repo: "rancher/k3s"
     username:
       from_secret: docker_username
+    build_args_from_env:
+      - DRONE_TAG
   when:
     instance:
     - drone-publish.k3s.io
@@ -496,7 +502,6 @@ steps:
     - DOCKER_USERNAME
     - DOCKER_PASSWORD
     - DRONE_TAG
-
 trigger:
   instance:
   - drone-publish.k3s.io
