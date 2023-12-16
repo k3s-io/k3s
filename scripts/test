@@ -7,10 +7,10 @@ cd $(dirname $0)/..
 
 # sysctl commands
 sysctl -w fs.inotify.max_queued_events=16384
-sysctl -w fs.inotify.max_user_instances=128
-sysctl -w fs.inotify.max_user_watches=497557
-sysctl -w user.max_inotify_instances=128
-sysctl -w user.max_inotify_watches=497557
+sysctl -w fs.inotify.max_user_instances=8192
+sysctl -w fs.inotify.max_user_watches=524288
+sysctl -w user.max_inotify_instances=8192
+sysctl -w user.max_inotify_watches=524288
 
 artifacts=$(pwd)/dist/artifacts
 mkdir -p $artifacts
