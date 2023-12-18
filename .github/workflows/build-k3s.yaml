@@ -30,13 +30,13 @@ jobs:
         mv ../k3s-repo.tar.gz .
     - name: "Upload K3s directory"
       if: inputs.upload-repo == true
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: k3s-repo.tar.gz
         path: k3s-repo.tar.gz
     - name: "Upload K3s binary"
       if: inputs.upload-repo == false
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: k3s
         path: dist/artifacts/k3s
