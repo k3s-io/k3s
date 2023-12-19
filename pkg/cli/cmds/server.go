@@ -223,7 +223,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "multi-cluster-cidr",
-		Usage:       "(experimental/networking) Enable multiClusterCIDR",
+		Usage:       "(non-functional/networking) Enable multiClusterCIDR",
 		Destination: &ServerConfig.MultiClusterCIDR,
 	},
 	&cli.BoolFlag{
