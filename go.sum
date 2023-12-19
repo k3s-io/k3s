@@ -553,6 +553,8 @@ github.com/fatih/color v1.15.0/go.mod h1:0h5ZqXfHYED7Bhv2ZJamyIOUej9KtShiJESRwBD
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/flannel-io/flannel v0.24.0 h1:dsVWmcWTn9ujbNfoTR0+Epkqfq1/bGWOCP5vVCTEBLI=
+github.com/flannel-io/flannel v0.24.0/go.mod h1:GvvhQS/xd5QM6oc9yeVz8KBbp5hWJZgPtwTKgpuLUPI=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
@@ -891,8 +893,6 @@ github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1 h1:nlix2+EM1UDofoHgp/X2VHzMvJW7oYbZbE
 github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1/go.mod h1:WnFkqzFdZua4LVlVXQEGhmooLeyS7mqzS4Pf4BCVqXg=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1 h1:B3039IkTPnwQEt4tIMjC6yd6b1Q3Z9ZZe8rfaBPfbXo=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1/go.mod h1:GgI1fQClQCFIzuVjlvdbMxNbnISt90gdfYyqiAIt65g=
-github.com/k3s-io/flannel v0.23.0-k3s1 h1:JCROHniLnHNcPuQi2IHfDpyDMGG2yuC1znLVJvdnirc=
-github.com/k3s-io/flannel v0.23.0-k3s1/go.mod h1:QSf9ZPo+azj/3cpDqMwDjmLk7+SsM7h3wPT8iExsgis=
 github.com/k3s-io/helm-controller v0.15.4 h1:l4DWmUWpphbtwmuXGtpr5Rql/2NaCLSv4ZD8HlND9uY=
 github.com/k3s-io/helm-controller v0.15.4/go.mod h1:BgCPBQblj/Ect4Q7/Umf86WvyDjdG/34D+n8wfXtoeM=
 github.com/k3s-io/kine v0.11.0 h1:7tS0H9yBDxXiy1BgEEkBWLswwG/q4sARPTHdxOMz1qw=

@@ -40,7 +40,6 @@ type Node struct {
 	ImageServiceEndpoint     string
 	NoFlannel                bool
 	SELinux                  bool
-	MultiClusterCIDR         bool
 	FlannelBackend           string
 	FlannelConfFile          string
 	FlannelConfOverride      bool
@@ -149,7 +148,6 @@ type CriticalControlArgs struct {
 	DisableNPC            bool         `cli:"disable-network-policy"`
 	DisableServiceLB      bool         `cli:"disable-service-lb"`
 	EncryptSecrets        bool         `cli:"secrets-encryption"`
-	MultiClusterCIDR      bool         `cli:"multi-cluster-cidr"`
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
