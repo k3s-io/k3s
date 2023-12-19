@@ -47,7 +47,7 @@ var (
 	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
 )
 
-func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, multiClusterCIDR bool, netMode int) error {
+func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
 	extIface, err := LookupExtInterface(flannelIface, netMode)
 	if err != nil {
 		return errors.Wrap(err, "failed to find the interface")
