@@ -58,8 +58,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		kubeConfigFile,
 		FlannelBaseAnnotation,
 		flannelConf,
-		false,
-		multiClusterCIDR)
+		false)
 	if err != nil {
 		return errors.Wrap(err, "failed to create the SubnetManager")
 	}
