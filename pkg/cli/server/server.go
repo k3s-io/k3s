@@ -155,8 +155,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
-	serverConfig.ControlConfig.MultiClusterCIDR = cfg.MultiClusterCIDR
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
+	serverConfig.ControlConfig.MultiClusterCIDR = cfg.MultiClusterCIDR
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
 	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
@@ -197,8 +197,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if cfg.MultiClusterCIDR {
-		logrus.Warn("multiClusterCIDR alpha feature will be removed in future releases")
+		logrus.Warn("multiClusterCIDR alpha feature is non-functional")
 	}
+
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
 		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
 	}
