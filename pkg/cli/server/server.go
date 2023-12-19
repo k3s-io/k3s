@@ -197,8 +197,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if cfg.MultiClusterCIDR {
-		logrus.Warn("multiClusterCIDR alpha feature will be removed in future releases")
+		logrus.Warn("multiClusterCIDR alpha feature is non-functional")
 	}
+
 	if cfg.ClusterResetRestorePath != "" && !cfg.ClusterReset {
 		return errors.New("invalid flag use; --cluster-reset required with --cluster-reset-restore-path")
 	}
