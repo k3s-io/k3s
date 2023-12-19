@@ -1,0 +1,25 @@
+github:
+  user: "github-actions[bot]"
+  email: "41898282+github-actions[bot]@users.noreply.github.com"
+  username: "UPDATECLI_GITHUB_ACTOR"
+  token: "UPDATECLI_GITHUB_TOKEN"
+k3s:
+  org: "k3s-io"
+  repo: "k3s"
+  branch: "master"
+klipper_helm:
+  org: "k3s-io"
+  repo: "klipper-helm"
+  branch: "master"
+klipper_lb:
+  org: "k3s-io"
+  repo: "klipper-lb"
+  branch: "master"
+local_path_provisioner:
+  org: "rancher"
+  repo: "local-path-provisioner"
+  branch: "master"
+helm_controller:
+  org: "k3s-io"
+  repo: "helm-controller"
+  branch: "master"

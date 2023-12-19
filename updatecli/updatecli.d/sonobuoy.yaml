@@ -1,0 +1,71 @@
+---
+name: "Bump Sonobuoy version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+
+actions:
+  github:
+    title: "Bump Sonobuoy version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      labels: 
+        - "dependencies"
+
+
+sources:
+  sonobuoy:
+    name: "Get Sonobuoy latest release version"
+    kind: "githubrelease"
+    spec:
+      owner: "vmware-tanzu"
+      repository: "sonobuoy"
+      token: "{{ requiredEnv .github.token }}"
+      branch: "main"
+      versionfilter:
+        kind: "latest"
+    transformers:
+      - trimprefix: "v"
+
+conditions:
+  docker-image:
+    name: "Check sonobuoy/sonobuoy image version in DockerHub"
+    kind: "dockerimage"
+    sourceid: "sonobuoy"
+    spec:
+      image: "sonobuoy/sonobuoy"
+    transformers:
+      - addprefix: "v"
+  dockerfiles:
+    name: "Check if 'ENV SONOBUOY_VERSION' is set in Dockerfiles"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "Dockerfile.test"
+        - "conformance/Dockerfile"
+      matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
+
+targets:
+  sonobuoy:
+    name: "Update sonobuoy image versions"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "sonobuoy"
+    spec:
+      files:
+        - "Dockerfile.test"
+        - "conformance/Dockerfile"
+      matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'ENV SONOBUOY_VERSION {{ source "sonobuoy" }}'

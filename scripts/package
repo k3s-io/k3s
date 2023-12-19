@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+
+if [ ! -e ../bin/containerd ]; then
+    ./build
+fi
+
+./package-cli
+if [ -z "$SKIP_IMAGE" ]; then
+    ./package-image
+fi
+if [ -z "$SKIP_AIRGAP" ]; then
+    ./package-airgap
+fi

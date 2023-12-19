@@ -1,0 +1,11 @@
+foo-bar: baz
+alice: bob
+a-slice:
+- 1
+- "2"
+- ""
+- three
+isempty:
+c: b
+isfalse: false
+islast: true

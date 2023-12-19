@@ -1,0 +1,62 @@
+---
+name: "Bump Trivy version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump Trivy version"
+
+actions:
+  github:
+    title: "Bump Trivy version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      usetitleforautomerge: true
+      labels:
+        - "dependencies"
+
+sources:
+  trivy-release:
+    name: "Get Trivy latest release"
+    kind: "githubrelease"
+    spec:
+      owner: "aquasecurity"
+      repository: "trivy"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "latest"
+    transformers:
+      - trimprefix: "v"
+
+conditions:
+  trivy-version:
+    name: "Check Trivy usage in Dockerfile.dapper"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      file: "Dockerfile.dapper"
+      matchpattern: 'TRIVY_VERSION="\d+\.\d+.\d+"'
+
+targets:
+  trivy-version:
+    name: "Update Trivy version in Dockerfile.dapper"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      file: "Dockerfile.dapper"
+      matchpattern: 'TRIVY_VERSION="\d+\.\d+.\d+"'
+      replacepattern: 'TRIVY_VERSION="{{ source `trivy-release` }}"'
+

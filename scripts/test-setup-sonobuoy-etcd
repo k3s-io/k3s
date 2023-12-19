@@ -1,0 +1,28 @@
+#!/bin/bash
+
+. ./scripts/test-setup-sonobuoy
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export SERVER_1_ARGS="--cluster-init"
+
+server-post-hook() {
+  if [ $1 -eq 1 ]; then
+    local url=$(cat $TEST_DIR/servers/1/metadata/url)
+    export SERVER_ARGS="--server $url"
+  fi
+}
+export -f server-post-hook
+
+test-post-hook() {
+  if [[ $1 -eq 0 ]] || [[ ! -f "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log" ]]; then
+    return $1
+  fi
+  local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log")
+  # Ignore sonobuoy failures if only these flaky tests have failed
+  flakyFails=$( grep -scF -f ./scripts/flaky-tests <<< "$failures" )
+  totalFails=$( grep -scF -e "[Fail]" <<< "$failures" )
+  [ "$totalFails" -le "$flakyFails" ]
+}
+export -f test-post-hook
+

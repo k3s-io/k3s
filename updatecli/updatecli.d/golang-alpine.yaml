@@ -1,0 +1,80 @@
+---
+name: "Bump Golang Alpine version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump golang:alpine version"
+
+actions:
+  github:
+    title: "Bump golang:alpine image version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      labels: 
+        - "dependencies"
+
+sources:
+  # Find Alpine latest semver version in DockerHub
+  alpine-docker-image:
+    name: "Check Alpine image version in DockerHub"
+    kind: "dockerimage"
+    spec:
+      image: "alpine"
+      versionfilter:
+        kind: "semver"
+        strict: true
+    # We want only the major and minor version, because it's the format
+    # used in golang:alpine version.
+    # Example: Alpine latest version is alpine:3.17.0, so we want only
+    # 3.17 to then check for golang:X.Y-alpine3.17 .
+    transformers:
+      - find: '\d+\.\d+'
+  # Dockerfile.dapper is considered the base for the Golang version that we
+  # must use.
+  dockerfile-dapper:
+    name: "Retrieve golang image version used in Dockerfile.dapper"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      file: "Dockerfile.dapper"
+      matchpattern: 'golang:\S+-alpine(\S+)?'
+    # Example: if the version found is golang:1.19.3-alpine3.16, then
+    # we extract only 1.19.3-alpine .
+    transformers:
+      - find: 'v?\d+\.\d+\.\d+-alpine'
+
+conditions:
+  docker-image:
+    name: "Check golang:alpine latest image version in DockerHub"
+    kind: "dockerimage"
+    disablesourceinput: true
+    spec:
+      image: "golang"
+      tag: '{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'
+
+targets:
+  dockerfiles:
+    name: "Bump golang:alpine image version in Dockerfiles"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "Dockerfile.dapper"
+        - "Dockerfile.test"
+        - "Dockerfile.manifest"
+      matchpattern: 'golang:\S+-alpine(\S+)?'
+      replacepattern: 'golang:{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'

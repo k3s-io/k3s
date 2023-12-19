@@ -1,0 +1,63 @@
+{{$EnableConfigMaps := DefaultParam .ENABLE_CONFIGMAPS false}}
+{{$EnableSecrets := DefaultParam .ENABLE_SECRETS false}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Name}}
+  labels:
+    group: load
+    svc: {{.SvcName}}-{{.Index}}
+spec:
+  replicas: {{RandIntRange .ReplicasMin .ReplicasMax}}
+  selector:
+    matchLabels:
+      name: {{.Name}}
+  template:
+    metadata:
+      labels:
+        group: load
+        name: {{.Name}}
+        svc: {{.SvcName}}-{{.Index}}
+    spec:
+      containers:
+      - image: registry.k8s.io/pause:3.1
+        name: {{.Name}}
+        resources:
+          requests:
+            cpu: 10m
+            memory: "10M"
+        volumeMounts:
+          {{if and $EnableConfigMaps (eq (Mod .Index 20) 0 19) }} # .Index % 20 in {0,19} - 10% deployments will have ConfigMap
+          - name: configmap
+            mountPath: /var/configmap
+          {{end}}
+          {{if and $EnableSecrets (eq (Mod .Index 20) 10 19) }} # .Index % 20 in {10,19} - 10% deployments will have Secret
+          - name: secret
+            mountPath: /var/secret
+          {{end}}
+      dnsPolicy: Default
+      terminationGracePeriodSeconds: 1
+      # Add not-ready/unreachable tolerations for 15 minutes so that node
+      # failure doesn't trigger pod deletion.
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 900
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 900
+      volumes:
+        {{if and $EnableConfigMaps (eq (Mod .Index 20) 0 19) }} # .Index % 20 in {0,19} - 10% deployments will have ConfigMap
+        - name: configmap
+          configMap:
+            name: {{.BaseName}}-{{.Index}}
+        {{end}}
+        {{if and $EnableSecrets (eq (Mod .Index 20) 10 19) }} # .Index % 20 in {10,19} - 10% deployments will have Secret
+        - name: secret
+          secret:
+            secretName: {{.BaseName}}-{{.Index}}
+        {{end}}
+

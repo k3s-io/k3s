@@ -1,0 +1,91 @@
+---
+name: "Bump Local Path Provisioner version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump Local Path Provisioner version"
+  local-path-provisioner:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .local_path_provisioner.org }}"
+      repository: "{{ .local_path_provisioner.repo }}"
+      branch: "{{ .local_path_provisioner.branch }}"
+
+actions:
+  github:
+    title: "Bump Local Path Provisioner version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      usetitleforautomerge: true
+      labels: 
+        - "dependencies"
+
+sources:
+  local-path-provisioner:
+    name: "Get Local Path Provisioner latest release version"
+    kind: "githubrelease"
+    spec:
+      owner: "{{ .local_path_provisioner.org }}"
+      repository: "{{ .local_path_provisioner.repo }}"
+      branch: "{{ .local_path_provisioner.branch }}"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "latest"
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    disablesourceinput: true
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  local-path-provisioner:
+    name: "Check rancher/local-path-provisioner image version in DockerHub"
+    kind: "dockerimage"
+    sourceid: "local-path-provisioner"
+    spec:
+      image: "rancher/local-path-provisioner"
+
+targets:
+  local-path-provisioner:
+    name: "Update rancher/local-path-provisioner image version"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "local-path-provisioner"
+    spec:
+      files:
+        - "manifests/local-storage.yaml"
+        - "scripts/airgap/image-list.txt"
+      matchpattern: 'rancher/local-path-provisioner:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'rancher/local-path-provisioner:{{ source `local-path-provisioner` }}'
+  go-generate:
+    name: "Run go generate"
+    kind: "shell"
+    scmid: "k3s"
+    dependson:
+      - "local-path-provisioner"
+    disablesourceinput: true
+    spec:
+      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-generate.sh'
+      environments:
+        - name: PATH
+        - name: HOME
+

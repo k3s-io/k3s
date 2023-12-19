@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-test
+  namespace: default
+spec:
+  containers:
+  - name: volume-test
+    image: busybox:stable
+    imagePullPolicy: IfNotPresent
+    command:
+    - sh
+    - "-c"
+    - "touch /data/file1 && sleep infinity"
+    volumeMounts:
+    - name: volv
+      mountPath: /data
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+  volumes:
+  - name: volv
+    persistentVolumeClaim:
+      claimName: local-path-pvc

@@ -1,0 +1,89 @@
+name: Install Script
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/install/**"
+      - ".github/workflows/install.yaml"
+
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "install.sh"
+      - "tests/install/**"
+      - ".github/workflows/install.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  
+jobs:
+  build:
+    uses: ./.github/workflows/build-k3s.yaml
+  test:
+    name: "Smoke Test"
+    needs: build
+    runs-on: macos-12
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        vm: [centos-7, rocky-8, rocky-9, fedora, opensuse-leap, ubuntu-focal]
+      max-parallel: 2
+    defaults:
+      run:
+        working-directory: tests/install/${{ matrix.vm }}
+    env:
+      INSTALL_K3S_SKIP_DOWNLOAD: binary
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - name: "Vagrant Cache"
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.vagrant.d/boxes
+            ~/.vagrant.d/gems
+          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
+        id: vagrant-cache
+        continue-on-error: true
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+      - name: "Download k3s binary"
+        uses: actions/download-artifact@v3
+        with:
+          name: k3s
+          path: tests/install/${{ matrix.vm }}
+      - name: "Vagrant Up"
+        run: vagrant up --no-provision
+      - name: "Upload k3s binary"
+        run: |
+          chmod +x k3s
+          vagrant scp k3s /tmp/k3s
+          vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
+          vagrant provision --provision-with=k3s-upload
+      - name: "⏩ Install K3s"
+        run: |
+          vagrant provision --provision-with=k3s-prepare
+          vagrant provision --provision-with=k3s-install
+          if [ ${{ matrix.vm }} = 'opensuse-microos' ]; then vagrant reload --no-provision; fi
+      - name: "⏳ Node"
+        run: vagrant provision --provision-with=k3s-wait-for-node
+      - name: "⏳ CoreDNS"
+        run: vagrant provision --provision-with=k3s-wait-for-coredns
+      - name: "⏳ Local Storage"
+        run: vagrant provision --provision-with=k3s-wait-for-local-storage
+        continue-on-error: true
+      - name: "⏳ Metrics Server"
+        run: vagrant provision --provision-with=k3s-wait-for-metrics-server
+        continue-on-error: true
+      - name: "⏳ Traefik"
+        run: vagrant provision --provision-with=k3s-wait-for-traefik
+        continue-on-error: true
+      - name: "k3s-status"
+        run: vagrant provision --provision-with=k3s-status
+      - name: "k3s-procps"
+        run: vagrant provision --provision-with=k3s-procps

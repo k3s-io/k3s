@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ -z "${DRONE_TAG}" ]; then
+  echo "DRONE_TAG not defined" >&2
+  exit 1
+fi
+
+set -e -x
+
+REPO="rancher/k3s"
+
+# docker can not contain '+' in the tag, so transform '+' to '-'
+DOCKER_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
+
+# export variables for drone-manifest
+export PLUGIN_TEMPLATE="${REPO}:${DOCKER_TAG}-ARCH"
+export PLUGIN_PLATFORMS="linux/amd64,linux/arm64,linux/arm"
+
+# push current version manifest tag to docker hub
+PLUGIN_TARGET="${REPO}:${DOCKER_TAG}" drone-manifest
+
+# do not tag in docker as latest if the github tag contains a '-'
+if echo "${DRONE_TAG}" | grep -q '-'; then
+  exit 0
+fi
+
+# get latest released version from github
+GITHUB_URL=https://github.com/k3s-io/k3s/releases
+VERSION_K3S=$(curl -w '%{url_effective}' -I -L -s -S ${GITHUB_URL}/latest -o /dev/null | sed -e 's|.*/||')
+
+# function for comparing versions
+version_ge() {
+  [ "$1" = "$2" ] || [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
+}
+
+# do not tag in docker as latest if we are not greater than or equal to the latest github tag
+if ! version_ge "${DRONE_TAG}" "${VERSION_K3S}"; then
+  exit 0
+fi
+
+# push latest manifest tag to docker hub
+PLUGIN_TARGET="${REPO}:latest" drone-manifest

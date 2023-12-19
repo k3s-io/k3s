@@ -1,0 +1,50 @@
+# to run define K3S_TOKEN, K3S_VERSION is optional, eg:
+#   K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM} docker-compose up
+
+version: '3'
+services:
+
+  server:
+    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    command: server
+    tmpfs:
+    - /run
+    - /var/run
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true
+    restart: always
+    environment:
+    - K3S_TOKEN=${K3S_TOKEN:?err}
+    - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
+    - K3S_KUBECONFIG_MODE=666
+    volumes:
+    - k3s-server:/var/lib/rancher/k3s
+    # This is just so that we get the kubeconfig file out
+    - .:/output
+    ports:
+    - 6443:6443  # Kubernetes API Server
+    - 80:80      # Ingress controller port 80
+    - 443:443    # Ingress controller port 443
+
+  agent:
+    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    tmpfs:
+    - /run
+    - /var/run
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true
+    restart: always
+    environment:
+    - K3S_URL=https://server:6443
+    - K3S_TOKEN=${K3S_TOKEN:?err}
+
+volumes:
+  k3s-server: {}

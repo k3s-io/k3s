@@ -1,0 +1,63 @@
+name: Unit Test Coverage
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/snapshotter/**"
+      - "tests/install/**"
+      - "tests/cgroup/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/snapshotter/**"
+      - "tests/install/**"
+      - "tests/cgroup/**"
+      - ".github/**"
+      - "!.github/workflows/unitcoverage.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+    timeout-minutes: 20
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: Install Go
+      uses: actions/setup-go@v4
+      with: 
+        go-version: '1.21.5'
+        check-latest: true
+        cache: true
+        cache-dependency-path: |
+          **/go.sum
+          **/go.mod
+    - name: Run Unit Tests
+      run: | 
+        go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
+        go tool cover -func coverage.out
+    - name: On Failure, Launch Debug Session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 5
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.out
+        flags: unittests # optional
+        verbose: true # optional (default = false)

@@ -1,0 +1,86 @@
+#!/bin/bash
+set -e -x
+
+cd $(dirname $0)/..
+
+. ./scripts/version.sh
+
+GO=${GO-go}
+
+for i in containerd crictl kubectl k3s-agent k3s-server k3s-token k3s-etcd-snapshot k3s-secrets-encrypt k3s-certificate k3s-completion; do
+    rm -f bin/$i${BINARY_POSTFIX}
+    ln -s k3s${BINARY_POSTFIX} bin/$i${BINARY_POSTFIX}
+done
+
+cni_binaries=(
+    "bandwidth"
+    "bridge"
+    "firewall"
+    "flannel"
+    "host-local"
+    "loopback"
+    "portmap"
+)
+
+if [ ${OS} = windows ]; then
+    cni_binaries=(
+        "win-overlay"
+        "flannel"
+        "host-local"
+    )
+fi
+
+for i in "${cni_binaries[@]}"; do
+    rm -f bin/$i${BINARY_POSTFIX}
+    ln -s cni${BINARY_POSTFIX} bin/$i${BINARY_POSTFIX}
+done
+
+cp contrib/util/check-config.sh bin/check-config
+
+rm -rf build/data
+mkdir -p build/data build/out
+mkdir -p dist/artifacts
+mkdir -p ./etc
+
+(
+    set +x
+    cd bin
+    find . -not -path '*/\.*' -type f -exec sha256sum {} \; | sed -e 's| \./| |' | sort -k2 >.sha256sums
+    (
+        for f in $(find . -type l); do
+            echo $f $(readlink $f)
+        done
+    ) | sed -e 's|^\./||' | sort >.links
+    set -x
+)
+
+tar cvf ./build/out/data.tar ./bin ./etc
+zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
+HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
+
+cp ./build/out/data.tar.zst ./build/data/${HASH}.tar.zst
+
+BIN_SUFFIX="-${ARCH}"
+if [ ${ARCH} = amd64 ]; then
+    BIN_SUFFIX=""
+elif [ ${ARCH} = arm ]; then
+    BIN_SUFFIX="-armhf"
+elif [ ${ARCH} = s390x ]; then
+    BIN_SUFFIX="-s390x"
+fi
+
+CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}
+
+GOOS=linux CC=gcc CXX=g++ "${GO}" generate
+LDFLAGS="
+    -X github.com/k3s-io/k3s/pkg/version.Version=$VERSION
+    -X github.com/k3s-io/k3s/pkg/version.GitCommit=${COMMIT:0:8}
+    -w -s
+"
+TAGS="urfave_cli_no_docs"
+STATIC="-extldflags '-static'"
+CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -buildvcs=false -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s
+
+stat ${CMD_NAME}
+
+./scripts/build-upload ${CMD_NAME} ${COMMIT}

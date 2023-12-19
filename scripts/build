@@ -1,0 +1,195 @@
+#!/bin/bash
+set -e -x
+
+cd $(dirname $0)/..
+
+. ./scripts/version.sh
+
+GO=${GO-go}
+
+PKG="github.com/k3s-io/k3s"
+PKG_CONTAINERD="github.com/containerd/containerd"
+PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"
+PKG_K8S_BASE="k8s.io/component-base"
+PKG_K8S_CLIENT="k8s.io/client-go/pkg"
+PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
+PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router/v2"
+PKG_CRI_DOCKERD="github.com/Mirantis/cri-dockerd"
+PKG_ETCD="go.etcd.io/etcd"
+
+buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+VERSIONFLAGS="
+    -X ${PKG}/pkg/version.Version=${VERSION}
+    -X ${PKG}/pkg/version.GitCommit=${COMMIT:0:8}
+
+    -X ${PKG_K8S_CLIENT}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_CLIENT}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_CLIENT}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_CLIENT}/version.buildDate=${buildDate}
+
+    -X ${PKG_K8S_BASE}/version.gitVersion=${VERSION}
+    -X ${PKG_K8S_BASE}/version.gitCommit=${COMMIT}
+    -X ${PKG_K8S_BASE}/version.gitTreeState=${TREE_STATE}
+    -X ${PKG_K8S_BASE}/version.buildDate=${buildDate}
+
+    -X ${PKG_CRICTL}/version.Version=${VERSION_CRICTL}
+
+    -X ${PKG_CONTAINERD}/version.Version=${VERSION_CONTAINERD}
+    -X ${PKG_CONTAINERD}/version.Package=${PKG_CONTAINERD_K3S}
+
+    -X ${PKG_CNI_PLUGINS}/pkg/utils/buildversion.BuildVersion=${VERSION_CNIPLUGINS}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Program=flannel
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Version=${VERSION_FLANNEL}
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.Commit=HEAD
+    -X ${PKG_CNI_PLUGINS}/plugins/meta/flannel.buildDate=${buildDate}
+
+    -X ${PKG_KUBE_ROUTER}/pkg/version.Version=${VERSION_KUBE_ROUTER}
+    -X ${PKG_KUBE_ROUTER}/pkg/version.BuildDate=${buildDate}
+
+    -X ${PKG_CRI_DOCKERD}/cmd/version.Version=${VERSION_CRI_DOCKERD}
+    -X ${PKG_CRI_DOCKERD}/cmd/version.GitCommit=HEAD
+    -X ${PKG_CRI_DOCKERD}/cmd/version.BuildTime=${buildDate}
+
+    -X ${PKG_ETCD}/api/version.GitSHA=HEAD
+"
+if [ -n "${DEBUG}" ]; then
+  GCFLAGS="-N -l"
+else
+  LDFLAGS="-w -s"
+fi
+
+STATIC="
+    -extldflags '-static -lm -ldl -lz -lpthread'
+"
+TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
+RUNC_TAGS="apparmor seccomp"
+RUNC_STATIC="static"
+
+if [ ${OS} = windows ]; then
+    TAGS="ctrd netcgo osusergo providerless"
+fi
+
+if [ "$SELINUX" = "true" ]; then
+    TAGS="$TAGS selinux"
+    RUNC_TAGS="$RUNC_TAGS selinux"
+fi
+
+if [ "$STATIC_BUILD" != "true" ]; then
+    STATIC="
+"
+    RUNC_STATIC=""
+else
+    TAGS="static_build libsqlite3 $TAGS"
+fi
+
+if [ -n "${GOCOVER}" ]; then
+    BLDFLAGS="-cover"
+    TAGS="cover $TAGS"
+fi
+
+mkdir -p bin
+
+if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
+    export GOARCH="arm"
+    export GOARM="7"
+fi
+
+if [ ${ARCH} = s390x ]; then
+    export GOARCH="s390x"
+fi
+
+k3s_binaries=(
+    "bin/k3s-agent"
+    "bin/k3s-server"
+    "bin/k3s-token"
+    "bin/k3s-etcd-snapshot"
+    "bin/k3s-secrets-encrypt"
+    "bin/k3s-certificate"
+    "bin/k3s-completion"
+    "bin/kubectl"
+    "bin/containerd"
+    "bin/crictl"
+    "bin/ctr"
+)
+
+containerd_binaries=(
+    "bin/containerd-shim"
+    "bin/containerd-shim-runc-v2"
+    "bin/runc"
+    "bin/containerd-shim-runhcs-v1"
+    "bin/runhcs"
+)
+
+for i in "${k3s_binaries[@]}"; do
+    if [ -f "$i${BINARY_POSTFIX}" ]; then
+        echo "Removing $i${BINARY_POSTFIX}"
+        rm -f "$i${BINARY_POSTFIX}"
+    fi
+done
+
+for i in "${containerd_binaries[@]}"; do
+    if [ -f "$i${BINARY_POSTFIX}" ]; then
+        echo "Removing $i${BINARY_POSTFIX}"
+        rm -f "$i${BINARY_POSTFIX}"
+    fi
+done
+
+cleanup() {
+    exit_status=$?
+    rm -rf $TMPDIR
+    exit ${exit_status}
+}
+
+INSTALLBIN=$(pwd)/bin
+if [ ! -x ${INSTALLBIN}/cni${BINARY_POSTFIX} ]; then
+(
+    echo Building cni
+    TMPDIR=$(mktemp -d)
+    trap cleanup EXIT
+    WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
+    git clone -b $VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
+    cd $WORKDIR
+    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni${BINARY_POSTFIX}
+)
+fi
+
+echo Building k3s
+CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s${BINARY_POSTFIX} ./cmd/server
+
+for i in "${k3s_binaries[@]}"; do
+    ln -s "k3s${BINARY_POSTFIX}" "$i${BINARY_POSTFIX}"
+done
+
+export GOPATH=$(pwd)/build
+
+case ${OS} in
+  linux)
+    echo Building containerd-shim
+    pushd ./build/src/github.com/containerd/containerd
+    TAGS="${TAGS/netcgo/netgo}"
+    CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
+    popd
+    cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
+
+    echo Building runc
+    pushd ./build/src/github.com/opencontainers/runc
+    rm -f runc
+    make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    popd
+    cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
+    ;;
+  windows)
+    echo Building containerd-shim-runhcs-v1
+    pushd ./build/src/github.com/microsoft/hcsshim
+    TAGS="${TAGS/netcgo/netgo}"
+    CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runhcs-v1${BINARY_POSTFIX} ./cmd/containerd-shim-runhcs-v1
+    CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/runhcs${BINARY_POSTFIX} ./cmd/runhcs
+    popd
+    cp -vf ./build/src/github.com/microsoft/hcsshim/bin/*${BINARY_POSTFIX} ./bin/
+    ;;
+  *)
+    echo "[ERROR] unrecognized opertaing system: ${OS}"
+    exit 1
+    ;;
+esac

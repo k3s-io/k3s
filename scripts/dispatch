@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+set -x
+
+REPO="https://api.github.com/repos/k3s-io/k3s-upgrade/dispatches"
+
+# send dispatch event to REPO
+curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
+        -H "Accept: application/vnd.github.everest-preview+json"  \
+        -H "Content-Type: application/json" $REPO \
+        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
+
+SYSTEM_AGENT_INSTALLER_K3S_REPO="https://api.github.com/repos/rancher/system-agent-installer-k3s/dispatches"
+
+# send dispatch event to SYSTEM_AGENT_INSTALLER_K3S_REPO
+curl -XPOST -H "Authorization: Bearer ${K3S_RELEASE_TOKEN}" \
+        -H "Accept: application/vnd.github.everest-preview+json"  \
+        -H "Content-Type: application/vnd.github+json" $SYSTEM_AGENT_INSTALLER_K3S_REPO \
+        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'

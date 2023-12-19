@@ -1,0 +1,54 @@
+ARG GOLANG=golang:1.21.5-alpine3.18
+FROM ${GOLANG} as test-base
+
+RUN apk -U --no-cache add bash jq
+ENV K3S_SOURCE /go/src/github.com/k3s-io/k3s/
+WORKDIR ${K3S_SOURCE}
+
+COPY . ${K3S_SOURCE}
+
+FROM test-base as test-mods
+
+COPY ./scripts/test-mods /bin/
+ENTRYPOINT ["/bin/test-mods"]
+
+FROM test-base as test-k3s
+
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils
+
+RUN python3 -m pip install awscli
+
+ENV SONOBUOY_VERSION 0.57.0
+
+RUN OS=linux; \
+    ARCH=$(go env GOARCH); \
+    RELEASE=$(curl -fs https://storage.googleapis.com/kubernetes-release/release/stable.txt); \
+    if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "arm64" ] || [ "${ARCH}" == "s390x" ]; then \
+      curl -sL "https://github.com/vmware-tanzu/sonobuoy/releases/download/v${SONOBUOY_VERSION}/sonobuoy_${SONOBUOY_VERSION}_${OS}_${ARCH}.tar.gz" | \
+      tar -xzf - -C /usr/local/bin; \
+    fi; \
+    curl -fsL https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl; \
+    chmod a+x /usr/local/bin/kubectl; 
+
+ENV TEST_CLEANUP true
+
+ENTRYPOINT ["./scripts/entry.sh"]
+CMD ["test"]
+
+
+FROM vagrantlibvirt/vagrant-libvirt:0.12.1 AS test-e2e
+RUN apt-get update && apt-get install -y docker.io
+ENV VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1
+RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
+    chmod +x ./kubectl; \
+    mv ./kubectl /usr/local/bin/kubectl
+RUN GO_VERSION=go1.21.5; \
+    curl -O -L "https://golang.org/dl/${GO_VERSION}.linux-amd64.tar.gz"; \
+    rm -rf /usr/local/go; \
+    tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz;
+
+ENV PATH="${PATH}:/usr/local/go/bin"
+
+

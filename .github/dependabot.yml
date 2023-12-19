@@ -1,0 +1,65 @@
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+  
+  - package-ecosystem: "docker"
+    directory: "/"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/conformance"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/e2e/scripts"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/package"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/integration"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/terraform"
+    labels:
+      - "kind/dependabot"
+    reviewers:
+      - "k3s-io/k3s-dev"
+    schedule:
+      interval: "weekly"

@@ -1,0 +1,107 @@
+{{define "function"}}
+{{- $f := .}}
+
+func Test_Unit{{.FullName}}(t *testing.T) {
+	{{- with .Receiver}}
+		{{- if .IsStruct}}
+			{{- if .Fields}}
+				type fields struct {
+				{{- range .Fields}}
+					{{Field .}} {{.Type}}
+				{{- end}}
+				}
+			{{- end}}
+		{{- end}}
+	{{- end}}
+	{{- if .TestParameters}}
+	type args struct {
+		{{- range .TestParameters}}
+				{{Param .}} {{.Type}}
+		{{- end}}
+	}
+	{{- end}}
+	tests := []struct {
+		name string
+		{{- with .Receiver}}
+			{{- if and .IsStruct .Fields}}
+				fields fields
+			{{- else}}
+				{{Receiver .}} {{.Type}}
+			{{- end}}
+		{{- end}}
+		{{- if .TestParameters}}
+			args args
+		{{- end}}
+		setup    func() error // Optional, delete if unused
+		teardown func() error // Optional, delete if unused
+		{{- range .TestResults}}
+			{{Want .}} {{.Type}}
+		{{- end}}
+		{{- if .ReturnsError}}
+			wantErr bool
+		{{- end}}
+	}{
+		// TODO: Add test cases.
+		// {
+		//      name: "Example Test",
+		//      args: args {
+		//      },
+		// {{- range .TestResults}}
+		//      want: {{Want .}} {{.Type}}
+                // {{- end}}
+		//      setup: func() error { return nil },
+		//      teardown: func() error { return nil },
+		// },
+	}
+	for {{if (or .Subtests (not .IsNaked))}} _, tt := {{end}} range tests {
+		{{- if .Subtests}}
+		{{- if .Parallel}}tt := tt{{end}}
+		t.Run(tt.name, func(t *testing.T) {
+			{{- if .Parallel}}t.Parallel(){{end}}
+		{{- end}}
+			{{- with .Receiver}}
+				{{- if .IsStruct}}
+					{{Receiver .}} := {{if .Type.IsStar}}&{{end}}{{.Type.Value}}{
+					{{- range .Fields}}
+						{{.Name}}: tt.fields.{{Field .}},
+					{{- end}}
+					}
+				{{- end}}
+			{{- end}}
+			{{- range .Parameters}}
+				{{- if .IsWriter}}
+					{{Param .}} := &bytes.Buffer{}
+				{{- end}}
+			{{- end}}
+			defer tt.teardown()
+			if err := tt.setup(); err != nil {
+			        t.Errorf("Setup for {{template "message" $f}} failed = %v", err)
+			        return
+			}
+			{{- if and (not .OnlyReturnsError) (not .OnlyReturnsOneValue) }}
+				{{template "results" $f}} {{template "call" $f}}
+			{{- end}}
+			{{- if .ReturnsError}}
+				if {{if .OnlyReturnsError}} err := {{template "call" $f}}; {{end}} (err != nil) != tt.wantErr {
+					t.Errorf("{{template "message" $f}} error = %v, wantErr %v", {{template "inputs" $f}} err, tt.wantErr)
+					{{- if .TestResults}}
+						{{if .Subtests }}return{{else}}continue{{end}}
+					{{- end}}
+				}
+			{{- end}}
+			{{- range .TestResults}}
+				{{- if .IsWriter}}
+					if {{Got .}} := {{Param .}}.String(); {{Got .}} != tt.{{Want .}} {
+				{{- else if .IsBasicType}}
+					if {{if $f.OnlyReturnsOneValue}}{{Got .}} := {{template "inline" $f}}; {{end}} {{Got .}} != tt.{{Want .}} {
+				{{- else}}
+					if {{if $f.OnlyReturnsOneValue}}{{Got .}} := {{template "inline" $f}}; {{end}} !reflect.DeepEqual({{Got .}}, tt.{{Want .}}) {
+				{{- end}}
+				t.Errorf("{{template "message" $f}} {{if $f.ReturnsMultiple}}{{Got .}} {{end}}= %+v\nWant = %+v", {{template "inputs" $f}} {{Got .}}, tt.{{Want .}})
+				}
+			{{- end}}
+		{{- if .Subtests }} }) {{- end -}}
+	}
+}
+
+{{end}}

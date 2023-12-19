@@ -1,0 +1,645 @@
+#!/bin/bash
+
+# ---
+
+port-used() {
+    netstat -tuna | grep -q ":$1 "
+}
+export -f port-used
+
+# ---
+
+get-port() {
+    local port=0
+    while
+        port=$((10000 + RANDOM % 50000))
+        port-used $port
+    do continue; done
+    echo $port
+}
+export -f get-port
+
+# ---
+
+fetch-kubeconfig() {(
+    set -e -o pipefail
+    local num=${1:-1}
+    local name=$(cat $TEST_DIR/servers/$num/metadata/name)
+    local port=$(cat $TEST_DIR/servers/$num/metadata/port)
+    docker cp $name:/etc/rancher/k3s/k3s.yaml - 2>/dev/null | tar -xO 2>/dev/null | sed -e "s/:6443/:$port/g" >$TEST_DIR/servers/$num/kubeconfig.yaml
+)}
+export -f fetch-kubeconfig
+
+# ---
+
+wait-for-kubeconfig() {
+    while ! fetch-kubeconfig $1; do
+        echo 'Waiting for kubeconfig to become available...' >&2
+        sleep 5
+    done
+}
+export -f wait-for-kubeconfig
+
+# ---
+
+count-ready-nodes() {
+    kubectl get nodes -o json \
+        | jq '.items[].status.conditions[] | select(.type == "Ready" and .status == "True") | .type' \
+        | wc -l \
+        | tr -d '[:space:]'
+}
+export -f count-ready-nodes
+
+# ---
+
+wait-for-nodes() {
+    while [[ $(count-ready-nodes) -ne $1 ]]; do
+        echo 'Waiting for nodes to be ready...' >&2
+        sleep 5
+    done
+}
+export -f wait-for-nodes
+
+# ---
+
+pod-ready() {
+    kubectl get pods -n kube-system -o json \
+        | jq ".items[].status | select(.containerStatuses != null) | .containerStatuses[] | select(.name == \"$1\") | .ready" 2>/dev/null
+}
+export -f pod-ready
+
+# ---
+
+wait-for-services() {
+    for service in "$@"; do
+        while [[ "$(pod-ready $service | sort -u)" != 'true' ]]; do
+            echo "Waiting for service $service to be ready..." >&2
+            sleep 5
+        done
+        echo "Service $service is ready"
+    done
+}
+export -f wait-for-services
+
+# ---
+
+wait-for-db-connection() {
+    if [ -z "$DB_CONNECTION_TEST" ]; then
+      echo 'DB_CONNECTION_TEST is not defined' >&2
+      return 1
+    fi
+    while ! $DB_CONNECTION_TEST 2>/dev/null; do
+        echo 'Waiting for database to become available...' >&2
+        sleep 5
+    done
+}
+export -f wait-for-db-connection
+
+# ---
+
+verify-valid-version() {
+    docker exec "$@" 2>&1 | tee .version.tmp
+    # check for bad strings in the version output, including '.' in the build metadata
+    if grep -oiE '.*(dev|head|unknown|fail|refuse|\+[^"]*\.).*' .version.tmp; then
+        return 1
+    fi
+}
+export -f verify-valid-version
+
+# ---
+
+verify-valid-versions() {
+    verify-valid-version $1 kubectl version
+    verify-valid-version $1 ctr version
+    verify-valid-version $1 crictl version
+}
+export -f verify-valid-versions
+
+# ---
+
+dump-logs() {
+    local testID=$(basename $TEST_DIR)
+    echo "#---------------------------------"
+    echo "#- Begin: logs for run ($testID)"
+    echo
+    local server=$(cat $TEST_DIR/servers/1/metadata/name)
+    docker exec $server kubectl get pods -A -o wide >$TEST_DIR/logs/kubectl-get-pods.txt
+    docker exec $server kubectl get nodes -o wide >$TEST_DIR/logs/kubectl-get-nodes.txt
+    docker exec $server kubectl describe pods -A >$TEST_DIR/logs/kubectl-describe-pods.txt
+
+    for node in $TEST_DIR/*/*; do
+        [ -d "$node" ] || continue
+        local name=$(cat $node/metadata/name 2>/dev/null)
+        [ "$name" ] || continue
+        mkdir -p $node/logs
+        local hostname=$(docker exec $name hostname)
+        docker logs $name >$node/logs/system.log 2>&1
+        if [[ ! -z "$hostname" && $name == k3s-* ]]; then
+            docker exec $server kubectl describe node/$hostname >$node/logs/kubectl-describe-node.txt
+            docker cp $name:/var/lib/rancher/k3s/agent/containerd/containerd.log $node/logs/containerd.log 2>/dev/null
+            docker exec $name crictl pods >$node/logs/crictl-pods.txt
+            docker exec $name crictl ps -a >$node/logs/crictl-ps.txt
+            docker exec $name crictl ps -a -o json >$node/metadata/crictl-ps.json
+            for container in $(jq -r '.containers[].id' <$node/metadata/crictl-ps.json); do
+                local cname=$(jq -r '.containers[] | select(.id == "'$container'") | .metadata.name' <$node/metadata/crictl-ps.json)
+                docker exec $name crictl logs $container >$node/logs/$cname-$container.log 2>&1
+            done
+        fi
+        if [ "$1" == "skip-output" ]; then
+            continue
+        fi 
+        for log in $node/logs/*.log; do
+            echo
+            echo "#- Tail: $log"
+            tail -5 $log
+            echo "#- Done: $log"
+            echo
+        done
+    done
+
+    if [ "$1" == "skip-output" ]; then
+        return
+    fi 
+
+    for txt in $TEST_DIR/logs/*.txt $TEST_DIR/*/*/logs/*.txt; do
+        echo
+        echo "#- Cat: $txt"
+        cat $txt
+        echo "#- Done: $txt"
+        echo
+    done
+    echo
+    echo "#- Finish: logs for run ($testID)"
+    echo "#---------------------------------"
+    echo
+    ./scripts/log-upload $TEST_DIR
+}
+export -f dump-logs
+
+# ---
+
+retrieve-sonobuoy-logs() {
+    local status=passed
+    local code=0
+    local testStatus=$(sonobuoy status 2>&1)
+    cat <<< $testStatus
+
+    if ! grep -q -E '\s+e2e\s+complete\s+passed\s+' <<< $testStatus; then
+        status=failed
+        code=1
+    fi
+
+    mkdir -p $TEST_DIR/sonobuoy
+    local logTarball="$(sonobuoy retrieve $TEST_DIR/sonobuoy)"
+    if [ -f "$logTarball" ]; then
+        tar -xz -f "$logTarball" -C $TEST_DIR/sonobuoy
+        rm "$logTarball"
+    else
+        rm -rf $TEST_DIR/sonobuoy
+    fi
+
+    local e2eLog=$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log
+    if [ ! -s $e2eLog ]; then
+        return 1
+    fi
+    if [ -n "$LOG_OUTPUT" ]; then
+        cp $e2eLog $(sed -e "s/-STATUS-/-$status-/g" <<< "$LOG_OUTPUT")
+    fi
+    tail -11 $e2eLog
+    awk '/^Summarizing .* Failures?:$/,0' $e2eLog
+    return $code
+}
+export -f retrieve-sonobuoy-logs
+
+# ---
+
+test-wait() {
+    wait $1 || echo "test wait exit code $?"
+    local delay=15
+    sleep $delay
+    while sonobuoy status | grep -q -E ' +e2e +running +'; do
+        sleep $delay
+    done
+    sleep $delay
+    if sonobuoy status | grep -q -E ' +e2e +complete +passed +'; then
+        return 0
+    fi
+    return 1
+}
+export -f test-wait
+
+# ---
+
+sonobuoy-test() {
+    if [ "$ARCH" = 'arm' ]; then
+        echo "Aborting sonobuoy tests, images not available for $ARCH"
+        return 0
+    fi
+    echo 'Starting sonobuoy tests'
+
+    sonobuoy run \
+        --config=scripts/sonobuoy-config.json \
+        --plugin-env=e2e.E2E_USE_GO_RUNNER=true \
+        --kubernetes-version=${VERSION_K8S} \
+        --wait=90 \
+        "$@" &
+
+    local sonobuoyPID=$!
+    local code=0
+    time timeout --foreground 60m bash -c test-wait $sonobuoyPID || code=$?
+    echo "Sonobuoy finished with code $code"
+    retrieve-sonobuoy-logs
+    return $code
+}
+export -f sonobuoy-test
+
+# ---
+
+test-cleanup() {
+    local code=$?
+    set +e -x
+    echo 'Cleaning up...'
+    trap - EXIT INT TERM
+    if has-function test-post-hook; then
+        test-post-hook $code
+        code=$?
+    fi
+    if [[ $code -ne 0 ]]; then
+        dump-logs
+    fi
+    for name in $TEST_DIR/*/*/metadata/name; do
+        [ -f "$name" ] || continue
+        local container=$(cat $name)
+        echo "Removing container $container"
+        docker rm -f -v $container
+    done
+    if has-function test-cleanup-hook; then
+        test-cleanup-hook
+    fi
+    echo
+    if [ "$TEST_CLEANUP" = true ]; then
+        echo "Removing test directory $TEST_DIR"
+        rm -rf $TEST_DIR
+    fi
+    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
+    echo -n "Test $(basename $TEST_DIR) "
+    if [ $code -eq 0 ]; then
+        echo "passed."
+    else
+        echo "failed."
+    fi
+    echo
+    exit $code
+}
+export -f test-cleanup
+
+# ---
+
+test-setup() {
+    export TEST_DIR=$(mktemp -d '/tmp/XXXXXX')
+    trap test-cleanup EXIT INT TERM
+
+    mkdir -p $TEST_DIR/metadata
+    if [ "$LABEL" ]; then
+        exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0; fflush() }") \
+            2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0; fflush() }" >&2)
+        echo "$LABEL" >$TEST_DIR/metadata/label
+    fi
+
+    mkdir -p $TEST_DIR/logs
+    exec > >(tee -a $TEST_DIR/logs/test.log) \
+        2> >(tee -a $TEST_DIR/logs/test.log >&2)
+
+    if [ -z "$K3S_IMAGE" ]; then
+        . ./scripts/version.sh
+        TAG=${TAG:-${VERSION_TAG}${SUFFIX}}
+        REPO=${REPO:-rancher}
+        IMAGE_NAME=${IMAGE_NAME:-k3s}
+        export K3S_IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
+    fi
+
+    if [ -z "$K3S_IMAGE" ]; then
+        echo 'K3S_IMAGE environment variable should be defined'
+        return 1
+    fi
+
+    SERVER_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_SERVER:-$K3S_IMAGE})
+    AGENT_MINOR=$(awk -F. '{print $2}' <<<${K3S_IMAGE_AGENT:-$K3S_IMAGE})
+    if [ $NUM_AGENTS -gt 0 ] && [ $AGENT_MINOR -gt $SERVER_MINOR ]; then
+        echo "Agent minor version cannot be higher than server - not supported by Kubernetes version skew policy"
+        exit 0
+    fi
+
+    echo ${RANDOM}${RANDOM}${RANDOM} >$TEST_DIR/metadata/secret
+}
+export -f test-setup
+
+# ---
+
+inc-count() {
+    local count=$(find $TEST_DIR -type d -mindepth 2 -maxdepth 2 -regex ".*/$1/[0-9]+" -printf '%f\n' | sort -nr | head -1)
+    count=$((count+1))
+    mkdir -p $TEST_DIR/$1/$count/metadata
+    echo $count
+}
+export -f inc-count
+
+# ---
+
+has-function() {
+  [[ -n "$1" && $(type -t $1) == "function" ]]
+} 2> /dev/null
+export -f has-function
+
+# ---
+
+run-function() {
+    has-function $1 || return 0
+    "$@"
+}
+export -f run-function
+
+# ---
+
+provision-server() {
+    local count=$(inc-count servers)
+    local testID=$(basename $TEST_DIR)
+    local name=$(echo "k3s-server-${count}-${testID,,}" | tee $TEST_DIR/servers/$count/metadata/name)
+    local port=$(timeout --foreground 5s bash -c get-port | tee $TEST_DIR/servers/$count/metadata/port)
+    local SERVER_INSTANCE_ARGS="SERVER_${count}_ARGS"
+
+    run-function server-pre-hook $count
+
+    docker run \
+        -d --name $name \
+        --hostname $name \
+        --privileged \
+        -p 127.0.0.1:$port:6443 \
+        -p 6443 \
+        -e K3S_TOKEN="$(cat $TEST_DIR/metadata/secret)" \
+        -e K3S_DEBUG=true \
+        ${SERVER_DOCKER_ARGS:-} \
+        ${REGISTRY_CLUSTER_ARGS:-} \
+        ${K3S_IMAGE_SERVER:-$K3S_IMAGE} server ${ARGS} ${SERVER_ARGS} ${!SERVER_INSTANCE_ARGS}
+
+    local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/servers/$count/metadata/ip)
+    local url=$(echo "https://$ip:6443" | tee $TEST_DIR/servers/$count/metadata/url)
+
+    echo "Started $name @ $url"
+    run-function server-post-hook $count
+}
+export -f provision-server
+
+# ---
+
+provision-agent() {
+    local K3S_URL=${K3S_URL:-"$(cat $TEST_DIR/servers/1/metadata/url)"}
+    local count=$(inc-count agents)
+    local testID=$(basename $TEST_DIR)
+    local name=$(echo "k3s-agent-${count}-${testID,,}" | tee $TEST_DIR/agents/$count/metadata/name)
+    local AGENT_INSTANCE_ARGS="AGENT_${count}_ARGS"
+
+    run-function agent-pre-hook $count
+    docker run \
+        -d --name $name \
+        --hostname $name \
+        --privileged \
+        -e K3S_TOKEN=$(cat $TEST_DIR/metadata/secret) \
+        -e K3S_URL=$K3S_URL \
+        ${AGENT_DOCKER_ARGS:-} \
+        ${REGISTRY_CLUSTER_ARGS:-} \
+        ${K3S_IMAGE_AGENT:-$K3S_IMAGE} agent ${ARGS} ${AGENT_ARGS} ${!AGENT_INSTANCE_ARGS}
+
+    local ip=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $name | tee $TEST_DIR/agents/$count/metadata/ip)
+
+    echo "Started $name"
+    run-function agent-post-hook $count
+}
+export -f provision-agent
+
+# ---
+
+provision-cluster() {
+    run-function cluster-pre-hook
+
+    if [ "${ENABLE_REGISTRY}" == 'true' ]; then
+      provision-registry-proxy
+    fi
+
+    for i in $(seq 1 $NUM_SERVERS); do
+        provision-server
+        timeout --foreground 120s bash -c "wait-for-kubeconfig $i"
+    done
+    export KUBECONFIG=$TEST_DIR/servers/${KUBECONFIG_SERVER:-1}/kubeconfig.yaml
+
+    if [ $NUM_AGENTS -gt 0 ]; then
+        for _ in $(seq 1 $NUM_AGENTS); do
+            provision-agent
+        done
+    fi
+
+    [ -f "$PROVISION_LOCK" ] && rm $PROVISION_LOCK
+
+    timeout --foreground 2m bash -c "wait-for-nodes $(( NUM_SERVERS + NUM_AGENTS ))"
+    timeout --foreground 4m bash -c "wait-for-services $WAIT_SERVICES"
+
+    run-function cluster-post-hook
+}
+export -f provision-cluster
+
+# ---
+
+provision-registry-proxy() {
+    set -e -o pipefail
+    local image="docker.io/library/registry:2.8.1"
+    local prefix="docker-registry-"
+    local registries="docker.io:registry-1.docker.io registry.k8s.io gcr.io quay.io ghcr.io"
+    local registries_yaml="$TEST_DIR/registries.yaml"
+
+    echo "mirrors:" > $registries_yaml
+
+    for registry in $registries; do
+        IFS=: read registry_name registry_endpoint <<< $registry
+        if [ -z "$registry_endpoint" ]; then
+            registry_endpoint=$registry_name
+        fi
+
+        local name="registry_${registry_name//./_}"
+        local status=$(docker inspect $name --format '{{ .State.Status }} {{ .Config.Image }} {{ (index .HostConfig.PortBindings "5000/tcp" 0).HostPort }}' 2>/dev/null || true)
+
+        read state_status config_image hostport <<< $status
+        if [ "$state_status" != "running" ] || [ "$config_image" != "$image" ]; then
+            hostport=$(timeout --foreground 5s bash -c get-port)
+            docker rm --force $name 2>/dev/null || true
+            docker run \
+                -d --name $name \
+                -p 0.0.0.0:$hostport:5000 \
+                -v "registry-cache:/var/lib/registry" \
+                -e "REGISTRY_HTTP_SECRET=shared-secret" \
+                -e "REGISTRY_PROXY_REMOTEURL=https://$registry_endpoint" \
+                -e "REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory" \
+                -e "REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry/$registry_name" \
+                $image
+        fi
+        echo -e "  $registry_name:\n    endpoint:\n    - http://172.17.0.1:$hostport" >> $registries_yaml
+    done
+
+    echo "Using registry mirror with cluster registries.yaml:"
+    cat $registries_yaml
+
+    export REGISTRY_CLUSTER_ARGS="-v $registries_yaml:/etc/rancher/k3s/registries.yaml"
+}
+export -f provision-registry-proxy
+
+# ---
+
+early-exit() {
+    printf "\033[33m%s\033[m\n" "$1"
+    exit $2
+}
+export -f early-exit
+
+# ---
+
+run-test() {
+    local delay=15
+    (
+      set +x
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
+          sleep $delay
+      done
+    )
+
+    export PROVISION_LOCK=$(mktemp)
+    ./scripts/test-runner "$@" &
+    pids+=($!)
+
+    (
+        set +x
+        # busy-wait on the provisioning lock before imposing a final inter-test delay
+        while [ -f "$PROVISION_LOCK" ]; do
+            sleep 1
+        done
+        sleep $delay
+    )
+}
+export -f run-test
+
+# ---
+
+cleanup-test-env(){
+      export NUM_SERVERS=1
+      export NUM_AGENTS=1
+      export AGENT_ARGS=''
+      export SERVER_ARGS=''
+      export WAIT_SERVICES="${all_services[*]}"
+
+      unset AGENT_1_ARGS AGENT_2_ARGS AGENT_3_ARGS AGENT_DOCKER_ARGS K3S_IMAGE_AGENT
+      unset SERVER_1_ARGS SERVER_2_ARGS SERVER_3_ARGS SERVER_DOCKER_ARGS K3S_IMAGE_SERVER
+
+      unset -f server-pre-hook server-post-hook agent-pre-hook agent-post-hook cluster-pre-hook cluster-post-hook test-post-hook test-cleanup-hook
+}
+
+# ---
+
+count-running-tests(){
+      local count=0
+      for pid in "${pids[@]}"; do
+          if [ $(pgrep -c -P $pid) -gt 0 ]; then
+            ((count++))
+          fi
+      done
+      echo "Currently running ${count} tests" 1>&2
+      echo ${count}
+}
+export -f count-running-tests
+
+# ---
+
+e2e-test() {
+    local label=$label
+    if [ -n "$LABEL_SUFFIX" ]; then
+        label="$label-$LABEL_SUFFIX"
+    fi
+    local logOutput=
+    if [ -n "$E2E_OUTPUT" ]; then
+        logOutput=$E2E_OUTPUT/$logName
+    fi
+    if [[ $label =~ ^PARALLEL.* ]]; then
+        LABEL=$label LOG_OUTPUT=$logOutput MAX_CONCURRENT_TESTS=3 run-test "$@"
+    else
+        LABEL=$label LOG_OUTPUT=$logOutput run-test "$@"
+    fi
+
+}
+
+# ---
+
+test-run-sonobuoy() {
+    local suffix
+    if [ "$1" ] && [[ ! $1 =~ ^(serial|parallel)$ ]] ; then
+        suffix="-$1"
+        export LABEL_SUFFIX=$1
+    else
+        unset LABEL_SUFFIX
+    fi
+
+    cleanup-test-env
+    . ./scripts/test-setup-sonobuoy$suffix
+    
+    if [ "$1" = "parallel" ] || [ "$2" = "parallel" ]; then
+        label=PARALLEL \
+            logName=e2e-STATUS-${ARCH}-parallel.log \
+            e2e-test "${sonobuoyParallelArgs[@]}"
+        echo "Exit code $? for parallel start"
+    fi
+
+    if [ "$1" = "serial" ] || [ "$2" = "serial" ]; then
+        label=SERIAL \
+            logName=e2e-STATUS-${ARCH}-serial.log \
+            e2e-test "${sonobuoySerialArgs[@]}"
+        echo "Exit code $? for serial start"
+    fi
+}
+export -f test-run-sonobuoy
+
+# ---
+
+pid-cleanup() {
+    local code=$?
+    local failCount=0
+    set +e
+    if [ $code -eq 0 ]; then
+        for pid in "${pids[@]}"; do
+            wait $pid || code=$?
+        done
+    fi
+    if [ $code -ne 0 ]; then
+        for pid in "${pids[@]}"; do
+            pkill -P $pid
+            wait $pid || failCount=$((failCount+1))
+        done
+    fi
+    trap - EXIT INT TERM
+    set +x
+    echo
+    if [ $failCount -eq 0 ]; then
+        printf '\033[32mAll tests passed.\033[m\n'
+    else
+        printf "\033[31m%s tests failed.\033[m\n" "$failCount"
+        if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+            printf "\033[31mIgnoring test failures on tag.\033[m\n"
+            code=0
+        else
+            code=1
+        fi
+    fi
+    echo
+    exit $code
+}
+export -f pid-cleanup
+
+# ---
+
+pids=()
+trap pid-cleanup EXIT INT TERM

@@ -1,0 +1,8 @@
+./bin
+./etc
+./pkg/data/zz_generated_bindata.go
+./.vagrant
+./.cache
+./.dapper
+./.trash-cache
+./.git/objects/pack

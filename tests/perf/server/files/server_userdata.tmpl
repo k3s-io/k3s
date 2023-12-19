@@ -1,0 +1,75 @@
+#cloud-config
+%{ if length(extra_ssh_keys) > 0 }
+ssh_authorized_keys:
+%{ for ssh_key in extra_ssh_keys }
+- ${ssh_key}
+%{ endfor }
+%{ endif }
+write_files:
+- path: /opt/k3s/run_k3s.sh
+  permissions: "0755"
+  owner: root:root
+  content: |
+    #!/bin/bash
+    set -x
+    if [ ${db_engine} == "postgres" ]; then
+      STORAGE_ENDPOINT="postgres://${db_username}:${db_password}@${db_address}:5432/${db_name}"
+    elif [ ${db_engine} == "mysql" ]; then
+      STORAGE_ENDPOINT="mysql://${db_username}:${db_password}@(${db_address})/${db_name}"
+    elif [ ${db_engine} == "etcd" ]; then
+     IFS=',' read -r -a private_ips <<< "${db_address}"
+     for i in "$${!private_ips[@]}"; do
+      STORAGE_ENDPOINT=$STORAGE_ENDPOINT"http://$${private_ips[i]}:2379",
+     done
+     STORAGE_ENDPOINT=$${STORAGE_ENDPOINT%?}
+    fi
+
+    while true; do
+    if [ ${db_engine} == "embedded-etcd" ]; then
+    curl -sfL https://get.k3s.io | K3S_CLUSTER_SECRET="${k3s_cluster_secret}" \
+       INSTALL_K3S_VERSION="${install_k3s_version}" \
+       INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --disable traefik --disable servicelb --tls-san ${lb_address} %{ if master_index != 0 } --server https://${lb_address}:6443 %{ else } --cluster-init %{ endif }" sh -
+    else
+      curl -sfL https://get.k3s.io | K3S_CLUSTER_SECRET="${k3s_cluster_secret}" \
+         INSTALL_K3S_VERSION="${install_k3s_version}" \
+         INSTALL_K3S_EXEC="${k3s_server_args} --cluster-cidr=10.0.0.0/8 --disable traefik --disable servicelb --tls-san ${lb_address} %{ if use_ha == "true" } --datastore-endpoint=$STORAGE_ENDPOINT %{ endif }" sh -
+      fi
+      if [ $? -eq 0 ]; then
+        break
+      fi
+      sleep 1
+    done
+runcmd:
+- echo "net.ipv4.neigh.default.gc_interval = 3600" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_stale_time = 3600" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh3 = 16384" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh2 = 8192" >> /etc/sysctl.conf
+- echo "net.ipv4.neigh.default.gc_thresh1 = 4096" >> /etc/sysctl.conf
+- echo "fs.file-max = 12000500" >> /etc/sysctl.conf
+- echo "fs.nr_open = 20000500" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_mem = '10000000 10000000 10000000'" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_rmem = '1024 4096 16384'" >> /etc/sysctl.conf
+- echo "net.ipv4.tcp_wmem = '1024 4096 16384'" >> /etc/sysctl.conf
+- echo "net.core.rmem_max = 16384" >> /etc/sysctl.conf
+- echo "net.core.wmem_max = 16384" >> /etc/sysctl.conf
+- ulimit -n 20000000
+- echo "# <domain> <type> <item>  <value>" >> /etc/security/limits.d/limits.conf
+- echo "    *       soft  nofile  20000" >> /etc/security/limits.d/limits.conf
+- echo "    *       hard  nofile  20000" >> /etc/security/limits.d/limits.conf
+- sysctl -p
+- apt-get update
+- apt-get install -y git vim software-properties-common resolvconf linux-headers-$(uname -r)
+- echo "nameserver 1.1.1.1" > /etc/resolvconf/resolv.conf.d/tail
+- echo "RateLimitIntervalSec=0" >> /etc/systemd/journald.conf
+- echo "RateLimitBurst=0" >> /etc/systemd/journald.conf
+- systemctl restart systemd-journald.service
+- systemctl start resolvconf
+%{ if master_index != 0 }
+- sleep 20
+%{ endif }
+- /opt/k3s/run_k3s.sh
+%{ if debug != 0 }
+- sed -i 's/bin\/k3s/bin\/k3s --debug/g' /etc/systemd/system/k3s.service
+- systemctl daemon-reload
+- systemctl restart k3s
+%{ endif }

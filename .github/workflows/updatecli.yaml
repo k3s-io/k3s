@@ -1,0 +1,46 @@
+name: "Updatecli: Dependency Management"
+
+on:
+  schedule:
+    # Runs at 06 PM UTC
+    - cron: '0 18 * * 0'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  updatecli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 'stable'
+
+      - name: Delete leftover UpdateCLI branches
+        run: |
+          gh pr list --search "is:closed is:pr head:updatecli_" --json headRefName --jq ".[].headRefName" | sort -u > closed_prs_branches.txt
+          gh pr list --search "is:open is:pr head:updatecli_" --json headRefName --jq ".[].headRefName" | sort -u > open_prs_branches.txt
+          for branch in $(comm -23 closed_prs_branches.txt open_prs_branches.txt); do if (git ls-remote --exit-code --heads origin "$branch"); then echo "Deleting leftover UpdateCLI branch - $branch"; git push origin --delete "$branch"; fi done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Updatecli
+        uses: updatecli/updatecli-action@v2
+
+      - name: Apply Updatecli
+        # Never use '--debug' option, because it might leak the access tokens.
+        run: "updatecli apply --clean --config ./updatecli/updatecli.d/ --values ./updatecli/values.yaml"
+        env:
+          UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
+          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

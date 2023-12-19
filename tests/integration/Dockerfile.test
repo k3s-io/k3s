@@ -1,0 +1,17 @@
+FROM golang:buster
+
+# Enables integration tests to run on existing cluster via Sonobuoy plugin
+
+RUN apt update && \
+    apt install -y curl git lsof bash openssh-server gcc g++ make ca-certificates && \
+    curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+WORKDIR $GOPATH/src/github.com/k3s-io/k3s-io/k3s/
+
+COPY ./tests/testdata ./testdata
+COPY ./tests/integration/test-runner.sh .
+COPY ./dist/artifacts/k3s /usr/local/bin
+COPY ./dist/artifacts/k3s-integration-* ./tests/
+
+RUN go install -u github.com/onsi/gomega
+RUN go install -u github.com/onsi/ginkgo
