@@ -11,6 +11,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cloudproviderapi "k8s.io/cloud-provider/api"
 
 	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
 
@@ -55,6 +60,28 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 
+	// As kube-router netpol requires addresses to be available in the node object
+	// Wait until the node has ready addresses to avoid race conditions (max 1 minute).
+	// TODO: Replace with non-deprecated PollUntilContextTimeout when our and Kubernetes code migrate to it
+	if err := wait.PollImmediateWithContext(ctx, 2*time.Second, 60*time.Second, func(ctx context.Context) (bool, error) {
+		// Get the node object
+		node, err := client.CoreV1().Nodes().Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Errorf("Error getting the node object: %v", err)
+			return false, err
+		}
+		// Check for the uninitialized taint that should be removed by cloud-provider
+		// If there is no cloud-provider, the taint will not be there
+		for _, taint := range node.Spec.Taints {
+			if taint.Key == cloudproviderapi.TaintExternalCloudProvider {
+				return false, nil
+			}
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+	
 	krConfig := options.NewKubeRouterConfig()
 	var serviceIPs []string
 	for _, elem := range nodeConfig.AgentConfig.ServiceCIDRs {
