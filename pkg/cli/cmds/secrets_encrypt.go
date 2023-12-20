@@ -84,13 +84,6 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 						Destination: &ServerConfig.EncryptSkip,
 					}),
 			},
-			{
-				Name:           "rotate-keys",
-				Usage:          "(experimental) Dynamically add a new secrets encryption key and re-encrypt secrets",
-				SkipArgReorder: true,
-				Action:         rotateKeys,
-				Flags:          EncryptFlags,
-			},
 		},
 	}
 }
