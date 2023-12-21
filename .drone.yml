@@ -685,7 +685,7 @@ steps:
       - e2etests
   when:
     event:
-    - pull_request
+    - push
 
   volumes:
   - name: cache
