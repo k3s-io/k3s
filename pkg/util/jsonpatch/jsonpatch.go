@@ -110,6 +110,9 @@ func (p *patch) WithPath(path ...string) PatchBuilder {
 }
 
 func (p *patch) Marshal() ([]byte, error) {
+	if p.Len() == 0 {
+		return nil, nil
+	}
 	return json.Marshal(p.ops)
 }
 

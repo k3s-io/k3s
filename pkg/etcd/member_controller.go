@@ -70,11 +70,11 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 				// If the current node name is not the same as the removed node name, clear the removal annotations,
 				// as this indicates that the node has been re-added with a new name.
 				logrus.WithFields(lf).Info("Resetting removed node flag as removed node name does not match current node name")
-				b, err := jsonpatch.NewBuilder("metadata", "annotations").Remove(removedNodeNameAnnotation).Remove(removalAnnotation).Marshal()
-				if err != nil {
+				if b, err := jsonpatch.NewBuilder("metadata", "annotations").Remove(removedNodeNameAnnotation).Remove(removalAnnotation).Marshal(); err != nil {
 					return node, err
+				} else if b != nil {
+					return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 				}
-				return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 			}
 			// Current node name matches removed node name; don't need to do anything
 			return node, nil
@@ -89,11 +89,11 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 				// the annotation again, once there are more cluster members.
 				if errors.Is(err, rpctypes.ErrMemberNotEnoughStarted) {
 					logrus.WithFields(lf).Errorf("etcd member removal rejected, clearing remove annotation: %v", err)
-					b, err := jsonpatch.NewBuilder("metadata", "annotations").Remove(removalAnnotation).Marshal()
-					if err != nil {
+					if b, err := jsonpatch.NewBuilder("metadata", "annotations").Remove(removalAnnotation).Marshal(); err != nil {
 						return node, err
+					} else if b != nil {
+						return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 					}
-					return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 				}
 				return node, err
 			}
@@ -101,11 +101,11 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 			logrus.WithFields(lf).Info("etcd emember removed successfully")
 			// Set the removed node name annotation and delete the etcd name and address annotations.
 			// These will be re-set to their new value when the member rejoins the cluster.
-			b, err := jsonpatch.NewBuilder("metadata", "annotations").Add(name, removedNodeNameAnnotation).Remove(NodeNameAnnotation).Remove(NodeAddressAnnotation).Marshal()
-			if err != nil {
+			if b, err := jsonpatch.NewBuilder("metadata", "annotations").Add(name, removedNodeNameAnnotation).Remove(NodeNameAnnotation).Remove(NodeAddressAnnotation).Marshal(); err != nil {
 				return node, err
+			} else if b != nil {
+				return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 			}
-			return e.nodeController.Patch(node.Name, types.JSONPatchType, b)
 		}
 		// In the event that we had an unexpected removal annotation value, simply return.
 		// Fallthrough to the non-op below.

@@ -284,12 +284,12 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 
 	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
 	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, secretsencrypt.EncryptionHashAnnotation)
-	b, err := patch.Marshal()
-	if err != nil {
+	if b, err := patch.Marshal(); err != nil {
 		return err
-	}
-	if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
-		return err
+	} else if b != nil {
+		if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
+			return err
+		}
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	return nil
@@ -345,12 +345,12 @@ func setReencryptAnnotation(server *config.Control) error {
 
 	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
 	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, secretsencrypt.EncryptionHashAnnotation)
-	b, err := patch.Marshal()
-	if err != nil {
+	if b, err := patch.Marshal(); err != nil {
 		return err
-	}
-	if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
-		return err
+	} else if b != nil {
+		if _, err = server.Runtime.Core.Core().V1().Node().Patch(nodeName, types.JSONPatchType, b); err != nil {
+			return err
+		}
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	return nil

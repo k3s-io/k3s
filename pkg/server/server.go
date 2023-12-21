@@ -595,12 +595,9 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 			}
 		}
 
-		if patch.Len() > 0 {
-			b, err := patch.Marshal()
-			if err != nil {
-				return false, err
-			}
-
+		if b, err := patch.Marshal(); err != nil {
+			return false, err
+		} else if b != nil {
 			if _, err := nodes.Patch(nodeName, types.JSONPatchType, b); err != nil {
 				logrus.Errorf("Failed to set server annotations and labels on node %s: %v", nodeName, err)
 				return false, nil

@@ -78,7 +78,7 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 				node:   FakeNodeWithAnnotation,
 				osArgs: []string{version.Program, "server", "--flannel-backend=none"},
 			},
-			wantPatch: `[]`,
+			wantPatch: ``,
 		},
 		{
 			name: "Set NodeConfigAnnotations to different values",

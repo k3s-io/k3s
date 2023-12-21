@@ -20,7 +20,7 @@ func Test_JSONPath(t *testing.T) {
 			name: "empty patch",
 			args: args{
 				wantLen:   0,
-				wantPatch: `[]`,
+				wantPatch: ``,
 				addOperations: func(patch PatchBuilder) {
 				},
 			},
@@ -109,7 +109,7 @@ func Test_JSONPath_With_Base(t *testing.T) {
 			name: "empty patch",
 			args: args{
 				wantLen:   0,
-				wantPatch: `[]`,
+				wantPatch: ``,
 				addOperations: func(patch PatchBuilder) {
 				},
 			},

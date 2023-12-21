@@ -168,11 +168,9 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 	}
 	ann := stage + "-" + encryptionConfigHash
 	patch := jsonpatch.NewBuilder("metadata", "annotations").AddIfNotEqual(labels.Set(node.Annotations), EncryptionHashAnnotation, ann)
-	if patch.Len() > 0 {
-		b, err := patch.Marshal()
-		if err != nil {
-			return err
-		}
+	if b, err := patch.Marshal(); err != nil {
+		return err
+	} else if b != nil {
 		if _, err = runtime.Core.Core().V1().Node().Patch(node.Name, types.JSONPatchType, b); err != nil {
 			return err
 		}

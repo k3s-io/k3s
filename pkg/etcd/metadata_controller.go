@@ -101,11 +101,9 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 		ls = labels.Set(node.Labels)
 		patch.WithPath("metadata", "labels").
 			RemoveIfHas(ls, util.ETCDRoleLabelKey)
-		if patch.Len() > 0 {
-			b, err := patch.Marshal()
-			if err != nil {
-				return node, err
-			}
+		if b, err := patch.Marshal(); err != nil {
+			return node, err
+		} else if b != nil {
 			return m.nodeController.Patch(node.Name, types.JSONPatchType, b)
 		}
 		return node, nil
@@ -121,11 +119,9 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 	ls = labels.Set(node.Labels)
 	patch.WithPath("metadata", "labels").
 		AddIfNotEqual(ls, util.ETCDRoleLabelKey, "true")
-	if patch.Len() > 0 {
-		b, err := patch.Marshal()
-		if err != nil {
-			return node, err
-		}
+	if b, err := patch.Marshal(); err != nil {
+		return node, err
+	} else if b != nil {
 		return m.nodeController.Patch(node.Name, types.JSONPatchType, b)
 	}
 	return node, nil

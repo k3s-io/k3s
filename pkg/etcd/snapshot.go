@@ -879,12 +879,14 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 	if e.config.EtcdS3 {
 		patch.Add(now, "metadata", "annotations", annotationS3Reconciled)
 	}
-	b, err := patch.Marshal()
-	if err != nil {
+	if b, err := patch.Marshal(); err != nil {
 		return err
+	} else if b != nil {
+		if _, err = nodes.Patch(nodeNames[0], types.JSONPatchType, b); err != nil {
+			return err
+		}
 	}
-	_, err = nodes.Patch(nodeNames[0], types.JSONPatchType, b)
-	return err
+	return nil
 }
 
 // setSnapshotFunction schedules snapshots at the configured interval.

@@ -354,12 +354,9 @@ func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typ
 			return false, err
 		}
 
-		if patch.Len() > 0 {
-			b, err := patch.Marshal()
-			if err != nil {
-				return false, err
-			}
-
+		if b, err := patch.Marshal(); err != nil {
+			return false, err
+		} else if b != nil {
 			if _, err := nodes.Patch(ctx, node.Name, types.JSONPatchType, b, metav1.PatchOptions{}); err != nil {
 				logrus.Infof("Failed to set annotations and labels on node %s: %v", agentConfig.NodeName, err)
 				return false, nil

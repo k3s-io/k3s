@@ -93,14 +93,13 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	ann = EncryptionReencryptActive + "-" + reencryptHash
 
 	patch := jsonpatch.NewBuilder("metadata", "annotations").Add(ann, EncryptionHashAnnotation)
-	b, err := patch.Marshal()
-	if err != nil {
+	if b, err := patch.Marshal(); err != nil {
 		return node, err
-	}
-
-	if _, err := h.nodes.Patch(nodeName, types.JSONPatchType, b); err != nil {
-		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
-		return node, err
+	} else if b != nil {
+		if _, err := h.nodes.Patch(nodeName, types.JSONPatchType, b); err != nil {
+			h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+			return node, err
+		}
 	}
 
 	if err := h.updateSecrets(node); err != nil {
@@ -112,14 +111,14 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	if h.controlConfig.EncryptSkip {
 		patch := jsonpatch.NewBuilder()
 		BootstrapEncryptionHashAnnotation(node, h.controlConfig.Runtime, patch)
-		if patch.Len() > 0 {
-			b, err := patch.Marshal()
-			if err != nil {
+		if b, err := patch.Marshal(); err != nil {
+			return node, err
+		} else if b != nil {
+			if _, err = h.nodes.Patch(node.Name, types.JSONPatchType, b); err != nil {
 				return node, err
 			}
-			_, err = h.nodes.Patch(node.Name, types.JSONPatchType, b)
 		}
-		return node, err
+		return node, nil
 	}
 
 	// Remove last key
