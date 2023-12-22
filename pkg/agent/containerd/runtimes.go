@@ -67,6 +67,8 @@ func findCRunContainerRuntime(root fs.FS, foundRuntimes runtimeConfigs) {
 	locationsToCheck := []string{
 		"usr/sbin", // Path when installing via package manager
 		"usr/bin",  // Path when installing via package manager
+		"usr/local/bin", // Path when installing manually
+		"usr/local/sbin", // Path when installing manually
 	}
 
 	// Fill in the binary location with just the name of the binary,
