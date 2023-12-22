@@ -56,9 +56,10 @@ ENV DAPPER_RUN_ARGS="--privileged -v k3s-cache:/go/src/github.com/k3s-io/k3s/.ca
     DAPPER_SOURCE="/go/src/github.com/k3s-io/k3s/" \
     DAPPER_OUTPUT="./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/deploy" \
     DAPPER_DOCKER_SOCKET=true \
-    HOME=${DAPPER_SOURCE} \
     CROSS=true \
     STATIC_BUILD=true
+# Set $HOME separately because it refers to $DAPPER_SOURCE, set above
+ENV HOME=${DAPPER_SOURCE}
 
 WORKDIR ${DAPPER_SOURCE}
 
