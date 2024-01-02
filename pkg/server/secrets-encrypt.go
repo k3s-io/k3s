@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 )
 
@@ -222,11 +223,14 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		return err
 	}
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare)
+	})
 	if err != nil {
-		return err
-	}
-	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, true)
@@ -250,11 +254,14 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	}
 	logrus.Infoln("Encryption keys right rotated")
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate)
+	})
 	if err != nil {
-		return err
-	}
-	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, true)
