@@ -286,6 +286,7 @@ Once QA signs off on a RC:
 3. Publish.
 4. Reiterate the previous checking processes and update KDM specifications accordingly with the GA release tags.
 5. CI has completed, and artifacts have been created. Announce the GA and inform that k3s is thawed in the Slack release thread.
+6. Create a `system-agent-installer-k3s` release with a matching tag.
 ##### `After 24 hours`:
 1. Uncheck prerelease, and save.
 2. Update channel server
