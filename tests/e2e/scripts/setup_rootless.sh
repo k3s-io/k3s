@@ -11,17 +11,22 @@ curl -LJO "$github_url"
 
 # Check if the download was successful
 if [ $? -eq 0 ]; then
-    # Use sed to replace the ExecStart line
-    sed -i 's|ExecStart=/usr/local/bin/k3s server --rootless --snapshotter=fuse-overlayfs|ExecStart=/usr/local/bin/k3s server --rootless --snapshotter=fuse-overlayfs --config= /etc/rancher/k3s/config.yaml --write-kubeconfig-mode=0644 --debug --write-kubeconfig= /etc/rancher/k3s/k3s.yaml|' "k3s-rootless.service"
     # Move the downloaded file to the desired destination
     mkdir -p "$destination_path"
     mv "k3s-rootless.service" "$destination_path/k3s-rootless.service"
+    # Add EnvironmentFile=-/etc/k3s-rootless.env to the service file
+    sed -i 's/^\[Service\]$/\[Service\]\nEnvironmentFile=-\/etc\/rancher\/k3s\/k3s.env/' "$destination_path/k3s-rootless.service"
     chown -R vagrant:vagrant /home/vagrant/.config/
 
     echo "File downloaded and moved to $destination_path"
 else
     echo "Failed to download the file from GitHub."
 fi
+
+
+# Enable IPv4 forwarding
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+sysctl --system
 
 
 # Check if the string is already in GRUB_CMDLINE_LINUX
