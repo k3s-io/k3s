@@ -414,7 +414,7 @@ get_k3s_selinux_version() {
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
-
+    set +e
     case $DOWNLOADER in
         curl)
             curl -o $1 -sfL $2
@@ -429,6 +429,7 @@ download() {
 
     # Abort if download command failed
     [ $? -eq 0 ] || fatal 'Download failed'
+    set -e
 }
 
 # --- download hash from github url ---
