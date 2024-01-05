@@ -199,7 +199,7 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := Parser{
-				FlagNames:     []string{"--config", "-c"},
+				ConfigFlags:   []string{"--config", "-c"},
 				EnvName:       "_TEST_FLAG_ENV",
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
@@ -221,6 +221,7 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 func Test_UnitParser_Parse(t *testing.T) {
 	testDataOutput := []string{
 		"--foo-bar=bar-foo",
+		"--alice=bob",
 		"--a-slice=1",
 		"--a-slice=1.5",
 		"--a-slice=2",
@@ -237,6 +238,7 @@ func Test_UnitParser_Parse(t *testing.T) {
 		"--c-slice=three",
 		"--d-slice=three",
 		"--d-slice=four",
+		"--f-string=beta",
 		"--e-slice=one",
 		"--e-slice=two",
 	}
@@ -326,7 +328,7 @@ func Test_UnitParser_Parse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{
 				After:         tt.fields.After,
-				FlagNames:     tt.fields.FlagNames,
+				ConfigFlags:   tt.fields.FlagNames,
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
 			}
@@ -376,7 +378,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "",
 		},
 		{
-			name: "A custom config yaml exists, target exists",
+			name: "A custom config exists, target exists",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -384,12 +386,12 @@ func Test_UnitParser_FindString(t *testing.T) {
 			},
 			args: args{
 				osArgs: []string{"-c", "./testdata/data.yaml"},
-				target: "foo-bar",
+				target: "alice",
 			},
-			want: "baz",
+			want: "bob",
 		},
 		{
-			name: "A custom config yaml exists, target does not exist",
+			name: "A custom config exists, target does not exist",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -401,12 +403,51 @@ func Test_UnitParser_FindString(t *testing.T) {
 			},
 			want: "",
 		},
+		{
+			name: "Multiple custom configs exist, target exists in a secondary config",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "f-string",
+			},
+			want: "beta",
+		},
+		{
+			name: "Multiple custom configs exist, multiple targets exist in multiple secondary config, replacement",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "foo-bar",
+			},
+			want: "bar-foo",
+		},
+		{
+			name: "Multiple custom configs exist, multiple targets exist in multiple secondary config, appending",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/data.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/data.yaml"},
+				target: "b-string",
+			},
+			want: "one,two",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{
 				After:         tt.fields.After,
-				FlagNames:     tt.fields.FlagNames,
+				ConfigFlags:   tt.fields.FlagNames,
 				EnvName:       tt.fields.EnvName,
 				DefaultConfig: tt.fields.DefaultConfig,
 			}

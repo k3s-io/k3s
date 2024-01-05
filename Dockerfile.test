@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.19.5-alpine3.17
+ARG GOLANG=golang:1.21.5-alpine3.18
 FROM ${GOLANG} as test-base
 
 RUN apk -U --no-cache add bash jq
@@ -14,11 +14,11 @@ ENTRYPOINT ["/bin/test-mods"]
 
 FROM test-base as test-k3s
 
-RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils yq
 
 RUN python3 -m pip install awscli
 
-ENV SONOBUOY_VERSION 0.56.10
+ENV SONOBUOY_VERSION 0.57.1
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \
@@ -34,3 +34,21 @@ ENV TEST_CLEANUP true
 
 ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["test"]
+
+
+FROM vagrantlibvirt/vagrant-libvirt:0.12.1 AS test-e2e
+RUN apt-get update && apt-get install -y docker.io
+ENV VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1
+RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+RUN vagrant box add generic/ubuntu2004 --provider libvirt --force
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
+    chmod +x ./kubectl; \
+    mv ./kubectl /usr/local/bin/kubectl
+RUN GO_VERSION=go1.21.5; \
+    curl -O -L "https://golang.org/dl/${GO_VERSION}.linux-amd64.tar.gz"; \
+    rm -rf /usr/local/go; \
+    tar -C /usr/local -xzf ${GO_VERSION}.linux-amd64.tar.gz;
+
+ENV PATH="${PATH}:/usr/local/go/bin"
+
+

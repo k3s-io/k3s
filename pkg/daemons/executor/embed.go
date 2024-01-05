@@ -5,9 +5,12 @@ package executor
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"runtime"
 	"runtime/debug"
+	"strconv"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -24,14 +27,15 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
-	ccm "k8s.io/cloud-provider"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 	ccmapp "k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/names"
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app"
+	"k8s.io/klog/v2"
+	apiapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -47,6 +51,26 @@ func init() {
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
 	e.nodeConfig = nodeConfig
+
+	go func() {
+		// Ensure that the log verbosity remains set to the configured level by resetting it at 1-second intervals
+		// for the first 2 minutes that K3s is starting up. This is necessary because each of the Kubernetes
+		// components will initialize klog and reset the verbosity flag when they are starting.
+		logCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+		defer cancel()
+
+		klog.InitFlags(nil)
+		for {
+			flag.Set("v", strconv.Itoa(cmds.LogConfig.VLevel))
+
+			select {
+			case <-time.After(time.Second):
+			case <-logCtx.Done():
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -57,7 +81,7 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("kubelet panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("kubelet panic: %v", err)
 			}
 		}()
 		// The embedded executor doesn't need the kubelet to come up to host any components, and
@@ -72,14 +96,14 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
+func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 	command := proxy.NewProxyCommand()
-	command.SetArgs(args)
+	command.SetArgs(daemonconfig.GetArgs(platformKubeProxyArgs(e.nodeConfig), args))
 
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("kube-proxy panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("kube-proxy panic: %v", err)
 			}
 		}()
 		logrus.Fatalf("kube-proxy exited: %v", command.ExecuteContext(ctx))
@@ -89,19 +113,19 @@ func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
 }
 
 func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
-	startupConfig := <-app.StartupConfig
+	startupConfig := <-apiapp.StartupConfig
 	return startupConfig.Authenticator, startupConfig.Handler, nil
 }
 
 func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
-	command := app.NewAPIServerCommand(ctx.Done())
+	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
 		<-etcdReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("apiserver panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("apiserver panic: %v", err)
 			}
 		}()
 		logrus.Fatalf("apiserver exited: %v", command.ExecuteContext(ctx))
@@ -130,7 +154,7 @@ func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args
 		}
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("scheduler panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("scheduler panic: %v", err)
 			}
 		}()
 		logrus.Fatalf("scheduler exited: %v", command.ExecuteContext(ctx))
@@ -147,7 +171,7 @@ func (*Embedded) ControllerManager(ctx context.Context, apiReady <-chan struct{}
 		<-apiReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("controller-manager panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("controller-manager panic: %v", err)
 			}
 		}()
 		logrus.Fatalf("controller-manager exited: %v", command.ExecuteContext(ctx))
@@ -163,7 +187,7 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	}
 
 	cloudInitializer := func(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
-		cloud, err := ccm.InitCloudProvider(version.Program, config.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile)
+		cloud, err := cloudprovider.InitCloudProvider(version.Program, config.ComponentConfig.KubeCloudShared.CloudProvider.CloudConfigFile)
 		if err != nil {
 			logrus.Fatalf("Cloud provider could not be initialized: %v", err)
 		}
@@ -173,14 +197,22 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		return cloud
 	}
 
-	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, ccmapp.DefaultInitFuncConstructors, cliflag.NamedFlagSets{}, ctx.Done())
+	controllerAliases := names.CCMControllerAliases()
+
+	command := ccmapp.NewCloudControllerManagerCommand(
+		ccmOptions,
+		cloudInitializer,
+		ccmapp.DefaultInitFuncConstructors,
+		controllerAliases,
+		cliflag.NamedFlagSets{},
+		ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
 		<-ccmRBACReady
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.Fatalf("cloud-controller-manager panic: %s", debug.Stack())
+				logrus.WithField("stack", string(debug.Stack())).Fatalf("cloud-controller-manager panic: %v", err)
 			}
 		}()
 		logrus.Errorf("cloud-controller-manager exited: %v", command.ExecuteContext(ctx))

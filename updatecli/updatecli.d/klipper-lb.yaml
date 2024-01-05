@@ -1,0 +1,71 @@
+---
+name: "Bump Klipper LB version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump Klipper LB version"
+  klipper-lb:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .klipper_lb.repo }}"
+      branch: "{{ .klipper_lb.branch }}"
+
+actions:
+  github:
+    title: "Bump Klipper LB version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      usetitleforautomerge: true
+      parent: false
+      labels: 
+        - "dependencies"
+
+sources:
+  klipper-lb:
+    name: "Get Klipper LB latest release version"
+    kind: "githubrelease"
+    spec:
+      owner: "{{ .klipper_lb.org }}"
+      repository: "{{ .klipper_lb.repo }}"
+      branch: "{{ .klipper_lb.branch }}"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "latest"
+
+conditions:
+  klipper-lb:
+    name: "Check rancher/klipper-lb image version in DockerHub"
+    kind: "dockerimage"
+    sourceid: "klipper-lb"
+    spec:
+      image: "rancher/klipper-lb"
+
+targets:
+  klipper-lb:
+    name: "Update rancher/klipper-lb image versions"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "klipper-lb"
+    spec:
+      files:
+        - "pkg/cloudprovider/servicelb.go"
+        - "scripts/airgap/image-list.txt"
+      matchpattern: 'rancher/klipper-lb:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'rancher/klipper-lb:{{ source "klipper-lb" }}'

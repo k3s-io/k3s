@@ -3,6 +3,7 @@
 1. Verify that the merge CI has successfully completed before cutting the RC
 1. After the merge CI has completed, cut an RC by creating a release in the GitHub interface
    1. the title is the version of k3s you are releasing with the rc1 subversion eg. "v1.25.0-rc1+k3s1"
+   1. In the case of a update to k3s, it should be incremented from `k3s1` to `k3s2`, for example, meaning the k3s version is being incremented.
    1. the target should match the release branch, remember that the latest version is attached to "master"
    1. no description
    1. the tag should match the title
@@ -12,7 +13,6 @@
 Example Full Command List (this is not a script!):
 ```
 export SSH_MOUNT_PATH="/var/folders/...krzO/agent.452"
-export GLOBAL_GITCONFIG_PATH="/Users/mtrachier/.gitconfig"
 export GLOBAL_GIT_CONFIG_PATH="/Users/mtrachier/.gitconfig"
 export OLD_K8S="v1.22.14"
 export NEW_K8S="v1.22.15"

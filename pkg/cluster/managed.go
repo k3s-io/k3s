@@ -9,14 +9,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
@@ -57,9 +55,13 @@ func (c *Cluster) start(ctx context.Context) error {
 	if c.managedDB == nil {
 		return nil
 	}
-	resetFile := etcd.ResetFile(c.config)
 	rebootstrap := func() error {
 		return c.storageBootstrap(ctx)
+	}
+
+	resetDone, err := c.managedDB.IsReset()
+	if err != nil {
+		return err
 	}
 
 	if c.config.ClusterReset {
@@ -67,53 +69,48 @@ func (c *Cluster) start(ctx context.Context) error {
 		if c.config.ClusterResetRestorePath != "" {
 			return c.managedDB.Reset(ctx, rebootstrap)
 		}
+
 		// If the reset-flag doesn't exist, reset. This will create the reset-flag if it succeeds.
-		if _, err := os.Stat(resetFile); err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
+		if !resetDone {
 			return c.managedDB.Reset(ctx, rebootstrap)
 		}
+
 		// The reset-flag exists, ask the user to remove it if they want to reset again.
-		return fmt.Errorf("Managed etcd cluster membership was previously reset, please remove the cluster-reset flag and start %s normally. If you need to perform another cluster reset, you must first manually delete the %s file", version.Program, resetFile)
+		return fmt.Errorf("Managed etcd cluster membership was previously reset, please remove the cluster-reset flag and start %s normally. "+
+			"If you need to perform another cluster reset, you must first manually delete the file at %s", version.Program, c.managedDB.ResetFile())
 	}
 
-	// The reset-flag exists but we're not resetting; remove it
-	if _, err := os.Stat(resetFile); err == nil {
-		// Before removing reset file we need to delete the node passwd secret in case the node
+	if resetDone {
+		// If the cluster was reset, we need to delete the node passwd secret in case the node
 		// password from the previously restored snapshot differs from the current password on disk.
-		go c.deleteNodePasswdSecret(ctx)
-		os.Remove(resetFile)
+		c.config.Runtime.ClusterControllerStarts["node-password-secret-cleanup"] = c.deleteNodePasswdSecret
 	}
 
+	// Starting the managed database will clear the reset-flag if set
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }
 
-// initClusterDB registers routes for database info with the http request handler
-func (c *Cluster) initClusterDB(ctx context.Context, handler http.Handler) (http.Handler, error) {
+// registerDBHandlers registers routes for database info with the http request handler
+func (c *Cluster) registerDBHandlers(handler http.Handler) (http.Handler, error) {
 	if c.managedDB == nil {
 		return handler, nil
 	}
 
-	if !strings.HasPrefix(c.config.Datastore.Endpoint, c.managedDB.EndpointName()+"://") {
-		c.config.Datastore = endpoint.Config{
-			Endpoint: c.managedDB.EndpointName(),
-		}
-	}
-
-	return c.managedDB.Register(ctx, c.config, handler)
+	return c.managedDB.Register(handler)
 }
 
 // assignManagedDriver assigns a driver based on a number of different configuration variables.
 // If a driver has been initialized it is used.
-// If the configured endpoint matches the name of a driver, that driver is used.
 // If no specific endpoint has been requested and creating or joining has been requested,
 // we use the default driver.
 // If none of the above are true, no managed driver is assigned.
 func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 	// Check all managed drivers for an initialized database on disk; use one if found
 	for _, driver := range managed.Registered() {
-		if ok, err := driver.IsInitialized(ctx, c.config); err != nil {
+		if err := driver.SetControlConfig(c.config); err != nil {
+			return err
+		}
+		if ok, err := driver.IsInitialized(); err != nil {
 			return err
 		} else if ok {
 			c.managedDB = driver
@@ -121,30 +118,16 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 		}
 	}
 
-	// This is needed to allow downstreams to override driver selection logic by
-	// setting ServerConfig.Datastore.Endpoint such that it will match a driver's EndpointName
-	endpointType := strings.SplitN(c.config.Datastore.Endpoint, ":", 2)[0]
-	for _, driver := range managed.Registered() {
-		if endpointType == driver.EndpointName() {
-			c.managedDB = driver
-			return nil
-		}
-	}
-
 	// If we have been asked to initialize or join a cluster, do so using the default managed database.
 	if c.config.Datastore.Endpoint == "" && (c.config.ClusterInit || (c.config.Token != "" && c.config.JoinURL != "")) {
-		for _, driver := range managed.Registered() {
-			if driver.EndpointName() == managed.Default() {
-				c.managedDB = driver
-				return nil
-			}
-		}
+		c.managedDB = managed.Default()
 	}
 
 	return nil
 }
 
-// setupEtcdProxy
+// setupEtcdProxy periodically updates the etcd proxy with the current list of
+// cluster client URLs, as retrieved from etcd.
 func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 	if c.managedDB == nil {
 		return
@@ -175,30 +158,13 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 
 // deleteNodePasswdSecret wipes out the node password secret after restoration
 func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
-	t := time.NewTicker(5 * time.Second)
-	defer t.Stop()
-	for range t.C {
-		nodeName := os.Getenv("NODE_NAME")
-		if nodeName == "" {
-			logrus.Infof("waiting for node name to be set")
-			continue
+	nodeName := os.Getenv("NODE_NAME")
+	secretsClient := c.config.Runtime.Core.Core().V1().Secret()
+	if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
+		if apierrors.IsNotFound(err) {
+			logrus.Debugf("node password secret is not found for node %s", nodeName)
+			return
 		}
-		// the core factory may not yet be initialized so we
-		// want to wait until it is so not to evoke a panic.
-		if c.config.Runtime.Core == nil {
-			logrus.Infof("runtime is not yet initialized")
-			continue
-		}
-		secretsClient := c.config.Runtime.Core.Core().V1().Secret()
-		if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
-			if apierrors.IsNotFound(err) {
-				logrus.Debugf("node password secret is not found for node %s", nodeName)
-				return
-			}
-			logrus.Warnf("failed to delete old node password secret: %v", err)
-			continue
-		}
-		return
+		logrus.Warnf("failed to delete old node password secret: %v", err)
 	}
-
 }

@@ -25,7 +25,7 @@ if [ $# -gt 0 ]; then
   CONFIG="$1"
 fi
 
-if ! command -v zgrep >/dev/null 2>&1; then
+if ! command -v zgrep >/dev/null 2>&1 || eval "cat /sys/kernel/security/apparmor/profiles | grep -q 'zgrep (enforce)'"; then
   zgrep() {
     zcat "$2" | grep "$1"
   }
@@ -177,8 +177,15 @@ echo
   if [ -s .links ]; then
     while read file link; do
       if [ "$(readlink $file)" != "$link" ]; then
-        wrap_bad '- links' "$file should link to $link"
-        linkFail=1
+        # If no iptables is installed on the host system, the symlink will be different
+        if [ "$(readlink $file)" = "xtables-legacy-multi" ]; then
+          wrap_warn "- $file" "symlink to xtables-legacy-multi"
+        elif [ "$(readlink $file)" = "xtables-nft-multi" ]; then
+          wrap_warn "- $file" "symlink to xtables-nft-multi"
+        else
+          wrap_bad "- $file" "symlink to $link"
+          linkFail=1
+        fi
       fi
     done <.links
     if [ $linkFail -eq 0 ]; then
@@ -374,11 +381,11 @@ fi
 
 flags="
   NAMESPACES NET_NS PID_NS IPC_NS UTS_NS
-  CGROUPS CGROUP_CPUACCT CGROUP_DEVICE CGROUP_FREEZER CGROUP_SCHED CPUSETS MEMCG
+  CGROUPS CGROUP_PIDS CGROUP_CPUACCT CGROUP_DEVICE CGROUP_FREEZER CGROUP_SCHED CPUSETS MEMCG
   KEYS
   VETH BRIDGE BRIDGE_NETFILTER
   IP_NF_FILTER IP_NF_TARGET_MASQUERADE
-  NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_MATCH_CONNTRACK NETFILTER_XT_MATCH_IPVS
+  NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_MATCH_CONNTRACK NETFILTER_XT_MATCH_IPVS NETFILTER_XT_MATCH_COMMENT NETFILTER_XT_MATCH_MULTIPORT
   IP_NF_NAT NF_NAT
   POSIX_MQUEUE
 "
@@ -397,9 +404,6 @@ echo 'Optional Features:'
 }
 {
   check_flags SECCOMP
-}
-{
-  check_flags CGROUP_PIDS
 }
 # {
 #   check_flags MEMCG_SWAP MEMCG_SWAP_ENABLED

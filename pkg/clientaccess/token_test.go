@@ -21,6 +21,7 @@ import (
 var (
 	defaultUsername = "server"
 	defaultPassword = "token"
+	defaultToken    = "abcdef.0123456789abcdef"
 )
 
 // Test_UnitTrustedCA confirms that tokens are validated when the server uses a cert (self-signed or otherwise)
@@ -29,13 +30,14 @@ func Test_UnitTrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: defaultUsername,
 		Password: defaultPassword,
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []struct {
@@ -61,7 +63,7 @@ func Test_UnitTrustedCA(t *testing.T) {
 			assert.Equal(testCase.expected, info.Username, testCase.token)
 		}
 
-		info, err = ParseAndValidateTokenForUser(server.URL, testCase.token, "agent")
+		info, err = ParseAndValidateToken(server.URL, testCase.token, WithUser("agent"))
 		if assert.NoError(err, testCase) {
 			assert.Nil(info.CACerts, testCase)
 			assert.Equal("agent", info.Username, testCase)
@@ -82,13 +84,14 @@ func Test_UnitUntrustedCA(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: defaultUsername,
 		Password: defaultPassword,
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []struct {
@@ -106,7 +109,7 @@ func Test_UnitUntrustedCA(t *testing.T) {
 			assert.Equal(testCase.expected, info.Username, testCase)
 		}
 
-		info, err = ParseAndValidateTokenForUser(server.URL, testCase.token, "agent")
+		info, err = ParseAndValidateToken(server.URL, testCase.token, WithUser("agent"))
 		if assert.NoError(err, testCase) {
 			assert.Equal(testInfo.CACerts, info.CACerts, testCase)
 			assert.Equal("agent", info.Username, testCase)
@@ -130,8 +133,38 @@ func Test_UnitInvalidServers(t *testing.T) {
 		_, err := ParseAndValidateToken(testCase.server, testCase.token)
 		assert.EqualError(err, testCase.expected, testCase)
 
-		_, err = ParseAndValidateTokenForUser(testCase.server, testCase.token, defaultUsername)
+		_, err = ParseAndValidateToken(testCase.server, testCase.token, WithUser(defaultUsername))
 		assert.EqualError(err, testCase.expected, testCase)
+	}
+}
+
+// Test_UnitValidTokens tests that valid tokens can be parsed, and give the expected result
+func Test_UnitValidTokens(t *testing.T) {
+	assert := assert.New(t)
+	server := newTLSServer(t, defaultUsername, defaultPassword, false)
+	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
+
+	testCases := []struct {
+		server         string
+		token          string
+		expectUsername string
+		expectPassword string
+		expectToken    string
+	}{
+		{server.URL, defaultPassword, "", defaultPassword, ""},
+		{server.URL, defaultToken, "", "", defaultToken},
+		{server.URL, "K10" + digest + ":::" + defaultPassword, "", defaultPassword, ""},
+		{server.URL, "K10" + digest + "::" + defaultUsername + ":" + defaultPassword, defaultUsername, defaultPassword, ""},
+		{server.URL, "K10" + digest + "::" + defaultToken, "", "", defaultToken},
+	}
+
+	for _, testCase := range testCases {
+		info, err := ParseAndValidateToken(testCase.server, testCase.token)
+		assert.NoError(err)
+		assert.Equal(testCase.expectUsername, info.Username, testCase)
+		assert.Equal(testCase.expectPassword, info.Password, testCase)
+		assert.Equal(testCase.expectToken, info.Token(), testCase)
 	}
 }
 
@@ -140,6 +173,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testCases := []struct {
 		server   string
@@ -153,7 +187,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 		{server.URL, "K10XX::x:y", "invalid token CA hash length"},
 		{server.URL,
 			"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::x:y",
-			"token CA hash does not match the Cluster CA certificate hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + hashCA(getServerCA(server))},
+			"token CA hash does not match the Cluster CA certificate hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX != " + digest},
 	}
 
 	for _, testCase := range testCases {
@@ -161,7 +195,7 @@ func Test_UnitInvalidTokens(t *testing.T) {
 		assert.EqualError(err, testCase.expected, testCase)
 		assert.Nil(info, testCase)
 
-		info, err = ParseAndValidateTokenForUser(testCase.server, testCase.token, defaultUsername)
+		info, err = ParseAndValidateToken(testCase.server, testCase.token, WithUser(defaultUsername))
 		assert.EqualError(err, testCase.expected, testCase)
 		assert.Nil(info, testCase)
 	}
@@ -172,13 +206,14 @@ func Test_UnitInvalidCredentials(t *testing.T) {
 	assert := assert.New(t)
 	server := newTLSServer(t, defaultUsername, defaultPassword, false)
 	defer server.Close()
+	digest, _ := hashCA(getServerCA(server))
 
 	testInfo := &Info{
 		CACerts:  getServerCA(server),
 		BaseURL:  server.URL,
 		Username: "nobody",
 		Password: "invalid",
-		caHash:   hashCA(getServerCA(server)),
+		caHash:   digest,
 	}
 
 	testCases := []string{
@@ -195,7 +230,7 @@ func Test_UnitInvalidCredentials(t *testing.T) {
 			assert.Empty(res, testCase)
 		}
 
-		info, err = ParseAndValidateTokenForUser(server.URL, testCase, defaultUsername)
+		info, err = ParseAndValidateToken(server.URL, testCase, WithUser(defaultUsername))
 		assert.NoError(err, testCase)
 		if assert.NotNil(info) {
 			res, err := info.Get("/v1-k3s/server-bootstrap")
@@ -215,7 +250,7 @@ func Test_UnitWrongCert(t *testing.T) {
 	assert.Error(err)
 	assert.Nil(info)
 
-	info, err = ParseAndValidateTokenForUser(server.URL, defaultPassword, defaultUsername)
+	info, err = ParseAndValidateToken(server.URL, defaultPassword, WithUser(defaultUsername))
 	assert.Error(err)
 	assert.Nil(info)
 }
@@ -240,7 +275,7 @@ func Test_UnitConnectionFailures(t *testing.T) {
 		assert.WithinDuration(time.Now(), startTime, testDuration, testCase)
 
 		startTime = time.Now()
-		info, err = ParseAndValidateTokenForUser(testCase.server, testCase.token, defaultUsername)
+		info, err = ParseAndValidateToken(testCase.server, testCase.token, WithUser(defaultUsername))
 		assert.Error(err, testCase)
 		assert.Nil(info, testCase)
 		assert.WithinDuration(startTime, time.Now(), testDuration, testCase)
@@ -259,6 +294,7 @@ func Test_UnitUserPass(t *testing.T) {
 		{"K10XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX::username:password", "username", "password", true},
 		{"password", "", "password", true},
 		{"K10X::x", "", "", false},
+		{"aaaaaa.bbbbbbbbbbbbbbbb", "", "", false},
 	}
 
 	for _, testCase := range testCases {
@@ -291,7 +327,7 @@ func Test_UnitParseAndGet(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		info, err := ParseAndValidateTokenForUser(server.URL+testCase.extraBasePre, defaultPassword, defaultUsername)
+		info, err := ParseAndValidateToken(server.URL+testCase.extraBasePre, defaultPassword, WithUser(defaultUsername))
 		// Check for expected error when parsing server + token
 		if testCase.parseFail {
 			assert.Error(err, testCase)
@@ -381,8 +417,14 @@ func newTLSServer(t *testing.T, username, password string, sendWrongCA bool) *ht
 
 // getServerCA returns a byte slice containing the PEM encoding of the server's CA certificate
 func getServerCA(server *httptest.Server) []byte {
-	certLen := len(server.TLS.Certificates)
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.TLS.Certificates[certLen-1].Certificate[0]})
+	bytes := []byte{}
+	for i, cert := range server.TLS.Certificates {
+		if i == 0 {
+			continue // Just return the chain, not the leaf server cert
+		}
+		bytes = append(bytes, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})...)
+	}
+	return bytes
 }
 
 // writeServerCA writes the PEM-encoded server certificate to a given path

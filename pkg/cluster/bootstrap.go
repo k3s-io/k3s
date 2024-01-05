@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
@@ -30,7 +31,7 @@ import (
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
 // It then checks to see if the cluster needs to load bootstrap data, and if so, loads data into the
 // ControlRuntimeBoostrap struct, either via HTTP or from the datastore.
-func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
+func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, snapshot bool) error {
 	c.shouldBootstrap = shouldBootstrap
 
 	if c.managedDB != nil {
-		if !snapshot {
+		if !clusterReset {
 			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
 			// For secondary servers, we attempt to connect and reconcile with the datastore.
 			// If that fails we fallback to the local etcd cluster start
@@ -82,7 +83,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	if c.managedDB != nil {
 		c.config.Runtime.HTTPBootstrap = true
 
-		isInitialized, err := c.managedDB.IsInitialized(ctx, c.config)
+		isInitialized, err := c.managedDB.IsInitialized()
 		if err != nil {
 			return false, false, err
 		}
@@ -94,7 +95,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
-				c.clientAccessInfo, _ = clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+				c.clientAccessInfo, _ = clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
 			}
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
@@ -109,7 +110,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 
 			// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
 			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
-			info, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, c.config.Token, "server")
+			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
 			if err != nil {
 				return false, false, err
 			}
@@ -248,7 +249,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 	if c.managedDB != nil && !isHTTP {
 		token := c.config.Token
 		if token == "" {
-			tokenFromFile, err := readTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
+			tokenFromFile, err := util.ReadTokenFromFile(c.config.Runtime.ServerToken, c.config.Runtime.ServerCA, c.config.DataDir)
 			if err != nil {
 				return err
 			}
@@ -260,7 +261,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			token = tokenFromFile
 		}
 
-		normalizedToken, err := normalizeToken(token)
+		normalizedToken, err := util.NormalizeToken(token)
 		if err != nil {
 			return err
 		}
@@ -273,31 +274,17 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 		defer storageClient.Close()
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
+		value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		if err != nil {
+			return err
+		}
+		if value == nil {
+			return nil
+		}
 
-	RETRY:
-		for {
-			value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
-			if err != nil {
-				if strings.Contains(err.Error(), "not supported for learner") {
-					for range ticker.C {
-						continue RETRY
-					}
-
-				}
-				return err
-			}
-			if value == nil {
-				return nil
-			}
-
-			dbRawData, err = decrypt(normalizedToken, value.Data)
-			if err != nil {
-				return err
-			}
-
-			break
+		dbRawData, err = decrypt(normalizedToken, value.Data)
+		if err != nil {
+			return err
 		}
 
 		buf = bytes.NewReader(dbRawData)
@@ -438,22 +425,13 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	return c.storageBootstrap(ctx)
 }
 
-// Snapshot is a proxy method to call the snapshot method on the managedb
-// interface for etcd clusters.
-func (c *Cluster) Snapshot(ctx context.Context, config *config.Control) error {
-	if c.managedDB == nil {
-		return errors.New("unable to perform etcd snapshot on non-etcd system")
-	}
-	return c.managedDB.Snapshot(ctx, config)
-}
-
 // compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
 func (c *Cluster) compareConfig() error {
 	token := c.config.AgentToken
 	if token == "" {
 		token = c.config.Token
 	}
-	agentClientAccessInfo, err := clientaccess.ParseAndValidateTokenForUser(c.config.JoinURL, token, "node")
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, token, clientaccess.WithUser("node"))
 	if err != nil {
 		return err
 	}
@@ -517,7 +495,7 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 	}()
 
 	e := etcd.NewETCD()
-	if err := e.SetControlConfig(reconcileCtx, c.config); err != nil {
+	if err := e.SetControlConfig(c.config); err != nil {
 		return err
 	}
 	if err := e.StartEmbeddedTemporary(reconcileCtx); err != nil {

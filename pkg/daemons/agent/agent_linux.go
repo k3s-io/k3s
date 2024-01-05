@@ -4,8 +4,10 @@
 package agent
 
 import (
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/cgroups"
@@ -13,8 +15,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	"k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
+	utilsnet "k8s.io/utils/net"
 )
 
 const socketPrefix = "unix://"
@@ -32,8 +34,8 @@ func createRootlessConfig(argsMap map[string]string, controllers map[string]bool
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
-	if IPv6only {
+	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
+	if isIPv6 {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
@@ -48,13 +50,25 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+	if cfg.LogFile != "" {
+		argsMap["log_file"] = cfg.LogFile
+	}
+	if cfg.AlsoLogToStderr {
+		argsMap["alsologtostderr"] = "true"
+	}
 	return argsMap
 }
 
 func kubeletArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	_, IPv6only, _ := util.GetFirstString([]string{cfg.NodeIP})
-	if IPv6only {
+	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
+	if isIPv6 {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
@@ -122,9 +136,21 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
 	}
-	defaultIP, err := net.ChooseHostInterface()
-	if err != nil || defaultIP.String() != cfg.NodeIP {
-		argsMap["node-ip"] = cfg.NodeIP
+	// If the embedded CCM is disabled, don't assume that dual-stack node IPs are safe.
+	// When using an external CCM, the user wants dual-stack node IPs, they will need to set the node-ip kubelet arg directly.
+	// This should be fine since most cloud providers have their own way of finding node IPs that doesn't depend on the kubelet
+	// setting them.
+	if cfg.DisableCCM {
+		dualStack, err := utilsnet.IsDualStackIPs(cfg.NodeIPs)
+		if err == nil && !dualStack {
+			argsMap["node-ip"] = cfg.NodeIP
+		}
+	} else {
+		// Cluster is using the embedded CCM, we know that the feature-gate will be enabled there as well.
+		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "CloudDualStackNodeIPs=true")
+		if nodeIPs := util.JoinIPs(cfg.NodeIPs); nodeIPs != "" {
+			argsMap["node-ip"] = util.JoinIPs(cfg.NodeIPs)
+		}
 	}
 	kubeletRoot, runtimeRoot, controllers := cgroups.CheckCgroups()
 	if !controllers["cpu"] {
@@ -152,7 +178,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 
 	if ImageCredProvAvailable(cfg) {
 		logrus.Infof("Kubelet image credential provider bin dir and configuration file found.")
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "KubeletCredentialProviders=true")
 		argsMap["image-credential-provider-bin-dir"] = cfg.ImageCredProvBinDir
 		argsMap["image-credential-provider-config"] = cfg.ImageCredProvConfig
 	}
@@ -172,6 +197,11 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if !cfg.DisableServiceLB {
 		argsMap["allowed-unsafe-sysctls"] = "net.ipv4.ip_forward,net.ipv6.conf.all.forwarding"
 	}
-
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
 	return argsMap
 }

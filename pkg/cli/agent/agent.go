@@ -1,23 +1,28 @@
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/datadir"
-	"github.com/k3s-io/k3s/pkg/netutil"
-	"github.com/k3s-io/k3s/pkg/token"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
 func Run(ctx *cli.Context) error {
+	// Validate build env
+	cmds.MustValidateGolang()
+
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " agent")
@@ -38,14 +43,18 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.TokenFile != "" {
-		token, err := token.ReadFile(cmds.AgentConfig.TokenFile)
+		token, err := util.ReadFile(cmds.AgentConfig.TokenFile)
 		if err != nil {
 			return err
 		}
 		cmds.AgentConfig.Token = token
 	}
 
-	if cmds.AgentConfig.Token == "" {
+	clientKubeletCert := filepath.Join(cmds.AgentConfig.DataDir, "agent", "client-kubelet.crt")
+	clientKubeletKey := filepath.Join(cmds.AgentConfig.DataDir, "agent", "client-kubelet.key")
+	_, err := tls.LoadX509KeyPair(clientKubeletCert, clientKubeletKey)
+
+	if err != nil && cmds.AgentConfig.Token == "" {
 		return fmt.Errorf("--token is required")
 	}
 
@@ -54,7 +63,11 @@ func Run(ctx *cli.Context) error {
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
+		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+		if err != nil {
+			return err
+		}
+		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
 	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
@@ -69,6 +82,22 @@ func Run(ctx *cli.Context) error {
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalContext()
+
+	go cmds.WriteCoverage(contextCtx)
+	if cmds.AgentConfig.VPNAuthFile != "" {
+		cmds.AgentConfig.VPNAuth, err = util.ReadFile(cmds.AgentConfig.VPNAuthFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Starts the VPN in the agent if config was set up
+	if cmds.AgentConfig.VPNAuth != "" {
+		err := vpn.StartVPN(cmds.AgentConfig.VPNAuth)
+		if err != nil {
+			return err
+		}
+	}
 
 	return agent.Run(contextCtx, cfg)
 }

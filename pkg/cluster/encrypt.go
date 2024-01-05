@@ -5,34 +5,25 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/token"
+	"github.com/k3s-io/k3s/pkg/util"
 	"golang.org/x/crypto/pbkdf2"
 )
 
 // storageKey returns the etcd key for storing bootstrap data for a given passphrase.
 // The key is derived from the sha256 hash of the passphrase.
 func storageKey(passphrase string) string {
-	return "/bootstrap/" + keyHash(passphrase)
-}
-
-// keyHash returns the first 12 characters of the sha256 sum of the passphrase.
-func keyHash(passphrase string) string {
-	d := sha256.New()
-	d.Write([]byte(passphrase))
-	return hex.EncodeToString(d.Sum(nil)[:])[:12]
+	return "/bootstrap/" + util.ShortHash(passphrase, 12)
 }
 
 // encrypt encrypts a byte slice using aes+gcm with a pbkdf2 key derived from the passphrase and a random salt.
 // It returns a byte slice containing the salt and base64-encoded ciphertext.
 func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
-	salt, err := token.Random(8)
+	salt, err := util.Random(8)
 	if err != nil {
 		return nil, err
 	}

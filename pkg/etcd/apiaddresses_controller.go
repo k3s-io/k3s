@@ -17,10 +17,6 @@ import (
 )
 
 func registerEndpointsHandlers(ctx context.Context, etcd *ETCD) {
-	if etcd.config.DisableAPIServer {
-		return
-	}
-
 	endpoints := etcd.config.Runtime.Core.Core().V1().Endpoints()
 	fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
 	lw := &cache.ListWatch{

@@ -37,7 +37,7 @@ func generateTestConfig() *config.Control {
 		ServiceIPRange: testutil.ServiceIPNet(),
 	}
 	return &config.Control{
-		Runtime:               &config.ControlRuntime{AgentReady: agentReady},
+		Runtime:               config.NewRuntime(agentReady),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
@@ -118,7 +118,11 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 				t.Errorf("Prep for ETCD.IsInitialized() failed = %v", err)
 				return
 			}
-			got, err := e.IsInitialized(tt.args.ctx, tt.args.config)
+			if err := e.SetControlConfig(tt.args.config); err != nil {
+				t.Errorf("ETCD.SetControlConfig() failed= %v", err)
+				return
+			}
+			got, err := e.IsInitialized()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ETCD.IsInitialized() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -170,17 +174,17 @@ func Test_UnitETCD_Register(t *testing.T) {
 				if err := testutil.GenerateRuntime(cnf); err != nil {
 					return err
 				}
-				if err := os.MkdirAll(DBDir(cnf), 0700); err != nil {
+				if err := os.MkdirAll(dbDir(cnf), 0700); err != nil {
 					return err
 				}
-				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(dbDir(cnf), "tombstone")
 				if _, err := os.Create(tombstoneFile); err != nil {
 					return err
 				}
 				return nil
 			},
 			teardown: func(cnf *config.Control) error {
-				tombstoneFile := filepath.Join(DBDir(cnf), "tombstone")
+				tombstoneFile := filepath.Join(dbDir(cnf), "tombstone")
 				os.Remove(tombstoneFile)
 				testutil.CleanupDataDir(cnf)
 				return nil
@@ -196,7 +200,11 @@ func Test_UnitETCD_Register(t *testing.T) {
 				t.Errorf("Setup for ETCD.Register() failed = %v", err)
 				return
 			}
-			_, err := e.Register(tt.args.ctx, tt.args.config, tt.args.handler)
+			if err := e.SetControlConfig(tt.args.config); err != nil {
+				t.Errorf("ETCD.SetControlConfig() failed = %v", err)
+				return
+			}
+			_, err := e.Register(tt.args.handler)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ETCD.Register() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -244,17 +252,13 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				e.config.EtcdDisableSnapshots = true
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config)
-				e.client = client
-
-				return err
+				return nil
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
-				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -275,17 +279,13 @@ func Test_UnitETCD_Start(t *testing.T) {
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				testutil.GenerateRuntime(e.config)
-				client, err := GetClient(ctxInfo.ctx, e.config)
-				e.client = client
-
-				return err
+				return nil
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
-				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)
@@ -308,11 +308,6 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := testutil.GenerateRuntime(e.config); err != nil {
 					return err
 				}
-				client, err := GetClient(ctxInfo.ctx, e.config)
-				if err != nil {
-					return err
-				}
-				e.client = client
 				return os.MkdirAll(walDir(e.config), 0700)
 			},
 			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
@@ -320,7 +315,6 @@ func Test_UnitETCD_Start(t *testing.T) {
 				if err := e.RemoveSelf(ctxInfo.ctx); err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
-				e.client.Close()
 				ctxInfo.cancel()
 				time.Sleep(5 * time.Second)
 				testutil.CleanupDataDir(e.config)

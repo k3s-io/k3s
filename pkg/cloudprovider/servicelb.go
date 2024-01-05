@@ -2,13 +2,13 @@ package cloudprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/pkg/condition"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
@@ -24,9 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/retry"
 	ccmapp "k8s.io/cloud-provider/app"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
+	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
 	utilpointer "k8s.io/utils/pointer"
 )
@@ -42,9 +44,12 @@ var (
 )
 
 const (
-	Ready          = condition.Cond("Ready")
-	DefaultLBNS    = meta.NamespaceSystem
-	DefaultLBImage = "rancher/klipper-lb:v0.4.0"
+	Ready       = condition.Cond("Ready")
+	DefaultLBNS = meta.NamespaceSystem
+)
+
+var (
+	DefaultLBImage = "rancher/klipper-lb:v0.4.5"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -56,11 +61,11 @@ func (k *k3s) Register(ctx context.Context,
 	pods.OnChange(ctx, controllerName, k.onChangePod)
 	endpointslices.OnChange(ctx, controllerName, k.onChangeEndpointSlice)
 
-	if err := k.createServiceLBNamespace(ctx); err != nil {
+	if err := k.ensureServiceLBNamespace(ctx); err != nil {
 		return err
 	}
 
-	if err := k.createServiceLBServiceAccount(ctx); err != nil {
+	if err := k.ensureServiceLBServiceAccount(ctx); err != nil {
 		return err
 	}
 
@@ -69,9 +74,13 @@ func (k *k3s) Register(ctx context.Context,
 	return k.removeServiceFinalizers(ctx)
 }
 
-// createServiceLBNamespace ensures that the configured namespace exists.
-func (k *k3s) createServiceLBNamespace(ctx context.Context) error {
-	_, err := k.client.CoreV1().Namespaces().Create(ctx, &core.Namespace{
+// ensureServiceLBNamespace ensures that the configured namespace exists.
+func (k *k3s) ensureServiceLBNamespace(ctx context.Context) error {
+	ns := k.client.CoreV1().Namespaces()
+	if _, err := ns.Get(ctx, k.LBNamespace, meta.GetOptions{}); err == nil || !apierrors.IsNotFound(err) {
+		return err
+	}
+	_, err := ns.Create(ctx, &core.Namespace{
 		ObjectMeta: meta.ObjectMeta{
 			Name: k.LBNamespace,
 		},
@@ -82,9 +91,13 @@ func (k *k3s) createServiceLBNamespace(ctx context.Context) error {
 	return err
 }
 
-// createServiceLBServiceAccount ensures that the ServiceAccount used by pods exists
-func (k *k3s) createServiceLBServiceAccount(ctx context.Context) error {
-	_, err := k.client.CoreV1().ServiceAccounts(k.LBNamespace).Create(ctx, &core.ServiceAccount{
+// ensureServiceLBServiceAccount ensures that the ServiceAccount used by pods exists.
+func (k *k3s) ensureServiceLBServiceAccount(ctx context.Context) error {
+	sa := k.client.CoreV1().ServiceAccounts(k.LBNamespace)
+	if _, err := sa.Get(ctx, "svclb", meta.GetOptions{}); err == nil || !apierrors.IsNotFound(err) {
+		return err
+	}
+	_, err := sa.Create(ctx, &core.ServiceAccount{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      "svclb",
 			Namespace: k.LBNamespace,
@@ -274,8 +287,6 @@ func (k *k3s) getStatus(svc *core.Service) (*core.LoadBalancerStatus, error) {
 		return nil, err
 	}
 
-	sort.Strings(expectedIPs)
-
 	loadbalancer := &core.LoadBalancerStatus{}
 	for _, ip := range expectedIPs {
 		loadbalancer.Ingress = append(loadbalancer.Ingress, core.LoadBalancerIngress{
@@ -367,11 +378,11 @@ func (k *k3s) podIPs(pods []*core.Pod, svc *core.Service, readyNodes map[string]
 	return ips, nil
 }
 
-// filterByIPFamily filters ips based on dual-stack parameters of the service
+// filterByIPFamily filters node IPs based on dual-stack parameters of the service
 func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
-	var ipFamilyPolicy core.IPFamilyPolicyType
 	var ipv4Addresses []string
 	var ipv6Addresses []string
+	var allAddresses []string
 
 	for _, ip := range ips {
 		if utilsnet.IsIPv4String(ip) {
@@ -382,42 +393,18 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 		}
 	}
 
-	if svc.Spec.IPFamilyPolicy != nil {
-		ipFamilyPolicy = *svc.Spec.IPFamilyPolicy
-	}
+	sort.Strings(ipv4Addresses)
+	sort.Strings(ipv6Addresses)
 
-	switch ipFamilyPolicy {
-	case core.IPFamilyPolicySingleStack:
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			return ipv4Addresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			return ipv6Addresses, nil
-		}
-	case core.IPFamilyPolicyPreferDualStack:
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			ipAddresses := append(ipv4Addresses, ipv6Addresses...)
-			return ipAddresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			ipAddresses := append(ipv6Addresses, ipv4Addresses...)
-			return ipAddresses, nil
-		}
-	case core.IPFamilyPolicyRequireDualStack:
-		if (len(ipv4Addresses) == 0) || (len(ipv6Addresses) == 0) {
-			return nil, errors.New("one or more IP families did not have addresses available for service with ipFamilyPolicy=RequireDualStack")
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv4Protocol {
-			ipAddresses := append(ipv4Addresses, ipv6Addresses...)
-			return ipAddresses, nil
-		}
-		if svc.Spec.IPFamilies[0] == core.IPv6Protocol {
-			ipAddresses := append(ipv6Addresses, ipv4Addresses...)
-			return ipAddresses, nil
+	for _, ipFamily := range svc.Spec.IPFamilies {
+		switch ipFamily {
+		case core.IPv4Protocol:
+			allAddresses = append(allAddresses, ipv4Addresses...)
+		case core.IPv6Protocol:
+			allAddresses = append(allAddresses, ipv6Addresses...)
 		}
 	}
-
-	return nil, errors.New("unhandled ipFamilyPolicy")
+	return allAddresses, nil
 }
 
 // deployDaemonSet ensures that there is a DaemonSet for the service.
@@ -450,10 +437,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	name := generateName(svc)
 	oneInt := intstr.FromInt(1)
 	localTraffic := servicehelper.RequestsOnlyLocalTraffic(svc)
-	sourceRanges, err := servicehelper.GetLoadBalancerSourceRanges(svc)
+	sourceRangesSet, err := servicehelper.GetLoadBalancerSourceRanges(svc)
 	if err != nil {
 		return nil, err
 	}
+	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
 
 	var sysctls []core.Sysctl
 	for _, ipFamily := range svc.Spec.IPFamilies {
@@ -462,6 +450,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
 		case core.IPv6Protocol:
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+			// If using the default range, and IPv6 is enabled, also allow IPv6.
+			if sourceRanges == "0.0.0.0/0" {
+				sourceRanges += ",::/0"
+			}
 		}
 	}
 
@@ -501,12 +494,12 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					},
 					Tolerations: []core.Toleration{
 						{
-							Key:      "node-role.kubernetes.io/master",
+							Key:      util.MasterRoleLabelKey,
 							Operator: "Exists",
 							Effect:   "NoSchedule",
 						},
 						{
-							Key:      "node-role.kubernetes.io/control-plane",
+							Key:      util.ControlPlaneRoleLabelKey,
 							Operator: "Exists",
 							Effect:   "NoSchedule",
 						},
@@ -547,7 +540,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				{
 					Name:  "SRC_RANGES",
-					Value: strings.Join(sourceRanges.StringSlice(), " "),
+					Value: sourceRanges,
 				},
 				{
 					Name:  "DEST_PROTO",
@@ -573,7 +566,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Name: "DEST_IPS",
 					ValueFrom: &core.EnvVarSource{
 						FieldRef: &core.ObjectFieldSelector{
-							FieldPath: "status.hostIP",
+							FieldPath: getHostIPsFieldPath(),
 						},
 					},
 				},
@@ -586,7 +579,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				core.EnvVar{
 					Name:  "DEST_IPS",
-					Value: strings.Join(svc.Spec.ClusterIPs, " "),
+					Value: strings.Join(svc.Spec.ClusterIPs, ","),
 				},
 			)
 		}
@@ -717,4 +710,11 @@ func ingressToString(ingresses []core.LoadBalancerIngress) []string {
 		}
 	}
 	return parts
+}
+
+func getHostIPsFieldPath() string {
+	if utilfeature.DefaultFeatureGate.Enabled(features.PodHostIPs) {
+		return "status.hostIPs"
+	}
+	return "status.hostIP"
 }

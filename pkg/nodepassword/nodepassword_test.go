@@ -1,18 +1,20 @@
 package nodepassword
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"runtime"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/rancher/wrangler/pkg/generic/fake"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/watch"
 )
 
 const migrateNumNodes = 10
@@ -26,20 +28,29 @@ func Test_UnitAsserts(t *testing.T) {
 func Test_UnitEnsureDelete(t *testing.T) {
 	logMemUsage(t)
 
-	secretClient := &mockSecretClient{}
+	ctrl := gomock.NewController(t)
+	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
+	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
+	secretStore := &mockSecretStore{}
+
+	// Set up expected call counts for tests
+	// Expect to see 2 creates, any number of cache gets, and 2 deletes.
+	secretClient.EXPECT().Create(gomock.Any()).Times(2).DoAndReturn(secretStore.Create)
+	secretClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).DoAndReturn(secretStore.Delete)
+	secretClient.EXPECT().Cache().AnyTimes().Return(secretCache)
+	secretCache.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(secretStore.Get)
+
+	// Run tests
 	assertEqual(t, Ensure(secretClient, "node1", "Hello World"), nil)
 	assertEqual(t, Ensure(secretClient, "node1", "Hello World"), nil)
 	assertNotEqual(t, Ensure(secretClient, "node1", "Goodbye World"), nil)
-	assertEqual(t, secretClient.created, 1)
 
 	assertEqual(t, Delete(secretClient, "node1"), nil)
 	assertNotEqual(t, Delete(secretClient, "node1"), nil)
-	assertEqual(t, secretClient.deleted, 1)
 
 	assertEqual(t, Ensure(secretClient, "node1", "Hello Universe"), nil)
 	assertNotEqual(t, Ensure(secretClient, "node1", "Hello World"), nil)
 	assertEqual(t, Ensure(secretClient, "node1", "Hello Universe"), nil)
-	assertEqual(t, secretClient.created, 2)
 
 	logMemUsage(t)
 }
@@ -48,16 +59,32 @@ func Test_UnitMigrateFile(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 
-	secretClient := &mockSecretClient{}
-	nodeClient := &mockNodeClient{}
+	ctrl := gomock.NewController(t)
 
+	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
+	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
+	secretStore := &mockSecretStore{}
+
+	nodeClient := fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](ctrl)
+	nodeCache := fake.NewMockNonNamespacedCacheInterface[*v1.Node](ctrl)
+	nodeStore := &mockNodeStore{}
+
+	// Set up expected call counts for tests
+	// Expect to see 1 node list, any number of cache gets, and however many
+	// creates as we are migrating.
+	secretClient.EXPECT().Create(gomock.Any()).Times(migrateNumNodes).DoAndReturn(secretStore.Create)
+	secretClient.EXPECT().Cache().AnyTimes().Return(secretCache)
+	secretCache.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(secretStore.Get)
+	nodeClient.EXPECT().Cache().AnyTimes().Return(nodeCache)
+	nodeCache.EXPECT().List(gomock.Any()).Times(1).DoAndReturn(nodeStore.List)
+
+	// Run tests
 	logMemUsage(t)
 	if err := MigrateFile(secretClient, nodeClient, nodePasswordFile); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	logMemUsage(t)
 
-	assertEqual(t, secretClient.created, migrateNumNodes)
 	assertNotEqual(t, Ensure(secretClient, "node1", "Hello World"), nil)
 	assertEqual(t, Ensure(secretClient, "node1", "node1"), nil)
 }
@@ -66,40 +93,62 @@ func Test_UnitMigrateFileNodes(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 
-	secretClient := &mockSecretClient{}
-	nodeClient := &mockNodeClient{}
-	nodeClient.nodes = make([]v1.Node, createNumNodes, createNumNodes)
-	for i := range nodeClient.nodes {
-		nodeClient.nodes[i].Name = fmt.Sprintf("node%d", i+1)
+	ctrl := gomock.NewController(t)
+
+	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
+	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
+	secretStore := &mockSecretStore{}
+
+	nodeClient := fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](ctrl)
+	nodeCache := fake.NewMockNonNamespacedCacheInterface[*v1.Node](ctrl)
+	nodeStore := &mockNodeStore{}
+
+	nodeStore.nodes = make([]v1.Node, createNumNodes, createNumNodes)
+	for i := range nodeStore.nodes {
+		nodeStore.nodes[i].Name = fmt.Sprintf("node%d", i+1)
 	}
 
+	// Set up expected call counts for tests
+	// Expect to see 1 node list, any number of cache gets, and however many
+	// creates as we are migrating - plus an extra new node at the end.
+	secretClient.EXPECT().Create(gomock.Any()).Times(migrateNumNodes + 1).DoAndReturn(secretStore.Create)
+	secretClient.EXPECT().Cache().AnyTimes().Return(secretCache)
+	secretCache.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(secretStore.Get)
+	nodeClient.EXPECT().Cache().AnyTimes().Return(nodeCache)
+	nodeCache.EXPECT().List(gomock.Any()).Times(1).DoAndReturn(nodeStore.List)
+
+	// Run tests
 	logMemUsage(t)
 	if err := MigrateFile(secretClient, nodeClient, nodePasswordFile); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	logMemUsage(t)
 
-	assertEqual(t, secretClient.created, createNumNodes)
-	for _, node := range nodeClient.nodes {
+	for _, node := range nodeStore.nodes {
 		assertNotEqual(t, Ensure(secretClient, node.Name, "wrong-password"), nil)
 		assertEqual(t, Ensure(secretClient, node.Name, node.Name), nil)
 	}
-	newNode := fmt.Sprintf("node%d", createNumNodes+1)
+
+	newNode := fmt.Sprintf("node%d", migrateNumNodes+1)
 	assertEqual(t, Ensure(secretClient, newNode, "new-password"), nil)
 	assertNotEqual(t, Ensure(secretClient, newNode, "wrong-password"), nil)
 }
 
-// --------------------------
-
-// mock secret client interface
-
-type mockSecretClient struct {
-	entries map[string]map[string]v1.Secret
-	created int
-	deleted int
+func Test_PasswordError(t *testing.T) {
+	err := &passwordError{node: "test", err: fmt.Errorf("inner error")}
+	assertEqual(t, errors.Is(err, ErrVerifyFailed), true)
+	assertEqual(t, errors.Is(err, fmt.Errorf("different error")), false)
+	assertNotEqual(t, errors.Unwrap(err), nil)
 }
 
-func (m *mockSecretClient) Create(secret *v1.Secret) (*v1.Secret, error) {
+// --------------------------
+// mock secret store interface
+
+type mockSecretStore struct {
+	entries map[string]map[string]v1.Secret
+}
+
+func (m *mockSecretStore) Create(secret *v1.Secret) (*v1.Secret, error) {
 	if m.entries == nil {
 		m.entries = map[string]map[string]v1.Secret{}
 	}
@@ -109,16 +158,11 @@ func (m *mockSecretClient) Create(secret *v1.Secret) (*v1.Secret, error) {
 	if _, ok := m.entries[secret.Namespace][secret.Name]; ok {
 		return nil, errorAlreadyExists()
 	}
-	m.created++
 	m.entries[secret.Namespace][secret.Name] = *secret
 	return secret, nil
 }
 
-func (m *mockSecretClient) Update(secret *v1.Secret) (*v1.Secret, error) {
-	return nil, errorNotImplemented()
-}
-
-func (m *mockSecretClient) Delete(namespace, name string, options *metav1.DeleteOptions) error {
+func (m *mockSecretStore) Delete(namespace, name string, options *metav1.DeleteOptions) error {
 	if m.entries == nil {
 		return errorNotFound()
 	}
@@ -128,12 +172,11 @@ func (m *mockSecretClient) Delete(namespace, name string, options *metav1.Delete
 	if _, ok := m.entries[namespace][name]; !ok {
 		return errorNotFound()
 	}
-	m.deleted++
 	delete(m.entries[namespace], name)
 	return nil
 }
 
-func (m *mockSecretClient) Get(namespace, name string, options metav1.GetOptions) (*v1.Secret, error) {
+func (m *mockSecretStore) Get(namespace, name string) (*v1.Secret, error) {
 	if m.entries == nil {
 		return nil, errorNotFound()
 	}
@@ -146,53 +189,18 @@ func (m *mockSecretClient) Get(namespace, name string, options metav1.GetOptions
 	return nil, errorNotFound()
 }
 
-func (m *mockSecretClient) List(namespace string, opts metav1.ListOptions) (*v1.SecretList, error) {
-	return nil, errorNotImplemented()
-}
-
-func (m *mockSecretClient) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return nil, errorNotImplemented()
-}
-
-func (m *mockSecretClient) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Secret, err error) {
-	return nil, errorNotImplemented()
-}
-
 // --------------------------
+// mock node store interface
 
-// mock node client interface
-
-type mockNodeClient struct {
+type mockNodeStore struct {
 	nodes []v1.Node
 }
 
-func (m *mockNodeClient) Create(node *v1.Node) (*v1.Node, error) {
-	return nil, errorNotImplemented()
-}
-func (m *mockNodeClient) Update(node *v1.Node) (*v1.Node, error) {
-	return nil, errorNotImplemented()
-}
-func (m *mockNodeClient) UpdateStatus(node *v1.Node) (*v1.Node, error) {
-	return nil, errorNotImplemented()
-}
-func (m *mockNodeClient) Delete(name string, options *metav1.DeleteOptions) error {
-	return errorNotImplemented()
-}
-func (m *mockNodeClient) Get(name string, options metav1.GetOptions) (*v1.Node, error) {
-	return nil, errorNotImplemented()
-}
-func (m *mockNodeClient) List(opts metav1.ListOptions) (*v1.NodeList, error) {
-	return &v1.NodeList{Items: m.nodes}, nil
-}
-func (m *mockNodeClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	return nil, errorNotImplemented()
-}
-func (m *mockNodeClient) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Node, err error) {
-	return nil, errorNotImplemented()
+func (m *mockNodeStore) List(ls labels.Selector) ([]v1.Node, error) {
+	return m.nodes, nil
 }
 
 // --------------------------
-
 // utility functions
 
 func assertEqual(t *testing.T, a interface{}, b interface{}) {
@@ -231,11 +239,6 @@ func errorNotFound() error {
 
 func errorAlreadyExists() error {
 	return apierrors.NewAlreadyExists(schema.GroupResource{}, "already-exists")
-}
-
-func errorNotImplemented() error {
-	log.Fatal("not implemented")
-	return apierrors.NewMethodNotSupported(schema.GroupResource{}, "not-implemented")
 }
 
 func logMemUsage(t *testing.T) {

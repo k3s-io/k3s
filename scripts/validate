@@ -1,18 +1,22 @@
 #!/bin/bash
 set -e
 
+if [ -n "$SKIP_VALIDATE" ]; then
+    echo Skipping validation
+    exit
+fi
+
 cd $(dirname $0)/..
+
+echo Running: install script signature checks
+sha256sum -c install.sh.sha256sum
 
 echo Running: go mod tidy
 go mod tidy
 
 echo Running: go generate
-go generate
+GOOS=linux CC=gcc CXX=g++ go generate
 
-if [ -n "$SKIP_VALIDATE" ]; then
-    echo Skipping validation
-    exit
-fi
 echo Running validation
 
 . ./scripts/version.sh
@@ -25,10 +29,8 @@ if [ -n "$DIRTY" ]; then
 fi
 
 echo Running: go version
-DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
-GOLANG_VERSION=$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)
-if ! go version | grep -s "go version go${GOLANG_VERSION} "; then
-  echo "Unexpected $(go version) - Kubernetes ${VERSION_K8S} should be built with go version go${GOLANG_VERSION}"
+if ! go version | grep -s "go version ${VERSION_GOLANG} "; then
+  echo "Unexpected $(go version) - Kubernetes ${VERSION_K8S} should be built with go version ${VERSION_GOLANG}"
   exit 1
 fi
 
@@ -44,5 +46,6 @@ if ! command -v golangci-lint; then
     exit
 fi
 
-echo Running: golangci-lint
-golangci-lint run -v
+#echo Running: golangci-lint
+## https://github.com/golangci/golangci-lint/issues/2788
+#CGO_ENABLED=0 golangci-lint run -v

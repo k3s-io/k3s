@@ -12,15 +12,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cloudnativelabs/kube-router/pkg/version"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
 
-	"github.com/cloudnativelabs/kube-router/pkg/controllers/netpol"
-	"github.com/cloudnativelabs/kube-router/pkg/healthcheck"
-	"github.com/cloudnativelabs/kube-router/pkg/options"
-	"github.com/cloudnativelabs/kube-router/pkg/utils"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/netpol"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/healthcheck"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/options"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/utils"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1core "k8s.io/api/core/v1"
@@ -57,7 +56,11 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	}
 
 	krConfig := options.NewKubeRouterConfig()
-	krConfig.ClusterIPCIDR = util.JoinIPNets(nodeConfig.AgentConfig.ServiceCIDRs)
+	var serviceIPs []string
+	for _, elem := range nodeConfig.AgentConfig.ServiceCIDRs {
+		serviceIPs = append(serviceIPs, elem.String())
+	}
+	krConfig.ClusterIPCIDRs = serviceIPs
 	krConfig.EnableIPv4 = nodeConfig.AgentConfig.EnableIPv4
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
@@ -126,7 +129,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{},
 		iptablesCmdHandlers, ipSetHandlers)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to initialize Network Policy Controller")
 	}
 
 	podInformer.AddEventHandler(npc.PodEventHandler)

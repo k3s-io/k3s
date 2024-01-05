@@ -26,7 +26,7 @@ var (
 	}
 )
 
-func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt func(ctx *cli.Context) error) cli.Command {
+func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:           SecretsEncryptCommand,
 		Usage:          "Control secrets encryption and keys rotation",

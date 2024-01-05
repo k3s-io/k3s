@@ -1,0 +1,8 @@
+^.*\.md$
+^\.droneignore$
+^\.github\/.*$
+^MAINTAINERS$
+^CODEOWNERS$
+^LICENSE$
+^DCO$
+^channel\.yaml$

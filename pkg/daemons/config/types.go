@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -11,11 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/pkg/leader"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/tools/record"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -23,9 +24,8 @@ const (
 	FlannelBackendNone            = "none"
 	FlannelBackendVXLAN           = "vxlan"
 	FlannelBackendHostGW          = "host-gw"
-	FlannelBackendIPSEC           = "ipsec"
-	FlannelBackendWireguard       = "wireguard"
 	FlannelBackendWireguardNative = "wireguard-native"
+	FlannelBackendTailscale       = "tailscale"
 	EgressSelectorModeAgent       = "agent"
 	EgressSelectorModeCluster     = "cluster"
 	EgressSelectorModeDisabled    = "disabled"
@@ -37,6 +37,7 @@ const (
 type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
+	ImageServiceEndpoint     string
 	NoFlannel                bool
 	SELinux                  bool
 	FlannelBackend           string
@@ -53,18 +54,23 @@ type Node struct {
 	Token                    string
 	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
+	DefaultRuntime           string
 }
 
 type Containerd struct {
-	Address  string
-	Log      string
-	Root     string
-	State    string
-	Config   string
-	Opt      string
-	Template string
-	SELinux  bool
-	Debug    bool
+	Address       string
+	Log           string
+	Root          string
+	State         string
+	Config        string
+	Opt           string
+	Template      string
+	BlockIOConfig string
+	RDTConfig     string
+	Registry      string
+	NoDefault     bool
+	SELinux       bool
+	Debug         bool
 }
 
 type CRIDockerd struct {
@@ -76,6 +82,8 @@ type Agent struct {
 	PodManifests            string
 	NodeName                string
 	NodeConfigPath          string
+	ClientKubeletCert       string
+	ClientKubeletKey        string
 	ServingKubeletCert      string
 	ServingKubeletKey       string
 	ServiceCIDR             *net.IPNet
@@ -123,6 +131,10 @@ type Agent struct {
 	DisableServiceLB        bool
 	EnableIPv4              bool
 	EnableIPv6              bool
+	VLevel                  int
+	VModule                 string
+	LogFile                 string
+	AlsoLogToStderr         bool
 }
 
 // CriticalControlArgs contains parameters that all control plane nodes in HA must share
@@ -162,6 +174,7 @@ type Control struct {
 	ServiceNodePortRange     *utilnet.PortRange
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	HelmJobImage             string
 	DataDir                  string
 	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
@@ -212,9 +225,12 @@ type Control struct {
 	EtcdS3Timeout            time.Duration `json:"-"`
 	EtcdS3Insecure           bool          `json:"-"`
 	ServerNodeName           string
+	VLevel                   int
+	VModule                  string
 
 	BindAddress string
 	SANs        []string
+	SANSecurity bool
 	PrivateIP   string
 	Runtime     *ControlRuntime `json:"-"`
 }
@@ -244,7 +260,7 @@ func (c *Control) BindAddressOrLoopback(chooseHostInterface, urlSafe bool) strin
 // service CIDRs indicate an IPv4/Dual-Stack or IPv6 only cluster. If the urlSafe
 // parameter is true, IPv6 addresses are enclosed in square brackets, as per RFC2732.
 func (c *Control) Loopback(urlSafe bool) string {
-	if IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.ServiceIPRanges); IPv6OnlyService {
+	if utilsnet.IsIPv6CIDR(c.ServiceIPRange) {
 		if urlSafe {
 			return "[::1]"
 		}
@@ -274,19 +290,24 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap                       bool
-	APIServerReady                      <-chan struct{}
-	AgentReady                          <-chan struct{}
-	ETCDReady                           <-chan struct{}
-	StartupHooksWg                      *sync.WaitGroup
-	ClusterControllerStart              func(ctx context.Context) error
-	LeaderElectedClusterControllerStart func(ctx context.Context) error
+	HTTPBootstrap                        bool
+	APIServerReady                       <-chan struct{}
+	AgentReady                           <-chan struct{}
+	ETCDReady                            <-chan struct{}
+	StartupHooksWg                       *sync.WaitGroup
+	ClusterControllerStarts              map[string]leader.Callback
+	LeaderElectedClusterControllerStarts map[string]leader.Callback
 
 	ClientKubeAPICert string
 	ClientKubeAPIKey  string
 	NodePasswdFile    string
 
+	SigningClientCA   string
+	SigningServerCA   string
+	ServiceCurrentKey string
+
 	KubeConfigAdmin           string
+	KubeConfigSupervisor      string
 	KubeConfigController      string
 	KubeConfigScheduler       string
 	KubeConfigAPIServer       string
@@ -310,6 +331,8 @@ type ControlRuntime struct {
 
 	ClientAdminCert           string
 	ClientAdminKey            string
+	ClientSupervisorCert      string
+	ClientSupervisorKey       string
 	ClientControllerCert      string
 	ClientControllerKey       string
 	ClientSchedulerCert       string
@@ -329,8 +352,18 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
+	K3s        *k3s.Factory
 	Core       *core.Factory
+	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
+}
+
+func NewRuntime(agentReady <-chan struct{}) *ControlRuntime {
+	return &ControlRuntime{
+		AgentReady:                           agentReady,
+		ClusterControllerStarts:              map[string]leader.Callback{},
+		LeaderElectedClusterControllerStarts: map[string]leader.Callback{},
+	}
 }
 
 type ArgString []string

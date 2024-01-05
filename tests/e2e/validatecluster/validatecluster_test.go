@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,7 +44,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify Create", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Cluster Starts up and deploys basic components", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
@@ -99,7 +100,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
-			fmt.Println(cmd)
 			for _, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCmdOnNode(cmd, nodeName)
@@ -127,7 +127,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}, "240s", "5s").Should(Succeed())
 
 				cmd = "curl -L --insecure http://" + nodeExternalIP + ":" + nodeport + "/name.html"
-				fmt.Println(cmd)
+
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
@@ -210,6 +210,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
+
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 				g.Expect(res).Should(ContainSubstring("kubernetes.default.svc.cluster.local"))
@@ -271,6 +272,108 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "180s", "2s").Should(Succeed())
 		})
 	})
+
+	Context("Validate restart", func() {
+		It("Restarts normally", func() {
+			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
+
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunningAr := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunningAr++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
+			}, "620s", "5s").Should(Succeed())
+		})
+	})
+
+	Context("Valdiate Certificate Rotation", func() {
+		It("Stops K3s and rotates certificates", func() {
+			errStop := e2e.StopCluster(serverNodeNames)
+			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stopped successfully")
+
+			for _, nodeName := range serverNodeNames {
+				cmd := "k3s certificate rotate"
+				_, err := e2e.RunCmdOnNode(cmd, nodeName)
+				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+nodeName)
+			}
+		})
+
+		It("Start normally", func() {
+			// Since we stopped all the server, we have to start 2 at once to get it back up
+			// If we only start one at a time, the first will hang waiting for the second to be up
+			_, err := e2e.RunCmdOnNode("systemctl --no-block start k3s", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			err = e2e.StartCluster(serverNodeNames[1:])
+			Expect(err).NotTo(HaveOccurred(), "Cluster could not be started successfully")
+
+			Eventually(func(g Gomega) {
+				for _, nodeName := range serverNodeNames {
+					cmd := "test ! -e /var/lib/rancher/k3s/server/tls/dynamic-cert-regenerate"
+					_, err := e2e.RunCmdOnNode(cmd, nodeName)
+					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+nodeName)
+				}
+			}, "620s", "5s").Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "620s", "5s").Should(Succeed())
+		})
+
+		It("Validates certificates", func() {
+			const grepCert = "ls -lt /var/lib/rancher/k3s/server/ | grep tls"
+			// This is a list of files that should be IDENTICAL after certificates are rotated.
+			// Everything else should be changed.
+			var expectResult = []string{
+				"client-ca.crt", "client-ca.key", "client-ca.nochain.crt",
+				"client-supervisor.crt", "client-supervisor.key",
+				"peer-ca.crt", "peer-ca.key",
+				"server-ca.crt", "server-ca.key",
+				"request-header-ca.crt", "request-header-ca.key",
+				"server-ca.crt", "server-ca.key", "server-ca.nochain.crt",
+				"service.current.key", "service.key",
+				"apiserver-loopback-client__.crt", "apiserver-loopback-client__.key",
+				"",
+			}
+
+			for _, nodeName := range serverNodeNames {
+				grCert, errGrep := e2e.RunCmdOnNode(grepCert, nodeName)
+				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+nodeName)
+				re := regexp.MustCompile("tls-[0-9]+")
+				tls := re.FindAllString(grCert, -1)[0]
+				diff := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
+					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
+				result, err := e2e.RunCmdOnNode(diff, nodeName)
+				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+nodeName)
+
+				certArray := strings.Split(result, "\n")
+				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+nodeName)
+			}
+
+			errRestartAgent := e2e.RestartCluster(agentNodeNames)
+			Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
+		})
+
+	})
 })
 
 var failed bool
@@ -282,6 +385,7 @@ var _ = AfterSuite(func() {
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

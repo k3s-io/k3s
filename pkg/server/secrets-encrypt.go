@@ -13,14 +13,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 )
 
@@ -60,12 +63,12 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 		}
 		status, err := encryptionStatus(server)
 		if err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err)
+			genErrorMessage(resp, http.StatusInternalServerError, err, "secrets-encrypt")
 			return
 		}
 		b, err := json.Marshal(status)
 		if err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err)
+			genErrorMessage(resp, http.StatusInternalServerError, err, "secrets-encrypt")
 			return
 		}
 		resp.Write(b)
@@ -148,7 +151,11 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return cluster.Save(ctx, server, true)
+	if err := cluster.Save(ctx, server, true); err != nil {
+		return err
+	}
+	server.EncryptSkip = true
+	return setReencryptAnnotation(server)
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -173,6 +180,8 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 				err = encryptionPrepare(ctx, server, encryptReq.Force)
 			case secretsencrypt.EncryptionRotate:
 				err = encryptionRotate(ctx, server, encryptReq.Force)
+			case secretsencrypt.EncryptionRotateKeys:
+				err = encryptionRotateKeys(ctx, server)
 			case secretsencrypt.EncryptionReencryptActive:
 				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
 			default:
@@ -183,7 +192,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 		}
 
 		if err != nil {
-			genErrorMessage(resp, http.StatusBadRequest, err)
+			genErrorMessage(resp, http.StatusBadRequest, err, "secrets-encrypt")
 			return
 		}
 		// If a user kills the k3s server immediately after this call, we run into issues where the files
@@ -214,18 +223,20 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		return err
 	}
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare)
+	})
 	if err != nil {
-		return err
-	}
-	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, true)
 }
 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
-
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
 		return err
 	}
@@ -243,18 +254,20 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	}
 	logrus.Infoln("Encryption keys right rotated")
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate)
+	})
 	if err != nil {
-		return err
-	}
-	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate); err != nil {
 		return err
 	}
 	return cluster.Save(ctx, server, true)
 }
 
 func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
-
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
 	}
@@ -279,8 +292,67 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	return nil
 }
 
-func AppendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
+func addAndRotateKeys(server *config.Control) error {
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	if err != nil {
+		return err
+	}
 
+	if err := AppendNewEncryptionKey(&curKeys); err != nil {
+		return err
+	}
+	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
+
+	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+		return err
+	}
+
+	// Right rotate elements
+	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+
+	return secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true)
+}
+
+// encryptionRotateKeys is both adds and rotates keys, and sets the annotaiton that triggers the
+// reencryption process. It is the preferred way to rotate keys, starting with v1.28
+func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
+	states := secretsencrypt.EncryptionStart + "-" + secretsencrypt.EncryptionReencryptFinished
+	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil {
+		return err
+	}
+
+	if err := verifyRotateKeysSupport(server.Runtime.Core.Core()); err != nil {
+		return err
+	}
+
+	if err := addAndRotateKeys(server); err != nil {
+		return err
+	}
+
+	return setReencryptAnnotation(server)
+}
+
+func setReencryptAnnotation(server *config.Control) error {
+	nodeName := os.Getenv("NODE_NAME")
+	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
+	if err != nil {
+		return err
+	}
+	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
+	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
+	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
+		return err
+	}
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	return nil
+}
+
+func AppendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
 	aescbcKey := make([]byte, aescbcKeySize)
 	_, err := rand.Read(aescbcKey)
 	if err != nil {
@@ -304,7 +376,7 @@ func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if _, ok := node.Labels[ControlPlaneRoleLabelKey]; !ok {
+	if _, ok := node.Labels[util.ControlPlaneRoleLabelKey]; !ok {
 		return "", "", fmt.Errorf("cannot manage secrets encryption on non control-plane node %s", nodeName)
 	}
 	if ann, ok := node.Annotations[secretsencrypt.EncryptionHashAnnotation]; ok {
@@ -317,13 +389,36 @@ func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
 	return "", "", fmt.Errorf("missing annotation on node %s", nodeName)
 }
 
+// verifyRotateKeysSupport checks that the k3s version is at least v1.28.0 on all control-plane nodes
+func verifyRotateKeysSupport(core core.Interface) error {
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
+	nodes, err := core.V1().Node().List(metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return err
+	}
+	for _, node := range nodes.Items {
+		kubver, err := semver.ParseTolerant(node.Status.NodeInfo.KubeletVersion)
+		if err != nil {
+			return fmt.Errorf("failed to parse kubelet version %s: %v", node.Status.NodeInfo.KubeletVersion, err)
+		}
+		supportVer, err := semver.Make("1.28.0")
+		if err != nil {
+			return err
+		}
+		if kubver.LT(supportVer) {
+			return fmt.Errorf("node %s is running k3s version %s that does not support rotate-keys", node.ObjectMeta.Name, kubver.String())
+		}
+	}
+	return nil
+}
+
 // verifyEncryptionHashAnnotation checks that all nodes are on the same stage,
 // and that a request for new stage is valid
 func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.Interface, prevStage string) error {
 	var firstHash string
 	var firstNodeName string
 	first := true
-	labelSelector := labels.Set{ControlPlaneRoleLabelKey: "true"}.String()
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
 	nodes, err := core.V1().Node().List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return err
@@ -364,14 +459,14 @@ func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.In
 // genErrorMessage sends and logs a random error ID so that logs can be correlated
 // between the REST API (which does not provide any detailed error output, to avoid
 // information disclosure) and the server logs.
-func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error) {
+func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error, component string) {
 	errID, err := rand.Int(rand.Reader, big.NewInt(99999))
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 		resp.Write([]byte(err.Error()))
 		return
 	}
-	logrus.Warnf("secrets-encrypt error ID %05d: %s", errID, passedErr.Error())
+	logrus.Warnf("%s error ID %05d: %s", component, errID, passedErr.Error())
 	resp.WriteHeader(statusCode)
-	resp.Write([]byte(fmt.Sprintf("secrets-encrypt error ID %05d", errID)))
+	resp.Write([]byte(fmt.Sprintf("%s error ID %05d", component, errID)))
 }

@@ -29,3 +29,7 @@ __pycache__
 /tests/.vscode
 /sonobuoy-output
 *.tmp
+config/local.tfvars
+*.terraform
+*.tfstate
+.terraform.lock.hcl

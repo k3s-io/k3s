@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/k3s-io/k3s/pkg/util"
 )
 
@@ -60,14 +59,6 @@ func Read(file string) (*Passwd, error) {
 	return result, nil
 }
 
-func (p *Passwd) Check(name, pass string) (matches bool, exists bool) {
-	e, ok := p.names[name]
-	if !ok {
-		return false, false
-	}
-	return e.pass == pass, true
-}
-
 func (p *Passwd) EnsureUser(name, role, passwd string) error {
 	tokenPrefix := "::" + name + ":"
 	idx := strings.Index(passwd, tokenPrefix)
@@ -91,7 +82,7 @@ func (p *Passwd) EnsureUser(name, role, passwd string) error {
 	}
 
 	if passwd == "" {
-		token, err := token.Random(16)
+		token, err := util.Random(16)
 		if err != nil {
 			return err
 		}

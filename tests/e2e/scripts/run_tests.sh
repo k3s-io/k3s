@@ -29,23 +29,20 @@ E2E_REGISTRY=true E2E_HARDENED="$hardened" /usr/local/go/bin/go test -v validate
 echo 'RUNNING SECRETS ENCRYPTION TEST'
 /usr/local/go/bin/go test -v secretsencryption/secretsencryption_test.go -nodeOS="$nodeOS" -serverCount=$((servercount)) -timeout=1h -json -ci | tee -a k3s_"$OS".log
 
-echo 'RUN CLUSTER RESET TEST'
-/usr/local/go/bin/go test -v clusterreset/clusterreset_test.go -nodeOS="$nodeOS" -serverCount=3 -agentCount=1 -timeout=30m -json -ci | tee -a createreport/k3s_"$OS".log
-
 echo 'RUNNING SPLIT SERVER VALIDATION TEST'
 E2E_HARDENED="$hardened" /usr/local/go/bin/go test -v splitserver/splitserver_test.go -nodeOS="$nodeOS" -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
-echo 'RUNNING DOCKER CRI VALIDATION TEST'
-/usr/local/go/bin/go test -v docker/docker_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
+echo 'RUNNING STARTUP VALIDATION TEST'
+/usr/local/go/bin/go test -v startup/startup_test.go -nodeOS="$nodeOS" -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
 echo 'RUNNING EXTERNAL IP TEST'
 /usr/local/go/bin/go test -v externalip/externalip_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
-echo 'RUNNING PRE-BUNDLED-BIN IP TEST'
-/usr/local/go/bin/go test -v preferbundled/preferbundled_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
-
 echo 'RUNNING SNAPSHOT AND RESTORE TEST'
 /usr/local/go/bin/go test -v snapshotrestore/snapshotrestore_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
+
+echo 'RUNNING ROTATE CUSTOM CA TEST'
+/usr/local/go/bin/go test -v rotateca/rotateca_test.go -nodeOS="$nodeOS" -serverCount=1 -agentCount=1 -timeout=30m -json -ci | tee -a k3s_"$OS".log
 
 E2E_RELEASE_CHANNEL="latest" && export E2E_RELEASE_CHANNEL
 echo 'RUNNING CLUSTER UPGRADE TEST'

@@ -18,14 +18,14 @@ package passwordfile
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"k8s.io/klog"
+	"github.com/k3s-io/k3s/pkg/nodepassword"
+	"k8s.io/klog/v2"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
@@ -37,8 +37,8 @@ type PasswordAuthenticator struct {
 }
 
 type userPasswordInfo struct {
-	info     *user.DefaultInfo
-	password string
+	info *user.DefaultInfo
+	hash string
 }
 
 // NewCSV returns a PasswordAuthenticator, populated from a CSV file.
@@ -65,9 +65,13 @@ func NewCSV(path string) (*PasswordAuthenticator, error) {
 		if len(record) < 3 {
 			return nil, fmt.Errorf("password file '%s' must have at least 3 columns (password, user name, user uid), found %d", path, len(record))
 		}
+		hash, err := nodepassword.Hasher.CreateHash(record[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password for username '%s' in password file '%s': %v", record[1], path, err)
+		}
 		obj := &userPasswordInfo{
-			info:     &user.DefaultInfo{Name: record[1], UID: record[2]},
-			password: record[0],
+			info: &user.DefaultInfo{Name: record[1], UID: record[2]},
+			hash: hash,
 		}
 		if len(record) >= 4 {
 			obj.info.Groups = strings.Split(record[3], ",")
@@ -88,7 +92,7 @@ func (a *PasswordAuthenticator) AuthenticatePassword(ctx context.Context, userna
 	if !ok {
 		return nil, false, nil
 	}
-	if subtle.ConstantTimeCompare([]byte(user.password), []byte(password)) == 0 {
+	if err := nodepassword.Hasher.VerifyHash(user.hash, password); err != nil {
 		return nil, false, nil
 	}
 	return &authenticator.Response{User: user.info}, true, nil

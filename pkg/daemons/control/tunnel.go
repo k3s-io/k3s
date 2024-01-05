@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/proxy"
@@ -24,6 +23,7 @@ import (
 	"github.com/yl2chen/cidranger"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
@@ -45,7 +45,7 @@ func setupTunnel(ctx context.Context, cfg *config.Control) (http.Handler, error)
 		server: remotedialer.New(authorizer, loggingErrorWriter),
 		egress: map[string]bool{},
 	}
-	go tunnel.watch(ctx)
+	cfg.Runtime.ClusterControllerStarts["tunnel-server"] = tunnel.watch
 	return tunnel, nil
 }
 
@@ -112,17 +112,10 @@ func (t *TunnelServer) watch(ctx context.Context) {
 		return
 	}
 
-	for {
-		if t.config.Runtime.Core != nil {
-			t.config.Runtime.Core.Core().V1().Node().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeNode)
-			switch t.config.EgressSelectorMode {
-			case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
-				t.config.Runtime.Core.Core().V1().Pod().OnChange(ctx, version.Program+"-tunnel-server", t.onChangePod)
-			}
-			return
-		}
-		logrus.Infof("Tunnel server egress proxy waiting for runtime core to become available")
-		time.Sleep(5 * time.Second)
+	t.config.Runtime.Core.Core().V1().Node().OnChange(ctx, version.Program+"-tunnel-server", t.onChangeNode)
+	switch t.config.EgressSelectorMode {
+	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
+		t.config.Runtime.Core.Core().V1().Pod().OnChange(ctx, version.Program+"-tunnel-server", t.onChangePod)
 	}
 }
 
@@ -173,7 +166,6 @@ func (t *TunnelServer) onChangePod(podName string, pod *v1.Pod) (*v1.Pod, error)
 		}
 	}
 	return pod, nil
-
 }
 
 // serveConnect attempts to handle the HTTP CONNECT request by dialing
@@ -182,7 +174,7 @@ func (t *TunnelServer) serveConnect(resp http.ResponseWriter, req *http.Request)
 	bconn, err := t.dialBackend(req.Context(), req.Host)
 	if err != nil {
 		responsewriters.ErrorNegotiated(
-			apierrors.NewServiceUnavailable(err.Error()),
+			newBadGateway(err.Error()),
 			scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req,
 		)
 		return
@@ -308,4 +300,15 @@ func (crw *connReadWriteCloser) Write(b []byte) (n int, err error) {
 func (crw *connReadWriteCloser) Close() (err error) {
 	crw.once.Do(func() { err = crw.conn.Close() })
 	return
+}
+
+func newBadGateway(message string) *apierrors.StatusError {
+	return &apierrors.StatusError{
+		ErrStatus: metav1.Status{
+			Status:  metav1.StatusFailure,
+			Code:    http.StatusBadGateway,
+			Reason:  metav1.StatusReasonInternalError,
+			Message: message,
+		},
+	}
 }

@@ -21,6 +21,7 @@ package v1
 import (
 	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	"github.com/rancher/lasso/pkg/controller"
+	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/rancher/wrangler/pkg/schemes"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -31,6 +32,7 @@ func init() {
 
 type Interface interface {
 	Addon() AddonController
+	ETCDSnapshotFile() ETCDSnapshotFileController
 }
 
 func New(controllerFactory controller.SharedControllerFactory) Interface {
@@ -43,6 +45,10 @@ type version struct {
 	controllerFactory controller.SharedControllerFactory
 }
 
-func (c *version) Addon() AddonController {
-	return NewAddonController(schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, c.controllerFactory)
+func (v *version) Addon() AddonController {
+	return generic.NewController[*v1.Addon, *v1.AddonList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, v.controllerFactory)
+}
+
+func (v *version) ETCDSnapshotFile() ETCDSnapshotFileController {
+	return generic.NewNonNamespacedController[*v1.ETCDSnapshotFile, *v1.ETCDSnapshotFileList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "ETCDSnapshotFile"}, "etcdsnapshotfiles", v.controllerFactory)
 }

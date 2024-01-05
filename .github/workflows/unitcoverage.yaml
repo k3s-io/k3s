@@ -35,13 +35,13 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with: 
-        go-version: '1.19.5'
+        go-version: '1.21.5'
         check-latest: true
         cache: true
         cache-dependency-path: |
@@ -56,7 +56,7 @@ jobs:
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v3
       with:
         files: ./coverage.out
         flags: unittests # optional

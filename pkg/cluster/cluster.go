@@ -10,10 +10,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	utilsnet "k8s.io/utils/net"
 )
 
 type Cluster struct {
@@ -24,6 +24,7 @@ type Cluster struct {
 	storageStarted   bool
 	saveBootstrap    bool
 	shouldBootstrap  bool
+	cnFilterFunc     func(...string) []string
 }
 
 // Start creates the dynamic tls listener, http request handler,
@@ -53,8 +54,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 			clientURL.Host = clientURL.Hostname() + ":2379"
 			clientURLs = append(clientURLs, clientURL.String())
 		}
-		IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(c.config.ServiceIPRanges)
-		etcdProxy, err := etcd.NewETCDProxy(ctx, true, c.config.DataDir, clientURLs[0], IPv6OnlyService)
+		etcdProxy, err := etcd.NewETCDProxy(ctx, true, c.config.DataDir, clientURLs[0], utilsnet.IsIPv6CIDR(c.config.ServiceIPRanges[0]))
 		if err != nil {
 			return nil, err
 		}

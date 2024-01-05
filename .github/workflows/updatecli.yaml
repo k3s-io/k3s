@@ -20,12 +20,20 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.19.4'
+          go-version: 'stable'
+
+      - name: Delete leftover UpdateCLI branches
+        run: |
+          gh pr list --search "is:closed is:pr head:updatecli_" --json headRefName --jq ".[].headRefName" | sort -u > closed_prs_branches.txt
+          gh pr list --search "is:open is:pr head:updatecli_" --json headRefName --jq ".[].headRefName" | sort -u > open_prs_branches.txt
+          for branch in $(comm -23 closed_prs_branches.txt open_prs_branches.txt); do if (git ls-remote --exit-code --heads origin "$branch"); then echo "Deleting leftover UpdateCLI branch - $branch"; git push origin --delete "$branch"; fi done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Updatecli
         uses: updatecli/updatecli-action@v2

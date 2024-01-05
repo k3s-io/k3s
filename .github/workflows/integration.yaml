@@ -16,12 +16,16 @@ on:
       - "install.sh"
       - "tests/**"
       - "!tests/integration**"
+      - "!tests/e2e**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
 
 permissions:
   contents: read
+
+env:
+  GOCOVERDIR: /tmp/k3scov
   
 jobs:
   build:
@@ -30,16 +34,21 @@ jobs:
     needs: build
     name: Integration Tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        itest: [certrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption]
+      max-parallel: 3
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with: 
-        go-version: '1.19.5'
+        go-version: '1.21.5'
         check-latest: true
         cache: true
         cache-dependency-path: |
@@ -53,8 +62,17 @@ jobs:
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
-        sudo -E env "PATH=$PATH" go test -v ./tests/integration/... -run Integration
+        mkdir -p $GOCOVERDIR
+        sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 5
+    - name: Generate coverage report
+      run: go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./${{ matrix.itest }}.out
+        flags: inttests # optional
+        verbose: true # optional (default = false)

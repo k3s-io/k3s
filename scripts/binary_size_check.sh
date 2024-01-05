@@ -2,11 +2,12 @@
 
 set -e
 
+GO=${GO-go}
+ARCH=${ARCH:-$("${GO}" env GOARCH)}
+
 if [ "${DEBUG}" = 1 ]; then
     set -x
 fi
-
-. ./scripts/version.sh
 
 # Try to keep the K3s binary under 70 megabytes.
 # "64M ought to be enough for anybody"

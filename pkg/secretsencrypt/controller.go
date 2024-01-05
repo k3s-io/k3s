@@ -11,6 +11,7 @@ import (
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,6 @@ const (
 	secretsProgressEvent       string = "SecretsProgress"
 	secretsUpdateCompleteEvent string = "SecretsUpdateComplete"
 	secretsUpdateErrorEvent    string = "SecretsUpdateError"
-	controlPlaneRoleLabelKey   string = "node-role.kubernetes.io/control-plane"
 )
 
 type handler struct {
@@ -185,7 +185,7 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 	if err != nil {
 		return false, err
 	}
-	labelSelector := labels.Set{controlPlaneRoleLabelKey: "true"}.String()
+	labelSelector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
 	nodes, err := h.nodes.List(metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return false, err
@@ -223,8 +223,8 @@ func (h *handler) updateSecrets(node *corev1.Node) error {
 	i := 0
 	err = meta.EachListItem(secretsList, func(obj runtime.Object) error {
 		if secret, ok := obj.(*corev1.Secret); ok {
-			if _, err := h.secrets.Update(secret); err != nil {
-				return fmt.Errorf("failed to reencrypted secret: %v", err)
+			if _, err := h.secrets.Update(secret); err != nil && !apierrors.IsConflict(err) {
+				return fmt.Errorf("failed to update secret: %v", err)
 			}
 			if i != 0 && i%10 == 0 {
 				h.recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsProgressEvent, "reencrypted %d secrets", i)

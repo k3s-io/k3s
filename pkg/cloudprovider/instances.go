@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
@@ -29,12 +28,12 @@ func (k *k3s) InstanceExists(ctx context.Context, node *corev1.Node) (bool, erro
 
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
 // K3s nodes are never shutdown.
-func (k *k3s) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
+func (k *k3s) InstanceShutdown(ctx context.Context, node *corev1.Node) (bool, error) {
 	return false, nil
 }
 
 // InstanceMetadata returns the instance's metadata.
-func (k *k3s) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
+func (k *k3s) InstanceMetadata(ctx context.Context, node *corev1.Node) (*cloudprovider.InstanceMetadata, error) {
 	if (node.Annotations[InternalIPKey] == "") && (node.Labels[InternalIPKey] == "") {
 		return nil, errors.New("address annotations not yet set")
 	}

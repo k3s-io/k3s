@@ -35,12 +35,17 @@ import (
 	"k8s.io/kubernetes/pkg/cluster/ports"
 )
 
+var (
+	endpointDebounceDelay = time.Second
+)
+
 type agentTunnel struct {
 	client      kubernetes.Interface
 	cidrs       cidranger.Ranger
 	ports       map[string]bool
 	mode        string
 	kubeletPort string
+	startTime   time.Time
 }
 
 // explicit interface check
@@ -56,12 +61,7 @@ func (p *podEntry) Network() net.IPNet {
 }
 
 func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigK3sController)
-	if err != nil {
-		return err
-	}
-
-	client, err := kubernetes.NewForConfig(restConfig)
+	client, err := util.GetClientSet(config.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}
@@ -77,12 +77,12 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 	}
 
 	tunnel := &agentTunnel{
-		client: client,
-		cidrs:  cidranger.NewPCTrieRanger(),
-		ports:  map[string]bool{},
-		mode:   config.EgressSelectorMode,
-
+		client:      client,
+		cidrs:       cidranger.NewPCTrieRanger(),
+		ports:       map[string]bool{},
+		mode:        config.EgressSelectorMode,
 		kubeletPort: fmt.Sprint(ports.KubeletPort),
+		startTime:   time.Now().Truncate(time.Second),
 	}
 
 	apiServerReady := make(chan struct{})
@@ -101,16 +101,20 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		close(apiServerReady)
 	}()
 
-	// Allow the kubelet port, as published via our node object
-	go tunnel.setKubeletPort(ctx, apiServerReady)
+	// We don't need to run the tunnel authorizer if the container runtime endpoint is /dev/null,
+	// signifying that this is an agentless server that will not register a node.
+	if config.ContainerRuntimeEndpoint != "/dev/null" {
+		// Allow the kubelet port, as published via our node object.
+		go tunnel.setKubeletPort(ctx, apiServerReady)
 
-	switch tunnel.mode {
-	case daemonconfig.EgressSelectorModeCluster:
-		// In Cluster mode, we allow the cluster CIDRs, and any connections to the node's IPs for pods using host network.
-		tunnel.clusterAuth(config)
-	case daemonconfig.EgressSelectorModePod:
-		// In Pod mode, we watch pods assigned to this node, and allow their addresses, as well as ports used by containers with host network.
-		go tunnel.watchPods(ctx, apiServerReady, config)
+		switch tunnel.mode {
+		case daemonconfig.EgressSelectorModeCluster:
+			// In Cluster mode, we allow the cluster CIDRs, and any connections to the node's IPs for pods using host network.
+			tunnel.clusterAuth(config)
+		case daemonconfig.EgressSelectorModePod:
+			// In Pod mode, we watch pods assigned to this node, and allow their addresses, as well as ports used by containers with host network.
+			go tunnel.watchPods(ctx, apiServerReady, config)
+		}
 	}
 
 	// The loadbalancer is only disabled when there is a local apiserver.  Servers without a local
@@ -159,13 +163,28 @@ func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan 
 	<-apiServerReady
 
 	wait.PollImmediateWithContext(ctx, time.Second, util.DefaultAPIServerReadyTimeout, func(ctx context.Context) (bool, error) {
+		var readyTime metav1.Time
 		nodeName := os.Getenv("NODE_NAME")
 		node, err := a.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Debugf("Tunnel authorizer failed to get Kubelet Port: %v", err)
 			return false, nil
 		}
-		a.kubeletPort = strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		for _, cond := range node.Status.Conditions {
+			if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+				readyTime = cond.LastHeartbeatTime
+			}
+		}
+		if readyTime.Time.Before(a.startTime) {
+			logrus.Debugf("Waiting for Ready condition to be updated for Kubelet Port assignment")
+			return false, nil
+		}
+		kubeletPort := strconv.FormatInt(int64(node.Status.DaemonEndpoints.KubeletEndpoint.Port), 10)
+		if kubeletPort == "0" {
+			logrus.Debugf("Waiting for Kubelet Port to be set")
+			return false, nil
+		}
+		a.kubeletPort = kubeletPort
 		logrus.Infof("Tunnel authorizer set Kubelet Port %s", a.kubeletPort)
 		return true, nil
 	})
@@ -295,9 +314,14 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 		<-done
 	}()
 
+	var cancelUpdate context.CancelFunc
+
 	for {
 		select {
 		case <-ctx.Done():
+			if cancelUpdate != nil {
+				cancelUpdate()
+			}
 			return
 		case ev, ok := <-watch.ResultChan():
 			endpoint, ok := ev.Object.(*v1.Endpoints)
@@ -306,28 +330,49 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 				continue
 			}
 
-			newAddresses := util.GetAddresses(endpoint)
-			if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
-				continue
+			if cancelUpdate != nil {
+				cancelUpdate()
 			}
-			proxy.Update(newAddresses)
 
-			validEndpoint := map[string]bool{}
+			var debounceCtx context.Context
+			debounceCtx, cancelUpdate = context.WithCancel(ctx)
 
-			for _, address := range proxy.SupervisorAddresses() {
-				validEndpoint[address] = true
-				if _, ok := disconnect[address]; !ok {
-					disconnect[address] = a.connect(ctx, nil, address, tlsConfig)
+			// When joining the cluster, the apiserver adds, removes, and then re-adds itself to
+			// the endpoint list several times.  This causes a bit of thrashing if we react to
+			// endpoint changes immediately.  Instead, perform the endpoint update in a
+			// goroutine that sleeps for a short period before checking for changes and updating
+			// the proxy addresses.  If another update occurs, the previous update operation
+			// will be cancelled and a new one queued.
+			go func() {
+				select {
+				case <-time.After(endpointDebounceDelay):
+				case <-debounceCtx.Done():
+					return
 				}
-			}
 
-			for address, cancel := range disconnect {
-				if !validEndpoint[address] {
-					cancel()
-					delete(disconnect, address)
-					logrus.Infof("Stopped tunnel to %s", address)
+				newAddresses := util.GetAddresses(endpoint)
+				if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
+					return
 				}
-			}
+				proxy.Update(newAddresses)
+
+				validEndpoint := map[string]bool{}
+
+				for _, address := range proxy.SupervisorAddresses() {
+					validEndpoint[address] = true
+					if _, ok := disconnect[address]; !ok {
+						disconnect[address] = a.connect(ctx, nil, address, tlsConfig)
+					}
+				}
+
+				for address, cancel := range disconnect {
+					if !validEndpoint[address] {
+						cancel()
+						delete(disconnect, address)
+						logrus.Infof("Stopped tunnel to %s", address)
+					}
+				}
+			}()
 		}
 	}
 }

@@ -20,10 +20,13 @@ import (
 
 type Parser struct {
 	After         []string
-	FlagNames     []string
+	ConfigFlags   []string
+	OverrideFlags []string
 	EnvName       string
 	DefaultConfig string
-	ValidFlags    map[string][]cli.Flag
+	// ValidFlags are maps of flags that are valid for that particular conmmand. This enables us to ignore flags in
+	// the config file that do no apply to the current command.
+	ValidFlags map[string][]cli.Flag
 }
 
 // Parse will parse an os.Args style slice looking for Parser.FlagNames after Parse.After.
@@ -97,29 +100,65 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 }
 
 func (p *Parser) FindString(args []string, target string) (string, error) {
+
+	// Check for --help or --version flags, which override any other flags
+	if val, found := p.findOverrideFlag(args); found {
+		return val, nil
+	}
+
 	configFile, isSet := p.findConfigFileFlag(args)
+	var lastVal string
 	if configFile != "" {
-		bytes, err := readConfigFileData(configFile)
+
+		_, err := os.Stat(configFile)
 		if !isSet && os.IsNotExist(err) {
 			return "", nil
 		} else if err != nil {
 			return "", err
 		}
 
-		data := yaml.MapSlice{}
-		if err := yaml.Unmarshal(bytes, &data); err != nil {
+		files, err := dotDFiles(configFile)
+		if err != nil {
 			return "", err
 		}
+		files = append([]string{configFile}, files...)
+		for _, file := range files {
+			bytes, err := readConfigFileData(file)
+			if err != nil {
+				return "", err
+			}
 
-		for _, i := range data {
-			k, v := convert.ToString(i.Key), convert.ToString(i.Value)
-			if k == target {
-				return v, nil
+			data := yaml.MapSlice{}
+			if err := yaml.Unmarshal(bytes, &data); err != nil {
+				return "", err
+			}
+			for _, i := range data {
+				k, v := convert.ToString(i.Key), convert.ToString(i.Value)
+				isAppend := strings.HasSuffix(k, "+")
+				k = strings.TrimSuffix(k, "+")
+				if k == target {
+					if isAppend {
+						lastVal = lastVal + "," + v
+					} else {
+						lastVal = v
+					}
+				}
+			}
+		}
+	}
+	return lastVal, nil
+}
+
+func (p *Parser) findOverrideFlag(args []string) (string, bool) {
+	for _, arg := range args {
+		for _, flagName := range p.OverrideFlags {
+			if flagName == arg {
+				return arg, true
 			}
 		}
 	}
 
-	return "", nil
+	return "", false
 }
 
 func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
@@ -128,7 +167,7 @@ func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
 	}
 
 	for i, arg := range args {
-		for _, flagName := range p.FlagNames {
+		for _, flagName := range p.ConfigFlags {
 			if flagName == arg {
 				if len(args) > i+1 {
 					return args[i+1], true

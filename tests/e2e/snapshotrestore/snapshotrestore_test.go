@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
@@ -24,7 +25,6 @@ var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
-// E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
 
 func Test_E2ESnapshotRestore(t *testing.T) {
@@ -44,7 +44,7 @@ var (
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
-	Context("Cluster :", func() {
+	Context("Cluster creates snapshots and workloads:", func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
@@ -101,10 +101,10 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 
 		It("Verifies Snapshot is created", func() {
 			Eventually(func(g Gomega) {
-				cmd := "sudo k3s etcd-snapshot save"
+				cmd := "k3s etcd-snapshot save"
 				_, err := e2e.RunCmdOnNode(cmd, "server-0")
 				g.Expect(err).NotTo(HaveOccurred())
-				cmd = "sudo ls /var/lib/rancher/k3s/server/db/snapshots/"
+				cmd = "ls /var/lib/rancher/k3s/server/db/snapshots/"
 				snapshotname, err = e2e.RunCmdOnNode(cmd, "server-0")
 				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println("Snapshot Name", snapshotname)
@@ -123,9 +123,12 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			}, "240s", "5s").Should(Succeed())
 		})
 
+	})
+
+	Context("Cluster is reset normally", func() {
 		It("Resets the cluster", func() {
 			for _, nodeName := range serverNodeNames {
-				cmd := "sudo systemctl stop k3s"
+				cmd := "systemctl stop k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 				if nodeName != serverNodeNames[0] {
 					cmd = "k3s-killall.sh"
@@ -133,13 +136,24 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				}
 			}
 
-			cmd := "sudo k3s server --cluster-reset"
+			cmd := "k3s server --cluster-reset"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
 
-			cmd = "sudo systemctl start k3s"
+			cmd = "systemctl start k3s"
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
+		})
+
+		It("Resets non bootstrap nodes", func() {
+			for _, nodeName := range serverNodeNames {
+				if nodeName != serverNodeNames[0] {
+					cmd := "k3s server --cluster-reset"
+					response, err := e2e.RunCmdOnNode(cmd, nodeName)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(response).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
+				}
+			}
 		})
 
 		It("Checks that other servers are not ready", func() {
@@ -162,13 +176,14 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			// We must remove the db directory on the other servers before restarting k3s
 			// otherwise the nodes may join the old cluster
 			for _, nodeName := range serverNodeNames[1:] {
-				cmd := "sudo rm -rf /var/lib/rancher/k3s/server/db"
+				cmd := "rm -rf /var/lib/rancher/k3s/server/db"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 			}
 
 			for _, nodeName := range serverNodeNames[1:] {
-				cmd := "sudo systemctl start k3s"
+				cmd := "systemctl start k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
+				time.Sleep(20 * time.Second) //Stagger the restarts for etcd leaners
 			}
 		})
 
@@ -177,7 +192,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
+					nodeJournal, _ := e2e.GetJournalLogs(node.Name)
+					g.Expect(node.Status).Should(Equal("Ready"), nodeJournal)
 				}
 			}, "420s", "5s").Should(Succeed())
 
@@ -204,10 +220,13 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(res).Should(ContainSubstring("test-nodeport"))
 		})
 
+	})
+
+	Context("Cluster restores from snapshot", func() {
 		It("Restores the snapshot", func() {
 			//Stop k3s on all nodes
 			for _, nodeName := range serverNodeNames {
-				cmd := "sudo systemctl stop k3s"
+				cmd := "systemctl stop k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 				if nodeName != serverNodeNames[0] {
 					cmd = "k3s-killall.sh"
@@ -215,12 +234,12 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				}
 			}
 			//Restores from snapshot on server-0
-			cmd := "sudo k3s server --cluster-init --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/k3s/server/db/snapshots/" + snapshotname
+			cmd := "k3s server --cluster-init --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/k3s/server/db/snapshots/" + snapshotname
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
 
-			cmd = "sudo systemctl start k3s"
+			cmd = "systemctl start k3s"
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
 
 		})
@@ -245,12 +264,12 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			// We must remove the db directory on the other servers before restarting k3s
 			// otherwise the nodes may join the old cluster
 			for _, nodeName := range serverNodeNames[1:] {
-				cmd := "sudo rm -rf /var/lib/rancher/k3s/server/db"
+				cmd := "rm -rf /var/lib/rancher/k3s/server/db"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 			}
 
 			for _, nodeName := range serverNodeNames[1:] {
-				cmd := "sudo systemctl start k3s"
+				cmd := "systemctl start k3s"
 				Expect(e2e.RunCmdOnNode(cmd, nodeName)).Error().NotTo(HaveOccurred())
 			}
 		})
@@ -301,6 +320,7 @@ var _ = AfterSuite(func() {
 	if failed && !*ci {
 		fmt.Println("FAILED!")
 	} else {
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

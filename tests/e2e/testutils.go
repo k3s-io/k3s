@@ -25,13 +25,17 @@ type Node struct {
 	ExternalIP string
 }
 
+func (n Node) String() string {
+	return fmt.Sprintf("Node (name: %s, status: %s, roles: %s)", n.Name, n.Status, n.Roles)
+}
+
 type Pod struct {
 	NameSpace string
 	Name      string
 	Ready     string
 	Status    string
 	Restarts  string
-	NodeIP    string
+	IP        string
 	Node      string
 }
 
@@ -136,6 +140,19 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	return serverNodeNames, agentNodeNames, nil
 }
 
+func scpK3sBinary(nodeNames []string) error {
+	for _, node := range nodeNames {
+		cmd := fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
+		if _, err := RunCommand(cmd); err != nil {
+			return fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
+		}
+		if _, err := RunCmdOnNode("mv /tmp/k3s /usr/local/bin/", node); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
 // This is intended only for local testing purposes when writing a new E2E test.
@@ -173,14 +190,8 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	if err := errg.Wait(); err != nil {
 		return nil, nil, err
 	}
-	for _, node := range append(serverNodeNames, agentNodeNames...) {
-		cmd = fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
-		if _, err := RunCommand(cmd); err != nil {
-			return nil, nil, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
-		}
-		if _, err := RunCmdOnNode("sudo mv /tmp/k3s /usr/local/bin/", node); err != nil {
-			return nil, nil, err
-		}
+	if err := scpK3sBinary(append(serverNodeNames, agentNodeNames...)); err != nil {
+		return nil, nil, err
 	}
 
 	// Install K3s on all nodes in parallel
@@ -283,6 +294,9 @@ func GenKubeConfigFile(serverName string) (string, error) {
 	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
 		return "", err
 	}
+	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+		return "", err
+	}
 	return kubeConfigFile, nil
 }
 
@@ -302,13 +316,18 @@ func GenReport(specReport ginkgo.SpecReport) {
 	fmt.Printf("%s", status)
 }
 
+func GetJournalLogs(node string) (string, error) {
+	cmd := "journalctl -u k3s* --no-pager"
+	return RunCmdOnNode(cmd, node)
+}
+
 // GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
 // It also attempts to fetch the systemctl logs of K3s on nodes where the k3s.service failed.
 func GetVagrantLog(cErr error) string {
 	var nodeErr *NodeError
 	nodeJournal := ""
 	if errors.As(cErr, &nodeErr) {
-		nodeJournal, _ = RunCommand("vagrant ssh " + nodeErr.Node + " -c \"sudo journalctl -u k3s* --no-pager\"")
+		nodeJournal, _ = GetJournalLogs(nodeErr.Node)
 		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
 	}
 
@@ -331,7 +350,7 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	res, err := RunCommand(cmd)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get nodes: %s: %v", res, err)
 	}
 	nodeList = strings.TrimSpace(res)
 	split := strings.Split(nodeList, "\n")
@@ -356,28 +375,39 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 	return nodes, nil
 }
 
-func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+func formatPods(input string) ([]Pod, error) {
 	pods := make([]Pod, 0, 10)
-	podList := ""
-
-	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
-	res = strings.TrimSpace(res)
-	podList = res
-
-	split := strings.Split(res, "\n")
+	input = strings.TrimSpace(input)
+	split := strings.Split(input, "\n")
 	for _, rec := range split {
 		fields := strings.Fields(string(rec))
+		if len(fields) < 8 {
+			return nil, fmt.Errorf("invalid pod record: %s", rec)
+		}
 		pod := Pod{
 			NameSpace: fields[0],
 			Name:      fields[1],
 			Ready:     fields[2],
 			Status:    fields[3],
 			Restarts:  fields[4],
-			NodeIP:    fields[6],
+			IP:        fields[6],
 			Node:      fields[7],
 		}
 		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
+	podList := ""
+
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := RunCommand(cmd)
+	podList = strings.TrimSpace(res)
+
+	pods, err := formatPods(res)
+	if err != nil {
+		return nil, err
 	}
 	if print {
 		fmt.Println(podList)
@@ -388,7 +418,7 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodeNames []string) error {
 	for _, nodeName := range nodeNames {
-		cmd := "sudo systemctl restart k3s"
+		cmd := "systemctl restart k3s* --all"
 		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
 			return err
 		}
@@ -396,36 +426,106 @@ func RestartCluster(nodeNames []string) error {
 	return nil
 }
 
-// RunCmdOnNode executes a command from within the given node
+// StartCluster starts the k3s service on each node given
+func StartCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "systemctl start k3s"
+		if strings.Contains(nodeName, "agent") {
+			cmd += "-agent"
+		}
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StopCluster starts the k3s service on each node given
+func StopCluster(nodeNames []string) error {
+	for _, nodeName := range nodeNames {
+		cmd := "systemctl stop k3s*"
+		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RunCmdOnNode executes a command from within the given node as sudo
 func RunCmdOnNode(cmd string, nodename string) (string, error) {
-	runcmd := "vagrant ssh -c \"" + cmd + "\" " + nodename
+	injectEnv := ""
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
+		injectEnv = "GOCOVERDIR=/tmp/k3scov "
+	}
+	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
 	if err != nil {
-		return out, fmt.Errorf("failed to run command %s on node %s: %v", cmd, nodename, err)
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
 	}
 	return out, nil
 }
 
-// RunCommand executes a command on the host
 func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
+	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
 	out, err := c.CombinedOutput()
 	return string(out), err
 }
 
-func UpgradeCluster(serverNodeNames []string, agentNodeNames []string) error {
-	for _, nodeName := range serverNodeNames {
-		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
-		fmt.Println(cmd)
+func UpgradeCluster(nodeNames []string, local bool) error {
+	upgradeVersion := "E2E_RELEASE_CHANNEL=commit"
+	if local {
+		if err := scpK3sBinary(nodeNames); err != nil {
+			return err
+		}
+		upgradeVersion = "E2E_RELEASE_VERSION=skip"
+	}
+	for _, nodeName := range nodeNames {
+		cmd := upgradeVersion + " vagrant provision " + nodeName
 		if out, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
 			return err
 		}
 	}
-	for _, nodeName := range agentNodeNames {
-		cmd := "E2E_RELEASE_CHANNEL=commit vagrant provision " + nodeName
+	return nil
+}
+
+func GetCoverageReport(nodeNames []string) error {
+	if os.Getenv("E2E_GOCOVER") == "" {
+		return nil
+	}
+	covDirs := []string{}
+	for _, nodeName := range nodeNames {
+		covDir := nodeName + "-cov"
+		covDirs = append(covDirs, covDir)
+		os.MkdirAll(covDir, 0755)
+		cmd := "vagrant scp " + nodeName + ":/tmp/k3scov/* " + covDir
 		if _, err := RunCommand(cmd); err != nil {
-			fmt.Println("Error Upgrading Cluster", err)
+			return err
+		}
+	}
+	coverageFile := "coverage.out"
+	cmd := "go tool covdata textfmt -i=" + strings.Join(covDirs, ",") + " -o=" + coverageFile
+	if out, err := RunCommand(cmd); err != nil {
+		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
+	}
+
+	f, err := os.ReadFile(coverageFile)
+	if err != nil {
+		return err
+	}
+	nf := strings.Replace(string(f),
+		"/go/src/github.com/k3s-io/k3s/cmd/server/main.go",
+		"github.com/k3s-io/k3s/cmd/server/main.go", -1)
+
+	if err = os.WriteFile(coverageFile, []byte(nf), os.ModePerm); err != nil {
+		return err
+	}
+
+	for _, covDir := range covDirs {
+		if err := os.RemoveAll(covDir); err != nil {
 			return err
 		}
 	}
@@ -459,7 +559,11 @@ func GetObjIPs(cmd string) ([]ObjIP, error) {
 		if len(fields) > 2 {
 			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1], IPv6: fields[2]})
 		} else if len(fields) > 1 {
-			objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1]})
+			if strings.Contains(fields[1], ".") {
+				objIPs = append(objIPs, ObjIP{Name: fields[0], IPv4: fields[1]})
+			} else {
+				objIPs = append(objIPs, ObjIP{Name: fields[0], IPv6: fields[1]})
+			}
 		} else {
 			objIPs = append(objIPs, ObjIP{Name: fields[0]})
 		}
