@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/agent/containerd"
+	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -223,6 +225,14 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 
 func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
 	return InitialOptions{}, nil
+}
+
+func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
+	return containerd.Run(ctx, cfg)
+}
+
+func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
+	return cridockerd.Run(ctx, cfg)
 }
 
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as

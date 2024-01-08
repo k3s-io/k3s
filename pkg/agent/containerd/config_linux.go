@@ -4,7 +4,6 @@
 package containerd
 
 import (
-	"context"
 	"os"
 
 	"github.com/containerd/containerd"
@@ -36,9 +35,9 @@ func getContainerdArgs(cfg *config.Node) []string {
 	return args
 }
 
-// setupContainerdConfig generates the containerd.toml, using a template combined with various
+// SetupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
-func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
+func SetupContainerdConfig(cfg *config.Node) error {
 	isRunningInUserNS := userns.RunningInUserNS()
 	_, _, controllers := cgroups.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
