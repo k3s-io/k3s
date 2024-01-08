@@ -31,6 +31,8 @@ type Executor interface {
 	CurrentETCDOptions() (InitialOptions, error)
 	ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error
 	CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error
+	Containerd(ctx context.Context, node *daemonconfig.Node) error
+	Docker(ctx context.Context, node *daemonconfig.Node) error
 }
 
 type ETCDConfig struct {
@@ -168,4 +170,12 @@ func ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
 
 func CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
 	return executor.CloudControllerManager(ctx, ccmRBACReady, args)
+}
+
+func Containerd(ctx context.Context, config *daemonconfig.Node) error {
+	return executor.Containerd(ctx, config)
+}
+
+func Docker(ctx context.Context, config *daemonconfig.Node) error {
+	return executor.Docker(ctx, config)
 }
