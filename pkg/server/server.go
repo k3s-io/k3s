@@ -275,9 +275,9 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
 
-	dnsIPFamilyPolicy := "PreferDualStack"
-	if len(controlConfig.ClusterDNSs) == 1 {
-		dnsIPFamilyPolicy = "SingleStack"
+	dnsIPFamilyPolicy := "SingleStack"
+	if len(controlConfig.ClusterDNSs) > 1 {
+		dnsIPFamilyPolicy = "RequireDualStack"
 	}
 
 	templateVars := map[string]string{
