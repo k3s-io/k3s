@@ -41,10 +41,6 @@ var (
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
 // or pulled from files found in the agent images directory.
 func Run(ctx context.Context, cfg *config.Node) error {
-	if err := setupContainerdConfig(ctx, cfg); err != nil {
-		return err
-	}
-
 	args := getContainerdArgs(cfg)
 	stdOut := io.Writer(os.Stdout)
 	stdErr := io.Writer(os.Stderr)
@@ -111,14 +107,14 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		return err
 	}
 
-	return preloadImages(ctx, cfg)
+	return PreloadImages(ctx, cfg)
 }
 
-// preloadImages reads the contents of the agent images directory, and attempts to
+// PreloadImages reads the contents of the agent images directory, and attempts to
 // import into containerd any files found there. Supported compressed types are decompressed, and
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
 // If configured, imported images are retagged as being pulled from additional registries.
-func preloadImages(ctx context.Context, cfg *config.Node) error {
+func PreloadImages(ctx context.Context, cfg *config.Node) error {
 	fileInfo, err := os.Stat(cfg.Images)
 	if os.IsNotExist(err) {
 		return nil
