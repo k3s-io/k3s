@@ -96,6 +96,7 @@ set -o noglob
 #     Defaults to 'stable'.
 
 GITHUB_URL=https://github.com/k3s-io/k3s/releases
+GITHUB_PR_URL=""
 STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
 
@@ -357,6 +358,7 @@ setup_tmp() {
 get_release_version() {
     if [ -n "${INSTALL_K3S_PR}" ]; then
         VERSION_K3S="PR ${INSTALL_K3S_PR}"
+        get_pr_artifact_url
     elif [ -n "${INSTALL_K3S_COMMIT}" ]; then
         VERSION_K3S="commit ${INSTALL_K3S_COMMIT}"
     elif [ -n "${INSTALL_K3S_VERSION}" ]; then
@@ -424,7 +426,7 @@ download() {
     set +e
     case $DOWNLOADER in
         curl)
-            curl -o $1 -sfL $2
+                curl -o $1 -sfL $2
             ;;
         wget)
             wget -qO $1 $2
@@ -441,13 +443,20 @@ download() {
 
 # --- download hash from github url ---
 download_hash() {
-    if [ -n "${INSTALL_K3S_COMMIT}" ]; then
-        HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
+    if [ -n "${INSTALL_K3S_PR}" ]; then
+        info "Downloading hash ${GITHUB_PR_URL}"
+        curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+        unzip -p ${TMP_ZIP} k3s.sha256sum > ${TMP_HASH}
+        sed -i 's/dist\/artifacts\/k3s/k3s/g' ${TMP_HASH}
     else
-        HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+        if [ -n "${INSTALL_K3S_COMMIT}" ]; then
+            HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
+        else
+            HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+        fi
+        info "Downloading hash ${HASH_URL}"
+        download ${TMP_HASH} ${HASH_URL}
     fi
-    info "Downloading hash ${HASH_URL}"
-    download ${TMP_HASH} ${HASH_URL}
     HASH_EXPECTED=$(grep " k3s${SUFFIX}$" ${TMP_HASH})
     HASH_EXPECTED=${HASH_EXPECTED%%[[:blank:]]*}
 }
@@ -474,33 +483,35 @@ get_pr_artifact_url() {
         exit 1
     fi
 
-    # Set the authentication header if GITHUB_TOKEN is provided
-    if [ -n "$GITHUB_TOKEN" ]; then
-        OPT_AUTH="-H 'Authorization: Bearer $GITHUB_TOKEN'"
+    if [ -z "${GITHUB_TOKEN}" ]; then
+        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo authorization"
     fi
 
     # GET request to the GitHub API to retrieve the latest commit SHA from the pull request
-    COMMIT_ID=$(curl -s $OPT_AUTH "$GITHUB_API_URL/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
-
+    COMMIT_ID=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
+    
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
-    wf_raw=$(curl -s $OPT_AUTH "$GITHUB_API_URL/commits/$COMMIT_ID/check-runs")
+    wf_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/commits/$COMMIT_ID/check-runs")
     build_workflow=$(printf "%s" "$wf_raw" | jq -r '.check_runs[] |  select(.name == "build / Build")')
-
+    
     # Extract the Run ID from the build workflow and lookup artifacts associated with the run
     RUN_ID=$(echo "$build_workflow" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}')
-    artifacts=$(curl -s $OPT_AUTH "$GITHUB_API_URL/actions/runs/$RUN_ID/artifacts")
 
-    # Print the Url for the "k3s" artifact
+    # Extract the artifat ID for the "k3s" artifact    
+    artifacts=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/actions/runs/$RUN_ID/artifacts")
     artifacts_url=$(echo "$artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
-    echo "Artifact Url: $artifacts_url"
+    GITHUB_PR_URL=$artifacts_url
 }
 
 # --- download binary from github url ---
 download_binary() {
     if [ -n "${INSTALL_K3S_PR}" ]; then
-        BIN_URL=$(get_pr_artifact_url)
-        info "Downloading K3s artifact ${BIN_URL}"
-        download ${TMP_ZIP} ${BIN_URL}
+        # Since Binary and Hash are zipped together, check if TMP_ZIP already exists
+        if ! [ -f ${TMP_ZIP} ]; then
+            info "Downloading K3s artifact ${GITHUB_PR_URL}"
+            curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+        fi
+        # extract k3s binary from zip
         unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
         return
     elif [ -n "${INSTALL_K3S_COMMIT}" ]; then
@@ -708,12 +719,11 @@ download_and_verify() {
     setup_tmp
     get_release_version
     download_hash
-
+    
     if installed_hash_matches; then
         info 'Skipping binary downloaded, installed k3s matches hash'
         return
     fi
-
     download_binary
     verify_binary
     setup_binary
