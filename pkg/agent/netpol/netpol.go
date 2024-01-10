@@ -17,12 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 
-	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
-
 	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/netpol"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/healthcheck"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/metrics"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/options"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/utils"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/pkg/errors"
@@ -31,7 +31,14 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/component-base/metrics/legacyregistry"
 )
+
+func init() {
+	// ensure that kube-router exposes metrics through the same registry used by Kubernetes components
+	metrics.DefaultRegisterer = legacyregistry.Registerer()
+	metrics.DefaultGatherer = legacyregistry.DefaultGatherer
+}
 
 // Run creates and starts a new instance of the kube-router network policy controller
 // The code in this function is cribbed from the upstream controller at:
@@ -92,7 +99,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	krConfig.EnableIPv6 = nodeConfig.AgentConfig.EnableIPv6
 	krConfig.NodePortRange = strings.ReplaceAll(nodeConfig.AgentConfig.ServiceNodePortRange.String(), "-", ":")
 	krConfig.HostnameOverride = nodeConfig.AgentConfig.NodeName
-	krConfig.MetricsEnabled = false
+	krConfig.MetricsEnabled = true
 	krConfig.RunFirewall = true
 	krConfig.RunRouter = false
 	krConfig.RunServiceProxy = false
@@ -141,22 +148,31 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		ipSetHandlers[v1core.IPv6Protocol] = ipset
 	}
 
-	// Start kube-router healthcheck server. Netpol requires it
+	// Start kube-router healthcheck controller; netpol requires it
 	hc, err := healthcheck.NewHealthController(krConfig)
 	if err != nil {
 		return err
 	}
 
-	// Initialize all healthcheck timers. Otherwise, the system reports incorrect heartbeat missing messages
+	// Start kube-router metrics controller to avoid complaints about metrics heartbeat missing
+	mc, err := metrics.NewMetricsController(krConfig)
+	if err != nil {
+		return nil
+	}
+
+	// Initialize all healthcheck timers. Otherwise, the system reports heartbeat missing messages
 	hc.SetAlive()
 
 	wg.Add(1)
 	go hc.RunCheck(healthCh, stopCh, &wg)
 
+	wg.Add(1)
+	go metricsRunCheck(mc, healthCh, stopCh, &wg)
+
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{},
 		iptablesCmdHandlers, ipSetHandlers)
 	if err != nil {
-		return errors.Wrap(err, "unable to initialize Network Policy Controller")
+		return errors.Wrap(err, "unable to initialize network policy controller")
 	}
 
 	podInformer.AddEventHandler(npc.PodEventHandler)
@@ -164,8 +180,29 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
 	wg.Add(1)
-	logrus.Infof("Starting the netpol controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
+	logrus.Infof("Starting network policy controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
 	go npc.Run(healthCh, stopCh, &wg)
 
 	return nil
+}
+
+// metricsRunCheck is a stub version of mc.Run() that doesn't start up a dedicated http server.
+func metricsRunCheck(mc *metrics.Controller, healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
+	t := time.NewTicker(3 * time.Second)
+	defer wg.Done()
+
+	// register metrics for this controller
+	metrics.BuildInfo.WithLabelValues(runtime.Version(), version.Version).Set(1)
+	metrics.DefaultRegisterer.MustRegister(metrics.BuildInfo)
+
+	for {
+		healthcheck.SendHeartBeat(healthChan, "MC")
+		select {
+		case <-stopCh:
+			t.Stop()
+			return
+		case <-t.C:
+			logrus.Debugf("Kube-router network policy controller metrics tick")
+		}
+	}
 }
