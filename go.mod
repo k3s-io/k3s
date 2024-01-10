@@ -19,6 +19,8 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.1.10
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
+	github.com/quic-go/qtls-go1-20 => github.com/quic-go/qtls-go1-20 v0.3.3
+	github.com/quic-go/quic-go => github.com/quic-go/quic-go v0.38.2
 	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230818201331-3604a6be798d
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
 	github.com/xenitab/spegel => github.com/k3s-io/spegel v0.0.17-0.20240109004735-9466a5529330 // k3s-main
@@ -243,7 +245,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.3.2 // indirect
+	github.com/quic-go/qtls-go1-20 v0.3.3 // indirect
 	github.com/quic-go/quic-go v0.38.0 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
