@@ -1086,40 +1086,41 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 		}
 
 		for _, member := range members.Members {
-			var node *v1.Node
-			for _, node = range nodes {
-				if strings.HasPrefix(member.Name, node.Name+"-") {
-					nodeIsMember[node.Name] = true
-				}
-			}
+			status := StatusVoter
+			message := ""
 
 			if member.IsLearner {
+				status = StatusLearner
 				if err := e.trackLearnerProgress(ctx, progress, member); err != nil {
 					logrus.Errorf("Failed to track learner progress towards promotion: %v", err)
 				}
-
-				if err := e.setEtcdStatusCondition(node, client, member.Name, StatusLearner, ""); err != nil {
-					logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
-				}
-				break
 			}
 
-			// verify if the member is healthy and set the etcd status condition
-			if _, err := e.getETCDStatus(ctx, member.ClientURLs[0]); err != nil {
-				if err := e.setEtcdStatusCondition(node, client, member.Name, StatusUnhealthy, err.Error()); err != nil {
-					logrus.Errorf("Unable to set etcd status condition for unhealthy node %s: %v", member.Name, err)
+			var node *v1.Node
+			for _, n := range nodes {
+				if strings.HasPrefix(member.Name, n.Name+"-") {
+					node = n
+					nodeIsMember[n.Name] = true
+					break
 				}
+			}
+			if node == nil {
 				continue
 			}
 
-			if err := e.setEtcdStatusCondition(node, client, member.Name, StatusVoter, ""); err != nil {
+			// verify if the member is healthy and set the status
+			if _, err := e.getETCDStatus(ctx, member.ClientURLs[0]); err != nil {
+				message = err.Error()
+				status = StatusUnhealthy
+			}
+
+			if err := e.setEtcdStatusCondition(node, client, member.Name, status, message); err != nil {
 				logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
 			}
 		}
 
-		for nodeName, isMember := range nodeIsMember {
-			if !isMember {
-				node := nodesMap[nodeName]
+		for nodeName, node := range nodesMap {
+			if !nodeIsMember[nodeName] {
 				if err := e.setEtcdStatusCondition(node, client, nodeName, StatusUnjoined, ""); err != nil {
 					logrus.Errorf("Unable to set etcd status condition for a node that is not a cluster member %s: %v", nodeName, err)
 				}
