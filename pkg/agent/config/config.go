@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,13 +27,16 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/rancher/wrangler/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -42,22 +46,28 @@ const (
 
 // Get returns a pointer to a completed Node configuration struct,
 // containing a merging of the local CLI configuration with settings from the server.
+// Node configuration includes client certificates, which requires node password verification,
+// so this is somewhat computationally expensive on the server side, and is retried with jitter
+// to avoid having clients hammer on the server at fixed periods.
 // A call to this will bock until agent configuration is successfully returned by the
-// server.
-func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) *config.Node {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		agentConfig, err := get(ctx, &agent, proxy)
+// server, or the context is cancelled.
+func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
+	var agentConfig *config.Node
+	var err error
+
+	// This would be more clear as wait.PollImmediateUntilWithContext, but that function
+	// does not support jittering, so we instead use wait.JitterUntilWithContext, and cancel
+	// the context on success.
+	ctx, cancel := context.WithCancel(ctx)
+	wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
+		agentConfig, err = get(ctx, &agent, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve agent configuration; server is not ready: %v", err)
-			for range ticker.C {
-				continue RETRY
-			}
+		} else {
+			cancel()
 		}
-		return agentConfig
-	}
+	}, 5*time.Second, 1.0, true)
+	return agentConfig, err
 }
 
 // KubeProxyDisabled returns a bool indicating whether or not kube-proxy has been disabled in the
@@ -65,42 +75,40 @@ RETRY:
 // after all startup hooks have completed, so a call to this will block until after the server's
 // readyz endpoint returns OK.
 func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) bool {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		disabled, err := getKubeProxyDisabled(ctx, node, proxy)
+	var disabled bool
+	var err error
+
+	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		disabled, err = getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve kube-proxy configuration; server is not ready: %v", err)
-			for range ticker.C {
-				continue RETRY
-			}
+			return false, nil
 		}
-		return disabled
-	}
+		return true, nil
+	})
+	return disabled
 }
 
 // APIServers returns a list of apiserver endpoints, suitable for seeding client loadbalancer configurations.
 // This function will block until it can return a populated list of apiservers, or if the remote server returns
 // an error (indicating that it does not support this functionality).
 func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []string {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-RETRY:
-	for {
-		addresses, err := getAPIServers(ctx, node, proxy)
+	var addresses []string
+	var err error
+
+	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+		addresses, err = getAPIServers(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Failed to retrieve list of apiservers from server: %v", err)
-			return nil
+			return false, err
 		}
 		if len(addresses) == 0 {
 			logrus.Infof("Waiting for apiserver addresses")
-			for range ticker.C {
-				continue RETRY
-			}
+			return false, nil
 		}
-		return addresses
-	}
+		return true, nil
+	})
+	return addresses
 }
 
 type HTTPRequester func(u string, client *http.Client, username, password, token string) ([]byte, error)
@@ -353,7 +361,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		_, isIPv6, _ := util.GetFirstString([]string{envInfo.NodeIP.String()})
+		isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{envInfo.NodeIP.String()}[0]))
 		if err := proxy.SetAPIServerPort(ctx, controlConfig.HTTPSPort, isIPv6); err != nil {
 			return nil, errors.Wrapf(err, "failed to setup access to API Server port %d on at %s", controlConfig.HTTPSPort, proxy.SupervisorURL())
 		}
@@ -363,7 +371,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if controlConfig.FlannelBackend != config.FlannelBackendNone && len(envInfo.FlannelIface) > 0 {
 		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to find interface")
+			return nil, errors.Wrapf(err, "unable to find interface %s", envInfo.FlannelIface)
 		}
 	}
 
@@ -408,20 +416,18 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 		// Pass ipv4, ipv6 or both depending on nodeIPs mode
 		var vpnIPs []net.IP
-		dualNode, err := utilsnet.IsDualStackIPs(nodeIPs)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to validate node-ip: %v", nodeIPs)
-		}
-		if dualNode && vpnInfo.IPv4Address != nil && vpnInfo.IPv6Address != nil {
-			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
-		} else {
-			if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-			} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+		if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+			if vpnInfo.IPv6Address != nil {
 				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-			} else {
-				return nil, errors.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 			}
+		} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+			if vpnInfo.IPv4Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+			}
+		} else {
+			return nil, errors.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 		}
 
 		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
@@ -497,7 +503,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		Docker:                   envInfo.Docker,
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
-		MultiClusterCIDR:         controlConfig.MultiClusterCIDR,
+		ImageServiceEndpoint:     envInfo.ImageServiceEndpoint,
+		EmbeddedRegistry:         controlConfig.EmbeddedRegistry,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
 		FlannelExternalIP:        controlConfig.FlannelExternalIP,
@@ -528,51 +535,56 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	nodeConfig.CRIDockerd.Root = filepath.Join(envInfo.DataDir, "agent", "cri-dockerd")
-	if !nodeConfig.Docker && nodeConfig.ContainerRuntimeEndpoint == "" {
-		switch nodeConfig.AgentConfig.Snapshotter {
-		case "overlayfs":
-			if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
-					nodeConfig.Containerd.Root)
+	if !nodeConfig.Docker {
+		if nodeConfig.ImageServiceEndpoint != "" {
+			nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ImageServiceEndpoint
+		} else if nodeConfig.ContainerRuntimeEndpoint == "" {
+			switch nodeConfig.AgentConfig.Snapshotter {
+			case "overlayfs":
+				if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
+					return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
+						nodeConfig.Containerd.Root)
+				}
+			case "fuse-overlayfs":
+				if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
+					return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
+						nodeConfig.Containerd.Root)
+				}
+			case "stargz":
+				if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
+					return nil, errors.Wrapf(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+						nodeConfig.Containerd.Root)
+				}
+				nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 			}
-		case "fuse-overlayfs":
-			if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
-					nodeConfig.Containerd.Root)
-			}
-		case "stargz":
-			if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
-				return nil, errors.Wrapf(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
-					nodeConfig.Containerd.Root)
-			}
-			nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+		} else {
+			nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ContainerRuntimeEndpoint
 		}
 	}
 	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "agent", "containerd", "containerd.log")
+	nodeConfig.Containerd.Registry = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "certs.d")
+	nodeConfig.Containerd.NoDefault = envInfo.ContainerdNoDefault
 	nodeConfig.Containerd.Debug = envInfo.Debug
 	applyContainerdStateAndAddress(nodeConfig)
 	applyCRIDockerdAddress(nodeConfig)
+	applyContainerdQoSClassConfigFileIfPresent(envInfo, nodeConfig)
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
 	nodeConfig.Certificate = servingCert
 
 	nodeConfig.AgentConfig.NodeIPs = nodeIPs
-	nodeIP, listenAddress, _, err := util.GetFirstIP(nodeIPs)
+	listenAddress, _, _, err := util.GetDefaultAddresses(nodeIPs[0])
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-ip")
 	}
-	nodeConfig.AgentConfig.NodeIP = nodeIP.String()
+	nodeConfig.AgentConfig.NodeIP = nodeIPs[0].String()
 	nodeConfig.AgentConfig.ListenAddress = listenAddress
 	nodeConfig.AgentConfig.NodeExternalIPs = nodeExternalIPs
 
 	// if configured, set NodeExternalIP to the first IPv4 address, for legacy clients
 	// unless only IPv6 address given
 	if len(nodeConfig.AgentConfig.NodeExternalIPs) > 0 {
-		nodeExternalIP, _, _, err := util.GetFirstIP(nodeConfig.AgentConfig.NodeExternalIPs)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-external-ip")
-		}
-		nodeConfig.AgentConfig.NodeExternalIP = nodeExternalIP.String()
+		nodeConfig.AgentConfig.NodeExternalIP = nodeConfig.AgentConfig.NodeExternalIPs[0].String()
 	}
 
 	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
@@ -655,13 +667,45 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
 	nodeConfig.AgentConfig.ImageCredProvBinDir = envInfo.ImageCredProvBinDir
 	nodeConfig.AgentConfig.ImageCredProvConfig = envInfo.ImageCredProvConfig
-	nodeConfig.AgentConfig.PrivateRegistry = envInfo.PrivateRegistry
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
 	nodeConfig.AgentConfig.DisableServiceLB = envInfo.DisableServiceLB
+	nodeConfig.AgentConfig.VLevel = cmds.LogConfig.VLevel
+	nodeConfig.AgentConfig.VModule = cmds.LogConfig.VModule
+	nodeConfig.AgentConfig.LogFile = cmds.LogConfig.LogFile
+	nodeConfig.AgentConfig.AlsoLogToStderr = cmds.LogConfig.AlsoLogToStderr
+
+	privRegistries, err := registries.GetPrivateRegistries(envInfo.PrivateRegistry)
+	if err != nil {
+		return nil, err
+	}
+	nodeConfig.AgentConfig.Registry = privRegistries.Registry
+
+	if nodeConfig.EmbeddedRegistry {
+		psk, err := hex.DecodeString(controlConfig.IPSECPSK)
+		if err != nil {
+			return nil, err
+		}
+		if len(psk) < 32 {
+			return nil, errors.New("insufficient PSK bytes")
+		}
+
+		conf := spegel.DefaultRegistry
+		conf.ExternalAddress = nodeConfig.AgentConfig.NodeIP
+		conf.InternalAddress = controlConfig.Loopback(false)
+		conf.RegistryPort = strconv.Itoa(controlConfig.SupervisorPort)
+		conf.ClientCAFile = clientCAFile
+		conf.ClientCertFile = clientK3sControllerCert
+		conf.ClientKeyFile = clientK3sControllerKey
+		conf.ServerCAFile = serverCAFile
+		conf.ServerCertFile = servingKubeletCert
+		conf.ServerKeyFile = servingKubeletKey
+		conf.PSK = psk[:32]
+		conf.InjectMirror(nodeConfig)
+	}
 
 	if err := validateNetworkConfig(nodeConfig); err != nil {
 		return nil, err

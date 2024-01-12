@@ -414,7 +414,7 @@ get_k3s_selinux_version() {
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
-
+    set +e
     case $DOWNLOADER in
         curl)
             curl -o $1 -sfL $2
@@ -429,6 +429,7 @@ download() {
 
     # Abort if download command failed
     [ $? -eq 0 ] || fatal 'Download failed'
+    set -e
 }
 
 # --- download hash from github url ---
@@ -509,7 +510,7 @@ setup_selinux() {
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
-        if [ "${ID_LIKE:-}" = suse ] && [ "${VARIANT_ID:-}" = sle-micro ]; then
+        if [ "${ID_LIKE:-}" = suse ] && ( [ "${VARIANT_ID:-}" = sle-micro ] || [ "${ID:-}" = sle-micro ] ); then
             rpm_target=sle
             rpm_site_infix=slemicro
             package_installer=zypper
@@ -547,10 +548,11 @@ setup_selinux() {
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
-    else
-        get_k3s_selinux_version
-        install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
+        return
     fi
+    
+    get_k3s_selinux_version
+    install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
 
     policy_error=fatal
     if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ]; then
@@ -770,7 +772,7 @@ do_unmount_and_remove() {
     set +x
     while read -r _ path _; do
         case "$path" in $1*) echo "$path" ;; esac
-    done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount "$0" && rm -rf "$0"'
+    done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount -f "$0" && rm -rf "$0"'
     set -x
 }
 
@@ -904,7 +906,7 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
-ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
+ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=${BIN_DIR}/k3s \\
@@ -961,9 +963,14 @@ EOF
 
 # --- write systemd or openrc service file ---
 create_service_file() {
-    [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file
+    [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file && restore_systemd_service_file_context
     [ "${HAS_OPENRC}" = true ] && create_openrc_service_file
     return 0
+}
+
+restore_systemd_service_file_context() {
+    $SUDO restorecon -R -i ${FILE_K3S_SERVICE} 2>/dev/null || true
+    $SUDO restorecon -R -i ${FILE_K3S_ENV} 2>/dev/null || true
 }
 
 # --- get hashes of the current k3s bin and service files
@@ -994,6 +1001,19 @@ openrc_start() {
     $SUDO ${FILE_K3S_SERVICE} restart
 }
 
+has_working_xtables() {
+    if command -v "$1-save" 1> /dev/null && command -v "$1-restore" 1> /dev/null; then
+        if $SUDO $1-save 2>/dev/null | grep -q '^-A CNI-HOSTPORT-MASQ -j MASQUERADE$'; then
+            warn "Host $1-save/$1-restore tools are incompatible with existing rules"
+        else
+            return 0
+        fi
+    else
+        info "Host $1-save/$1-restore tools not found"
+    fi
+    return 1
+}
+
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
     if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ];
@@ -1014,14 +1034,11 @@ service_enable_and_start() {
         return
     fi
 
-    if command -v iptables-save 1> /dev/null && command -v iptables-restore 1> /dev/null
-    then
-	    $SUDO iptables-save | grep -v KUBE- | grep -iv flannel | $SUDO iptables-restore
-    fi
-    if command -v ip6tables-save 1> /dev/null && command -v ip6tables-restore 1> /dev/null
-    then
-	    $SUDO ip6tables-save | grep -v KUBE- | grep -iv flannel | $SUDO ip6tables-restore
-    fi
+    for XTABLES in iptables ip6tables; do
+        if has_working_xtables ${XTABLES}; then
+            $SUDO ${XTABLES}-save 2>/dev/null | grep -v KUBE- | grep -iv flannel | $SUDO ${XTABLES}-restore
+        fi
+    done
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_start
     [ "${HAS_OPENRC}" = true ] && openrc_start
@@ -1045,3 +1062,4 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     create_service_file
     service_enable_and_start
 }
+

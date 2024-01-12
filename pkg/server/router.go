@@ -85,6 +85,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverAuthed.Path(prefix + "/cert/cacerts").Handler(caCertReplaceHandler(serverConfig))
 	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
+	serverAuthed.Path(prefix + "/token").Handler(tokenRequestHandler(ctx, serverConfig))
 
 	systemAuthed := mux.NewRouter().SkipClean(true)
 	systemAuthed.NotFoundHandler = serverAuthed
@@ -430,8 +431,8 @@ type nodeInfo struct {
 func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper {
 	runtime := config.ControlConfig.Runtime
 	deferredNodes := map[string]bool{}
-	var secretClient coreclient.SecretClient
-	var nodeClient coreclient.NodeClient
+	var secretClient coreclient.SecretController
+	var nodeClient coreclient.NodeController
 	var mu sync.Mutex
 
 	return nodePassBootstrapper(func(req *http.Request) (string, int, error) {
@@ -534,9 +535,9 @@ func verifyRemotePassword(ctx context.Context, config *Config, mu *sync.Mutex, d
 	return node.Name, http.StatusOK, nil
 }
 
-func verifyNode(ctx context.Context, nodeClient coreclient.NodeClient, node *nodeInfo) error {
+func verifyNode(ctx context.Context, nodeClient coreclient.NodeController, node *nodeInfo) error {
 	if nodeName, isNodeAuth := identifier.NodeIdentity(node.User); isNodeAuth {
-		if _, err := nodeClient.Get(nodeName, metav1.GetOptions{}); err != nil {
+		if _, err := nodeClient.Cache().Get(nodeName); err != nil {
 			return errors.Wrap(err, "unable to verify node identity")
 		}
 	}

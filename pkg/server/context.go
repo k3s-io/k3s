@@ -38,21 +38,30 @@ func (c *Context) Start(ctx context.Context) error {
 	return start.All(ctx, 5, c.K3s, c.Helm, c.Apps, c.Auth, c.Batch, c.Core)
 }
 
-func NewContext(ctx context.Context, cfg string) (*Context, error) {
+func NewContext(ctx context.Context, config *Config, forServer bool) (*Context, error) {
+	cfg := config.ControlConfig.Runtime.KubeConfigAdmin
+	if forServer {
+		cfg = config.ControlConfig.Runtime.KubeConfigSupervisor
+	}
 	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
 	if err != nil {
 		return nil, err
 	}
 	restConfig.UserAgent = util.GetUserAgent(version.Program + "-supervisor")
 
-	if err := crds(ctx, restConfig); err != nil {
-		return nil, errors.Wrap(err, "failed to register CRDs")
-	}
-
 	k8s, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	var recorder record.EventRecorder
+	if forServer {
+		recorder = util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll)
+		if err := registerCrds(ctx, config, restConfig); err != nil {
+			return nil, errors.Wrap(err, "failed to register CRDs")
+		}
+	}
+
 	return &Context{
 		K3s:   k3s.NewFactoryFromConfigOrDie(restConfig),
 		Helm:  helm.NewFactoryFromConfigOrDie(restConfig),
@@ -61,18 +70,25 @@ func NewContext(ctx context.Context, cfg string) (*Context, error) {
 		Apps:  apps.NewFactoryFromConfigOrDie(restConfig),
 		Batch: batch.NewFactoryFromConfigOrDie(restConfig),
 		Core:  core.NewFactoryFromConfigOrDie(restConfig),
-		Event: util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll),
+		Event: recorder,
 	}, nil
 }
 
-func crds(ctx context.Context, config *rest.Config) error {
-	factory, err := crd.NewFactoryFromClient(config)
+func registerCrds(ctx context.Context, config *Config, restConfig *rest.Config) error {
+	factory, err := crd.NewFactoryFromClient(restConfig)
 	if err != nil {
 		return err
 	}
 
-	types := append(helmcrd.List(), addoncrd.List()...)
-	factory.BatchCreateCRDs(ctx, types...)
+	factory.BatchCreateCRDs(ctx, crds(config)...)
 
 	return factory.BatchWait()
+}
+
+func crds(config *Config) []crd.CRD {
+	defaultCrds := addoncrd.List()
+	if !config.ControlConfig.DisableHelmController {
+		defaultCrds = append(defaultCrds, helmcrd.List()...)
+	}
+	return defaultCrds
 }

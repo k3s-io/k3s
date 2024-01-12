@@ -31,9 +31,9 @@ func JoinIPNets(elems []*net.IPNet) string {
 	return strings.Join(strs, ",")
 }
 
-// GetFirst4Net returns the first IPv4 network from the list of IP networks.
+// getFirst4Net returns the first IPv4 network from the list of IP networks.
 // If no IPv4 addresses are found, an error is raised.
-func GetFirst4Net(elems []*net.IPNet) (*net.IPNet, error) {
+func getFirst4Net(elems []*net.IPNet) (*net.IPNet, error) {
 	for _, elem := range elems {
 		if elem == nil || elem.IP.To4() == nil {
 			continue
@@ -43,9 +43,9 @@ func GetFirst4Net(elems []*net.IPNet) (*net.IPNet, error) {
 	return nil, errors.New("no IPv4 CIDRs found")
 }
 
-// GetFirst4 returns the first IPv4 address from the list of IP addresses.
+// getFirst4 returns the first IPv4 address from the list of IP addresses.
 // If no IPv4 addresses are found, an error is raised.
-func GetFirst4(elems []net.IP) (net.IP, error) {
+func getFirst4(elems []net.IP) (net.IP, error) {
 	for _, elem := range elems {
 		if elem == nil || elem.To4() == nil {
 			continue
@@ -64,7 +64,7 @@ func GetFirst4String(elems []string) (string, error) {
 			ips = append(ips, net.ParseIP(v))
 		}
 	}
-	ip, err := GetFirst4(ips)
+	ip, err := getFirst4(ips)
 	if err != nil {
 		return "", err
 	}
@@ -82,9 +82,9 @@ func JoinIP4Nets(elems []*net.IPNet) string {
 	return strings.Join(strs, ",")
 }
 
-// GetFirst6 returns the first IPv6 address from the list of IP addresses.
+// getFirst6 returns the first IPv6 address from the list of IP addresses.
 // If no IPv6 addresses are found, an error is raised.
-func GetFirst6(elems []net.IP) (net.IP, error) {
+func getFirst6(elems []net.IP) (net.IP, error) {
 	for _, elem := range elems {
 		if elem != nil && netutils.IsIPv6(elem) {
 			return elem, nil
@@ -93,9 +93,9 @@ func GetFirst6(elems []net.IP) (net.IP, error) {
 	return nil, errors.New("no IPv6 address found")
 }
 
-// GetFirst6Net returns the first IPv4 network from the list of IP networks.
+// getFirst6Net returns the first IPv4 network from the list of IP networks.
 // If no IPv6 addresses are found, an error is raised.
-func GetFirst6Net(elems []*net.IPNet) (*net.IPNet, error) {
+func getFirst6Net(elems []*net.IPNet) (*net.IPNet, error) {
 	for _, elem := range elems {
 		if elem != nil && netutils.IsIPv6(elem.IP) {
 			return elem, nil
@@ -113,7 +113,7 @@ func GetFirst6String(elems []string) (string, error) {
 			ips = append(ips, net.ParseIP(v))
 		}
 	}
-	ip, err := GetFirst6(ips)
+	ip, err := getFirst6(ips)
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +133,7 @@ func JoinIP6Nets(elems []*net.IPNet) string {
 
 // GetHostnameAndIPs takes a node name and list of IPs, usually from CLI args.
 // If set, these are used to return the node's name and addresses. If not set,
-// the system hostname and primary interface address are returned instead.
+// the system hostname and primary interface addresses are returned instead.
 func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, error) {
 	ips := []net.IP{}
 	if len(nodeIPs) == 0 {
@@ -202,37 +202,26 @@ func GetFirstValidIPString(s cli.StringSlice) string {
 	return ""
 }
 
-// GetFirstIP returns the first IPv4 address from the list of IP addresses.
-// If no IPv4 addresses are found, returns the first IPv6 address
-// if neither of IPv4 or IPv6 are found an error is raised.
-// Additionally matching listen address and IP version is returned.
-func GetFirstIP(nodeIPs []net.IP) (net.IP, string, bool, error) {
-	nodeIP, err := GetFirst4(nodeIPs)
-	ListenAddress := "0.0.0.0"
-	IPv6only := false
-	if err != nil {
-		nodeIP, err = GetFirst6(nodeIPs)
-		if err != nil {
-			return nil, "", false, err
-		}
-		ListenAddress = "::"
-		IPv6only = true
-	}
-	return nodeIP, ListenAddress, IPv6only, nil
-}
+// GetFirstIP checks what is the IPFamily of the first item. Based on that, returns a set of values
+func GetDefaultAddresses(nodeIP net.IP) (string, string, string, error) {
 
-// GetFirstNet returns the first IPv4 network from the list of IP networks.
-// If no IPv4 addresses are found, returns the first IPv6 address
-// if neither of IPv4 or IPv6 are found an error is raised.
-func GetFirstNet(elems []*net.IPNet) (*net.IPNet, error) {
-	serviceIPRange, err := GetFirst4Net(elems)
-	if err != nil {
-		serviceIPRange, err = GetFirst6Net(elems)
-		if err != nil {
-			return nil, err
-		}
+	if netutils.IsIPv4(nodeIP) {
+		ListenAddress := "0.0.0.0"
+		clusterCIDR := "10.42.0.0/16"
+		serviceCIDR := "10.43.0.0/16"
+
+		return ListenAddress, clusterCIDR, serviceCIDR, nil
 	}
-	return serviceIPRange, nil
+
+	if netutils.IsIPv6(nodeIP) {
+		ListenAddress := "::"
+		clusterCIDR := "fd00:42::/56"
+		serviceCIDR := "fd00:43::/112"
+
+		return ListenAddress, clusterCIDR, serviceCIDR, nil
+	}
+
+	return "", "", "", fmt.Errorf("ip: %v is not ipv4 or ipv6", nodeIP)
 }
 
 // GetFirstString returns the first IP4 address from a list of IP address strings.
@@ -249,32 +238,6 @@ func GetFirstString(elems []string) (string, bool, error) {
 		IPv6only = true
 	}
 	return ip, IPv6only, nil
-}
-
-// IsIPv6OnlyCIDRs returns if
-// - all are valid cidrs
-// - at least one cidr from v6 family is found
-// - v4 family cidr is not found
-func IsIPv6OnlyCIDRs(cidrs []*net.IPNet) (bool, error) {
-	v4Found := false
-	v6Found := false
-	for _, cidr := range cidrs {
-		if cidr == nil {
-			return false, fmt.Errorf("cidr %v is invalid", cidr)
-		}
-
-		if v4Found && v6Found {
-			continue
-		}
-
-		if cidr.IP != nil && cidr.IP.To4() == nil {
-			v6Found = true
-			continue
-		}
-		v4Found = true
-	}
-
-	return !v4Found && v6Found, nil
 }
 
 // IPToIPNet converts an IP to an IPNet, using a fully filled mask appropriate for the address family.
@@ -301,14 +264,13 @@ func IPStringToIPNet(address string) (*net.IPNet, error) {
 }
 
 // GetIPFromInterface is the public function that returns the IP of an interface
-func GetIPFromInterface(ifaceName string) string {
+func GetIPFromInterface(ifaceName string) (string, error) {
 	ip, err := getIPFromInterface(ifaceName)
 	if err != nil {
-		logrus.Warn(fmt.Errorf("unable to get global unicast ip from interface name: %w", err))
-	} else {
-		logrus.Infof("Found ip %s from iface %s", ip, ifaceName)
+		return "", fmt.Errorf("interface %s does not have a correct global unicast ip: %w", ifaceName, err)
 	}
-	return ip
+	logrus.Infof("Found ip %s from iface %s", ip, ifaceName)
+	return ip, nil
 }
 
 // getIPFromInterface is the private function that returns de IP of an interface

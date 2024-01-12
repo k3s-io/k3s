@@ -93,7 +93,10 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 			Eventually(func() error {
 				return testutil.K3sDefaultDeployments()
 			}, "180s", "5s").Should(Succeed())
-			time.Sleep(10 * time.Second)
+
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
+			}, "120s", "5s").Should(ContainSubstring("Current Rotation Stage: rotate"))
 		})
 		It("reencrypts the keys", func() {
 			Expect(testutil.K3sCmd("secrets-encrypt reencrypt -d", secretsEncryptionDataDir)).

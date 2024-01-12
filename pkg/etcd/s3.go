@@ -7,26 +7,42 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
+	"net/textproto"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+)
+
+var (
+	clusterIDKey = textproto.CanonicalMIMEHeaderKey(version.Program + "-cluster-id")
+	tokenHashKey = textproto.CanonicalMIMEHeaderKey(version.Program + "-token-hash")
+	nodeNameKey  = textproto.CanonicalMIMEHeaderKey(version.Program + "-node-name")
 )
 
 // S3 maintains state for S3 functionality.
 type S3 struct {
-	config *config.Control
-	client *minio.Client
+	config    *config.Control
+	client    *minio.Client
+	clusterID string
+	tokenHash string
+	nodeName  string
 }
 
 // newS3 creates a new value of type s3 pointer with a
@@ -80,146 +96,187 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, fmt.Errorf("bucket: %s does not exist", config.EtcdS3BucketName)
+		return nil, fmt.Errorf("bucket %s does not exist", config.EtcdS3BucketName)
 	}
 	logrus.Infof("S3 bucket %s exists", config.EtcdS3BucketName)
 
-	return &S3{
-		config: config,
-		client: c,
-	}, nil
+	s3 := &S3{
+		config:   config,
+		client:   c,
+		nodeName: os.Getenv("NODE_NAME"),
+	}
+
+	if config.ClusterReset {
+		logrus.Debug("Skip setting S3 snapshot cluster ID and token during cluster-reset")
+	} else {
+		if err := wait.PollImmediateUntilWithContext(ctx, time.Second, func(ctx context.Context) (bool, error) {
+			if config.Runtime.Core == nil {
+				return false, nil
+			}
+
+			// cluster id hack: see https://groups.google.com/forum/#!msg/kubernetes-sig-architecture/mVGobfD4TpY/nkdbkX1iBwAJ
+			ns, err := config.Runtime.Core.Core().V1().Namespace().Get(metav1.NamespaceSystem, metav1.GetOptions{})
+			if err != nil {
+				return false, errors.Wrap(err, "failed to set S3 snapshot cluster ID")
+			}
+			s3.clusterID = string(ns.UID)
+
+			tokenHash, err := util.GetTokenHash(config)
+			if err != nil {
+				return false, errors.Wrap(err, "failed to set S3 snapshot server token hash")
+			}
+			s3.tokenHash = tokenHash
+
+			return true, nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return s3, nil
 }
 
 // upload uploads the given snapshot to the configured S3
 // compatible backend.
-func (s *S3) upload(ctx context.Context, snapshot, extraMetadata string, now time.Time) (*snapshotFile, error) {
-	logrus.Infof("Uploading snapshot %s to S3", snapshot)
+func (s *S3) upload(ctx context.Context, snapshot string, extraMetadata *v1.ConfigMap, now time.Time) (*snapshotFile, error) {
 	basename := filepath.Base(snapshot)
-	var snapshotFileName string
-	var sf snapshotFile
-	if s.config.EtcdS3Folder != "" {
-		snapshotFileName = filepath.Join(s.config.EtcdS3Folder, basename)
-	} else {
-		snapshotFileName = basename
+	metadata := filepath.Join(filepath.Dir(snapshot), "..", metadataDir, basename)
+	snapshotKey := path.Join(s.config.EtcdS3Folder, basename)
+	metadataKey := path.Join(s.config.EtcdS3Folder, metadataDir, basename)
+
+	sf := &snapshotFile{
+		Name:     basename,
+		Location: fmt.Sprintf("s3://%s/%s", s.config.EtcdS3BucketName, snapshotKey),
+		NodeName: "s3",
+		CreatedAt: &metav1.Time{
+			Time: now,
+		},
+		S3: &s3Config{
+			Endpoint:      s.config.EtcdS3Endpoint,
+			EndpointCA:    s.config.EtcdS3EndpointCA,
+			SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
+			Bucket:        s.config.EtcdS3BucketName,
+			Region:        s.config.EtcdS3Region,
+			Folder:        s.config.EtcdS3Folder,
+			Insecure:      s.config.EtcdS3Insecure,
+		},
+		Compressed:     strings.HasSuffix(snapshot, compressedExtension),
+		metadataSource: extraMetadata,
+		nodeSource:     s.nodeName,
 	}
 
-	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
-	defer cancel()
-	opts := minio.PutObjectOptions{NumThreads: 2}
-	if strings.HasSuffix(snapshot, compressedExtension) {
+	logrus.Infof("Uploading snapshot to s3://%s/%s", s.config.EtcdS3BucketName, snapshotKey)
+	uploadInfo, err := s.uploadSnapshot(ctx, snapshotKey, snapshot)
+	if err != nil {
+		sf.Status = failedSnapshotStatus
+		sf.Message = base64.StdEncoding.EncodeToString([]byte(err.Error()))
+	} else {
+		sf.Status = successfulSnapshotStatus
+		sf.Size = uploadInfo.Size
+		sf.tokenHash = s.tokenHash
+	}
+	if _, err := s.uploadSnapshotMetadata(ctx, metadataKey, metadata); err != nil {
+		logrus.Warnf("Failed to upload snapshot metadata to S3: %v", err)
+	} else {
+		logrus.Infof("Uploaded snapshot metadata s3://%s/%s", s.config.EtcdS3BucketName, metadataKey)
+	}
+	return sf, err
+}
+
+// uploadSnapshot uploads the snapshot file to S3 using the minio API.
+func (s *S3) uploadSnapshot(ctx context.Context, key, path string) (info minio.UploadInfo, err error) {
+	opts := minio.PutObjectOptions{
+		NumThreads: 2,
+		UserMetadata: map[string]string{
+			clusterIDKey: s.clusterID,
+			nodeNameKey:  s.nodeName,
+			tokenHashKey: s.tokenHash,
+		},
+	}
+	if strings.HasSuffix(key, compressedExtension) {
 		opts.ContentType = "application/zip"
 	} else {
 		opts.ContentType = "application/octet-stream"
 	}
-	uploadInfo, err := s.client.FPutObject(toCtx, s.config.EtcdS3BucketName, snapshotFileName, snapshot, opts)
-	if err != nil {
-		sf = snapshotFile{
-			Name:     filepath.Base(uploadInfo.Key),
-			Metadata: extraMetadata,
-			NodeName: "s3",
-			CreatedAt: &metav1.Time{
-				Time: now,
-			},
-			Message: base64.StdEncoding.EncodeToString([]byte(err.Error())),
-			Size:    0,
-			Status:  failedSnapshotStatus,
-			S3: &s3Config{
-				Endpoint:      s.config.EtcdS3Endpoint,
-				EndpointCA:    s.config.EtcdS3EndpointCA,
-				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
-				Bucket:        s.config.EtcdS3BucketName,
-				Region:        s.config.EtcdS3Region,
-				Folder:        s.config.EtcdS3Folder,
-				Insecure:      s.config.EtcdS3Insecure,
-			},
-		}
-		logrus.Errorf("Error received during snapshot upload to S3: %s", err)
-	} else {
-		ca, err := time.Parse(time.RFC3339, uploadInfo.LastModified.Format(time.RFC3339))
-		if err != nil {
-			return nil, err
-		}
-
-		sf = snapshotFile{
-			Name:     filepath.Base(uploadInfo.Key),
-			Metadata: extraMetadata,
-			NodeName: "s3",
-			CreatedAt: &metav1.Time{
-				Time: ca,
-			},
-			Size:   uploadInfo.Size,
-			Status: successfulSnapshotStatus,
-			S3: &s3Config{
-				Endpoint:      s.config.EtcdS3Endpoint,
-				EndpointCA:    s.config.EtcdS3EndpointCA,
-				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
-				Bucket:        s.config.EtcdS3BucketName,
-				Region:        s.config.EtcdS3Region,
-				Folder:        s.config.EtcdS3Folder,
-				Insecure:      s.config.EtcdS3Insecure,
-			},
-		}
-	}
-	return &sf, nil
-}
-
-// download downloads the given snapshot from the configured S3
-// compatible backend.
-func (s *S3) Download(ctx context.Context) error {
-	var remotePath string
-	if s.config.EtcdS3Folder != "" {
-		remotePath = filepath.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
-	} else {
-		remotePath = s.config.ClusterResetRestorePath
-	}
-
-	logrus.Debugf("retrieving snapshot: %s", remotePath)
-	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
-	r, err := s.client.GetObject(toCtx, s.config.EtcdS3BucketName, remotePath, minio.GetObjectOptions{})
-	if err != nil {
-		return nil
-	}
-	defer r.Close()
+	return s.client.FPutObject(ctx, s.config.EtcdS3BucketName, key, path, opts)
+}
 
+// uploadSnapshotMetadata marshals and uploads the snapshot metadata to S3 using the minio API.
+// The upload is silently skipped if no extra metadata is provided.
+func (s *S3) uploadSnapshotMetadata(ctx context.Context, key, path string) (info minio.UploadInfo, err error) {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return minio.UploadInfo{}, nil
+		}
+		return minio.UploadInfo{}, err
+	}
+
+	opts := minio.PutObjectOptions{
+		NumThreads:  2,
+		ContentType: "application/json",
+		UserMetadata: map[string]string{
+			clusterIDKey: s.clusterID,
+			nodeNameKey:  s.nodeName,
+		},
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+	return s.client.FPutObject(ctx, s.config.EtcdS3BucketName, key, path, opts)
+}
+
+// Download downloads the given snapshot from the configured S3
+// compatible backend.
+func (s *S3) Download(ctx context.Context) error {
+	snapshotKey := path.Join(s.config.EtcdS3Folder, s.config.ClusterResetRestorePath)
+	metadataKey := path.Join(s.config.EtcdS3Folder, metadataDir, s.config.ClusterResetRestorePath)
 	snapshotDir, err := snapshotDir(s.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the snapshot dir")
 	}
+	snapshotFile := filepath.Join(snapshotDir, s.config.ClusterResetRestorePath)
+	metadataFile := filepath.Join(snapshotDir, "..", metadataDir, s.config.ClusterResetRestorePath)
 
-	fullSnapshotPath := filepath.Join(snapshotDir, s.config.ClusterResetRestorePath)
-	sf, err := os.Create(fullSnapshotPath)
-	if err != nil {
+	if err := s.downloadSnapshot(ctx, snapshotKey, snapshotFile); err != nil {
 		return err
 	}
-	defer sf.Close()
-
-	stat, err := r.Stat()
-	if err != nil {
+	if err := s.downloadSnapshotMetadata(ctx, metadataKey, metadataFile); err != nil {
 		return err
 	}
 
-	if _, err := io.CopyN(sf, r, stat.Size); err != nil {
-		return err
+	s.config.ClusterResetRestorePath = snapshotFile
+	return nil
+}
+
+// downloadSnapshot downloads the snapshot file from S3 using the minio API.
+func (s *S3) downloadSnapshot(ctx context.Context, key, file string) error {
+	logrus.Debugf("Downloading snapshot from s3://%s/%s", s.config.EtcdS3BucketName, key)
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+	defer os.Chmod(file, 0600)
+	return s.client.FGetObject(ctx, s.config.EtcdS3BucketName, key, file, minio.GetObjectOptions{})
+}
+
+// downloadSnapshotMetadata downloads the snapshot metadata file from S3 using the minio API.
+// No error is returned if the metadata file does not exist, as it is optional.
+func (s *S3) downloadSnapshotMetadata(ctx context.Context, key, file string) error {
+	logrus.Debugf("Downloading snapshot metadata from s3://%s/%s", s.config.EtcdS3BucketName, key)
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+	defer os.Chmod(file, 0600)
+	err := s.client.FGetObject(ctx, s.config.EtcdS3BucketName, key, file, minio.GetObjectOptions{})
+	if resp := minio.ToErrorResponse(err); resp.StatusCode == http.StatusNotFound {
+		return nil
 	}
-
-	s.config.ClusterResetRestorePath = fullSnapshotPath
-
-	return os.Chmod(fullSnapshotPath, 0600)
+	return err
 }
 
 // snapshotPrefix returns the prefix used in the
 // naming of the snapshots.
 func (s *S3) snapshotPrefix() string {
-	fullSnapshotPrefix := s.config.EtcdSnapshotName
-	var prefix string
-	if s.config.EtcdS3Folder != "" {
-		prefix = filepath.Join(s.config.EtcdS3Folder, fullSnapshotPrefix)
-	} else {
-		prefix = fullSnapshotPrefix
-	}
-	return prefix
+	return path.Join(s.config.EtcdS3Folder, s.config.EtcdSnapshotName)
 }
 
 // snapshotRetention prunes snapshots in the configured S3 compatible backend for this specific node.
@@ -227,21 +284,27 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	if s.config.EtcdSnapshotRetention < 1 {
 		return nil
 	}
-	logrus.Infof("Applying snapshot retention policy to snapshots stored in S3: retention: %d, snapshotPrefix: %s", s.config.EtcdSnapshotRetention, s.snapshotPrefix())
+	logrus.Infof("Applying snapshot retention=%d to snapshots stored in s3://%s/%s", s.config.EtcdSnapshotRetention, s.config.EtcdS3BucketName, s.snapshotPrefix())
 
 	var snapshotFiles []minio.ObjectInfo
 
 	toCtx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
 	defer cancel()
 
-	loo := minio.ListObjectsOptions{
-		Recursive: true,
+	opts := minio.ListObjectsOptions{
 		Prefix:    s.snapshotPrefix(),
+		Recursive: true,
 	}
-	for info := range s.client.ListObjects(toCtx, s.config.EtcdS3BucketName, loo) {
+	for info := range s.client.ListObjects(toCtx, s.config.EtcdS3BucketName, opts) {
 		if info.Err != nil {
 			return info.Err
 		}
+
+		// skip metadata
+		if path.Base(path.Dir(info.Key)) == metadataDir {
+			continue
+		}
+
 		snapshotFiles = append(snapshotFiles, info)
 	}
 
@@ -249,19 +312,139 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 		return nil
 	}
 
+	// sort newest-first so we can prune entries past the retention count
 	sort.Slice(snapshotFiles, func(i, j int) bool {
-		return snapshotFiles[i].Key < snapshotFiles[j].Key
+		return snapshotFiles[j].LastModified.Before(snapshotFiles[i].LastModified)
 	})
 
-	delCount := len(snapshotFiles) - s.config.EtcdSnapshotRetention
-	for _, df := range snapshotFiles[:delCount] {
-		logrus.Infof("Removing S3 snapshot: %s", df.Key)
-		if err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
+	for _, df := range snapshotFiles[s.config.EtcdSnapshotRetention:] {
+		logrus.Infof("Removing S3 snapshot: s3://%s/%s", s.config.EtcdS3BucketName, df.Key)
+		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
+			return err
+		}
+		metadataKey := path.Join(path.Dir(df.Key), metadataDir, path.Base(df.Key))
+		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); err != nil {
+			if isNotExist(err) {
+				return nil
+			}
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s *S3) deleteSnapshot(ctx context.Context, key string) error {
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+
+	key = path.Join(s.config.EtcdS3Folder, key)
+	err := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, key, minio.RemoveObjectOptions{})
+	if err == nil || isNotExist(err) {
+		metadataKey := path.Join(path.Dir(key), metadataDir, path.Base(key))
+		if merr := s.client.RemoveObject(ctx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); merr != nil && !isNotExist(merr) {
+			err = merr
+		}
+	}
+
+	return err
+}
+
+// listSnapshots provides a list of currently stored
+// snapshots in S3 along with their relevant
+// metadata.
+func (s *S3) listSnapshots(ctx context.Context) (map[string]snapshotFile, error) {
+	snapshots := map[string]snapshotFile{}
+	metadatas := []string{}
+	ctx, cancel := context.WithTimeout(ctx, s.config.EtcdS3Timeout)
+	defer cancel()
+
+	opts := minio.ListObjectsOptions{
+		Prefix:    s.config.EtcdS3Folder,
+		Recursive: true,
+	}
+
+	objects := s.client.ListObjects(ctx, s.config.EtcdS3BucketName, opts)
+
+	for obj := range objects {
+		if obj.Err != nil {
+			return nil, obj.Err
+		}
+		if obj.Size == 0 {
+			continue
+		}
+
+		if o, err := s.client.StatObject(ctx, s.config.EtcdS3BucketName, obj.Key, minio.StatObjectOptions{}); err != nil {
+			logrus.Warnf("Failed to get object metadata: %v", err)
+		} else {
+			obj = o
+		}
+
+		filename := path.Base(obj.Key)
+		if path.Base(path.Dir(obj.Key)) == metadataDir {
+			metadatas = append(metadatas, obj.Key)
+			continue
+		}
+
+		basename, compressed := strings.CutSuffix(filename, compressedExtension)
+		ts, err := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
+		if err != nil {
+			ts = obj.LastModified.Unix()
+		}
+
+		sf := snapshotFile{
+			Name:     filename,
+			Location: fmt.Sprintf("s3://%s/%s", s.config.EtcdS3BucketName, obj.Key),
+			NodeName: "s3",
+			CreatedAt: &metav1.Time{
+				Time: time.Unix(ts, 0),
+			},
+			Size: obj.Size,
+			S3: &s3Config{
+				Endpoint:      s.config.EtcdS3Endpoint,
+				EndpointCA:    s.config.EtcdS3EndpointCA,
+				SkipSSLVerify: s.config.EtcdS3SkipSSLVerify,
+				Bucket:        s.config.EtcdS3BucketName,
+				Region:        s.config.EtcdS3Region,
+				Folder:        s.config.EtcdS3Folder,
+				Insecure:      s.config.EtcdS3Insecure,
+			},
+			Status:     successfulSnapshotStatus,
+			Compressed: compressed,
+			nodeSource: obj.UserMetadata[nodeNameKey],
+			tokenHash:  obj.UserMetadata[tokenHashKey],
+		}
+		sfKey := generateSnapshotConfigMapKey(sf)
+		snapshots[sfKey] = sf
+	}
+
+	for _, metadataKey := range metadatas {
+		filename := path.Base(metadataKey)
+		sfKey := generateSnapshotConfigMapKey(snapshotFile{Name: filename, NodeName: "s3"})
+		if sf, ok := snapshots[sfKey]; ok {
+			logrus.Debugf("Loading snapshot metadata from s3://%s/%s", s.config.EtcdS3BucketName, metadataKey)
+			if obj, err := s.client.GetObject(ctx, s.config.EtcdS3BucketName, metadataKey, minio.GetObjectOptions{}); err != nil {
+				if isNotExist(err) {
+					logrus.Debugf("Failed to get snapshot metadata: %v", err)
+				} else {
+					logrus.Warnf("Failed to get snapshot metadata for %s: %v", filename, err)
+				}
+			} else {
+				if m, err := ioutil.ReadAll(obj); err != nil {
+					if isNotExist(err) {
+						logrus.Debugf("Failed to read snapshot metadata: %v", err)
+					} else {
+						logrus.Warnf("Failed to read snapshot metadata for %s: %v", filename, err)
+					}
+				} else {
+					sf.Metadata = base64.StdEncoding.EncodeToString(m)
+					snapshots[sfKey] = sf
+				}
+			}
+		}
+	}
+
+	return snapshots, nil
 }
 
 func readS3EndpointCA(endpointCA string) ([]byte, error) {

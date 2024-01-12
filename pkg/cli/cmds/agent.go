@@ -26,7 +26,10 @@ type Agent struct {
 	PauseImage               string
 	Snapshotter              string
 	Docker                   bool
+	ContainerdNoDefault      bool
 	ContainerRuntimeEndpoint string
+	DefaultRuntime           string
+	ImageServiceEndpoint     string
 	FlannelIface             string
 	FlannelConf              string
 	FlannelCniConfFile       string
@@ -114,6 +117,16 @@ var (
 		Usage:       "(agent/runtime) Disable embedded containerd and use the CRI socket at the given path; when used with --docker this sets the docker socket path",
 		Destination: &AgentConfig.ContainerRuntimeEndpoint,
 	}
+	DefaultRuntimeFlag = &cli.StringFlag{
+		Name:        "default-runtime",
+		Usage:       "(agent/runtime) Set the default runtime in containerd",
+		Destination: &AgentConfig.DefaultRuntime,
+	}
+	ImageServiceEndpointFlag = &cli.StringFlag{
+		Name:        "image-service-endpoint",
+		Usage:       "(agent/runtime) Disable embedded containerd image service and use remote image service socket at the given path. If not specified, defaults to --container-runtime-endpoint.",
+		Destination: &AgentConfig.ImageServiceEndpoint,
+	}
 	PrivateRegistryFlag = &cli.StringFlag{
 		Name:        "private-registry",
 		Usage:       "(agent/runtime) Private registry configuration file",
@@ -155,13 +168,13 @@ var (
 	}
 	VPNAuth = &cli.StringFlag{
 		Name:        "vpn-auth",
-		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>]",
+		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
 		EnvVar:      version.ProgramUpper + "_VPN_AUTH",
 		Destination: &AgentConfig.VPNAuth,
 	}
 	VPNAuthFile = &cli.StringFlag{
 		Name:        "vpn-auth-file",
-		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>]",
+		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
 		EnvVar:      version.ProgramUpper + "_VPN_AUTH_FILE",
 		Destination: &AgentConfig.VPNAuthFile,
 	}
@@ -202,6 +215,16 @@ var (
 		Usage:       "(agent/node) The path to the credential provider plugin config file",
 		Destination: &AgentConfig.ImageCredProvConfig,
 		Value:       "/var/lib/rancher/credentialprovider/config.yaml",
+	}
+	DisableAgentLBFlag = &cli.BoolFlag{
+		Name:        "disable-apiserver-lb",
+		Usage:       "(agent/networking) (experimental) Disable the agent's client-side load-balancer and connect directly to the configured server address",
+		Destination: &AgentConfig.DisableLoadBalancer,
+	}
+	DisableDefaultRegistryEndpointFlag = &cli.BoolFlag{
+		Name:        "disable-default-registry-endpoint",
+		Usage:       "(agent/containerd) Disables containerd's fallback default registry endpoint when a mirror is configured for that registry",
+		Destination: &AgentConfig.ContainerdNoDefault,
 	}
 )
 
@@ -247,9 +270,12 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			LBServerPortFlag,
 			ProtectKernelDefaultsFlag,
 			CRIEndpointFlag,
+			DefaultRuntimeFlag,
+			ImageServiceEndpointFlag,
 			PauseImageFlag,
 			SnapshotterFlag,
 			PrivateRegistryFlag,
+			DisableDefaultRegistryEndpointFlag,
 			AirgapExtraRegistryFlag,
 			NodeIPFlag,
 			NodeExternalIPFlag,
@@ -270,6 +296,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			DockerFlag,
 			VPNAuth,
 			VPNAuthFile,
+			DisableAgentLBFlag,
 		},
 	}
 }

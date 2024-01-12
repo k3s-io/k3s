@@ -24,9 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/retry"
 	ccmapp "k8s.io/cloud-provider/app"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
+	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
 	utilpointer "k8s.io/utils/pointer"
 )
@@ -47,7 +49,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.4"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.5"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -285,8 +287,6 @@ func (k *k3s) getStatus(svc *core.Service) (*core.LoadBalancerStatus, error) {
 		return nil, err
 	}
 
-	sort.Strings(expectedIPs)
-
 	loadbalancer := &core.LoadBalancerStatus{}
 	for _, ip := range expectedIPs {
 		loadbalancer.Ingress = append(loadbalancer.Ingress, core.LoadBalancerIngress{
@@ -393,6 +393,9 @@ func filterByIPFamily(ips []string, svc *core.Service) ([]string, error) {
 		}
 	}
 
+	sort.Strings(ipv4Addresses)
+	sort.Strings(ipv6Addresses)
+
 	for _, ipFamily := range svc.Spec.IPFamilies {
 		switch ipFamily {
 		case core.IPv4Protocol:
@@ -434,10 +437,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	name := generateName(svc)
 	oneInt := intstr.FromInt(1)
 	localTraffic := servicehelper.RequestsOnlyLocalTraffic(svc)
-	sourceRanges, err := servicehelper.GetLoadBalancerSourceRanges(svc)
+	sourceRangesSet, err := servicehelper.GetLoadBalancerSourceRanges(svc)
 	if err != nil {
 		return nil, err
 	}
+	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
 
 	var sysctls []core.Sysctl
 	for _, ipFamily := range svc.Spec.IPFamilies {
@@ -446,6 +450,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
 		case core.IPv6Protocol:
 			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+			// If using the default range, and IPv6 is enabled, also allow IPv6.
+			if sourceRanges == "0.0.0.0/0" {
+				sourceRanges += ",::/0"
+			}
 		}
 	}
 
@@ -531,7 +540,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				{
 					Name:  "SRC_RANGES",
-					Value: strings.Join(sourceRanges.StringSlice(), " "),
+					Value: sourceRanges,
 				},
 				{
 					Name:  "DEST_PROTO",
@@ -557,7 +566,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Name: "DEST_IPS",
 					ValueFrom: &core.EnvVarSource{
 						FieldRef: &core.ObjectFieldSelector{
-							FieldPath: "status.hostIP",
+							FieldPath: getHostIPsFieldPath(),
 						},
 					},
 				},
@@ -570,7 +579,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				core.EnvVar{
 					Name:  "DEST_IPS",
-					Value: strings.Join(svc.Spec.ClusterIPs, " "),
+					Value: strings.Join(svc.Spec.ClusterIPs, ","),
 				},
 			)
 		}
@@ -701,4 +710,11 @@ func ingressToString(ingresses []core.LoadBalancerIngress) []string {
 		}
 	}
 	return parts
+}
+
+func getHostIPsFieldPath() string {
+	if utilfeature.DefaultFeatureGate.Enabled(features.PodHostIPs) {
+		return "status.hostIPs"
+	}
+	return "status.hostIP"
 }

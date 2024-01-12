@@ -3,7 +3,6 @@ package control
 import (
 	"context"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,8 +20,9 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logsapi "k8s.io/component-base/logs/api/v1"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
-	proxyutil "k8s.io/kubernetes/pkg/proxy/util"
+	"k8s.io/kubernetes/pkg/registry/core/node"
 
 	// for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
@@ -31,6 +31,7 @@ import (
 func Server(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	if err := prepare(ctx, cfg); err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
@@ -41,7 +42,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 	cfg.Runtime.Tunnel = tunnel
 
-	proxyutil.DisableProxyHostnameCheck = true
+	node.DisableProxyHostnameCheck = true
 
 	authArgs := []string{
 		"--basic-auth-file=" + cfg.Runtime.PasswdFile,
@@ -91,7 +92,6 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 	runtime := cfg.Runtime
 	argsMap := map[string]string{
 		"controllers":                      "*,tokencleaner",
-		"feature-gates":                    "JobTrackingWithFinalizers=true",
 		"kubeconfig":                       runtime.KubeConfigController,
 		"authorization-kubeconfig":         runtime.KubeConfigController,
 		"authentication-kubeconfig":        runtime.KubeConfigController,
@@ -113,16 +113,19 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-signing-legacy-unknown-cert-file":        runtime.SigningServerCA,
 		"cluster-signing-legacy-unknown-key-file":         runtime.ServerCAKey,
 	}
-	if cfg.MultiClusterCIDR {
-		argsMap["cidr-allocator-type"] = "MultiCIDRRangeAllocator"
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
-	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
 	if !cfg.DisableCCM {
 		argsMap["configure-cloud-routes"] = "false"
 		argsMap["controllers"] = argsMap["controllers"] + ",-service,-route,-cloud-node-lifecycle"
+	}
+
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
 	}
 
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
@@ -144,6 +147,14 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
 	}
+
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
@@ -152,9 +163,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 
 func apiServer(ctx context.Context, cfg *config.Control) error {
 	runtime := cfg.Runtime
-	argsMap := map[string]string{
-		"feature-gates": "JobTrackingWithFinalizers=true",
-	}
+	argsMap := map[string]string{}
 
 	setupStorageBackend(argsMap, cfg)
 
@@ -206,13 +215,17 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
 	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
-	if cfg.MultiClusterCIDR {
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
-		argsMap["runtime-config"] = "networking.k8s.io/v1alpha1"
-	}
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig
+		argsMap["encryption-provider-config-automatic-reload"] = "true"
 	}
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
@@ -221,20 +234,6 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 }
 
 func defaults(config *config.Control) {
-	if config.ClusterIPRange == nil {
-		_, clusterIPNet, _ := net.ParseCIDR("10.42.0.0/16")
-		config.ClusterIPRange = clusterIPNet
-	}
-
-	if config.ServiceIPRange == nil {
-		_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
-		config.ServiceIPRange = serviceIPNet
-	}
-
-	if len(config.ClusterDNS) == 0 {
-		config.ClusterDNS = net.ParseIP("10.43.0.10")
-	}
-
 	if config.AdvertisePort == 0 {
 		config.AdvertisePort = config.HTTPSPort
 	}
@@ -274,7 +273,7 @@ func prepare(ctx context.Context, config *config.Control) error {
 
 	cluster := cluster.New(config)
 
-	if err := cluster.Bootstrap(ctx, false); err != nil {
+	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
 		return err
 	}
 
@@ -325,6 +324,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
 		"bind-address":                 cfg.Loopback(false),
+		"feature-gates":                "CloudDualStackNodeIPs=true",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
@@ -333,13 +333,16 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["controllers"] = argsMap["controllers"] + ",-cloud-node,-cloud-node-lifecycle"
 		argsMap["secure-port"] = "0"
 	}
-	if cfg.MultiClusterCIDR {
-		argsMap["cidr-allocator-type"] = "MultiCIDRRangeAllocator"
-		argsMap["feature-gates"] = util.AddFeatureGate(argsMap["feature-gates"], "MultiCIDRRangeAllocator=true")
-	}
 	if cfg.DisableServiceLB {
 		argsMap["controllers"] = argsMap["controllers"] + ",-service"
 	}
+	if cfg.VLevel != 0 {
+		argsMap["v"] = strconv.Itoa(cfg.VLevel)
+	}
+	if cfg.VModule != "" {
+		argsMap["vmodule"] = cfg.VModule
+	}
+
 	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
 	logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))

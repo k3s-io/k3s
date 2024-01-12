@@ -243,6 +243,7 @@ func genUsers(config *config.Control) error {
 		return err
 	}
 
+	// if no token is provided on bootstrap, we generate a random token
 	serverPass, err := getServerPass(passwd, config)
 	if err != nil {
 		return err
@@ -777,7 +778,7 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(runtime.EncryptionConfig, b, 0600); err != nil {
+	if err := util.AtomicWrite(runtime.EncryptionConfig, b, 0600); err != nil {
 		return err
 	}
 	encryptionConfigHash := sha256.Sum256(b)

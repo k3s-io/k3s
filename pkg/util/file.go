@@ -2,6 +2,7 @@ package util
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,4 +37,30 @@ func ReadFile(path string) (string, error) {
 	}
 
 	return "", errors.New("Timeout while trying to read the file")
+}
+
+// AtomicWrite firsts writes data to a temp file, then renames to the destination file.
+// This ensures that the destination file is never partially written.
+func AtomicWrite(fileName string, data []byte, perm os.FileMode) error {
+	f, err := os.CreateTemp(filepath.Dir(fileName), filepath.Base(fileName)+".tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := f.Name()
+	defer os.Remove(tmpName)
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Chmod(perm); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpName, fileName)
 }

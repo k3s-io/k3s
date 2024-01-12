@@ -31,10 +31,11 @@ import (
 	cloudproviderapi "k8s.io/cloud-provider/api"
 	ccmapp "k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/names"
 	ccmopt "k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/cmd/kube-apiserver/app"
+	apiapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
@@ -95,9 +96,9 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
+func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 	command := proxy.NewProxyCommand()
-	command.SetArgs(args)
+	command.SetArgs(daemonconfig.GetArgs(platformKubeProxyArgs(e.nodeConfig), args))
 
 	go func() {
 		defer func() {
@@ -112,12 +113,12 @@ func (*Embedded) KubeProxy(ctx context.Context, args []string) error {
 }
 
 func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
-	startupConfig := <-app.StartupConfig
+	startupConfig := <-apiapp.StartupConfig
 	return startupConfig.Authenticator, startupConfig.Handler, nil
 }
 
 func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
-	command := app.NewAPIServerCommand(ctx.Done())
+	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
@@ -196,7 +197,15 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		return cloud
 	}
 
-	command := ccmapp.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, ccmapp.DefaultInitFuncConstructors, cliflag.NamedFlagSets{}, ctx.Done())
+	controllerAliases := names.CCMControllerAliases()
+
+	command := ccmapp.NewCloudControllerManagerCommand(
+		ccmOptions,
+		cloudInitializer,
+		ccmapp.DefaultInitFuncConstructors,
+		controllerAliases,
+		cliflag.NamedFlagSets{},
+		ctx.Done())
 	command.SetArgs(args)
 
 	go func() {

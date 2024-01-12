@@ -280,6 +280,9 @@ func K3sStopServer(server *K3sServer) error {
 // K3sKillServer terminates the running K3s server and its children.
 // Equivalent to k3s-killall.sh
 func K3sKillServer(server *K3sServer) error {
+	if server == nil {
+		return nil
+	}
 	if server.log != nil {
 		server.log.Close()
 		os.Remove(server.log.Name())
@@ -357,6 +360,27 @@ func K3sSaveLog(server *K3sServer, dump bool) error {
 	}
 	fmt.Printf("Server Log Dump:\n\n%s\n\n", b)
 	return nil
+}
+
+func GetEndpointsAddresses() (string, error) {
+	client, err := k8sClient()
+	if err != nil {
+		return "", err
+	}
+
+	endpoints, err := client.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	var addresses []string
+	for _, subset := range endpoints.Subsets {
+		for _, address := range subset.Addresses {
+			addresses = append(addresses, address.IP)
+		}
+	}
+
+	return strings.Join(addresses, ","), nil
 }
 
 // RunCommand Runs command on the host

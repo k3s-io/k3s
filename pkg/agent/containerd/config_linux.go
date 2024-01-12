@@ -13,13 +13,11 @@ import (
 	stargz "github.com/containerd/stargz-snapshotter/service"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
-	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
-	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/kubernetes/pkg/kubelet/util"
@@ -41,11 +39,6 @@ func getContainerdArgs(cfg *config.Node) []string {
 // setupContainerdConfig generates the containerd.toml, using a template combined with various
 // runtime configurations and registry mirror settings provided by the administrator.
 func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
-	privRegistries, err := registries.GetPrivateRegistries(cfg.AgentConfig.PrivateRegistry)
-	if err != nil {
-		return err
-	}
-
 	isRunningInUserNS := userns.RunningInUserNS()
 	_, _, controllers := cgroups.CheckCgroups()
 	// "/sys/fs/cgroup" is namespaced
@@ -60,16 +53,23 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
-	var containerdTemplate string
+	extraRuntimes := findContainerRuntimes(os.DirFS(string(os.PathSeparator)))
+
+	// Verifies if the DefaultRuntime can be found
+	if _, ok := extraRuntimes[cfg.DefaultRuntime]; !ok && cfg.DefaultRuntime != "" {
+		return errors.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
+	}
+
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         disableCgroup,
 		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
-		PrivateRegistryConfig: privRegistries.Registry,
-		ExtraRuntimes:         findNvidiaContainerRuntimes(os.DirFS(string(os.PathSeparator))),
+		PrivateRegistryConfig: cfg.AgentConfig.Registry,
+		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
+		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()
@@ -83,21 +83,11 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		logrus.Warnf("SELinux is enabled for "+version.Program+" but process is not running in context '%s', "+version.Program+"-selinux policy may need to be applied", SELinuxContextType)
 	}
 
-	containerdTemplateBytes, err := os.ReadFile(cfg.Containerd.Template)
-	if err == nil {
-		logrus.Infof("Using containerd template at %s", cfg.Containerd.Template)
-		containerdTemplate = string(containerdTemplateBytes)
-	} else if os.IsNotExist(err) {
-		containerdTemplate = templates.ContainerdConfigTemplate
-	} else {
-		return err
-	}
-	parsedTemplate, err := templates.ParseTemplateFromConfig(containerdTemplate, containerdConfig)
-	if err != nil {
+	if err := writeContainerdConfig(cfg, containerdConfig); err != nil {
 		return err
 	}
 
-	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+	return writeContainerdHosts(cfg, containerdConfig)
 }
 
 func Client(address string) (*containerd.Client, error) {

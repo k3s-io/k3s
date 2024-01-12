@@ -32,6 +32,7 @@ func init() {
 
 type Interface interface {
 	Addon() AddonController
+	ETCDSnapshotFile() ETCDSnapshotFileController
 }
 
 func New(controllerFactory controller.SharedControllerFactory) Interface {
@@ -45,7 +46,9 @@ type version struct {
 }
 
 func (v *version) Addon() AddonController {
-	return &AddonGenericController{
-		generic.NewController[*v1.Addon, *v1.AddonList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, v.controllerFactory),
-	}
+	return generic.NewController[*v1.Addon, *v1.AddonList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "Addon"}, "addons", true, v.controllerFactory)
+}
+
+func (v *version) ETCDSnapshotFile() ETCDSnapshotFileController {
+	return generic.NewNonNamespacedController[*v1.ETCDSnapshotFile, *v1.ETCDSnapshotFileList](schema.GroupVersionKind{Group: "k3s.cattle.io", Version: "v1", Kind: "ETCDSnapshotFile"}, "etcdsnapshotfiles", v.controllerFactory)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
@@ -23,34 +24,6 @@ import (
 )
 
 const (
-	cniConf = `{
-  "name":"cbr0",
-  "cniVersion":"1.0.0",
-  "plugins":[
-    {
-      "type":"flannel",
-      "delegate":{
-        "hairpinMode":true,
-        "forceAddress":true,
-        "isDefaultGateway":true
-      }
-    },
-    {
-      "type":"portmap",
-      "capabilities":{
-        "portMappings":true
-      }
-    },
-    {
-      "type":"bandwidth",
-      "capabilities":{
-        "bandwidth":true
-      }
-    }
-  ]
-}
-`
-
 	flannelConf = `{
 	"Network": "%CIDR%",
 	"EnableIPv6": %IPV6_ENABLED%,
@@ -60,18 +33,8 @@ const (
 }
 `
 
-	vxlanBackend = `{
-	"Type": "vxlan"
-}`
-
 	hostGWBackend = `{
 	"Type": "host-gw"
-}`
-
-	ipsecBackend = `{
-	"Type": "ipsec",
-	"UDPEncap": true,
-	"PSK": "%psk%"
 }`
 
 	tailscaledBackend = `{
@@ -111,7 +74,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInt
 		return errors.Wrap(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigKubelet, nodeConfig.FlannelIPv6Masq, nodeConfig.MultiClusterCIDR, netMode)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigKubelet, nodeConfig.FlannelIPv6Masq, netMode)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Fatalf("flannel exited: %v", err)
 		}
@@ -159,7 +122,20 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
 		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
 	}
-	return util.WriteFile(p, cniConf)
+
+	cniConfJSON := cniConf
+	if goruntime.GOOS == "windows" {
+		extIface, err := LookupExtInterface(nodeConfig.FlannelIface, ipv4)
+		if err != nil {
+			return err
+		}
+
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%IPV4_ADDRESS%", extIface.IfaceAddr.String())
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%CLUSTER_CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
+		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%SERVICE_CIDR%", nodeConfig.AgentConfig.ServiceCIDR.String())
+	}
+
+	return util.WriteFile(p, cniConfJSON)
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
@@ -188,12 +164,13 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "false")
 		confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", emptyIPv6Network)
 	} else if netMode == (ipv4 + ipv6) {
-		confJSON = strings.ReplaceAll(confJSON, "%CIDR%", nodeConfig.AgentConfig.ClusterCIDR.String())
 		confJSON = strings.ReplaceAll(confJSON, "%IPV6_ENABLED%", "true")
 		for _, cidr := range nodeConfig.AgentConfig.ClusterCIDRs {
 			if utilsnet.IsIPv6(cidr.IP) {
 				// Only one ipv6 range available. This might change in future: https://github.com/kubernetes/enhancements/issues/2593
 				confJSON = strings.ReplaceAll(confJSON, "%CIDR_IPV6%", cidr.String())
+			} else {
+				confJSON = strings.ReplaceAll(confJSON, "%CIDR%", cidr.String())
 			}
 		}
 	} else {
@@ -208,20 +185,23 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 
 	var backendConf string
-	parts := strings.SplitN(nodeConfig.FlannelBackend, "=", 2)
-	backend := parts[0]
 	backendOptions := make(map[string]string)
-	if len(parts) > 1 {
-		logrus.Fatalf("The additional options through flannel-backend are deprecated and were removed in k3s v1.27, use flannel-conf instead")
+
+	// precheck and error out unsupported flannel backends.
+	switch nodeConfig.FlannelBackend {
+	case config.FlannelBackendHostGW:
+	case config.FlannelBackendTailscale:
+	case config.FlannelBackendWireguardNative:
+		if goruntime.GOOS == "windows" {
+			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.FlannelBackend)
+		}
 	}
 
-	switch backend {
+	switch nodeConfig.FlannelBackend {
 	case config.FlannelBackendVXLAN:
 		backendConf = vxlanBackend
 	case config.FlannelBackendHostGW:
 		backendConf = hostGWBackend
-	case config.FlannelBackendIPSEC:
-		logrus.Fatal("The ipsec backend is deprecated and was removed in k3s v1.27; please switch to wireguard-native. Check our docs for information on how to migrate.")
 	case config.FlannelBackendTailscale:
 		var routes string
 		switch netMode {

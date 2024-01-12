@@ -97,7 +97,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := NewContext(ctx, controlConfig.Runtime.KubeConfigSupervisor)
+	sc, err := NewContext(ctx, config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to create new server context")
 	}
@@ -114,6 +114,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		controlConfig.Runtime.NodePasswdFile); err != nil {
 		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
 	}
+	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
 	controlConfig.Runtime.Core = sc.Core
 
@@ -272,8 +273,16 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 	dataDir = filepath.Join(controlConfig.DataDir, "manifests")
+
+	dnsIPFamilyPolicy := "SingleStack"
+	if len(controlConfig.ClusterDNSs) > 1 {
+		dnsIPFamilyPolicy = "RequireDualStack"
+	}
+
 	templateVars := map[string]string{
 		"%{CLUSTER_DNS}%":                 controlConfig.ClusterDNS.String(),
+		"%{CLUSTER_DNS_LIST}%":            fmt.Sprintf("[%s]", util.JoinIPs(controlConfig.ClusterDNSs)),
+		"%{CLUSTER_DNS_IPFAMILYPOLICY}%":  dnsIPFamilyPolicy,
 		"%{CLUSTER_DOMAIN}%":              controlConfig.ClusterDomain,
 		"%{DEFAULT_LOCAL_STORAGE_PATH}%":  controlConfig.DefaultLocalStoragePath,
 		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),

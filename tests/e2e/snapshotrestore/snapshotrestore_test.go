@@ -124,6 +124,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		})
 
 	})
+
 	Context("Cluster is reset normally", func() {
 		It("Resets the cluster", func() {
 			for _, nodeName := range serverNodeNames {
@@ -142,6 +143,17 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 
 			cmd = "systemctl start k3s"
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
+		})
+
+		It("Resets non bootstrap nodes", func() {
+			for _, nodeName := range serverNodeNames {
+				if nodeName != serverNodeNames[0] {
+					cmd := "k3s server --cluster-reset"
+					response, err := e2e.RunCmdOnNode(cmd, nodeName)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(response).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
+				}
+			}
 		})
 
 		It("Checks that other servers are not ready", func() {
@@ -209,6 +221,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		})
 
 	})
+
 	Context("Cluster restores from snapshot", func() {
 		It("Restores the snapshot", func() {
 			//Stop k3s on all nodes

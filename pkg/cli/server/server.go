@@ -11,6 +11,7 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -20,6 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
@@ -28,8 +30,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
-	"k8s.io/kubernetes/pkg/controlplane"
+	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
 
 	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
@@ -49,6 +52,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	var (
 		err error
 	)
+	// Validate build env
+	cmds.MustValidateGolang()
 
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
@@ -132,6 +137,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
 	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)
+	serverConfig.ControlConfig.SANSecurity = cfg.TLSSanSecurity
 	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
@@ -149,7 +155,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
-	serverConfig.ControlConfig.MultiClusterCIDR = cfg.MultiClusterCIDR
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
@@ -163,12 +168,15 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DisableAPIServer = cfg.DisableAPIServer
 	serverConfig.ControlConfig.DisableScheduler = cfg.DisableScheduler
 	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
+	serverConfig.ControlConfig.EmbeddedRegistry = cfg.EmbeddedRegistry
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.VLevel = cmds.LogConfig.VLevel
+	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
 
-	if !cfg.EtcdDisableSnapshots {
+	if !cfg.EtcdDisableSnapshots || cfg.ClusterReset {
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
 		serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 		serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
@@ -216,7 +224,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		cmds.AgentConfig.NodeIP.Set(util.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
+		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
+		if err != nil {
+			return err
+		}
+		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
 	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
@@ -243,14 +255,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			return err
 		}
 
-		logrus.Debugf("Processing vpn node-ip based on the detected nodeIPs: %v", nodeIPs)
-		dualNode, err := utilsnet.IsDualStackIPs(nodeIPs)
-		if err != nil {
-			return errors.Wrapf(err, "failed to validate node-ip: %v", nodeIPs)
-		}
-
 		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
-		if !dualNode && utilsnet.IsIPv6(nodeIPs[0]) {
+		if utilsnet.IsIPv6(nodeIPs[0]) {
 			if vpnInfo.IPv6Address != nil {
 				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
 				if serverConfig.ControlConfig.AdvertiseIP != "" {
@@ -293,14 +299,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
-	// configure ClusterIPRanges
-	_, _, IPv6only, _ := util.GetFirstIP(nodeIPs)
+	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
+	_, defaultClusterCIDR, defaultServiceCIDR, _ := util.GetDefaultAddresses(nodeIPs[0])
 	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
-		clusterCIDR := "10.42.0.0/16"
-		if IPv6only {
-			clusterCIDR = "fd00:42::/56"
-		}
-		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
+		cmds.ServerConfig.ClusterCIDR.Set(defaultClusterCIDR)
 	}
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
@@ -310,21 +312,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
 	}
 
-	// set ClusterIPRange to the first IPv4 block, for legacy clients
-	// unless only IPv6 range given
-	clusterIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ClusterIPRanges)
-	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-cidr")
-	}
-	serverConfig.ControlConfig.ClusterIPRange = clusterIPRange
+	// set ClusterIPRange to the first address (first defined IPFamily is preferred)
+	serverConfig.ControlConfig.ClusterIPRange = serverConfig.ControlConfig.ClusterIPRanges[0]
 
-	// configure ServiceIPRanges
+	// configure ServiceIPRanges. Use default 10.43.0.0/16 or fd00:43::/112 if user did not set it
 	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
-		serviceCIDR := "10.43.0.0/16"
-		if IPv6only {
-			serviceCIDR = "fd00:43::/112"
-		}
-		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
+		cmds.ServerConfig.ServiceCIDR.Set(defaultServiceCIDR)
 	}
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR) {
 		_, parsed, err := net.ParseCIDR(cidr)
@@ -334,13 +327,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
 	}
 
-	// set ServiceIPRange to the first IPv4 block, for legacy clients
-	// unless only IPv6 range given
-	serviceIPRange, err := util.GetFirstNet(serverConfig.ControlConfig.ServiceIPRanges)
-	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4/IPv6 service-cidr")
-	}
-	serverConfig.ControlConfig.ServiceIPRange = serviceIPRange
+	// set ServiceIPRange to the first address (first defined IPFamily is preferred)
+	serverConfig.ControlConfig.ServiceIPRange = serverConfig.ControlConfig.ServiceIPRanges[0]
 
 	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
 	if err != nil {
@@ -348,7 +336,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	// the apiserver service does not yet support dual-stack operation
-	_, apiServerServiceIP, err := controlplane.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
+	_, apiServerServiceIP, err := options.ServiceIPRange(*serverConfig.ControlConfig.ServiceIPRanges[0])
 	if err != nil {
 		return err
 	}
@@ -359,12 +347,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// If there are no IPv4 ServiceCIDRs, an IPv6 ServiceCIDRs will be used.
 	// If neither of IPv4 or IPv6 are found an error is raised.
 	if len(cmds.ServerConfig.ClusterDNS) == 0 {
-		clusterDNS, err := utilsnet.GetIndexedIP(serverConfig.ControlConfig.ServiceIPRange, 10)
-		if err != nil {
-			return errors.Wrap(err, "cannot configure default cluster-dns address")
+		for _, svcCIDR := range serverConfig.ControlConfig.ServiceIPRanges {
+			clusterDNS, err := utilsnet.GetIndexedIP(svcCIDR, 10)
+			if err != nil {
+				return errors.Wrap(err, "cannot configure default cluster-dns address")
+			}
+			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, clusterDNS)
 		}
-		serverConfig.ControlConfig.ClusterDNS = clusterDNS
-		serverConfig.ControlConfig.ClusterDNSs = []net.IP{serverConfig.ControlConfig.ClusterDNS}
 	} else {
 		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS) {
 			parsed := net.ParseIP(ip)
@@ -373,14 +362,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			}
 			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, parsed)
 		}
-		// Set ClusterDNS to the first IPv4 address, for legacy clients
-		// unless only IPv6 range given
-		clusterDNS, _, _, err := util.GetFirstIP(serverConfig.ControlConfig.ClusterDNSs)
-		if err != nil {
-			return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
-		}
-		serverConfig.ControlConfig.ClusterDNS = clusterDNS
 	}
+
+	serverConfig.ControlConfig.ClusterDNS = serverConfig.ControlConfig.ClusterDNSs[0]
 
 	if err := validateNetworkConfiguration(serverConfig); err != nil {
 		return err
@@ -460,6 +444,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		// and we don't need the kubelet or containerd up to perform a cluster reset.
 		if serverConfig.ControlConfig.SupervisorPort == serverConfig.ControlConfig.HTTPSPort {
 			cfg.DisableAgent = true
+		}
+
+		// If the user uses the cluster-reset argument in a cluster that has a ServerURL, we must return an error
+		// to remove the server flag on the configuration or in the cli
+		if serverConfig.ControlConfig.JoinURL != "" {
+			return errors.New("cannot perform cluster-reset while server URL is set - remove server from configuration before resetting")
 		}
 
 		dataDir, err := datadir.LocalHome(cfg.DataDir, false)
@@ -561,23 +551,28 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return agent.RunStandalone(ctx, agentConfig)
 	}
 
+	if cfg.EmbeddedRegistry {
+		conf := spegel.DefaultRegistry
+		conf.Bootstrapper = spegel.NewChainingBootstrapper(
+			spegel.NewServerBootstrapper(&serverConfig.ControlConfig),
+			spegel.NewAgentBootstrapper(cfg.ServerURL, token, agentConfig.DataDir),
+			spegel.NewSelfBootstrapper(),
+		)
+		conf.HandlerFunc = func(_ *spegel.Config, router *mux.Router) error {
+			router.NotFoundHandler = serverConfig.ControlConfig.Runtime.Handler
+			serverConfig.ControlConfig.Runtime.Handler = router
+			return nil
+		}
+		conf.AuthFunc = func() authenticator.Request {
+			return serverConfig.ControlConfig.Runtime.Authenticator
+		}
+	}
+
 	return agent.Run(ctx, agentConfig)
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.
 func validateNetworkConfiguration(serverConfig server.Config) error {
-	// Dual-stack operation requires fairly extensive manual configuration at the moment - do some
-	// preflight checks to make sure that the user isn't trying to use flannel/npc, or trying to
-	// enable dual-stack DNS (which we don't currently support since it's not easy to template)
-	dualDNS, err := utilsnet.IsDualStackIPs(serverConfig.ControlConfig.ClusterDNSs)
-	if err != nil {
-		return errors.Wrap(err, "failed to validate cluster-dns")
-	}
-
-	if dualDNS == true {
-		return errors.New("dual-stack cluster-dns is not supported")
-	}
-
 	switch serverConfig.ControlConfig.EgressSelectorMode {
 	case config.EgressSelectorModeCluster, config.EgressSelectorModePod:
 	case config.EgressSelectorModeAgent, config.EgressSelectorModeDisabled:

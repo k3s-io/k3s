@@ -114,12 +114,34 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(res).To(ContainSubstring("special-2-server-0"))
 			Expect(res).To(ContainSubstring("special-3-server-0"))
 		})
+		It("delete first on-demand s3 snapshot", func() {
+			_, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot ls >> ./snapshotname.txt", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			snapshotName, err := e2e.RunCmdOnNode("grep -Eo 'on-demand-server-0-([0-9]+)' ./snapshotname.txt |head -1", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			res, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot delete "+snapshotName, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("Reconciling ETCDSnapshotFile resources"))
+			Expect(res).To(ContainSubstring("Snapshot " + strings.TrimSpace(snapshotName) + " deleted from S3"))
+			Expect(res).To(ContainSubstring("Reconciliation of ETCDSnapshotFile resources complete"))
+		})
+
 		// TODO, there is currently a bug that prevents pruning on s3 snapshots that are not prefixed with "on-demand"
 		// https://github.com/rancher/rke2/issues/3714
 		// Once fixed, ensure that the snapshots list are actually reduced to 2
 		It("prunes s3 snapshots", func() {
-			_, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			res, err = e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			res, err = e2e.RunCmdOnNode("sudo k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("Reconciliation of ETCDSnapshotFile resources complete"))
+
+			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot ls|grep 'on-demand'|wc -l>count", serverNodeNames[0])
+			res, err = e2e.RunCmdOnNode("grep '^[4]$' ./count", serverNodeNames[0])
+			Expect(strings.TrimSpace(res)).To(Equal("4"))
 		})
 	})
 })

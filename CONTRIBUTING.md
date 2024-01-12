@@ -25,41 +25,9 @@ Generally, pull requests should consist of a single logical commit. However, if 
 
 The other exception to this single-commit rule is if your PR includes a change to a vendored dependency or generated code. To make reviewing easier, these changes should be segregated into their own commit. Note that as we migrate from using the vendor directory to a pure go module model for our projects, this will be less of an issue.
 
+As the issue and the PR already include all the required information, commit messages are normally empty. The title of the commit should summarize in a few words what the commit is trying to do.
+
 For each commit, please ensure you sign off as mentioned below in the [Developer Certificate Of Origin section](#developer-certificate-of-origin).
-
-### Writing good commit messages
-Git commit messages should explain the how and why of your change and be separated into a brief subject line followed by a more detailed body. When in doubt, follow this guide for good commit messages and you can’t go wrong: https://chris.beams.io/posts/git-commit/.
-
-One particularly useful point made in the above guide is regarding commit subject lines:
-
-> A properly formed Git commit subject line should always be able to complete the following sentence:
-> 
-> - If applied, this commit will <ins>your subject line here</ins>
-
-A simple but effective convention to follow for commits is the “problem / solution” pattern. It looks like this:
-```
-<Subject>
-
-Problem: <Statement of problem>
-
-Solution: <Statement of solution>
-```
-
-As an example, here is a commit taken from the rancher/rancher repo:
-```
-commit b71ce2892eecb7c87a5212e3486f1de899a694aa
-Author: Dan Ramich <danold215@gmail.com>
-Date:   Tue Jun 19 11:56:52 2018 -0700
-
-    Add Validator for RoleTemplate
-
-    Problem:
-    Builtin RoleTemplates can be updated through the API
-
-    Solution:
-    Add a Validator to ensure the only field that can be changed on a
-    builtin RoleTemplate is 'locked'
-```
 
 ### Reviewing, addressing feedback, and merging
 Generally, pull requests need two approvals from maintainers to be merged. One exception to this is when a PR is simply a "pull through" that is just updating a dependency from other Rancher-managed vendor packages or any minor third-party vendor update. In this case, only one approval is needed.

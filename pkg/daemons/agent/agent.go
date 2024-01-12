@@ -12,13 +12,14 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
+	logsapi "k8s.io/component-base/logs/api/v1"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
 )
 
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
 	rand.Seed(time.Now().UTC().UnixNano())
-
+	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {

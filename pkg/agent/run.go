@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
 	"github.com/k3s-io/k3s/pkg/rootless"
+	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
@@ -42,6 +44,8 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
+	"k8s.io/component-base/cli/globalflag"
+	"k8s.io/component-base/logs"
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	utilsnet "k8s.io/utils/net"
@@ -49,7 +53,10 @@ import (
 )
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
-	nodeConfig := config.Get(ctx, cfg, proxy)
+	nodeConfig, err := config.Get(ctx, cfg, proxy)
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve agent configuration")
+	}
 
 	dualCluster, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
@@ -69,14 +76,24 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	serviceIPv6 := utilsnet.IsIPv6CIDR(nodeConfig.AgentConfig.ServiceCIDR)
 	clusterIPv6 := utilsnet.IsIPv6CIDR(nodeConfig.AgentConfig.ClusterCIDR)
 	nodeIPv6 := utilsnet.IsIPv6String(nodeConfig.AgentConfig.NodeIP)
+
+	// check that cluster-cidr and service-cidr have the same IP versions
 	if (serviceIPv6 != clusterIPv6) || (dualCluster != dualService) || (serviceIPv4 != clusterIPv4) {
 		return fmt.Errorf("cluster-cidr: %v and service-cidr: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.ServiceCIDRs)
 	}
-	if (clusterIPv6 && !nodeIPv6) || (dualCluster && !dualNode) || (clusterIPv4 && !nodeIPv4) {
+
+	// check that node-ip has the IP versions set in cluster-cidr
+	if (clusterIPv6 && !(nodeIPv6 || dualNode)) || (dualCluster && !dualNode) || (clusterIPv4 && !(nodeIPv4 || dualNode)) {
 		return fmt.Errorf("cluster-cidr: %v and node-ip: %v, must share the same IP version (IPv4, IPv6 or dual-stack)", nodeConfig.AgentConfig.ClusterCIDRs, nodeConfig.AgentConfig.NodeIPs)
 	}
+
 	enableIPv6 := dualCluster || clusterIPv6
 	enableIPv4 := dualCluster || clusterIPv4
+
+	// dualStack or IPv6 are not supported on Windows node
+	if (goruntime.GOOS == "windows") && enableIPv6 {
+		return fmt.Errorf("dual-stack or IPv6 are not supported on Windows node")
+	}
 
 	conntrackConfig, err := getConntrackConfig(nodeConfig)
 	if err != nil {
@@ -85,6 +102,16 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	syssetup.Configure(enableIPv6, conntrackConfig)
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
+
+	if nodeConfig.EmbeddedRegistry {
+		if nodeConfig.Docker || nodeConfig.ContainerRuntimeEndpoint != "" {
+			return errors.New("embedded registry mirror requires embedded containerd")
+		}
+
+		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to start embedded registry")
+		}
+	}
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
 		return err
@@ -97,7 +124,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if !nodeConfig.NoFlannel {
 		if (nodeConfig.FlannelExternalIP) && (len(nodeConfig.AgentConfig.NodeExternalIPs) == 0) {
 			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
-		} else if (nodeConfig.FlannelExternalIP) && (nodeConfig.FlannelBackend != daemonconfig.FlannelBackendWireguardNative) && (nodeConfig.FlannelBackend != daemonconfig.FlannelBackendIPSEC) {
+		} else if (nodeConfig.FlannelExternalIP) && (nodeConfig.FlannelBackend != daemonconfig.FlannelBackendWireguardNative) {
 			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", nodeConfig.FlannelBackend)
 		}
 		if err := flannel.Prepare(ctx, nodeConfig); err != nil {
@@ -184,6 +211,7 @@ func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubePro
 	}
 
 	cmd := app2.NewProxyCommand()
+	globalflag.AddGlobalFlags(cmd.Flags(), cmd.Name(), logs.SkipLoggingConfigurationFlags())
 	if err := cmd.ParseFlags(daemonconfig.GetArgs(map[string]string{}, nodeConfig.AgentConfig.ExtraKubeProxyArgs)); err != nil {
 		return nil, err
 	}
@@ -220,7 +248,11 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	nodeConfig := config.Get(ctx, cfg, proxy)
+	nodeConfig, err := config.Get(ctx, cfg, proxy)
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve agent configuration")
+	}
+
 	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
 		return err
 	}
@@ -271,7 +303,7 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 	if err := os.MkdirAll(agentDir, 0700); err != nil {
 		return nil, err
 	}
-	_, isIPv6, _ := util.GetFirstString([]string{cfg.NodeIP.String()})
+	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP.String()}[0]))
 
 	proxy, err := proxy.NewSupervisorProxy(ctx, !cfg.DisableLoadBalancer, agentDir, cfg.ServerURL, cfg.LBServerPort, isIPv6)
 	if err != nil {

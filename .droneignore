@@ -1,7 +1,6 @@
 ^.*\.md$
-^install\.sh$
 ^\.droneignore$
-^\.github/*$
+^\.github\/.*$
 ^MAINTAINERS$
 ^CODEOWNERS$
 ^LICENSE$

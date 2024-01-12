@@ -1,6 +1,7 @@
 package cloudprovider
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -8,8 +9,10 @@ import (
 )
 
 const (
-	addrv4 = "1.2.3.4"
-	addrv6 = "2001:db8::1"
+	addrv4   = "1.2.3.4"
+	addrv4_2 = "2.3.4.5"
+	addrv6   = "2001:db8::1"
+	addrv6_2 = "3001:db8::1"
 )
 
 func Test_UnitFilterByIPFamily(t *testing.T) {
@@ -87,5 +90,24 @@ func Test_UnitFilterByIPFamily(t *testing.T) {
 				t.Errorf("filterByIPFamily() = %+v\nWant = %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_UnitFilterByIPFamily_Ordering(t *testing.T) {
+	want := []string{addrv4, addrv4_2, addrv6, addrv6_2}
+	ips := []string{addrv4, addrv4_2, addrv6, addrv6_2}
+	rand.Shuffle(len(ips), func(i, j int) {
+		ips[i], ips[j] = ips[j], ips[i]
+	})
+	svc := &core.Service{
+		Spec: core.ServiceSpec{
+			IPFamilies: []core.IPFamily{core.IPv4Protocol, core.IPv6Protocol},
+		},
+	}
+
+	got, _ := filterByIPFamily(ips, svc)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("filterByIPFamily() = %+v\nWant = %+v", got, want)
 	}
 }

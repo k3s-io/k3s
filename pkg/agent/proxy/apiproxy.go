@@ -41,6 +41,9 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 	}
 
 	if lbEnabled {
+		if err := loadbalancer.SetHTTPProxy(supervisorURL); err != nil {
+			return nil, err
+		}
 		lb, err := loadbalancer.New(ctx, dataDir, loadbalancer.SupervisorServiceName, supervisorURL, p.lbServerPort, isIPv6)
 		if err != nil {
 			return nil, err
