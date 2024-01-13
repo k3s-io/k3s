@@ -474,6 +474,12 @@ func writeKubeConfig(certs string, config *Config) error {
 		util.SetFileModeForPath(kubeConfig, os.FileMode(0600))
 	}
 
+	if config.ControlConfig.KubeConfigGroup != "" {
+		util.SetFileGroupForPath(kubeConfig, config.ControlConfig.KubeConfigGroup)
+	} else {
+		logrus.Errorf("Failed to set %s to group %s: %v", kubeConfig, config.ControlConfig.KubeConfigGroup, err)
+	}
+
 	if kubeConfigSymlink != kubeConfig {
 		if err := writeConfigSymlink(kubeConfig, kubeConfigSymlink); err != nil {
 			logrus.Errorf("Failed to write kubeconfig symlink: %v", err)
