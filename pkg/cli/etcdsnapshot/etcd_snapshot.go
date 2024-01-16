@@ -3,8 +3,8 @@ package etcdsnapshot
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,7 +17,9 @@ import (
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/util"
 	util2 "github.com/k3s-io/k3s/pkg/util"
+	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
@@ -52,6 +54,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, config *server.Config) (*e
 
 	config.DisableAgent = true
 	config.ControlConfig.DataDir = dataDir
+	config.ControlConfig.BindAddress = cfg.BindAddress
 	config.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 	config.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 	config.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
@@ -72,6 +75,46 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, config *server.Config) (*e
 	config.ControlConfig.Runtime.ClientETCDCert = filepath.Join(dataDir, "tls", "etcd", "client.crt")
 	config.ControlConfig.Runtime.ClientETCDKey = filepath.Join(dataDir, "tls", "etcd", "client.key")
 	config.ControlConfig.Runtime.KubeConfigAdmin = filepath.Join(dataDir, "cred", "admin.kubeconfig")
+
+	// We need to go through defaulting of cluster addresses to ensure that the etcd config for the standalone
+	// command uses the same endpoint selection logic as it does when starting up the full server. Specifically,
+	// we need to set an IPv6 service CIDR on IPv6-only or IPv6-first nodes, as the etcd default endpoints check
+	// the service CIDR primary addresss family to determine what loopback address to use.
+	_, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	if err != nil {
+		return nil, err
+	}
+
+	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
+	_, defaultClusterCIDR, defaultServiceCIDR, _ := util.GetDefaultAddresses(nodeIPs[0])
+	if len(cfg.ClusterCIDR) == 0 {
+		cfg.ClusterCIDR.Set(defaultClusterCIDR)
+	}
+	for _, cidr := range util.SplitStringSlice(cfg.ClusterCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "invalid cluster-cidr %s", cidr)
+		}
+		config.ControlConfig.ClusterIPRanges = append(config.ControlConfig.ClusterIPRanges, parsed)
+	}
+
+	// set ClusterIPRange to the first address (first defined IPFamily is preferred)
+	config.ControlConfig.ClusterIPRange = config.ControlConfig.ClusterIPRanges[0]
+
+	// configure ServiceIPRanges. Use default 10.43.0.0/16 or fd00:43::/112 if user did not set it
+	if len(cfg.ServiceCIDR) == 0 {
+		cfg.ServiceCIDR.Set(defaultServiceCIDR)
+	}
+	for _, cidr := range util.SplitStringSlice(cfg.ServiceCIDR) {
+		_, parsed, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "invalid service-cidr %s", cidr)
+		}
+		config.ControlConfig.ServiceIPRanges = append(config.ControlConfig.ServiceIPRanges, parsed)
+	}
+
+	// set ServiceIPRange to the first address (first defined IPFamily is preferred)
+	config.ControlConfig.ServiceIPRange = config.ControlConfig.ServiceIPRanges[0]
 
 	e := etcd.NewETCD()
 	if err := e.SetControlConfig(&config.ControlConfig); err != nil {

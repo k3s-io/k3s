@@ -47,7 +47,7 @@ func generateTestConfig() *config.Control {
 		EtcdSnapshotRetention: 5,
 		EtcdS3Endpoint:        "s3.amazonaws.com",
 		EtcdS3Region:          "us-east-1",
-		SANs:                  []string{"127.0.0.1"},
+		SANs:                  []string{"127.0.0.1", mustGetAddress()},
 		CriticalControlArgs:   criticalControlArgs,
 	}
 }
