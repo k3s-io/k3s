@@ -399,6 +399,7 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	if err := os.WriteFile(e.ResetFile(), []byte{}, 0600); err != nil {
 		return err
 	}
+
 	return e.newCluster(ctx, true)
 }
 
@@ -756,7 +757,7 @@ func getAdvertiseAddress(advertiseIP string) (string, error) {
 
 // newCluster returns options to set up etcd for a new cluster
 func (e *ETCD) newCluster(ctx context.Context, reset bool) error {
-	logrus.Infof("Starting etcd for new cluster")
+	logrus.Infof("Starting etcd for new cluster, cluster-reset=%v", reset)
 	err := e.cluster(ctx, reset, executor.InitialOptions{
 		AdvertisePeerURL: e.peerURL(),
 		Cluster:          fmt.Sprintf("%s=%s", e.name, e.peerURL()),
@@ -765,8 +766,10 @@ func (e *ETCD) newCluster(ctx context.Context, reset bool) error {
 	if err != nil {
 		return err
 	}
-	if err := e.migrateFromSQLite(ctx); err != nil {
-		return fmt.Errorf("failed to migrate content from sqlite to etcd: %w", err)
+	if !reset {
+		if err := e.migrateFromSQLite(ctx); err != nil {
+			return fmt.Errorf("failed to migrate content from sqlite to etcd: %w", err)
+		}
 	}
 	return nil
 }
@@ -847,7 +850,7 @@ func (e *ETCD) clientURL() string {
 // on other nodes connect mid-process.
 func (e *ETCD) advertiseClientURLs(reset bool) string {
 	if reset {
-		return fmt.Sprintf("https://%s", net.JoinHostPort(e.config.Loopback(true), "2379"))
+		return fmt.Sprintf("https://%s:2379", e.config.Loopback(true))
 	}
 	return e.clientURL()
 }

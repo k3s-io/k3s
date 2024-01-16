@@ -439,6 +439,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableControllerManager = true
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
+		serverConfig.ControlConfig.DisableServiceLB = true
 
 		// If the supervisor and apiserver are on the same port, everything is running embedded
 		// and we don't need the kubelet or containerd up to perform a cluster reset.
