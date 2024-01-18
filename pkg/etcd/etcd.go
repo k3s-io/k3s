@@ -68,6 +68,7 @@ const (
 	// other defaults from k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 	defaultKeepAliveTime    = 30 * time.Second
 	defaultKeepAliveTimeout = 10 * time.Second
+	heartbeatInterval       = 5 * time.Minute
 
 	maxBackupRetention = 5
 
@@ -1251,8 +1252,17 @@ func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client kubernetes.Interface
 	}
 
 	if find, condition := nodeUtil.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
-		if condition.Status == newCondition.Status && memberStatus != StatusUnjoined {
+
+		// if the condition is not changing, we only want to update the last heartbeat time
+		if condition.Status == newCondition.Status && condition.Reason == newCondition.Reason && condition.Message == newCondition.Message {
 			logrus.Debugf("Node %s is not changing etcd status condition", memberName)
+
+			// If the condition status is not changing, we only want to update the last heartbeat time if the
+			// LastHeartbeatTime is older than the heartbeatTimeout.
+			if metav1.Now().Sub(condition.LastHeartbeatTime.Time) < heartbeatInterval {
+				return nil
+			}
+
 			condition.LastHeartbeatTime = metav1.Now()
 			return nodeHelper.SetNodeCondition(client, types.NodeName(node.Name), *condition)
 		}
