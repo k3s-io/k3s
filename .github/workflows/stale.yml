@@ -1,0 +1,51 @@
+name: Stalebot
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+jobs:
+  stalebot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close Stale Issues
+        uses: actions/stale@v9.0.0
+        with:
+          # ensure PRs are exempt
+          days-before-pr-stale: -1
+          day-before-pr-closed: -1
+          
+          days-before-issue-stale: 45
+          days-before-issue-close: 14
+          stale-issue-label: status/stale
+          exempt-all-milestones: true
+          exempt-all-assignees: true
+          exempt-issue-labels:
+            internal,
+            kind/bug,
+            kind/bug-qa,
+            kind/task,
+            kind/feature,
+            kind/enhancement,
+            kind/design,
+            kind/ci-improvements,
+            kind/performance,
+            kind/flaky-test,
+            kind/documentation,
+            kind/epic,
+            kind/upstream-issue,
+            priority/backlog,
+            priority/critical-urgent,
+            priority/important-longterm,
+            priority/important-soon,
+            priority/low,
+            priority/medium,
+            priority/high,
+            priority/urgent,
+          stale-issue-message: > 
+            This repository uses a bot to automatically label issues which have not had any activity (commit/comment/label) 
+            for 45 days. This helps us manage the community issues better. If the issue is still relevant, please add a comment to the 
+            issue so the bot can remove the label and we know it is still valid. If it is no longer relevant (or possibly fixed in the 
+            latest release), the bot will automatically close the issue in 14 days. Thank you for your contributions.
