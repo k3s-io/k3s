@@ -426,7 +426,7 @@ download() {
     set +e
     case $DOWNLOADER in
         curl)
-                curl -o $1 -sfL $2
+            curl -o $1 -sfL $2
             ;;
         wget)
             wget -qO $1 $2
@@ -719,11 +719,12 @@ download_and_verify() {
     setup_tmp
     get_release_version
     download_hash
-    
+
     if installed_hash_matches; then
         info 'Skipping binary downloaded, installed k3s matches hash'
         return
     fi
+
     download_binary
     verify_binary
     setup_binary
