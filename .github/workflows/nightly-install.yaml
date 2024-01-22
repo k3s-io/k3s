@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.vagrant.d/boxes

@@ -51,7 +51,7 @@ jobs:
         uses: actions/download-artifact@v3
         with: { name: k3s, path: dist/artifacts/ }
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.vagrant.d/boxes
