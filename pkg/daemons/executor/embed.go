@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"net/http"
+	"os"
 	"runtime"
 	"runtime/debug"
 	"strconv"
@@ -89,7 +90,12 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 		if err := util.WaitForAPIServerReady(ctx, e.nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
 			logrus.Fatalf("Kubelet failed to wait for apiserver ready: %v", err)
 		}
-		logrus.Fatalf("kubelet exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("kubelet exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
@@ -105,7 +111,12 @@ func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("kube-proxy panic: %v", err)
 			}
 		}()
-		logrus.Fatalf("kube-proxy exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("kube-proxy exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
@@ -127,7 +138,12 @@ func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args 
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("apiserver panic: %v", err)
 			}
 		}()
-		logrus.Fatalf("apiserver exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("apiserver exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
@@ -156,7 +172,12 @@ func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("scheduler panic: %v", err)
 			}
 		}()
-		logrus.Fatalf("scheduler exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("scheduler exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
@@ -173,7 +194,12 @@ func (*Embedded) ControllerManager(ctx context.Context, apiReady <-chan struct{}
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("controller-manager panic: %v", err)
 			}
 		}()
-		logrus.Fatalf("controller-manager exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("controller-manager exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
@@ -206,7 +232,12 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("cloud-controller-manager panic: %v", err)
 			}
 		}()
-		logrus.Errorf("cloud-controller-manager exited: %v", command.ExecuteContext(ctx))
+		err := command.ExecuteContext(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("cloud-controller-manager exited: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}()
 
 	return nil
