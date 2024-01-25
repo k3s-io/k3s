@@ -99,10 +99,12 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		cmd.Env = append(env, cenv...)
 
 		addDeathSig(cmd)
-		if err := cmd.Run(); err != nil {
+		err := cmd.Run()
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("containerd exited: %s", err)
+			os.Exit(1)
 		}
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	if err := cri.WaitForService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
