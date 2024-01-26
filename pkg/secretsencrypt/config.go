@@ -1,20 +1,29 @@
 package secretsencrypt
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -173,4 +182,79 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
 	return os.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
+}
+
+// WaitForEncryptionConfigReload watches the metrics API, polling the latest time the encryption config was reloaded.
+func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccesses, reloadTime int64) error {
+
+	return wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+
+		newReloadTime, newReloadSuccess, err := GetEncryptionConfigMetrics(runtime, false)
+		if err != nil {
+			return true, err
+		}
+
+		if newReloadSuccess <= reloadSuccesses || newReloadTime <= reloadTime {
+			return false, nil
+		}
+		logrus.Infof("encryption config reloaded successfully %d times", newReloadSuccess)
+		logrus.Debugf("encryption config reloaded at %s", time.Unix(newReloadTime, 0))
+		return true, nil
+
+	})
+}
+
+func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initial bool) (int64, int64, error) {
+	var unixUpdateTime int64
+	var reloadSuccessCounter int64
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAPIServer)
+	if err != nil {
+		return 0, 0, err
+	}
+	restConfig.GroupVersion = &apiserverconfigv1.SchemeGroupVersion
+	restConfig.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	restClient, err := rest.RESTClientFor(restConfig)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// This is wrapped in a poller because on startup no metrics exist. Its only after the encryption config
+	// is modified and the first reload occurs that the metrics are available.
+	err = wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+		data, err := restClient.Get().AbsPath("/metrics").DoRaw(context.TODO())
+		if err != nil {
+			return true, err
+		}
+
+		reader := bytes.NewReader(data)
+		var parser expfmt.TextParser
+		mf, err := parser.TextToMetricFamilies(reader)
+		if err != nil {
+			return true, err
+		}
+		tsMetric := mf["apiserver_encryption_config_controller_automatic_reload_last_timestamp_seconds"]
+		successMetric := mf["apiserver_encryption_config_controller_automatic_reload_success_total"]
+
+		// First time, no metrics exist, so return zeros
+		if tsMetric == nil && successMetric == nil && initial {
+			return true, nil
+		}
+
+		if tsMetric == nil || successMetric == nil {
+			return false, nil
+		}
+
+		rawTime := tsMetric.GetMetric()[0].GetGauge().GetValue()
+		unixUpdateTime = int64(rawTime)
+		if time.Now().Unix() < unixUpdateTime {
+			return true, fmt.Errorf("encryption reload time is from a nonexistent future")
+		}
+
+		rawSuccess := successMetric.GetMetric()[0].GetCounter().GetValue()
+		reloadSuccessCounter = int64(rawSuccess)
+
+		return true, nil
+	})
+
+	return unixUpdateTime, reloadSuccessCounter, err
 }

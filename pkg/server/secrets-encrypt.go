@@ -174,6 +174,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			resp.Write([]byte(err.Error()))
 			return
 		}
+
 		if encryptReq.Stage != nil {
 			switch *encryptReq.Stage {
 			case secretsencrypt.EncryptionPrepare:
@@ -309,7 +310,7 @@ func addAndRotateKeys(server *config.Control) error {
 
 	// Right rotate elements
 	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
-
+	logrus.Infoln("Rotating secrets-encryption keys")
 	return secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true)
 }
 
@@ -325,7 +326,16 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
+	reloadSuccesses, reloadTime, err := secretsencrypt.GetEncryptionConfigMetrics(server.Runtime, true)
+	if err != nil {
+		return err
+	}
+
 	if err := addAndRotateKeys(server); err != nil {
+		return err
+	}
+
+	if err := secretsencrypt.WaitForEncryptionConfigReload(server.Runtime, reloadSuccesses, reloadTime); err != nil {
 		return err
 	}
 

@@ -132,16 +132,28 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 		return node, err
 	}
 
+	reloadSuccesses, reloadTime, err := GetEncryptionConfigMetrics(h.controlConfig.Runtime, false)
+	if err != nil {
+		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+		return node, err
+	}
+
+	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
 	curKeys = curKeys[:len(curKeys)-1]
 	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, true); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
+
+	if err := WaitForEncryptionConfigReload(h.controlConfig.Runtime, reloadSuccesses, reloadTime); err != nil {
+		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
+		return node, err
+	}
+
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {
@@ -178,6 +190,7 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 	if reencryptRequestHash, err := GenReencryptHash(h.controlConfig.Runtime, EncryptionReencryptRequest); err != nil {
 		return false, err
 	} else if reencryptRequestHash != hash {
+		logrus.Infof("HELP: %s %s", reencryptRequestHash, hash)
 		err = fmt.Errorf("invalid hash: %s found on node %s", hash, node.ObjectMeta.Name)
 		return false, err
 	}
@@ -199,6 +212,9 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 			stage := split[0]
 			hash := split[1]
 			if stage == EncryptionReencryptActive && hash == reencryptActiveHash {
+				return false, fmt.Errorf("another reencrypt is already active")
+			}
+			if stage == EncryptionReencryptActive {
 				return false, fmt.Errorf("another reencrypt is already active")
 			}
 		}
