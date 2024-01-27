@@ -6,6 +6,7 @@ package rootless
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -25,11 +26,17 @@ func setupMounts(stateDir string) error {
 		_ = os.RemoveAll(f)
 	}
 
+	runDir, err := resolveRunDir()
+	if err != nil {
+		return err
+	}
+
 	mountMap := [][]string{
 		{"/var/log", filepath.Join(stateDir, "logs")},
 		{"/var/lib/cni", filepath.Join(stateDir, "cni")},
 		{"/var/lib/kubelet", filepath.Join(stateDir, "kubelet")},
 		{"/etc/rancher", filepath.Join(stateDir, "etc", "rancher")},
+		{"/run/k3s/containerd", filepath.Join(runDir, "k3s", "containerd")},
 	}
 
 	for _, v := range mountMap {
@@ -90,4 +97,16 @@ func setupMount(target, dir string) error {
 
 	logrus.Debug("Mounting ", dir, target, " none bind")
 	return unix.Mount(dir, target, "none", unix.MS_BIND, "")
+}
+
+func resolveRunDir() (string, error) {
+	runDir := os.Getenv("XDG_RUNTIME_DIR")
+	if runDir == "" {
+		u, err := user.Lookup(os.Getenv("USER"))
+		if err != nil {
+			return "", err
+		}
+		runDir = filepath.Join("/run/user", u.Uid)
+	}
+	return runDir, nil
 }
