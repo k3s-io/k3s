@@ -132,11 +132,6 @@ func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*pare
 		return nil, errors.Wrapf(err, "failed to mkdir %s", stateDir)
 	}
 
-	stateDir, err := os.MkdirTemp("", "rootless")
-	if err != nil {
-		return nil, err
-	}
-
 	driver.SetStateDir(stateDir)
 
 	opt := &parent.Opt{
