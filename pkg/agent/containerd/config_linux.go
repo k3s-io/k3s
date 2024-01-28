@@ -23,7 +23,10 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/util"
 )
 
-const socketPrefix = "unix://"
+const (
+	socketPrefix = "unix://"
+	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin:/usr/sbin:/usr/local/sbin:/usr/bin:/usr/local/bin"
+)
 
 func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
@@ -53,7 +56,12 @@ func setupContainerdConfig(ctx context.Context, cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
-	extraRuntimes := findContainerRuntimes(os.DirFS(string(os.PathSeparator)))
+	// set the path to include the runtimes and then remove the aditional path entries
+	// that we added after finding the runtimes
+	originalPath := os.Getenv("PATH")
+	os.Setenv("PATH", runtimesPath)
+	extraRuntimes := findContainerRuntimes()
+	os.Setenv("PATH", originalPath)
 
 	// Verifies if the DefaultRuntime can be found
 	if _, ok := extraRuntimes[cfg.DefaultRuntime]; !ok && cfg.DefaultRuntime != "" {
