@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -226,7 +227,11 @@ func RotateKeys(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b); err != nil {
+	timeout := 70 * time.Second
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config",
+		b,
+		clientaccess.WithTimeout(timeout),
+		clientaccess.WithHeaderTimeout(timeout)); err != nil {
 		return wrapServerError(err)
 	}
 	fmt.Println("keys rotated, reencryption started")

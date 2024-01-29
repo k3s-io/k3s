@@ -47,7 +47,7 @@ def provision(vm, role, role_num, node_num)
 end
 
 Vagrant.configure("2") do |config|
-  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload", "vagrant-scp"]
   # Default provider is libvirt, virtualbox is only provided as a backup
   config.vm.provider "libvirt" do |v|
     v.cpus = NODE_CPUS
