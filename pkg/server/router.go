@@ -488,6 +488,11 @@ func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper
 }
 
 func verifyLocalPassword(ctx context.Context, config *Config, mu *sync.Mutex, deferredNodes map[string]bool, node *nodeInfo) (string, int, error) {
+	// do not attempt to verify the node password if the local host is not running an agent and does not have a node resource.
+	if config.DisableAgent {
+		return node.Name, http.StatusOK, nil
+	}
+
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
 	if config.ControlConfig.Rootless {
