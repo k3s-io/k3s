@@ -245,7 +245,13 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
-		return errors.Wrap(err, "failed to get the snapshot dir")
+		return errors.Wrap(err, "failed to get etcd-snapshot-dir")
+	}
+
+	if info, err := os.Stat(snapshotDir); err != nil {
+		return errors.Wrapf(err, "failed to stat etcd-snapshot-dir %s", snapshotDir)
+	} else if !info.IsDir() {
+		return fmt.Errorf("etcd-snapshot-dir %s is not a directory", snapshotDir)
 	}
 
 	cfg, err := getClientConfig(ctx, e.config)
@@ -436,7 +442,7 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
 	}
 
 	if err := filepath.Walk(snapshotDir, func(path string, file os.FileInfo, err error) error {
-		if file.IsDir() || err != nil {
+		if err != nil || file.IsDir() {
 			return err
 		}
 
