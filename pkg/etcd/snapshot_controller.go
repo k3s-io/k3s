@@ -33,6 +33,13 @@ const (
 var (
 	snapshotConfigMapName = version.Program + "-etcd-snapshots"
 	errNotReconciled      = errors.New("no nodes have reconciled ETCDSnapshotFile resources")
+	reconcileBackoff      = wait.Backoff{
+		Steps:    9,
+		Duration: 10 * time.Millisecond,
+		Factor:   3.0,
+		Jitter:   0.1,
+		Cap:      30 * time.Second,
+	}
 )
 
 type etcdSnapshotHandler struct {
@@ -62,7 +69,7 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 		err := e.reconcile()
 		if err == errNotReconciled {
 			logrus.Debugf("Failed to reconcile snapshot ConfigMap: %v, requeuing", err)
-			e.snapshots.Enqueue(key)
+			e.snapshots.EnqueueAfter(key, reconcileBackoff.Step())
 			return nil, nil
 		}
 		return nil, err
