@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
@@ -13,6 +14,7 @@ import (
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilsnet "k8s.io/utils/net"
 )
 
@@ -107,11 +109,14 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 					}
 
 					if !c.config.EtcdDisableSnapshots {
-						if err := c.managedDB.ReconcileSnapshotData(ctx); err != nil {
-							logrus.Errorf("Failed to record snapshots for cluster: %v", err)
-						}
+						wait.PollImmediateUntilWithContext(ctx, time.Second, func(ctx context.Context) (bool, error) {
+							err := c.managedDB.ReconcileSnapshotData(ctx)
+							if err != nil {
+								logrus.Errorf("Failed to record snapshots for cluster: %v", err)
+							}
+							return err == nil, nil
+						})
 					}
-
 					return
 				default:
 					runtime.Gosched()
