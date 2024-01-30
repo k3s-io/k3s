@@ -137,7 +137,7 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	}
 
 	// Remove last key
-	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime)
+	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime, false)
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
@@ -186,7 +186,6 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 	if reencryptRequestHash, err := GenReencryptHash(h.controlConfig.Runtime, EncryptionReencryptRequest); err != nil {
 		return false, err
 	} else if reencryptRequestHash != hash {
-		logrus.Infof("HELP: %s %s", reencryptRequestHash, hash)
 		err = fmt.Errorf("invalid hash: %s found on node %s", hash, node.ObjectMeta.Name)
 		return false, err
 	}
@@ -208,9 +207,6 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 			stage := split[0]
 			hash := split[1]
 			if stage == EncryptionReencryptActive && hash == reencryptActiveHash {
-				return false, fmt.Errorf("another reencrypt is already active")
-			}
-			if stage == EncryptionReencryptActive {
 				return false, fmt.Errorf("another reencrypt is already active")
 			}
 		}

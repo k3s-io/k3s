@@ -128,7 +128,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	if len(providers) > 2 {
 		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
 	}
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,6 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			resp.Write([]byte(err.Error()))
 			return
 		}
-
 		if encryptReq.Stage != nil {
 			switch *encryptReq.Stage {
 			case secretsencrypt.EncryptionPrepare:
@@ -210,7 +209,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -242,7 +241,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -294,7 +293,7 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 }
 
 func addAndRotateKeys(server *config.Control) error {
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}

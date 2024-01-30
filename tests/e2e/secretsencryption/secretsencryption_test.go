@@ -113,7 +113,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 					} else {
 						g.Expect(res).Should(ContainSubstring("Current Rotation Stage: start"))
 					}
-				}, "420s", "2s").Should(Succeed())
+				}, "420s", "10s").Should(Succeed())
 			}
 		})
 

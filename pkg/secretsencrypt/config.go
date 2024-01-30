@@ -51,7 +51,10 @@ func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1
 	return curEncryption.Resources[0].Providers, nil
 }
 
-func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key, error) {
+// GetEncryptionKeys returns a list of encryption keys from the current encryption configuration.
+// If includeIdentity is true, it will also include a fake key representing the identity provider, which
+// is used to determine if encryption is enabled/disabled.
+func GetEncryptionKeys(runtime *config.ControlRuntime, includeIdentity bool) ([]apiserverconfigv1.Key, error) {
 
 	providers, err := GetEncryptionProviders(runtime)
 	if err != nil {
@@ -63,6 +66,14 @@ func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key,
 
 	var curKeys []apiserverconfigv1.Key
 	for _, p := range providers {
+		// Since identity doesn't have keys, we make up a fake key to represent it, so we can
+		// know that encryption is enabled/disabled in the request.
+		if p.Identity != nil && includeIdentity {
+			curKeys = append(curKeys, apiserverconfigv1.Key{
+				Name:   "identity",
+				Secret: "identity",
+			})
+		}
 		if p.AESCBC != nil {
 			curKeys = append(curKeys, p.AESCBC.Keys...)
 		}
@@ -130,10 +141,10 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 }
 
 // GenReencryptHash generates a sha256 hash from the existing secrets keys and
-// a new key based on the input arguments.
+// any identity providers plus a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
 
-	keys, err := GetEncryptionKeys(runtime)
+	keys, err := GetEncryptionKeys(runtime, true)
 	if err != nil {
 		return "", err
 	}

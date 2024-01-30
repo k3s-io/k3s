@@ -64,7 +64,6 @@ func Server(ctx context.Context, cfg *config.Control) error {
 		if cfg.EncryptSecrets {
 			controllerName := "reencrypt-secrets"
 			cfg.Runtime.ClusterControllerStarts[controllerName] = func(ctx context.Context) {
-				logrus.Warn("HELP Current Node is", os.Getenv("NODE_NAME"))
 				// cfg.Runtime.Core is populated before this callback is triggered
 				if err := secretsencrypt.Register(ctx,
 					controllerName,

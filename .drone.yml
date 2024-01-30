@@ -651,6 +651,10 @@ steps:
   - vagrant destroy -f
   - go test -v -timeout=45m ./validatecluster_test.go -ci -local
   - cp ./coverage.out /tmp/artifacts/validate-coverage.out
+  - cd ../secretsencryption
+  - vagrant destroy -f
+  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+  - cp ./coverage.out /tmp/artifacts/se-coverage.out
   - cd ../startup
   - vagrant destroy -f
   - go test -v -timeout=30m ./startup_test.go -ci -local
