@@ -13,8 +13,11 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 )
+
+type HostConfigs map[string]templates.HostConfig
 
 // writeContainerdConfig renders and saves config.toml from the filled template
 func writeContainerdConfig(cfg *config.Node, containerdConfig templates.ContainerdConfig) error {
@@ -39,60 +42,7 @@ func writeContainerdConfig(cfg *config.Node, containerdConfig templates.Containe
 // writeContainerdHosts merges registry mirrors/configs, and renders and saves hosts.toml from the filled template
 func writeContainerdHosts(cfg *config.Node, containerdConfig templates.ContainerdConfig) error {
 	mirrorAddr := net.JoinHostPort(spegel.DefaultRegistry.InternalAddress, spegel.DefaultRegistry.RegistryPort)
-	registry := containerdConfig.PrivateRegistryConfig
-	hosts := map[string]templates.HostConfig{}
-
-	for host, mirror := range registry.Mirrors {
-		defaultHost, _ := docker.DefaultHost(host)
-		config := templates.HostConfig{
-			Host:    defaultHost,
-			Program: version.Program,
-		}
-		if host == "*" {
-			host = "_default"
-			config.Host = ""
-		} else if containerdConfig.NoDefaultEndpoint {
-			config.Host = ""
-		}
-		// TODO: rewrites are currently copied from the mirror settings into each endpoint.
-		// In the future, we should allow for per-endpoint rewrites, instead of expecting
-		// all mirrors to have the same structure. This will require changes to the registries.yaml
-		// structure, which is defined in rancher/wharfie.
-		for _, endpoint := range mirror.Endpoints {
-			if endpointURL, err := url.Parse(endpoint); err == nil {
-				re := templates.RegistryEndpoint{
-					OverridePath: endpointURL.Path != "" && endpointURL.Path != "/" && !strings.HasSuffix(endpointURL.Path, "/v2"),
-					Config:       registry.Configs[endpointURL.Host],
-					Rewrites:     mirror.Rewrites,
-					URI:          endpoint,
-				}
-				// Do not apply rewrites to the embedded registry endpoint
-				if endpointURL.Host == mirrorAddr {
-					re.Rewrites = nil
-				}
-				config.Endpoints = append(config.Endpoints, re)
-			}
-		}
-		hosts[host] = config
-	}
-
-	for host, registry := range registry.Configs {
-		config, ok := hosts[host]
-		if !ok {
-			config = templates.HostConfig{
-				Program: version.Program,
-			}
-		}
-		if len(config.Endpoints) == 0 {
-			config.Endpoints = []templates.RegistryEndpoint{
-				{
-					Config: registry,
-					URI:    "https://" + host,
-				},
-			}
-		}
-		hosts[host] = config
-	}
+	hosts := getHostConfigs(containerdConfig.PrivateRegistryConfig, containerdConfig.NoDefaultEndpoint, mirrorAddr)
 
 	// Clean up previous configuration templates
 	os.RemoveAll(cfg.Containerd.Registry)
@@ -114,4 +64,141 @@ func writeContainerdHosts(cfg *config.Node, containerdConfig templates.Container
 	}
 
 	return nil
+}
+
+// getHostConfigs merges the registry mirrors/configs into HostConfig template structs
+func getHostConfigs(registry *registries.Registry, noDefaultEndpoint bool, mirrorAddr string) HostConfigs {
+	hosts := map[string]templates.HostConfig{}
+
+	// create endpoints for mirrors
+	for host, mirror := range registry.Mirrors {
+		config := templates.HostConfig{
+			Program: version.Program,
+		}
+		if uri, _, err := normalizeEndpointAddress(host, mirrorAddr); err == nil {
+			config.DefaultEndpoint = uri.String()
+		}
+
+		// TODO: rewrites are currently copied from the mirror settings into each endpoint.
+		// In the future, we should allow for per-endpoint rewrites, instead of expecting
+		// all mirrors to have the same structure. This will require changes to the registries.yaml
+		// structure, which is defined in rancher/wharfie.
+		for _, endpoint := range mirror.Endpoints {
+			uri, override, err := normalizeEndpointAddress(endpoint, mirrorAddr)
+			if err != nil {
+				logrus.Warnf("Ignoring invalid endpoint URL %s for %s: %v", endpoint, host, err)
+			} else {
+				var rewrites map[string]string
+				// Do not apply rewrites to the embedded registry endpoint
+				if uri.Host != mirrorAddr {
+					rewrites = mirror.Rewrites
+				}
+				config.Endpoints = append(config.Endpoints, templates.RegistryEndpoint{
+					Config:       registry.Configs[uri.Host],
+					Rewrites:     rewrites,
+					OverridePath: override,
+					URI:          uri.String(),
+				})
+			}
+		}
+
+		if host == "*" {
+			host = "_default"
+		}
+		hosts[host] = config
+	}
+
+	// create endpoints for registries using default endpoints
+	for host, registry := range registry.Configs {
+		config, ok := hosts[host]
+		if !ok {
+			config = templates.HostConfig{
+				Program: version.Program,
+			}
+			if uri, _, err := normalizeEndpointAddress(host, mirrorAddr); err == nil {
+				config.DefaultEndpoint = uri.String()
+			}
+		}
+		// If there is config for this host but no endpoints, inject the config for the default endpoint.
+		if len(config.Endpoints) == 0 {
+			uri, _, err := normalizeEndpointAddress(host, mirrorAddr)
+			if err != nil {
+				logrus.Warnf("Ignoring invalid endpoint URL %s for %s: %v", host, host, err)
+			} else {
+				config.Endpoints = append(config.Endpoints, templates.RegistryEndpoint{
+					Config: registry,
+					URI:    uri.String(),
+				})
+			}
+		}
+
+		if host == "*" {
+			host = "_default"
+		}
+		hosts[host] = config
+	}
+
+	// Clean up hosts and default endpoints where resulting config leaves only defaults
+	for host, config := range hosts {
+		// if default endpoint is disabled, or this is the wildcard host, delete the default endpoint
+		if noDefaultEndpoint || host == "_default" {
+			config.DefaultEndpoint = ""
+			hosts[host] = config
+		}
+		if l := len(config.Endpoints); l > 0 {
+			if ep := config.Endpoints[l-1]; ep.URI == config.DefaultEndpoint {
+				// if the last endpoint is the default endpoint
+				if ep.Config.Auth == nil && ep.Config.TLS == nil && len(ep.Rewrites) == 0 {
+					// if has no config, delete this host to use the default config
+					delete(hosts, host)
+				} else {
+					// if it has config, delete the default endpoint
+					config.DefaultEndpoint = ""
+					hosts[host] = config
+				}
+			}
+		} else {
+			// if this host has no endpoints, delete this host to use the default config
+			delete(hosts, host)
+		}
+	}
+
+	return hosts
+}
+
+// normalizeEndpointAddress normalizes the endpoint address.
+// If successful, it returns the URL, and a bool indicating if the endpoint path should be overridden.
+// If unsuccessful, an error is returned.
+// Scheme and hostname logic should match containerd:
+// https://github.com/containerd/containerd/blob/v1.7.13/remotes/docker/config/hosts.go#L99-L131
+func normalizeEndpointAddress(endpoint, mirrorAddr string) (*url.URL, bool, error) {
+	// Ensure that the endpoint address has a scheme so that the URL is parsed properly
+	if !strings.Contains(endpoint, "://") {
+		endpoint = "//" + endpoint
+	}
+	endpointURL, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, false, err
+	}
+	port := endpointURL.Port()
+
+	// set default scheme, if not provided
+	if endpointURL.Scheme == "" {
+		// localhost on odd ports defaults to http, unless it's the embedded mirror
+		if docker.IsLocalhost(endpointURL.Host) && port != "" && port != "443" && endpointURL.Host != mirrorAddr {
+			endpointURL.Scheme = "http"
+		} else {
+			endpointURL.Scheme = "https"
+		}
+	}
+	endpointURL.Host, _ = docker.DefaultHost(endpointURL.Host)
+
+	switch endpointURL.Path {
+	case "", "/", "/v2":
+		// If the path is empty, /, or /v2, use the default path.
+		endpointURL.Path = "/v2"
+		return endpointURL, false, nil
+	}
+
+	return endpointURL, true, nil
 }
