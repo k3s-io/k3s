@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -41,11 +42,21 @@ type handler struct {
 
 func Register(
 	ctx context.Context,
-	k8s kubernetes.Interface,
+	controllerName string,
 	controlConfig *config.Control,
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
 ) error {
+	cfg := controlConfig.Runtime.KubeConfigAPIServer
+	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
+	if err != nil {
+		return err
+	}
+	k8s, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
 	h := &handler{
 		ctx:           ctx,
 		controlConfig: controlConfig,
@@ -54,7 +65,7 @@ func Register(
 		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, metav1.NamespaceDefault),
 	}
 
-	nodes.OnChange(ctx, "reencrypt-controller", h.onChangeNode)
+	nodes.OnChange(ctx, controllerName, h.onChangeNode)
 	return nil
 }
 
@@ -132,24 +143,9 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 		return node, err
 	}
 
-	reloadSuccesses, reloadTime, err := GetEncryptionConfigMetrics(h.controlConfig.Runtime, false)
-	if err != nil {
-		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
-		return node, err
-	}
-
 	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
 	curKeys = curKeys[:len(curKeys)-1]
 	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, true); err != nil {
-		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
-		return node, err
-	}
-	if err != nil {
-		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
-		return node, err
-	}
-
-	if err := WaitForEncryptionConfigReload(h.controlConfig.Runtime, reloadSuccesses, reloadTime); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}

@@ -326,7 +326,7 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
-	reloadSuccesses, reloadTime, err := secretsencrypt.GetEncryptionConfigMetrics(server.Runtime, true)
+	reloadTime, reloadSuccesses, err := secretsencrypt.GetEncryptionConfigMetrics(server.Runtime, true)
 	if err != nil {
 		return err
 	}

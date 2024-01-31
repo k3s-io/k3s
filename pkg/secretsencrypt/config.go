@@ -186,8 +186,8 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 
 // WaitForEncryptionConfigReload watches the metrics API, polling the latest time the encryption config was reloaded.
 func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccesses, reloadTime int64) error {
-
-	return wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+	var lastFailure string
+	err := wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
 
 		newReloadTime, newReloadSuccess, err := GetEncryptionConfigMetrics(runtime, false)
 		if err != nil {
@@ -195,18 +195,25 @@ func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccess
 		}
 
 		if newReloadSuccess <= reloadSuccesses || newReloadTime <= reloadTime {
+			lastFailure = fmt.Sprintf("new encryption metrics are not greater than old metrics (%d/%d) (%d/%d)", newReloadSuccess, reloadSuccesses, newReloadTime, reloadTime)
 			return false, nil
 		}
 		logrus.Infof("encryption config reloaded successfully %d times", newReloadSuccess)
 		logrus.Debugf("encryption config reloaded at %s", time.Unix(newReloadTime, 0))
 		return true, nil
-
 	})
+	if err != nil {
+		err = fmt.Errorf("%w: %s", err, lastFailure)
+	}
+	return err
 }
 
-func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initial bool) (int64, int64, error) {
+// GetEncryptionConfigMetrics fetches the metrics API and returns the last time the encryption config was reloaded
+// and the number of times it has been reloaded.
+func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics bool) (int64, int64, error) {
 	var unixUpdateTime int64
 	var reloadSuccessCounter int64
+	var lastFailure string
 	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAPIServer)
 	if err != nil {
 		return 0, 0, err
@@ -236,11 +243,17 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initial bool) (i
 		successMetric := mf["apiserver_encryption_config_controller_automatic_reload_success_total"]
 
 		// First time, no metrics exist, so return zeros
-		if tsMetric == nil && successMetric == nil && initial {
+		if tsMetric == nil && successMetric == nil && initialMetrics {
 			return true, nil
 		}
 
-		if tsMetric == nil || successMetric == nil {
+		if tsMetric == nil {
+			lastFailure = "encryption config time metric not found"
+			return false, nil
+		}
+
+		if successMetric == nil {
+			lastFailure = "encryption config success metric not found"
 			return false, nil
 		}
 
@@ -255,6 +268,10 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initial bool) (i
 
 		return true, nil
 	})
+
+	if err != nil {
+		err = fmt.Errorf("%w: %s", err, lastFailure)
+	}
 
 	return unixUpdateTime, reloadSuccessCounter, err
 }
