@@ -2,17 +2,17 @@ package loadbalancer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 
 	"github.com/k3s-io/k3s/pkg/version"
 	http_dialer "github.com/mwitkow/go-http-dialer"
+	"github.com/pkg/errors"
+	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/net/proxy"
 
 	"github.com/sirupsen/logrus"
@@ -21,28 +21,39 @@ import (
 
 var defaultDialer proxy.Dialer = &net.Dialer{}
 
-func init() {
+// SetHTTPProxy configures a proxy-enabled dialer to be used for all loadbalancer connections,
+// if the agent has been configured to allow use of a HTTP proxy, and the environment has been configured
+// to indicate use of a HTTP proxy for the server URL.
+func SetHTTPProxy(address string) error {
 	// Check if env variable for proxy is set
-	address := os.Getenv(version.ProgramUpper + "_URL")
-
-	if useProxy, _ := strconv.ParseBool(os.Getenv(version.ProgramUpper + "_AGENT_HTTP_PROXY_ALLOWED")); !useProxy {
-		return
+	if useProxy, _ := strconv.ParseBool(os.Getenv(version.ProgramUpper + "_AGENT_HTTP_PROXY_ALLOWED")); !useProxy || address == "" {
+		return nil
 	}
 
-	req, err := http.NewRequest("GET", "https://"+address, nil)
+	serverURL, err := url.Parse(address)
 	if err != nil {
-		logrus.Errorf("Error creating request for address %s: %v", address, err)
-	}
-	proxyURL, err := http.ProxyFromEnvironment(req)
-	if err != nil {
-		logrus.Errorf("Error getting the proxy for address %s: %v", address, err)
+		return errors.Wrapf(err, "failed to parse address %s", address)
 	}
 
-	if dialer, err := proxyDialer(proxyURL); err != nil {
-		logrus.Errorf("Error creating the proxyDialer for  %s: %v", address, err)
-	} else {
-		defaultDialer = dialer
+	// Call this directly instead of using the cached environment used by http.ProxyFromEnvironment to allow for testing
+	proxyFromEnvironment := httpproxy.FromEnvironment().ProxyFunc()
+	proxyURL, err := proxyFromEnvironment(serverURL)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get proxy for address %s", address)
 	}
+	if proxyURL == nil {
+		logrus.Debug(version.ProgramUpper + "_AGENT_HTTP_PROXY_ALLOWED is true but no proxy is configured for URL " + serverURL.String())
+		return nil
+	}
+
+	dialer, err := proxyDialer(proxyURL)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create proxy dialer for %s", proxyURL)
+	}
+
+	defaultDialer = dialer
+	logrus.Debugf("Using proxy %s for agent connection to %s", proxyURL, serverURL)
+	return nil
 }
 
 func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
