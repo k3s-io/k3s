@@ -957,8 +957,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1 h1:nlix2+EM1UDofoHgp/X2VHzMvJW7oYbZbE
 github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1/go.mod h1:WnFkqzFdZua4LVlVXQEGhmooLeyS7mqzS4Pf4BCVqXg=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1 h1:B3039IkTPnwQEt4tIMjC6yd6b1Q3Z9ZZe8rfaBPfbXo=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1/go.mod h1:GgI1fQClQCFIzuVjlvdbMxNbnISt90gdfYyqiAIt65g=
-github.com/k3s-io/helm-controller v0.15.4 h1:l4DWmUWpphbtwmuXGtpr5Rql/2NaCLSv4ZD8HlND9uY=
-github.com/k3s-io/helm-controller v0.15.4/go.mod h1:BgCPBQblj/Ect4Q7/Umf86WvyDjdG/34D+n8wfXtoeM=
+github.com/k3s-io/helm-controller v0.15.7 h1:LSmT0vb8f+X6IH9IydPjU9dPvJOwILlk4L5S+oeHr5o=
+github.com/k3s-io/helm-controller v0.15.7/go.mod h1:AYitg40howLjKloL/zdjDDOPL1jg/K5R4af0tQcyPR8=
 github.com/k3s-io/kine v0.11.0 h1:7tS0H9yBDxXiy1BgEEkBWLswwG/q4sARPTHdxOMz1qw=
 github.com/k3s-io/kine v0.11.0/go.mod h1:tjSsWrCetgaGMTfnJW6vzqdT/qOPhF/+nUEaE+eixBA=
 github.com/k3s-io/klog/v2 v2.100.1-k3s1 h1:xb/Ta8dpQuIZueQEw2YTZUYrKoILdBmPiITVkNmYPa0=
@@ -1021,6 +1021,8 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.28.6-k3s1 h1:2TUa
 github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.28.6-k3s1/go.mod h1:5PdgbwaRYVOsemnlOXEnfioxi3NXOOmYzoQ77f4vRG4=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.28.6-k3s1 h1:ojb/LMO1yiMUaOQis41BL4/cGLkRsKR+shgyjEpb04s=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.28.6-k3s1/go.mod h1:1aaIBYBX54SDNPiQDNMgUFIz7dgW67jDHxvK56xuJow=
+github.com/k3s-io/runc v1.1.12-k3s1 h1:p2x48K2BbRdF8crLEB4xoJ1pdjSprlvNNGpYBBULHL4=
+github.com/k3s-io/runc v1.1.12-k3s1/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
 github.com/k3s-io/spegel v0.0.17-0.20240109004735-9466a5529330 h1:Tn9qxllPEzcyJqhqbYywUz0y0bFnZG3eMDLCb9UXeVM=
 github.com/k3s-io/spegel v0.0.17-0.20240109004735-9466a5529330/go.mod h1:VwX+8hz21pU7YjrvMmLCv7G4ww2Ds3HPEw3oDalMkGM=
 github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwSWoI=
@@ -1339,8 +1341,6 @@ github.com/opencontainers/image-spec v1.1.0-rc2/go.mod h1:3OVijpioIKYWTqjiG0zfF6
 github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b/go.mod h1:3OVijpioIKYWTqjiG0zfF6wvoJ4fAXGbjdZuI2NgsRQ=
 github.com/opencontainers/image-spec v1.1.0-rc5 h1:Ygwkfw9bpDvs+c9E34SdgGOj41dX/cbdlwvlWt0pnFI=
 github.com/opencontainers/image-spec v1.1.0-rc5/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
-github.com/opencontainers/runc v1.1.10 h1:EaL5WeO9lv9wmS6SASjszOeQdSctvpbu0DdBQBizE40=
-github.com/opencontainers/runc v1.1.10/go.mod h1:+/R6+KmDlh+hOO8NkjmgkG9Qzvypzk0yXxAPYYR65+M=
 github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78 h1:R5M2qXZiK/mWPMT4VldCOiSL9HIAMuxQZWdG0CSM5+4=
 github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-tools v0.9.0/go.mod h1:r3f7wjNzSs2extwzU3Y+6pKfobzPh+kKFJ3ofN+3nfs=
