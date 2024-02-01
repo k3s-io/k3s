@@ -229,6 +229,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		helmchart.Register(ctx,
 			metav1.NamespaceAll,
 			helmcommon.Name,
+			"cluster-admin",
 			strconv.Itoa(config.ControlConfig.APIServerPort),
 			k8s,
 			apply,
