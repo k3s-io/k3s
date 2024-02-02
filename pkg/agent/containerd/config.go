@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -70,65 +71,60 @@ func writeContainerdHosts(cfg *config.Node, containerdConfig templates.Container
 func getHostConfigs(registry *registries.Registry, noDefaultEndpoint bool, mirrorAddr string) HostConfigs {
 	hosts := map[string]templates.HostConfig{}
 
+	// create config for default endpoints
+	for host, config := range registry.Configs {
+		if c, err := defaultHostConfig(host, mirrorAddr, config); err != nil {
+			logrus.Errorf("Failed to generate config for registry %s: %v", host, err)
+		} else {
+			if host == "*" {
+				host = "_default"
+			}
+			hosts[host] = *c
+		}
+	}
+
 	// create endpoints for mirrors
 	for host, mirror := range registry.Mirrors {
-		config := templates.HostConfig{
-			Program: version.Program,
-		}
-		if uri, _, err := normalizeEndpointAddress(host, mirrorAddr); err == nil {
-			config.DefaultEndpoint = uri.String()
+		// create the default config, if it wasn't explicitly mentioned in the config section
+		config, ok := hosts[host]
+		if !ok {
+			if c, err := defaultHostConfig(host, mirrorAddr, configForHost(registry.Configs, host)); err != nil {
+				logrus.Errorf("Failed to generate config for registry %s: %v", host, err)
+				continue
+			} else {
+				if host == "*" || noDefaultEndpoint {
+					c.Default = nil
+				}
+				config = *c
+			}
 		}
 
 		// TODO: rewrites are currently copied from the mirror settings into each endpoint.
 		// In the future, we should allow for per-endpoint rewrites, instead of expecting
 		// all mirrors to have the same structure. This will require changes to the registries.yaml
 		// structure, which is defined in rancher/wharfie.
-		for _, endpoint := range mirror.Endpoints {
-			uri, override, err := normalizeEndpointAddress(endpoint, mirrorAddr)
+		for i, endpoint := range mirror.Endpoints {
+			registryName, url, override, err := normalizeEndpointAddress(endpoint, mirrorAddr)
 			if err != nil {
-				logrus.Warnf("Ignoring invalid endpoint URL %s for %s: %v", endpoint, host, err)
+				logrus.Warnf("Ignoring invalid endpoint URL %d=%s for %s: %v", i, endpoint, host, err)
 			} else {
 				var rewrites map[string]string
 				// Do not apply rewrites to the embedded registry endpoint
-				if uri.Host != mirrorAddr {
+				if url.Host != mirrorAddr {
 					rewrites = mirror.Rewrites
 				}
-				config.Endpoints = append(config.Endpoints, templates.RegistryEndpoint{
-					Config:       registry.Configs[uri.Host],
+				ep := templates.RegistryEndpoint{
+					Config:       configForHost(registry.Configs, registryName),
 					Rewrites:     rewrites,
 					OverridePath: override,
-					URI:          uri.String(),
-				})
-			}
-		}
-
-		if host == "*" {
-			host = "_default"
-		}
-		hosts[host] = config
-	}
-
-	// create endpoints for registries using default endpoints
-	for host, registry := range registry.Configs {
-		config, ok := hosts[host]
-		if !ok {
-			config = templates.HostConfig{
-				Program: version.Program,
-			}
-			if uri, _, err := normalizeEndpointAddress(host, mirrorAddr); err == nil {
-				config.DefaultEndpoint = uri.String()
-			}
-		}
-		// If there is config for this host but no endpoints, inject the config for the default endpoint.
-		if len(config.Endpoints) == 0 {
-			uri, _, err := normalizeEndpointAddress(host, mirrorAddr)
-			if err != nil {
-				logrus.Warnf("Ignoring invalid endpoint URL %s for %s: %v", host, host, err)
-			} else {
-				config.Endpoints = append(config.Endpoints, templates.RegistryEndpoint{
-					Config: registry,
-					URI:    uri.String(),
-				})
+					URL:          url,
+				}
+				if i+1 == len(mirror.Endpoints) && endpointURLEqual(config.Default, &ep) {
+					// if the last endpoint is the default endpoint, move it there
+					config.Default = &ep
+				} else {
+					config.Endpoints = append(config.Endpoints, ep)
+				}
 			}
 		}
 
@@ -140,25 +136,8 @@ func getHostConfigs(registry *registries.Registry, noDefaultEndpoint bool, mirro
 
 	// Clean up hosts and default endpoints where resulting config leaves only defaults
 	for host, config := range hosts {
-		// if default endpoint is disabled, or this is the wildcard host, delete the default endpoint
-		if noDefaultEndpoint || host == "_default" {
-			config.DefaultEndpoint = ""
-			hosts[host] = config
-		}
-		if l := len(config.Endpoints); l > 0 {
-			if ep := config.Endpoints[l-1]; ep.URI == config.DefaultEndpoint {
-				// if the last endpoint is the default endpoint
-				if ep.Config.Auth == nil && ep.Config.TLS == nil && len(ep.Rewrites) == 0 {
-					// if has no config, delete this host to use the default config
-					delete(hosts, host)
-				} else {
-					// if it has config, delete the default endpoint
-					config.DefaultEndpoint = ""
-					hosts[host] = config
-				}
-			}
-		} else {
-			// if this host has no endpoints, delete this host to use the default config
+		// if this host has no endpoints and the default has no config, delete this host
+		if len(config.Endpoints) == 0 && !endpointHasConfig(config.Default) {
 			delete(hosts, host)
 		}
 	}
@@ -167,18 +146,18 @@ func getHostConfigs(registry *registries.Registry, noDefaultEndpoint bool, mirro
 }
 
 // normalizeEndpointAddress normalizes the endpoint address.
-// If successful, it returns the URL, and a bool indicating if the endpoint path should be overridden.
+// If successful, it returns the registry name, URL, and a bool indicating if the endpoint path should be overridden.
 // If unsuccessful, an error is returned.
 // Scheme and hostname logic should match containerd:
 // https://github.com/containerd/containerd/blob/v1.7.13/remotes/docker/config/hosts.go#L99-L131
-func normalizeEndpointAddress(endpoint, mirrorAddr string) (*url.URL, bool, error) {
+func normalizeEndpointAddress(endpoint, mirrorAddr string) (string, *url.URL, bool, error) {
 	// Ensure that the endpoint address has a scheme so that the URL is parsed properly
 	if !strings.Contains(endpoint, "://") {
 		endpoint = "//" + endpoint
 	}
 	endpointURL, err := url.Parse(endpoint)
 	if err != nil {
-		return nil, false, err
+		return "", nil, false, err
 	}
 	port := endpointURL.Port()
 
@@ -191,14 +170,66 @@ func normalizeEndpointAddress(endpoint, mirrorAddr string) (*url.URL, bool, erro
 			endpointURL.Scheme = "https"
 		}
 	}
-	endpointURL.Host, _ = docker.DefaultHost(endpointURL.Host)
+	registry := endpointURL.Host
+	endpointURL.Host, _ = docker.DefaultHost(registry)
+	// This is the reverse of the DefaultHost normalization
+	if endpointURL.Host == "registry-1.docker.io" {
+		registry = "docker.io"
+	}
 
 	switch endpointURL.Path {
 	case "", "/", "/v2":
 		// If the path is empty, /, or /v2, use the default path.
 		endpointURL.Path = "/v2"
-		return endpointURL, false, nil
+		return registry, endpointURL, false, nil
 	}
 
-	return endpointURL, true, nil
+	return registry, endpointURL, true, nil
+}
+
+func defaultHostConfig(host, mirrorAddr string, config registries.RegistryConfig) (*templates.HostConfig, error) {
+	_, url, _, err := normalizeEndpointAddress(host, mirrorAddr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endpoint URL %s for %s: %v", host, host, err)
+	}
+	if host == "*" {
+		url = nil
+	}
+	return &templates.HostConfig{
+		Program: version.Program,
+		Default: &templates.RegistryEndpoint{
+			URL:    url,
+			Config: config,
+		},
+	}, nil
+}
+
+func configForHost(configs map[string]registries.RegistryConfig, host string) registries.RegistryConfig {
+	// check for config under modified hostname. If the hostname is unmodified, or there is no config for
+	// the modified hostname, return the config for the default hostname.
+	if h, _ := docker.DefaultHost(host); h != host {
+		if c, ok := configs[h]; ok {
+			return c
+		}
+	}
+	return configs[host]
+}
+
+// endpointURLEqual compares endpoint URL strings
+func endpointURLEqual(a, b *templates.RegistryEndpoint) bool {
+	var au, bu string
+	if a != nil && a.URL != nil {
+		au = a.URL.String()
+	}
+	if b != nil && b.URL != nil {
+		bu = b.URL.String()
+	}
+	return au == bu
+}
+
+func endpointHasConfig(ep *templates.RegistryEndpoint) bool {
+	if ep != nil {
+		return ep.OverridePath || ep.Config.Auth != nil || ep.Config.TLS != nil || len(ep.Rewrites) > 0
+	}
+	return false
 }
