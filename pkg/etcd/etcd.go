@@ -904,13 +904,15 @@ func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.Initial
 			ClientCertAuth: true,
 			TrustedCAFile:  e.config.Runtime.ETCDPeerCA,
 		},
-		SnapshotCount:                   10000,
-		ElectionTimeout:                 5000,
-		HeartbeatInterval:               500,
-		Logger:                          "zap",
-		LogOutputs:                      []string{"stderr"},
-		ExperimentalInitialCorruptCheck: true,
-		ListenClientHTTPURLs:            e.listenClientHTTPURLs(),
+		SnapshotCount:        10000,
+		ElectionTimeout:      5000,
+		HeartbeatInterval:    500,
+		Logger:               "zap",
+		LogOutputs:           []string{"stderr"},
+		ListenClientHTTPURLs: e.listenClientHTTPURLs(),
+
+		ExperimentalInitialCorruptCheck:         true,
+		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,
 	}, e.config.ExtraEtcdArgs)
 }
 
@@ -963,20 +965,22 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 	embedded := executor.Embedded{}
 	ctx, e.cancel = context.WithCancel(ctx)
 	return embedded.ETCD(ctx, executor.ETCDConfig{
-		InitialOptions:                  executor.InitialOptions{AdvertisePeerURL: peerURL},
-		DataDir:                         tmpDataDir,
-		ForceNewCluster:                 true,
-		AdvertiseClientURLs:             clientURL,
-		ListenClientURLs:                clientURL,
-		ListenClientHTTPURLs:            clientHTTPURL,
-		ListenPeerURLs:                  peerURL,
-		Logger:                          "zap",
-		HeartbeatInterval:               500,
-		ElectionTimeout:                 5000,
-		SnapshotCount:                   10000,
-		Name:                            e.name,
-		LogOutputs:                      []string{"stderr"},
-		ExperimentalInitialCorruptCheck: true,
+		InitialOptions:       executor.InitialOptions{AdvertisePeerURL: peerURL},
+		DataDir:              tmpDataDir,
+		ForceNewCluster:      true,
+		AdvertiseClientURLs:  clientURL,
+		ListenClientURLs:     clientURL,
+		ListenClientHTTPURLs: clientHTTPURL,
+		ListenPeerURLs:       peerURL,
+		Logger:               "zap",
+		HeartbeatInterval:    500,
+		ElectionTimeout:      5000,
+		SnapshotCount:        10000,
+		Name:                 e.name,
+		LogOutputs:           []string{"stderr"},
+
+		ExperimentalInitialCorruptCheck:         true,
+		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,
 	}, append(e.config.ExtraEtcdArgs, "--max-snapshots=0", "--max-wals=0"))
 }
 
