@@ -120,12 +120,12 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/helm-controller v0.15.8
-	github.com/k3s-io/kine v0.11.0
+	github.com/k3s-io/kine v0.11.4
 	github.com/klauspost/compress v1.17.2
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.2
 	github.com/libp2p/go-libp2p v0.30.0
-	github.com/mattn/go-sqlite3 v1.14.17
+	github.com/mattn/go-sqlite3 v1.14.19
 	github.com/minio/minio-go/v7 v7.0.33
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
