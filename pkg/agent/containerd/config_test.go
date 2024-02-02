@@ -2,6 +2,7 @@ package containerd
 
 import (
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +12,21 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/rancher/wharfie/pkg/registries"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
+
+func u(s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
 
 func Test_UnitGetHostConfigs(t *testing.T) {
 	type args struct {
@@ -40,6 +54,18 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{},
 		},
 		{
+			name: "registry with default endpoint explicitly listed",
+			args: args{
+				registryContent: `
+				  mirrors:
+						docker.io:
+							endpoint:
+								- docker.io
+				`,
+			},
+			want: HostConfigs{},
+		},
+		{
 			name: "registry with default endpoint - embedded registry",
 			args: args{
 				mirrorAddr: "127.0.0.1:6443",
@@ -50,11 +76,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:6443/v2",
+							URL: u("https://127.0.0.1:6443/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									CAFile:   "server-ca",
@@ -67,15 +95,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://127.0.0.1:6443/v2",
-							Config: registries.RegistryConfig{
-								TLS: &registries.TLSConfig{
-									CAFile:   "server-ca",
-									KeyFile:  "client-key",
-									CertFile: "client-cert",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
 							},
 						},
 					},
@@ -98,20 +124,49 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry-1.docker.io/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
 				},
 			},
 		},
+		{
+			name: "registry with default endpoint explicitly listed and creds",
+			args: args{
+				registryContent: `
+				  mirrors:
+						docker.io:
+						  endpoint:
+							  - docker.io
+					configs:
+					  docker.io:
+						  auth:
+							  username: user
+								password: pass
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
+							},
+						},
+					},
+				},
+			},
+		},
+
 		{
 			name: "registry with only creds",
 			args: args{
@@ -126,14 +181,12 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry-1.docker.io/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
@@ -166,14 +219,12 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
@@ -194,14 +245,12 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
@@ -220,12 +269,14 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/prefix/v2",
+							URL:          u("https://registry.example.com/prefix/v2"),
 						},
 					},
 				},
@@ -243,12 +294,14 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/prefix/v2",
+							URL:          u("https://registry.example.com/prefix/v2"),
 						},
 					},
 				},
@@ -266,11 +319,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
@@ -288,11 +343,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
@@ -310,11 +367,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
@@ -332,11 +391,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
@@ -354,11 +415,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com:443/v2",
+							URL: u("https://registry.example.com:443/v2"),
 						},
 					},
 				},
@@ -376,11 +439,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://1.2.3.4/v2",
+							URL: u("https://1.2.3.4/v2"),
 						},
 					},
 				},
@@ -398,11 +463,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://1.2.3.4:443/v2",
+							URL: u("https://1.2.3.4:443/v2"),
 						},
 					},
 				},
@@ -420,11 +487,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "http://localhost:5000/v2",
+							URL: u("http://localhost:5000/v2"),
 						},
 					},
 				},
@@ -442,11 +511,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://localhost:5000/v2",
+							URL: u("https://localhost:5000/v2"),
 						},
 					},
 				},
@@ -464,11 +535,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "http://127.0.0.1:5000/v2",
+							URL: u("http://127.0.0.1:5000/v2"),
 						},
 					},
 				},
@@ -486,11 +559,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:5000/v2",
+							URL: u("https://127.0.0.1:5000/v2"),
 						},
 					},
 				},
@@ -513,11 +588,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -529,14 +606,12 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
@@ -563,12 +638,14 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/prefix/v2",
+							URL:          u("https://registry.example.com/prefix/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -579,12 +656,20 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 					},
 				},
 				"registry.example.com": templates.HostConfig{
-					DefaultEndpoint: "https://registry.example.com/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
+							},
+						},
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/prefix/v2",
+							URL:          u("https://registry.example.com/prefix/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -616,12 +701,14 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/project/registry",
+							URL:          u("https://registry.example.com/project/registry"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -632,12 +719,20 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 					},
 				},
 				"registry.example.com": templates.HostConfig{
-					DefaultEndpoint: "https://registry.example.com/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
+							},
+						},
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							OverridePath: true,
-							URI:          "https://registry.example.com/project/registry",
+							URL:          u("https://registry.example.com/project/registry"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -670,7 +765,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 					Program: "k3s",
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -682,14 +777,12 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
@@ -714,11 +807,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:6443/v2",
+							URL: u("https://127.0.0.1:6443/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									CAFile:   "server-ca",
@@ -728,7 +823,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 							},
 						},
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -740,29 +835,25 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
 				},
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://127.0.0.1:6443/v2",
-							Config: registries.RegistryConfig{
-								TLS: &registries.TLSConfig{
-									CAFile:   "server-ca",
-									KeyFile:  "client-key",
-									CertFile: "client-cert",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
 							},
 						},
 					},
@@ -789,11 +880,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"docker.io": templates.HostConfig{
-					DefaultEndpoint: "https://registry-1.docker.io/v2",
-					Program:         "k3s",
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:6443/v2",
+							URL: u("https://127.0.0.1:6443/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									CAFile:   "server-ca",
@@ -803,7 +896,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 							},
 						},
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -818,29 +911,25 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
 				},
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://127.0.0.1:6443/v2",
-							Config: registries.RegistryConfig{
-								TLS: &registries.TLSConfig{
-									CAFile:   "server-ca",
-									KeyFile:  "client-key",
-									CertFile: "client-cert",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
 							},
 						},
 					},
@@ -869,7 +958,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 					Program: "k3s",
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:6443/v2",
+							URL: u("https://127.0.0.1:6443/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									CAFile:   "server-ca",
@@ -879,7 +968,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 							},
 						},
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 							Config: registries.RegistryConfig{
 								Auth: &registries.AuthConfig{
 									Username: "user",
@@ -891,29 +980,132 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 				"registry.example.com": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://registry.example.com/v2",
-							Config: registries.RegistryConfig{
-								Auth: &registries.AuthConfig{
-									Username: "user",
-									Password: "pass",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry.example.com/v2"),
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
 							},
 						},
 					},
 				},
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "registry with mirror endpoint - embedded registry, default endpoint explicitly listed",
+			args: args{
+				mirrorAddr: "127.0.0.1:6443",
+				registryContent: `
+				  mirrors:
+						docker.io:
+						  endpoint:
+							  - registry.example.com
+							  - registry.example.org
+								- docker.io
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://127.0.0.1:6443/v2",
+							URL: u("https://127.0.0.1:6443/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									CAFile:   "server-ca",
 									KeyFile:  "client-key",
 									CertFile: "client-cert",
 								},
+							},
+						},
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+						{
+							URL: u("https://registry.example.org/v2"),
+						},
+					},
+				},
+				"127.0.0.1:6443": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "registry with mirror endpoint - embedded registry and no default endpoint, default endpoint explicitly listed",
+			args: args{
+				mirrorAddr:        "127.0.0.1:6443",
+				noDefaultEndpoint: true,
+				registryContent: `
+				  mirrors:
+						docker.io:
+						  endpoint:
+							  - registry.example.com
+								- registry.example.org
+								- docker.io
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Endpoints: []templates.RegistryEndpoint{
+						{
+							URL: u("https://127.0.0.1:6443/v2"),
+							Config: registries.RegistryConfig{
+								TLS: &registries.TLSConfig{
+									CAFile:   "server-ca",
+									KeyFile:  "client-key",
+									CertFile: "client-cert",
+								},
+							},
+						},
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+						{
+							URL: u("https://registry.example.org/v2"),
+						},
+						{
+							URL: u("https://registry-1.docker.io/v2"),
+						},
+					},
+				},
+				"127.0.0.1:6443": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
 							},
 						},
 					},
@@ -935,7 +1127,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 					Program: "k3s",
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
@@ -959,21 +1151,49 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 						// note that the embedded registry mirror is NOT listed as an endpoint.
 						// individual registries must be enabled for mirroring by name.
 						{
-							URI: "https://registry.example.com/v2",
+							URL: u("https://registry.example.com/v2"),
 						},
 					},
 				},
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://127.0.0.1:6443/v2",
-							Config: registries.RegistryConfig{
-								TLS: &registries.TLSConfig{
-									CAFile:   "server-ca",
-									KeyFile:  "client-key",
-									CertFile: "client-cert",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "wildcard config",
+			args: args{
+				registryContent: `
+				  configs:
+						"*":
+						  auth:
+							  username: user
+								password: pass
+							tls:
+								insecure_skip_verify: true
+				`,
+			},
+			want: HostConfigs{
+				"_default": {
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						Config: registries.RegistryConfig{
+							Auth: &registries.AuthConfig{
+								Username: "user",
+								Password: "pass",
+							},
+							TLS: &registries.TLSConfig{
+								InsecureSkipVerify: true,
 							},
 						},
 					},
@@ -1033,15 +1253,13 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				// localhost registries are not handled by the embedded registry mirror.
 				"127.0.0.1:6443": templates.HostConfig{
 					Program: "k3s",
-					Endpoints: []templates.RegistryEndpoint{
-						{
-							URI: "https://127.0.0.1:6443/v2",
-							Config: registries.RegistryConfig{
-								TLS: &registries.TLSConfig{
-									CAFile:   "server-ca",
-									KeyFile:  "client-key",
-									CertFile: "client-cert",
-								},
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
 							},
 						},
 					},
@@ -1064,11 +1282,18 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 			want: HostConfigs{
 				"localhost:5000": templates.HostConfig{
-					DefaultEndpoint: "http://localhost:5000/v2",
-					Program:         "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("http://localhost:5000/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
+					},
+					Program: "k3s",
 					Endpoints: []templates.RegistryEndpoint{
 						{
-							URI: "https://localhost:5000/v2",
+							URL: u("https://localhost:5000/v2"),
 							Config: registries.RegistryConfig{
 								TLS: &registries.TLSConfig{
 									InsecureSkipVerify: true,
@@ -1085,8 +1310,10 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// replace tabs from the inline yaml with spaces; yaml doesn't support tabs for indentation.
 			tt.args.registryContent = strings.ReplaceAll(tt.args.registryContent, "\t", "  ")
-			registriesFile := filepath.Join(t.TempDir(), "registries.yaml")
+			tempDir := t.TempDir()
+			registriesFile := filepath.Join(tempDir, "registries.yaml")
 			os.WriteFile(registriesFile, []byte(tt.args.registryContent), 0644)
+			t.Logf("%s:\n%s", registriesFile, tt.args.registryContent)
 
 			registry, err := registries.GetPrivateRegistries(registriesFile)
 			if err != nil {
@@ -1103,8 +1330,30 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				conf.InjectMirror(&config.Node{AgentConfig: config.Agent{Registry: registry.Registry}})
 			}
 
+			// Generate config template struct for all hosts
 			got := getHostConfigs(registry.Registry, tt.args.noDefaultEndpoint, tt.args.mirrorAddr)
 			assert.Equal(t, tt.want, got, "getHostConfigs()")
+
+			// Confirm that hosts.toml renders properly for all registries
+			for host, config := range got {
+				hostsTemplate, err := templates.ParseHostsTemplateFromConfig(templates.HostsTomlTemplate, config)
+				assert.NoError(t, err, "ParseHostTemplateFromConfig for %s", host)
+				t.Logf("%s/hosts.d/%s/hosts.toml\n%s", tempDir, host, hostsTemplate)
+			}
+
+			// Confirm that the main containerd config.toml renders properly
+			containerdConfig := templates.ContainerdConfig{
+				NodeConfig: &config.Node{
+					Containerd: config.Containerd{
+						Registry: tempDir + "/hosts.d",
+					},
+				},
+				PrivateRegistryConfig: registry.Registry,
+				Program:               "k3s",
+			}
+			configTemplate, err := templates.ParseTemplateFromConfig(templates.ContainerdConfigTemplate, containerdConfig)
+			assert.NoError(t, err, "ParseTemplateFromConfig")
+			t.Logf("%s/config.toml\n%s", tempDir, configTemplate)
 		})
 	}
 }
