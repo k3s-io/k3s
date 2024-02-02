@@ -1057,7 +1057,7 @@ openrc_start() {
 }
 
 has_working_xtables() {
-    if command -v "$1-save" 1> /dev/null && command -v "$1-restore" 1> /dev/null; then
+    if $SUDO sh -c "command -v \"$1-save\"" 1> /dev/null && $SUDO sh -c "command -v \"$1-restore\"" 1> /dev/null; then
         if $SUDO $1-save 2>/dev/null | grep -q '^-A CNI-HOSTPORT-MASQ -j MASQUERADE$'; then
             warn "Host $1-save/$1-restore tools are incompatible with existing rules"
         else
