@@ -573,7 +573,7 @@ setup_selinux() {
 }
 
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ -r /etc/fedora-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ -r /etc/fedora-release ] || [ -r /etc/amazon-linux-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
         repodir=/etc/yum.repos.d
         if [ -d /etc/zypp/repos.d ]; then
             repodir=/etc/zypp/repos.d
