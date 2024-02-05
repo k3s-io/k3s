@@ -9,6 +9,7 @@ import (
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Register(ctx context.Context,
@@ -76,13 +77,12 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed b
 		return nil
 	}
 
-	configMapCache, err := h.configMaps.Cache().Get("kube-system", "coredns")
-	if err != nil || configMapCache == nil {
+	configMap, err := h.configMaps.Get("kube-system", "coredns", metav1.GetOptions{})
+	if err != nil || configMap == nil {
 		logrus.Warn(errors.Wrap(err, "Unable to fetch coredns config map"))
 		return nil
 	}
 
-	configMap := configMapCache.DeepCopy()
 	hosts := configMap.Data["NodeHosts"]
 	hostsMap := map[string]string{}
 
@@ -115,6 +115,10 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, nodeAddress string, removed b
 	var newHosts string
 	for host, ip := range hostsMap {
 		newHosts += ip + " " + host + "\n"
+	}
+
+	if configMap.Data == nil {
+		configMap.Data = map[string]string{}
 	}
 	configMap.Data["NodeHosts"] = newHosts
 
