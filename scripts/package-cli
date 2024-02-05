@@ -36,7 +36,7 @@ for i in "${cni_binaries[@]}"; do
 done
 
 cp contrib/util/check-config.sh bin/check-config
-cp contrib/util/k3s-killall.sh bin/test
+cp contrib/util/k3s-killall.sh bin/k3s-killall
 
 rm -rf build/data
 mkdir -p build/data build/out

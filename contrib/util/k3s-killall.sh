@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 
 for bin in /var/lib/rancher/k3s/data/**/bin/; do
     [ -d "$bin" ] && export PATH=$PATH:$bin:$bin/aux
 done
 
-
+set -x
 
 for service in /etc/systemd/system/k3s*.service; do
     [ -s "$service" ] && systemctl stop "$(basename "$service")"
@@ -25,21 +25,22 @@ pschildren() {
 pstree() {
 
     for pid in "$@"; do
-        if [ -n "$$" ]; then
-        echo "$pid"
+        # Don't return the current process
+        if [ "$pid" != "$$" ]; then
+            echo "$pid"
+        fi
         for child in $(pschildren "$pid"); do
             pstree "$child"
         done
-        fi
     done
 }
 
 killtree() {
-    kill -9 "$(
+    kill -9 $(
         { set +x; } 2>/dev/null;
         pstree "$@";
         set -x;
-    )" 2>/dev/null
+    ) 2>/dev/null
 }
 
 remove_interfaces() {
@@ -67,13 +68,11 @@ getshims() {
     ps -e -o pid= -o args= | sed -e 's/^ *//; s/\s\s*/\t/;' | grep -w 'k3s/data/[^/]*/bin/containerd-shim' | cut -f1
 }
 
-
-
 do_unmount_and_remove() {
     set +x
     while read -r _ path _; do
         case "$path" in $1*) echo "$path" ;; esac
-    done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount "$0" && rm -rf "$0"'
+    done < /proc/self/mounts | sort -r | xargs -r -t -n 1 sh -c 'umount -f "$0" && rm -rf "$0"'
     set -x
 }
 
