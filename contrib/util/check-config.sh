@@ -21,6 +21,9 @@ binDir=$(dirname "$0")
 configFormat=gz
 isError=0
 
+# RAW_OUTPUT=1 disables colored outputs
+RAW_OUTPUT=${RAW_OUTPUT:-0}
+
 if [ $# -gt 0 ]; then
   CONFIG="$1"
 fi
@@ -81,6 +84,11 @@ color() {
   printf '\033['"$codes"'m'
 }
 wrap_color() {
+  if [ $RAW_OUTPUT -eq 1 ]; then
+    echo -n "$1"
+    return
+  fi
+
   text="$1"
   shift
   color "$@"
