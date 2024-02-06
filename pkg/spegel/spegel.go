@@ -96,7 +96,6 @@ const (
 	resolveLatestTag  = false
 	resolveRetries    = 0
 	resolveTimeout    = time.Second * 5
-	registryScheme    = "https"
 	registryNamespace = "k8s.io"
 	defaultRouterPort = "5001"
 )
@@ -188,12 +187,12 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		libp2p.Identity(p2pKey),
 		libp2p.Peerstore(ps),
 		libp2p.PrivateNetwork(c.PSK),
-		libp2p.PrometheusRegisterer(metrics.DefaultRegisterer),
 	}
-	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, registryScheme, opts...)
+	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts...)
 	if err != nil {
 		return errors.Wrap(err, "failed to create p2p router")
 	}
+	go router.Run(ctx)
 
 	caCert, err := os.ReadFile(c.ServerCAFile)
 	if err != nil {
@@ -202,7 +201,14 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
 	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
-	reg := registry.NewRegistry(ociClient, router, localAddr, resolveRetries, resolveTimeout, resolveLatestTag, client.Transport)
+	registryOpts := []registry.Option{
+		registry.WithLocalAddress(localAddr),
+		registry.WithResolveLatestTag(resolveLatestTag),
+		registry.WithResolveRetries(resolveRetries),
+		registry.WithResolveTimeout(resolveTimeout),
+		registry.WithTransport(client.Transport),
+	}
+	reg := registry.NewRegistry(ociClient, router, registryOpts...)
 	regSvr := reg.Server(":"+c.RegistryPort, logr.FromContextOrDiscard(ctx))
 
 	// Close router on shutdown
@@ -225,7 +231,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
 	wait.PollImmediateWithContext(ctx, time.Second, resolveTimeout, func(_ context.Context) (bool, error) {
-		return router.HasMirrors()
+		return router.Ready()
 	})
 
 	return nil
@@ -235,7 +241,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 func (c *Config) peerInfo() http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		client, _, _ := net.SplitHostPort(req.RemoteAddr)
-		info, err := c.Bootstrapper.GetAddress()
+		info, err := c.Bootstrapper.Get()
 		if err != nil {
 			http.Error(resp, "Internal Error", http.StatusInternalServerError)
 			return
