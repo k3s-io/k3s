@@ -43,7 +43,7 @@ func (s *selfBootstrapper) Run(_ context.Context, id string) error {
 	return nil
 }
 
-func (s *selfBootstrapper) GetAddress() (*peer.AddrInfo, error) {
+func (s *selfBootstrapper) Get() (*peer.AddrInfo, error) {
 	return peer.AddrInfoFromString(s.id)
 }
 
@@ -68,7 +68,7 @@ func (c *agentBootstrapper) Run(_ context.Context, _ string) error {
 	return nil
 }
 
-func (c *agentBootstrapper) GetAddress() (*peer.AddrInfo, error) {
+func (c *agentBootstrapper) Get() (*peer.AddrInfo, error) {
 	if c.server == "" || c.token == "" {
 		return nil, errors.New("cannot get addresses without server and token")
 	}
@@ -131,7 +131,7 @@ func (s *serverBootstrapper) Run(_ context.Context, id string) error {
 	return nil
 }
 
-func (s *serverBootstrapper) GetAddress() (addrInfo *peer.AddrInfo, err error) {
+func (s *serverBootstrapper) Get() (addrInfo *peer.AddrInfo, err error) {
 	if s.controlConfig.Runtime.Core == nil {
 		return nil, errors.New("runtime core not ready")
 	}
@@ -187,10 +187,10 @@ func (c *chainingBootstrapper) Run(ctx context.Context, id string) error {
 	return merr.NewErrors(errs...)
 }
 
-func (c *chainingBootstrapper) GetAddress() (*peer.AddrInfo, error) {
+func (c *chainingBootstrapper) Get() (*peer.AddrInfo, error) {
 	errs := merr.Errors{}
 	for _, b := range c.bootstrappers {
-		addr, err := b.GetAddress()
+		addr, err := b.Get()
 		if err == nil {
 			return addr, nil
 		}
