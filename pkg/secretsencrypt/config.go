@@ -206,7 +206,7 @@ func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccess
 		}
 
 		if newReloadSuccess <= reloadSuccesses || newReloadTime <= reloadTime {
-			lastFailure = fmt.Sprintf("new encryption metrics are not greater than old metrics (%d/%d) (%d/%d)", newReloadSuccess, reloadSuccesses, newReloadTime, reloadTime)
+			lastFailure = fmt.Sprintf("apiserver has not reloaded encryption configuration (reload success: %d/%d, reload timestamp %d/%d)", newReloadSuccess, reloadSuccesses, newReloadTime, reloadTime)
 			return false, nil
 		}
 		logrus.Infof("encryption config reloaded successfully %d times", newReloadSuccess)
@@ -225,7 +225,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 	var unixUpdateTime int64
 	var reloadSuccessCounter int64
 	var lastFailure string
-	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigAPIServer)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigSupervisor)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -268,14 +268,12 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 			return false, nil
 		}
 
-		rawTime := tsMetric.GetMetric()[0].GetGauge().GetValue()
-		unixUpdateTime = int64(rawTime)
+		unixUpdateTime = int64(tsMetric.GetMetric()[0].GetGauge().GetValue())
 		if time.Now().Unix() < unixUpdateTime {
-			return true, fmt.Errorf("encryption reload time is from a nonexistent future")
+			return true, fmt.Errorf("encryption reload time is incorrectly ahead of current time")
 		}
 
-		rawSuccess := successMetric.GetMetric()[0].GetCounter().GetValue()
-		reloadSuccessCounter = int64(rawSuccess)
+		reloadSuccessCounter = int64(successMetric.GetMetric()[0].GetCounter().GetValue())
 
 		return true, nil
 	})
