@@ -174,6 +174,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.Multus = cfg.Multus
 	serverConfig.ControlConfig.VLevel = cmds.LogConfig.VLevel
 	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
 
@@ -395,6 +396,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if serverConfig.ControlConfig.DisableCCM && serverConfig.ControlConfig.DisableServiceLB {
 		serverConfig.ControlConfig.Skips["ccm"] = true
 		serverConfig.ControlConfig.Disables["ccm"] = true
+	}
+
+	if !serverConfig.ControlConfig.Multus {
+		serverConfig.ControlConfig.Skips["multus"] = true
+		serverConfig.ControlConfig.Disables["multus"] = true
 	}
 
 	tlsMinVersionArg := getArgValueFromList("tls-min-version", serverConfig.ControlConfig.ExtraAPIArgs)
