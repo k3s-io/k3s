@@ -71,7 +71,7 @@ jobs:
     - name: Generate coverage report
       run: go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: ./${{ matrix.itest }}.out
         flags: inttests # optional
