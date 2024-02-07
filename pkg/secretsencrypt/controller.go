@@ -47,8 +47,7 @@ func Register(
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
 ) error {
-	cfg := controlConfig.Runtime.KubeConfigAPIServer
-	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
+	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return err
 	}

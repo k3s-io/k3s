@@ -309,9 +309,6 @@ func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
 	p.Host = u.Host
 
 	client := GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...)
-	for _, o := range option {
-		o(client)
-	}
 
 	return put(p.String(), body, client, i.Username, i.Password, i.Token())
 }
