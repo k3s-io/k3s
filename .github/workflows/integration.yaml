@@ -73,6 +73,7 @@ jobs:
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@v3
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./${{ matrix.itest }}.out
         flags: inttests # optional
         verbose: true # optional (default = false)
