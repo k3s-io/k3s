@@ -28,7 +28,7 @@ steps:
     - pull_request
 
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader, unprivileged_github_token ]
   environment:
     GITHUB_TOKEN:
@@ -45,7 +45,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: validate-cross-compilation
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   commands:
   - dapper validate-cross-compilation
   volumes:
@@ -70,7 +70,7 @@ steps:
       - tag
 
 - name: github_binary_release
-  image: ibuildthecloud/github-release:v0.0.1
+  image: plugins/github-release
   settings:
     api_key:
       from_secret: github_token
@@ -111,7 +111,7 @@ steps:
     - tag
 
 - name: test
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
@@ -129,7 +129,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: github_e2e_logs_release
-  image: ibuildthecloud/github-release:v0.0.1
+  image: plugins/github-release
   settings:
     api_key:
       from_secret: github_token
@@ -166,7 +166,7 @@ trigger:
 
 steps:
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   commands:
   - dapper ci
   - echo "${DRONE_TAG}-amd64" | sed -e 's/+/-/g' >.tags
@@ -175,7 +175,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: test
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   environment:
     ENABLE_REGISTRY: 'true'
   commands:
@@ -222,7 +222,7 @@ steps:
     - pull_request
 
 - name: build
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     AWS_SECRET_ACCESS_KEY:
@@ -237,7 +237,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: github_binary_release
-  image: ibuildthecloud/github-release:v0.0.1
+  image: plugins/github-release
   settings:
     api_key:
       from_secret: github_token
@@ -278,7 +278,7 @@ steps:
     - tag
 
 - name: test
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
     ENABLE_REGISTRY: 'true'
@@ -330,6 +330,11 @@ steps:
     - pull_request
 
 - name: build
+  # Keeping Dapper at v0.5.0 for armv7, as newer versions fails with
+  # Bad system call on this architecture. xref:
+  #
+  # https://github.com/k3s-io/k3s/pull/8959#discussion_r1439736566
+  # https://drone-pr.k3s.io/k3s-io/k3s/7922/3/3
   image: rancher/dapper:v0.5.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
@@ -345,7 +350,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: github_binary_release
-  image: ibuildthecloud/github-release:v0.0.1
+  image: plugins/github-release
   settings:
     api_key:
       from_secret: github_token
@@ -386,6 +391,7 @@ steps:
     - tag
 
 - name: test
+  # Refer to comment for arm/build.
   image: rancher/dapper:v0.5.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
   environment:
@@ -439,7 +445,7 @@ steps:
     - pull_request
 
 - name: validate_go_mods
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   commands:
   - docker build --target test-mods -t k3s:mod -f Dockerfile.test .
   - docker run -i k3s:mod
@@ -592,7 +598,7 @@ steps:
     - pull_request
 
 - name: build-e2e-image
-  image: rancher/dapper:v0.5.0
+  image: rancher/dapper:v0.6.0
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
     - SKIP_VALIDATE=true SKIP_AIRGAP=true dapper ci
