@@ -270,11 +270,6 @@ func GetHTTPClient(cacerts []byte, certFile, keyFile string, option ...ClientOpt
 func WithTimeout(d time.Duration) ClientOption {
 	return func(c *http.Client) {
 		c.Timeout = d
-	}
-}
-
-func WithHeaderTimeout(d time.Duration) ClientOption {
-	return func(c *http.Client) {
 		c.Transport.(*http.Transport).ResponseHeaderTimeout = d
 	}
 }
@@ -308,9 +303,7 @@ func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
 	p.Scheme = u.Scheme
 	p.Host = u.Host
 
-	client := GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...)
-
-	return put(p.String(), body, client, i.Username, i.Password, i.Token())
+	return put(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server

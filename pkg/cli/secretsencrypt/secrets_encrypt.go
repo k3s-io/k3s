@@ -228,10 +228,7 @@ func RotateKeys(app *cli.Context) error {
 		return err
 	}
 	timeout := 70 * time.Second
-	if err = info.Put("/v1-"+version.Program+"/encrypt/config",
-		b,
-		clientaccess.WithTimeout(timeout),
-		clientaccess.WithHeaderTimeout(timeout)); err != nil {
+	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b, clientaccess.WithTimeout(timeout)); err != nil {
 		return wrapServerError(err)
 	}
 	fmt.Println("keys rotated, reencryption started")
