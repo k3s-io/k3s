@@ -561,8 +561,8 @@ github.com/fatih/color v1.15.0/go.mod h1:0h5ZqXfHYED7Bhv2ZJamyIOUej9KtShiJESRwBD
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/flannel-io/flannel v0.24.0 h1:dsVWmcWTn9ujbNfoTR0+Epkqfq1/bGWOCP5vVCTEBLI=
-github.com/flannel-io/flannel v0.24.0/go.mod h1:GvvhQS/xd5QM6oc9yeVz8KBbp5hWJZgPtwTKgpuLUPI=
+github.com/flannel-io/flannel v0.24.2 h1:dXMRlGvmQ7iPtKuGJifmvpfrME5U3TVWDWZ2L/QqPqc=
+github.com/flannel-io/flannel v0.24.2/go.mod h1:GvvhQS/xd5QM6oc9yeVz8KBbp5hWJZgPtwTKgpuLUPI=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v1.0.0 h1:DlTHqmzmvcEiKj+4RYo/imoswx/4r6iBlCMfVtrMXpQ=
 github.com/flynn/noise v1.0.0/go.mod h1:xbMo+0i6+IGbYdJhF31t2eR1BIU0CYc12+BNAKwUTag=
