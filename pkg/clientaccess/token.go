@@ -289,7 +289,7 @@ func (i *Info) Get(path string, option ...ClientOption) ([]byte, error) {
 	return get(p.String(), GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
-// Put makes a request to a subpath of info's BaseURL, with a 10 second timeout
+// Put makes a request to a subpath of info's BaseURL
 func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
 
 	u, err := url.Parse(i.BaseURL)
@@ -302,7 +302,6 @@ func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-
 	return put(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
