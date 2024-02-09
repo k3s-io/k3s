@@ -46,9 +46,9 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     ./scripts/download
 
 COPY ./cmd ./cmd
-COPY ./pkg ./pkg
 COPY ./tests ./tests
 COPY ./.git ./.git
+COPY ./pkg ./pkg
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
     ./scripts/build
