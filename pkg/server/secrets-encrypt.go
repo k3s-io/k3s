@@ -128,7 +128,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	if len(providers) > 2 {
 		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
 	}
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 }
 
 func addAndRotateKeys(server *config.Control) error {
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func addAndRotateKeys(server *config.Control) error {
 
 	// Right rotate elements
 	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
-
+	logrus.Infoln("Rotating secrets-encryption keys")
 	return secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true)
 }
 
@@ -325,7 +325,16 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
+	reloadTime, reloadSuccesses, err := secretsencrypt.GetEncryptionConfigMetrics(server.Runtime, true)
+	if err != nil {
+		return err
+	}
+
 	if err := addAndRotateKeys(server); err != nil {
+		return err
+	}
+
+	if err := secretsencrypt.WaitForEncryptionConfigReload(server.Runtime, reloadSuccesses, reloadTime); err != nil {
 		return err
 	}
 

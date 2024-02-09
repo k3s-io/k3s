@@ -1,20 +1,29 @@
 package secretsencrypt
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -42,7 +51,10 @@ func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1
 	return curEncryption.Resources[0].Providers, nil
 }
 
-func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key, error) {
+// GetEncryptionKeys returns a list of encryption keys from the current encryption configuration.
+// If includeIdentity is true, it will also include a fake key representing the identity provider, which
+// is used to determine if encryption is enabled/disabled.
+func GetEncryptionKeys(runtime *config.ControlRuntime, includeIdentity bool) ([]apiserverconfigv1.Key, error) {
 
 	providers, err := GetEncryptionProviders(runtime)
 	if err != nil {
@@ -54,6 +66,14 @@ func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key,
 
 	var curKeys []apiserverconfigv1.Key
 	for _, p := range providers {
+		// Since identity doesn't have keys, we make up a fake key to represent it, so we can
+		// know that encryption is enabled/disabled in the request.
+		if p.Identity != nil && includeIdentity {
+			curKeys = append(curKeys, apiserverconfigv1.Key{
+				Name:   "identity",
+				Secret: "identity",
+			})
+		}
 		if p.AESCBC != nil {
 			curKeys = append(curKeys, p.AESCBC.Keys...)
 		}
@@ -121,10 +141,10 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 }
 
 // GenReencryptHash generates a sha256 hash from the existing secrets keys and
-// a new key based on the input arguments.
+// any identity providers plus a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
 
-	keys, err := GetEncryptionKeys(runtime)
+	keys, err := GetEncryptionKeys(runtime, true)
 	if err != nil {
 		return "", err
 	}
@@ -173,4 +193,94 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
 	return os.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
+}
+
+// WaitForEncryptionConfigReload watches the metrics API, polling the latest time the encryption config was reloaded.
+func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccesses, reloadTime int64) error {
+	var lastFailure string
+	err := wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+
+		newReloadTime, newReloadSuccess, err := GetEncryptionConfigMetrics(runtime, false)
+		if err != nil {
+			return true, err
+		}
+
+		if newReloadSuccess <= reloadSuccesses || newReloadTime <= reloadTime {
+			lastFailure = fmt.Sprintf("apiserver has not reloaded encryption configuration (reload success: %d/%d, reload timestamp %d/%d)", newReloadSuccess, reloadSuccesses, newReloadTime, reloadTime)
+			return false, nil
+		}
+		logrus.Infof("encryption config reloaded successfully %d times", newReloadSuccess)
+		logrus.Debugf("encryption config reloaded at %s", time.Unix(newReloadTime, 0))
+		return true, nil
+	})
+	if err != nil {
+		err = fmt.Errorf("%w: %s", err, lastFailure)
+	}
+	return err
+}
+
+// GetEncryptionConfigMetrics fetches the metrics API and returns the last time the encryption config was reloaded
+// and the number of times it has been reloaded.
+func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics bool) (int64, int64, error) {
+	var unixUpdateTime int64
+	var reloadSuccessCounter int64
+	var lastFailure string
+	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigSupervisor)
+	if err != nil {
+		return 0, 0, err
+	}
+	restConfig.GroupVersion = &apiserverconfigv1.SchemeGroupVersion
+	restConfig.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	restClient, err := rest.RESTClientFor(restConfig)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// This is wrapped in a poller because on startup no metrics exist. Its only after the encryption config
+	// is modified and the first reload occurs that the metrics are available.
+	err = wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+		data, err := restClient.Get().AbsPath("/metrics").DoRaw(context.TODO())
+		if err != nil {
+			return true, err
+		}
+
+		reader := bytes.NewReader(data)
+		var parser expfmt.TextParser
+		mf, err := parser.TextToMetricFamilies(reader)
+		if err != nil {
+			return true, err
+		}
+		tsMetric := mf["apiserver_encryption_config_controller_automatic_reload_last_timestamp_seconds"]
+		successMetric := mf["apiserver_encryption_config_controller_automatic_reload_success_total"]
+
+		// First time, no metrics exist, so return zeros
+		if tsMetric == nil && successMetric == nil && initialMetrics {
+			return true, nil
+		}
+
+		if tsMetric == nil {
+			lastFailure = "encryption config time metric not found"
+			return false, nil
+		}
+
+		if successMetric == nil {
+			lastFailure = "encryption config success metric not found"
+			return false, nil
+		}
+
+		unixUpdateTime = int64(tsMetric.GetMetric()[0].GetGauge().GetValue())
+		if time.Now().Unix() < unixUpdateTime {
+			return true, fmt.Errorf("encryption reload time is incorrectly ahead of current time")
+		}
+
+		reloadSuccessCounter = int64(successMetric.GetMetric()[0].GetCounter().GetValue())
+
+		return true, nil
+	})
+
+	if err != nil {
+		err = fmt.Errorf("%w: %s", err, lastFailure)
+	}
+
+	return unixUpdateTime, reloadSuccessCounter, err
 }

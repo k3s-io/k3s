@@ -245,16 +245,6 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			core.V1().Secret())
 	}
 
-	if config.ControlConfig.EncryptSecrets {
-		if err := secretsencrypt.Register(ctx,
-			sc.K8s,
-			&config.ControlConfig,
-			sc.Core.Core().V1().Node(),
-			sc.Core.Core().V1().Secret()); err != nil {
-			return err
-		}
-	}
-
 	if config.ControlConfig.Rootless {
 		return rootlessports.Register(ctx,
 			sc.Core.Core().V1().Service(),

@@ -41,6 +41,9 @@ var (
 	}
 )
 
+// ClientOption is a callback to mutate the http client prior to use
+type ClientOption func(*http.Client)
+
 // Info contains fields that track parsed parts of a cluster join token
 type Info struct {
 	*kubeadm.BootstrapTokenString
@@ -233,7 +236,7 @@ func parseToken(token string) (*Info, error) {
 // If the CA bundle is not empty but does not contain any valid certs, it validates using
 // an empty CA bundle (which will always fail).
 // If valid cert+key paths can be loaded from the provided paths, they are used for client cert auth.
-func GetHTTPClient(cacerts []byte, certFile, keyFile string) *http.Client {
+func GetHTTPClient(cacerts []byte, certFile, keyFile string, option ...ClientOption) *http.Client {
 	if len(cacerts) == 0 {
 		return defaultClient
 	}
@@ -250,18 +253,29 @@ func GetHTTPClient(cacerts []byte, certFile, keyFile string) *http.Client {
 	if err == nil {
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
-
-	return &http.Client{
+	client := &http.Client{
 		Timeout: defaultClientTimeout,
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
 			TLSClientConfig:   tlsConfig,
 		},
 	}
+
+	for _, o := range option {
+		o(client)
+	}
+	return client
+}
+
+func WithTimeout(d time.Duration) ClientOption {
+	return func(c *http.Client) {
+		c.Timeout = d
+		c.Transport.(*http.Transport).ResponseHeaderTimeout = d
+	}
 }
 
 // Get makes a request to a subpath of info's BaseURL
-func (i *Info) Get(path string) ([]byte, error) {
+func (i *Info) Get(path string, option ...ClientOption) ([]byte, error) {
 	u, err := url.Parse(i.BaseURL)
 	if err != nil {
 		return nil, err
@@ -272,11 +286,12 @@ func (i *Info) Get(path string) ([]byte, error) {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-	return get(p.String(), GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile), i.Username, i.Password, i.Token())
+	return get(p.String(), GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
 // Put makes a request to a subpath of info's BaseURL
-func (i *Info) Put(path string, body []byte) error {
+func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
+
 	u, err := url.Parse(i.BaseURL)
 	if err != nil {
 		return err
@@ -287,7 +302,7 @@ func (i *Info) Put(path string, body []byte) error {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-	return put(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile), i.Username, i.Password, i.Token())
+	return put(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
