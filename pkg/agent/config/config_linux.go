@@ -23,7 +23,7 @@ func applyCRIDockerdAddress(nodeConfig *config.Node) {
 }
 
 func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdConfig *config.Containerd) {
-    containerdConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd")
+	containerdConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd")
 
 	blockioPath := filepath.Join(containerdConfigDir, "blockio_config.yaml")
 
