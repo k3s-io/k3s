@@ -22,20 +22,26 @@ func applyCRIDockerdAddress(nodeConfig *config.Node) {
 	nodeConfig.CRIDockerd.Address = "unix:///run/k3s/cri-dockerd/cri-dockerd.sock"
 }
 
-func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, nodeConfig *config.Node) {
-	blockioPath := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "blockio_config.yaml")
+func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdConfig *config.Containerd) {
+	containerdConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd")
+
+	blockioPath := filepath.Join(containerdConfigDir, "blockio_config.yaml")
 
 	// Set containerd config if file exists
-	if _, err := os.Stat(blockioPath); !errors.Is(err, os.ErrNotExist) {
-		logrus.Infof("BlockIO configuration file found")
-		nodeConfig.Containerd.BlockIOConfig = blockioPath
+	if fileInfo, err := os.Stat(blockioPath); !errors.Is(err, os.ErrNotExist) {
+		if fileInfo.Mode().IsRegular() {
+			logrus.Infof("BlockIO configuration file found")
+			containerdConfig.BlockIOConfig = blockioPath
+		}
 	}
 
-	rdtPath := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "rdt_config.yaml")
+	rdtPath := filepath.Join(containerdConfigDir, "rdt_config.yaml")
 
 	// Set containerd config if file exists
-	if _, err := os.Stat(rdtPath); !errors.Is(err, os.ErrNotExist) {
-		logrus.Infof("RDT configuration file found")
-		nodeConfig.Containerd.RDTConfig = rdtPath
+	if fileInfo, err := os.Stat(rdtPath); !errors.Is(err, os.ErrNotExist) {
+		if fileInfo.Mode().IsRegular() {
+			logrus.Infof("RDT configuration file found")
+			containerdConfig.RDTConfig = rdtPath
+		}
 	}
 }
