@@ -18,6 +18,7 @@ on:
       - "!tests/integration**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
+      - "!.github/workflows/build-k3s.yaml"
   workflow_dispatch: {}
 
 permissions:
