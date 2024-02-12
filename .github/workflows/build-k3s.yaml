@@ -22,7 +22,7 @@ jobs:
     - name: Build K3s binary
       run: |
         DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
-      
+        sha256sum dist/artifacts/k3s > dist/artifacts/k3s.sha256sum
     - name: bundle repo
       if: inputs.upload-repo == true
       run: |
@@ -39,4 +39,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: k3s
-        path: dist/artifacts/k3s
+        path: dist/artifacts/k3s*
