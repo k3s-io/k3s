@@ -447,7 +447,6 @@ download_hash() {
         info "Downloading hash ${GITHUB_PR_URL}"
         curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
         unzip -p ${TMP_ZIP} k3s.sha256sum > ${TMP_HASH}
-        sed -i 's/dist\/artifacts\/k3s/k3s/g' ${TMP_HASH}
     else
         if [ -n "${INSTALL_K3S_COMMIT}" ]; then
             HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
