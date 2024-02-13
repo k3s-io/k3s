@@ -56,7 +56,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: snapshotter-${{ hashFiles(format('tests/snapshotter/{0}/{1}/Vagrantfile', matrix.snapshotter, matrix.vm)) }}
+          key: vagrant-box-${{ matrix.vm }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
