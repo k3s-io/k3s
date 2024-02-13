@@ -27,17 +27,21 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      # Workaround for https://github.com/actions/cache/issues/1319
+      - name: Move vagrant cache to /root
+        run: |
+          mkdir -p /tmp/boxes
+          sudo rm -rf /root/.vagrant.d/boxes
+          sudo mv -f /tmp/boxes /root/.vagrant.d
       - name: "Vagrant Cache"
         uses: actions/cache@v4
         with:
           path: |
-            /root/.vagrant.d/boxes
-            /root/.vagrant.d/gems
+            /tmp/boxes
           key: vagrant-box-${{ matrix.vm }}
         id: vagrant-cache
-        continue-on-error: true
-      - name: Set up vagrant and libvirt
-        uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up ⏩ Install K3s"
@@ -59,3 +63,7 @@ jobs:
         run: vagrant provision --provision-with=k3s-status
       - name: "k3s-procps"
         run: vagrant provision --provision-with=k3s-procps
+      - name: Copy out vagrant boxes for cache
+        run: |
+          sudo mv -f /root/.vagrant.d/boxes /tmp/boxes
+          sudo chmod -R 777 /tmp/boxes
