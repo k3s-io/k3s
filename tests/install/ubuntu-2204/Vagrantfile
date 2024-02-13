@@ -1,0 +1,59 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+
+ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-k3s"]
+  config.vm.box = 'generic/ubuntu2204'
+  config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
+  config.vm.synced_folder '.', '/vagrant', disabled: true
+
+  # Load in helper functions
+  load "../install_util.rb"
+
+  config.vm.define 'install-ubuntu-2204', primary: true do |test|
+    test.vm.hostname = 'smoke'
+    test.vm.provision 'k3s-upload', type: 'file', run: 'always', source: ENV['TEST_INSTALL_SH'], destination: 'install.sh'
+    test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.installer_url = 'file:///home/vagrant/install.sh'
+      k3s.args = %w[server]
+      k3s.env = ENV.select{|k,v| k.start_with?('K3S_') || k.start_with?('INSTALL_K3S_')}.merge({
+        :INSTALL_K3S_NAME => 'server',
+        :INSTALL_K3S_SKIP_SELINUX_RPM => 'true',
+      })
+      k3s.config = <<~YAML
+        token: 'vagrant'
+      YAML
+    end
+    
+    waitForNodeReady(test.vm)
+
+    waitForCoreDns(test.vm)
+    
+    waitForLocalStorage(test.vm)
+
+    waitForMetricsServer(test.vm)
+
+    waitForTraefik(test.vm)
+
+    kubectlStatus(test.vm)
+
+    checkK3sProcesses(test.vm)
+
+    checkCGroupV2(test.vm)
+
+  end
+
+  %w[libvirt virtualbox vmware_desktop].each do |p|
+    config.vm.provider p do |v|
+      v.cpus = ENV['TEST_VM_CPUS'] || 2
+      v.memory = ENV['TEST_VM_MEMORY'] || 2048
+    end
+  end
+  config.vm.provider :virtualbox do |v,o|
+    v.gui = false
+    v.check_guest_additions = false
+  end
+end
