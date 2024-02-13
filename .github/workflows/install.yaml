@@ -41,17 +41,21 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      
       - name: "Vagrant Cache"
         uses: actions/cache@v4
         with:
           path: |
-            /root/.vagrant.d/boxes
-            /root/.vagrant.d/gems
+            /tmp/boxes
           key: vagrant-box-${{ matrix.vm }}
-        id: vagrant-cache
-        continue-on-error: true
-      - name: Set up vagrant and libvirt
-        uses: ./.github/actions/vagrant-setup
+      # Workaround for https://github.com/actions/cache/issues/1319
+      - name: Move vagrant cache to /root
+        run: |
+          mkdir -p /tmp/boxes
+          sudo rm -rf /root/.vagrant.d/boxes
+          sudo mv -f /tmp/boxes /root/.vagrant.d
       - name: "Vagrant Plugin(s)"
         run: sudo vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: "Download k3s binary"
@@ -100,3 +104,7 @@ jobs:
         with:
           ## If no one connects after 5 minutes, shut down server.
           wait-timeout-minutes: 5
+      - name: Copy out vagrant boxes for cache
+        run: |
+          sudo mv -f /root/.vagrant.d/boxes /tmp/boxes
+          sudo chmod -R 777 /tmp/boxes

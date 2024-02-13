@@ -49,17 +49,21 @@ jobs:
       - name: "Download Binary"
         uses: actions/download-artifact@v3
         with: { name: k3s, path: dist/artifacts/ }
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+        # Workaround for https://github.com/actions/cache/issues/1319
+      - name: Move vagrant cache to /root
+        run: |
+          mkdir -p /tmp/boxes
+          sudo rm -rf /root/.vagrant.d/boxes
+          sudo mv -f /tmp/boxes /root/.vagrant.d
       - name: "Vagrant Cache"
         uses: actions/cache@v4
         with:
           path: |
-            /root/.vagrant.d/boxes
-            /root/.vagrant.d/gems
+            /tmp/boxes
+            /tmp/gems
           key: vagrant-box-${{ matrix.vm }}
-        id: vagrant-cache
-        continue-on-error: true
-      - name: Set up vagrant and libvirt
-        uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Plugin(s)"
         run: sudo vagrant plugin install vagrant-k3s
       - name: "Vagrant Up ⏩ Install K3s"
@@ -72,3 +76,7 @@ jobs:
         run: sudo vagrant provision --provision-with=k3s-status
       - name: "k3s-snapshots" # if no snapshots then we fail
         run: sudo vagrant provision --provision-with=k3s-snapshots
+      - name: Copy out vagrant boxes for cache
+        run: |
+          sudo mv -f /root/.vagrant.d/boxes /tmp/boxes
+          sudo chmod -R 777 /tmp/boxes
