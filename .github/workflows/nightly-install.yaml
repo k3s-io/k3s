@@ -15,13 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [stable]
-        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
-        include:
-          - {channel: latest, vm: rocky-8}
-          - {channel: latest, vm: ubuntu-focal}
-          - {channel: latest, vm: opensuse-leap}
-      max-parallel: 2
+        channel: [stable, latest]
+        vm: [rocky-8, fedora, opensuse-leap, ubuntu-2204]
+      max-parallel: 4
     defaults:
       run:
         working-directory: tests/install/${{ matrix.vm }}
