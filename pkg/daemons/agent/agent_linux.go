@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/cgroups"
@@ -49,18 +48,6 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	}
 	if cfg.NodeName != "" {
 		argsMap["hostname-override"] = cfg.NodeName
-	}
-	if cfg.VLevel != 0 {
-		argsMap["v"] = strconv.Itoa(cfg.VLevel)
-	}
-	if cfg.VModule != "" {
-		argsMap["vmodule"] = cfg.VModule
-	}
-	if cfg.LogFile != "" {
-		argsMap["log_file"] = cfg.LogFile
-	}
-	if cfg.AlsoLogToStderr {
-		argsMap["alsologtostderr"] = "true"
 	}
 	return argsMap
 }
@@ -187,11 +174,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 	if !cfg.DisableServiceLB {
 		argsMap["allowed-unsafe-sysctls"] = "net.ipv4.ip_forward,net.ipv6.conf.all.forwarding"
 	}
-	if cfg.VLevel != 0 {
-		argsMap["v"] = strconv.Itoa(cfg.VLevel)
-	}
-	if cfg.VModule != "" {
-		argsMap["vmodule"] = cfg.VModule
-	}
+
 	return argsMap
 }
