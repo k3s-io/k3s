@@ -37,6 +37,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) Compress etcd snapshot",
 		Destination: &ServerConfig.EtcdSnapshotCompress,
 	},
+	&cli.IntFlag{
+		Name:        "snapshot-retention,etcd-snapshot-retention",
+		Usage:       "(db) Number of snapshots to retain.",
+		Destination: &ServerConfig.EtcdSnapshotRetention,
+		Value:       defaultSnapshotRentention,
+	},
 	&cli.BoolFlag{
 		Name:        "s3,etcd-s3",
 		Usage:       "(db) Enable backup to S3",
@@ -140,12 +146,7 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,
 				Action:          prune,
-				Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
-					Name:        "snapshot-retention",
-					Usage:       "(db) Number of snapshots to retain.",
-					Destination: &ServerConfig.EtcdSnapshotRetention,
-					Value:       defaultSnapshotRentention,
-				}),
+				Flags:           EtcdSnapshotFlags,
 			},
 		},
 		Flags: EtcdSnapshotFlags,
