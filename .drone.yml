@@ -350,7 +350,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: github_binary_release
-  image: plugins/github-release
+  image: plugins/github-release:linux-arm
   settings:
     api_key:
       from_secret: github_token
