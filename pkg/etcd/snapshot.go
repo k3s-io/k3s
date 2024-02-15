@@ -74,26 +74,38 @@ var (
 )
 
 // snapshotDir ensures that the snapshot directory exists, and then returns its path.
+// Only the default snapshot directory will be created; user-specified non-default
+// snapshot directories must already exist.
 func snapshotDir(config *config.Control, create bool) (string, error) {
-	if config.EtcdSnapshotDir == "" {
-		// we have to create the snapshot dir if we are using
-		// the default snapshot dir if it doesn't exist
-		defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
-		s, err := os.Stat(defaultSnapshotDir)
-		if err != nil {
-			if create && os.IsNotExist(err) {
-				if err := os.MkdirAll(defaultSnapshotDir, 0700); err != nil {
-					return "", err
-				}
-				return defaultSnapshotDir, nil
-			}
-			return "", err
-		}
-		if s.IsDir() {
-			return defaultSnapshotDir, nil
-		}
+	defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
+	snapshotDir := config.EtcdSnapshotDir
+
+	if snapshotDir == "" {
+		snapshotDir = defaultSnapshotDir
 	}
-	return config.EtcdSnapshotDir, nil
+
+	// Disable creation if not using the default snapshot dir.
+	// Non-default snapshot dirs must be created by the user.
+	if snapshotDir != defaultSnapshotDir {
+		create = false
+	}
+
+	s, err := os.Stat(snapshotDir)
+	if err != nil {
+		if os.IsNotExist(err) && create {
+			if err := os.MkdirAll(snapshotDir, 0700); err != nil {
+				return "", err
+			}
+			return snapshotDir, nil
+		}
+		return "", err
+	}
+
+	if !s.IsDir() {
+		return "", fmt.Errorf("%s is not a directory", snapshotDir)
+	}
+
+	return snapshotDir, nil
 }
 
 // preSnapshotSetup checks to see if the necessary components are in place
@@ -246,12 +258,6 @@ func (e *ETCD) Snapshot(ctx context.Context) error {
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get etcd-snapshot-dir")
-	}
-
-	if info, err := os.Stat(snapshotDir); err != nil {
-		return errors.Wrapf(err, "failed to stat etcd-snapshot-dir %s", snapshotDir)
-	} else if !info.IsDir() {
-		return fmt.Errorf("etcd-snapshot-dir %s is not a directory", snapshotDir)
 	}
 
 	cfg, err := getClientConfig(ctx, e.config)
@@ -438,7 +444,7 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshotFile, error) {
 	snapshots := make(map[string]snapshotFile)
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
-		return snapshots, errors.Wrap(err, "failed to get the snapshot dir")
+		return snapshots, errors.Wrap(err, "failed to get etcd-snapshot-dir")
 	}
 
 	if err := filepath.Walk(snapshotDir, func(path string, file os.FileInfo, err error) error {
@@ -502,8 +508,9 @@ func (e *ETCD) initS3IfNil(ctx context.Context) error {
 func (e *ETCD) PruneSnapshots(ctx context.Context) error {
 	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
-		return errors.Wrap(err, "failed to get the snapshot dir")
+		return errors.Wrap(err, "failed to get etcd-snapshot-dir")
 	}
+
 	if err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir); err != nil {
 		logrus.Errorf("Error applying snapshot retention policy: %v", err)
 	}
@@ -551,7 +558,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) (map[string]snapshotFile, erro
 func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) error {
 	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
-		return errors.Wrap(err, "failed to get the snapshot dir")
+		return errors.Wrap(err, "failed to get etcd-snapshot-dir")
 	}
 	if e.config.EtcdS3 {
 		if err := e.initS3IfNil(ctx); err != nil {
