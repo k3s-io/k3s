@@ -48,4 +48,4 @@ fi
 
 echo Running: golangci-lint
 # https://github.com/golangci/golangci-lint/issues/2788
-CGO_ENABLED=0 golangci-lint run -v
+CGO_ENABLED=0 GOFLAGS="-buildvcs=false" golangci-lint run -v
