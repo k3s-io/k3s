@@ -36,6 +36,34 @@
 			{
 				"linters": "revive",
 				"text": "exported"
+			},
+			{
+				"linters": "revive",
+				"text": "unused-parameter"
+			},
+			{
+				"linters": "revive",
+				"text": "dot-imports"
+			},
+			{
+				"linters": "revive",
+				"text": "empty-block"
+			},
+			{
+				"linters": "revive",
+				"text": "superfluous-else"
+			},
+			{
+				"linters": "revive",
+				"text": "indent-error-flow"
+			},
+			{
+				"linters": "revive",
+				"text": "redefines-builtin-id"
+			},
+			{
+				"linters": "typecheck",
+				"text": "undefined"
 			}
 		]
 	}
