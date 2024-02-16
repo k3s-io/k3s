@@ -14,7 +14,7 @@ import (
 
 // Rootless is only valid on a single node, but requires node/kernel configuration, requiring a E2E test environment.
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
+// Valid nodeOS: generic/ubuntu2204, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2204", "VM operating system")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")

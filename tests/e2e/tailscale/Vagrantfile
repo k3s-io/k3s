@@ -2,7 +2,7 @@ ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
   ["server-0", "agent-0" ])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2004', 'generic/ubuntu2004'])
+  ['generic/ubuntu2204', 'generic/ubuntu2204'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 GOCOVER = (ENV['E2E_GOCOVER'] || "")
@@ -75,7 +75,7 @@ Vagrant.configure("2") do |config|
   # over the node roles themselves
   NODE_ROLES.length.times do |i|
     name = NODE_ROLES[i]
-    config.vm.define name do |node|
+    config.vm.define role do |node|
       roles = name.split("-", -1)
       role_num = roles.pop.to_i
       provision(node.vm, roles, role_num, i)
