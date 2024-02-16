@@ -44,7 +44,7 @@ func Test_UnitFindContainerRuntimes(t *testing.T) {
 					BinaryName:  "/tmp/testExecutables/crun",
 				},
 				"lunatic": {
-					RuntimeType: "io.containerd.lunatic.v2",
+					RuntimeType: "io.containerd.lunatic.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-lunatic-v1",
 				},
 			},
@@ -57,7 +57,7 @@ func Test_UnitFindContainerRuntimes(t *testing.T) {
 					"containerd-shim-wasmtime-v1",
 					"containerd-shim-lunatic-v1",
 					"containerd-shim-slight-v1",
-					"containerd-shim-spin-v1",
+					"containerd-shim-spin-v2",
 					"containerd-shim-wws-v1",
 					"containerd-shim-wasmedge-v1",
 					"containerd-shim-wasmer-v1",
@@ -65,31 +65,31 @@ func Test_UnitFindContainerRuntimes(t *testing.T) {
 			},
 			want: runtimeConfigs{
 				"wasmtime": {
-					RuntimeType: "io.containerd.wasmtime.v2",
+					RuntimeType: "io.containerd.wasmtime.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-wasmtime-v1",
 				},
 				"lunatic": {
-					RuntimeType: "io.containerd.lunatic.v2",
+					RuntimeType: "io.containerd.lunatic.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-lunatic-v1",
 				},
 				"slight": {
-					RuntimeType: "io.containerd.slight.v2",
+					RuntimeType: "io.containerd.slight.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-slight-v1",
 				},
 				"spin": {
 					RuntimeType: "io.containerd.spin.v2",
-					BinaryName:  "/tmp/testExecutables/containerd-shim-spin-v1",
+					BinaryName:  "/tmp/testExecutables/containerd-shim-spin-v2",
 				},
 				"wws": {
-					RuntimeType: "io.containerd.wws.v2",
+					RuntimeType: "io.containerd.wws.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-wws-v1",
 				},
 				"wasmedge": {
-					RuntimeType: "io.containerd.wasmedge.v2",
+					RuntimeType: "io.containerd.wasmedge.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-wasmedge-v1",
 				},
 				"wasmer": {
-					RuntimeType: "io.containerd.wasmer.v2",
+					RuntimeType: "io.containerd.wasmer.v1",
 					BinaryName:  "/tmp/testExecutables/containerd-shim-wasmer-v1",
 				},
 			},
