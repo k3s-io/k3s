@@ -447,6 +447,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
+	if controlConfig.ClusterIPRange != nil {
+		if utilsnet.IPFamilyOfCIDR(controlConfig.ClusterIPRange) != utilsnet.IPFamilyOf(nodeIPs[0]) && len(nodeIPs) > 1 {
+			firstNodeIP := nodeIPs[0]
+			nodeIPs[0] = nodeIPs[1]
+			nodeIPs[1] = firstNodeIP
+		}
+	}
+
 	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
 	if err != nil {
 		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
