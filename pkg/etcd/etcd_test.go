@@ -27,6 +27,7 @@ func mustGetAddress() string {
 }
 
 func generateTestConfig() *config.Control {
+	hostname, _ := os.Hostname()
 	containerRuntimeReady := make(chan struct{})
 	close(containerRuntimeReady)
 	criticalControlArgs := config.CriticalControlArgs{
@@ -37,6 +38,7 @@ func generateTestConfig() *config.Control {
 		ServiceIPRange: testutil.ServiceIPNet(),
 	}
 	return &config.Control{
+		ServerNodeName:        hostname,
 		Runtime:               config.NewRuntime(containerRuntimeReady),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
