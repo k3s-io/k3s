@@ -623,6 +623,9 @@ func (e *ETCD) setName(force bool) error {
 	fileName := nameFile(e.config)
 	data, err := os.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
+		if e.config.ServerNodeName == "" {
+			return errors.New("server node name not set")
+		}
 		e.name = e.config.ServerNodeName + "-" + uuid.New().String()[:8]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0700); err != nil {
 			return err
@@ -1106,7 +1109,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 
 			var node *v1.Node
 			for _, n := range nodes {
-				if strings.HasPrefix(member.Name, n.Name+"-") {
+				if member.Name == n.Annotations[NodeNameAnnotation] {
 					node = n
 					nodeIsMember[n.Name] = true
 					break
