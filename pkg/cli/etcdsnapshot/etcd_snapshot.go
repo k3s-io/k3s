@@ -80,10 +80,11 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, config *server.Config) (*e
 	// command uses the same endpoint selection logic as it does when starting up the full server. Specifically,
 	// we need to set an IPv6 service CIDR on IPv6-only or IPv6-first nodes, as the etcd default endpoints check
 	// the service CIDR primary addresss family to determine what loopback address to use.
-	_, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
 	if err != nil {
 		return nil, err
 	}
+	config.ControlConfig.ServerNodeName = nodeName
 
 	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
 	_, defaultClusterCIDR, defaultServiceCIDR, _ := util.GetDefaultAddresses(nodeIPs[0])
