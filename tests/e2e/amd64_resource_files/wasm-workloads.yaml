@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasm-slight
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wasm-slight
+  template:
+    metadata:
+      labels:
+        app: wasm-slight
+    spec:
+      runtimeClassName: slight
+      containers:
+        - name: slight-hello
+          image: ghcr.io/deislabs/containerd-wasm-shims/examples/slight-rust-hello:v0.9.1
+          command: ["/"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasm-spin
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wasm-spin
+  template:
+    metadata:
+      labels:
+        app: wasm-spin
+    spec:
+      runtimeClassName: spin
+      containers:
+        - name: spin-hello
+          image: ghcr.io/deislabs/containerd-wasm-shims/examples/spin-rust-hello:v0.11.1
+          command: ["/"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# create a traefik middleware
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix
+  namespace: default
+spec:
+  stripPrefix:
+    forceSlash: false
+    prefixes:
+      - /spin
+      - /slight
+---
+# define the slight service
+apiVersion: v1
+kind: Service
+metadata:
+  name: wasm-slight
+  namespace: default
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  selector:
+    app: wasm-slight
+---
+# define the spin service
+apiVersion: v1
+kind: Service
+metadata:
+  name: wasm-spin
+  namespace: default
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  selector:
+    app: wasm-spin
+---
+# define a single ingress, that exposes both services
+# using a path route
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress
+  namespace: default
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.middlewares: default-strip-prefix@kubernetescrd
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /slight
+            pathType: Prefix
+            backend:
+              service:
+                name: wasm-slight
+                port:
+                  number: 80
+          - path: /spin
+            pathType: Prefix
+            backend:
+              service:
+                name: wasm-spin
+                port:
+                  number: 80
