@@ -38,7 +38,7 @@ LABEL="ETCD-JOIN-BASIC" SERVER_ARGS="" run-test
 # --- create a basic cluster to test joining a managed etcd cluster with --agent-token set
 LABEL="ETCD-JOIN-AGENTTOKEN" SERVER_ARGS="--agent-token ${RANDOM}${RANDOM}${RANDOM}" run-test
 
-# --- create a cluster with one etcd-only server, one control-plane-only server, and one agent
+# --- create a cluster with three etcd-only server, two control-plane-only server, and one agent
 server-post-hook() {
   if [ $1 -eq 1 ]; then
     local url=$(cat $TEST_DIR/servers/1/metadata/url)
@@ -46,7 +46,13 @@ server-post-hook() {
   fi
 }
 export -f server-post-hook
-LABEL="ETCD-SPLIT-ROLE" NUM_AGENTS=1 KUBECONFIG_SERVER=2 SERVER_1_ARGS="--cluster-init --disable-apiserver --disable-controller-manager --disable-scheduler" SERVER_2_ARGS="--disable-etcd" run-test
+LABEL="ETCD-SPLIT-ROLE" NUM_AGENTS=1 KUBECONFIG_SERVER=4 NUM_SERVERS=5 \
+SERVER_1_ARGS="--disable-apiserver --disable-controller-manager --disable-scheduler --cluster-init" \
+SERVER_2_ARGS="--disable-apiserver --disable-controller-manager --disable-scheduler" \
+SERVER_3_ARGS="--disable-apiserver --disable-controller-manager --disable-scheduler" \
+SERVER_4_ARGS="--disable-etcd" \
+SERVER_5_ARGS="--disable-etcd" \
+run-test
 
 
 # The following tests deploy clusters of mixed versions. The traefik helm chart may not deploy
