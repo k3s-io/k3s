@@ -27,8 +27,8 @@ func mustGetAddress() string {
 }
 
 func generateTestConfig() *config.Control {
-	agentReady := make(chan struct{})
-	close(agentReady)
+	containerRuntimeReady := make(chan struct{})
+	close(containerRuntimeReady)
 	criticalControlArgs := config.CriticalControlArgs{
 		ClusterDomain:  "cluster.local",
 		ClusterDNS:     net.ParseIP("10.43.0.10"),
@@ -37,7 +37,7 @@ func generateTestConfig() *config.Control {
 		ServiceIPRange: testutil.ServiceIPNet(),
 	}
 	return &config.Control{
-		Runtime:               config.NewRuntime(agentReady),
+		Runtime:               config.NewRuntime(containerRuntimeReady),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
