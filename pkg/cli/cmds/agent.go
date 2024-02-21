@@ -51,7 +51,7 @@ type Agent struct {
 	Taints                   cli.StringSlice
 	ImageCredProvBinDir      string
 	ImageCredProvConfig      string
-	AgentReady               chan<- struct{}
+	ContainerRuntimeReady    chan<- struct{}
 	AgentShared
 }
 
