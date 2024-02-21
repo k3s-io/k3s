@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
-	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
@@ -22,16 +21,6 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
-
-	if nodeConfig.Docker {
-		if err := startDocker(ctx, nodeConfig); err != nil {
-			return err
-		}
-	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
-		if err := startContainerd(ctx, nodeConfig); err != nil {
-			return err
-		}
-	}
 
 	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
 		return err
@@ -62,17 +51,6 @@ func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(ctx, args)
-}
-
-func startContainerd(ctx context.Context, cfg *daemonconfig.Node) error {
-	if err := containerd.SetupContainerdConfig(cfg); err != nil {
-		return err
-	}
-	return executor.Containerd(ctx, cfg)
-}
-
-func startDocker(ctx context.Context, cfg *daemonconfig.Node) error {
-	return executor.Docker(ctx, cfg)
 }
 
 // ImageCredProvAvailable checks to see if the kubelet image credential provider bin dir and config
