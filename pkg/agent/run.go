@@ -13,6 +13,7 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/k3s-io/k3s/pkg/agent/config"
+	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
@@ -129,19 +130,31 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	notifySocket := os.Getenv("NOTIFY_SOCKET")
-	os.Unsetenv("NOTIFY_SOCKET")
-
-	if err := setupTunnelAndRunAgent(ctx, nodeConfig, cfg, proxy); err != nil {
-		return err
+	if nodeConfig.Docker {
+		if err := executor.Docker(ctx, nodeConfig); err != nil {
+			return err
+		}
+	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
+		if err := containerd.SetupContainerdConfig(nodeConfig); err != nil {
+			return err
+		}
+		if err := executor.Containerd(ctx, nodeConfig); err != nil {
+			return err
+		}
 	}
-
 	// the agent runtime is ready to host workloads when containerd is up and the airgap
 	// images have finished loading, as that portion of startup may block for an arbitrary
 	// amount of time depending on how long it takes to import whatever the user has placed
 	// in the images directory.
 	if cfg.AgentReady != nil {
 		close(cfg.AgentReady)
+	}
+
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
+	os.Unsetenv("NOTIFY_SOCKET")
+
+	if err := setupTunnelAndRunAgent(ctx, nodeConfig, cfg, proxy); err != nil {
+		return err
 	}
 
 	if err := util.WaitForAPIServerReady(ctx, nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
