@@ -142,12 +142,12 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			return err
 		}
 	}
-	// the agent runtime is ready to host workloads when containerd is up and the airgap
+	// the container runtime is ready to host workloads when containerd is up and the airgap
 	// images have finished loading, as that portion of startup may block for an arbitrary
 	// amount of time depending on how long it takes to import whatever the user has placed
 	// in the images directory.
-	if cfg.AgentReady != nil {
-		close(cfg.AgentReady)
+	if cfg.ContainerRuntimeReady != nil {
+		close(cfg.ContainerRuntimeReady)
 	}
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
@@ -257,8 +257,8 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	if cfg.AgentReady != nil {
-		close(cfg.AgentReady)
+	if cfg.ContainerRuntimeReady != nil {
+		close(cfg.ContainerRuntimeReady)
 	}
 
 	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
