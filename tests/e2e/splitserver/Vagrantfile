@@ -1,6 +1,6 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-etcd-0", "server-cp-0", "server-cp-1", "agent-0"])
+  ["server-etcd-0", "server-etcd-1", "server-etcd-2", "server-cp-0", "server-cp-1", "agent-0"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
