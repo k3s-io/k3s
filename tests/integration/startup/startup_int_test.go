@@ -40,6 +40,59 @@ var _ = Describe("startup tests", Ordered, func() {
 				return testutil.K3sDefaultDeployments()
 			}, "120s", "5s").Should(Succeed())
 		})
+		It("has kine without tls", func() {
+			Eventually(func() error {
+				match, err := testutil.SearchK3sLog(startupServer, "Kine available at unix://kine.sock")
+				if err != nil {
+					return err
+				}
+				if match {
+					return nil
+				}
+				return errors.New("error finding kine sock")
+			}, "30s", "2s").Should(Succeed())
+		})
+		It("does not use kine with tls after bootstrap", func() {
+			Eventually(func() error {
+				match, err := testutil.SearchK3sLog(startupServer, "Kine available at unixs://kine.sock")
+				if err != nil {
+					return err
+				}
+				if match {
+					return errors.New("Kine with tls when the kine-tls is not set")
+				}
+				return nil
+			}, "30s", "2s").Should(Succeed())
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
+	When("a server with kine-tls is created", func() {
+		It("is created with kine-tls", func() {
+			var err error
+			startupServerArgs = []string{"--kine-tls"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("set kine to use tls", func() {
+			Eventually(func() error {
+				match, err := testutil.SearchK3sLog(startupServer, "Kine available at unixs://kine.sock")
+				if err != nil {
+					return err
+				}
+				if match {
+					return nil
+				}
+				return errors.New("error finding unixs://kine.sock")
+			}, "30s", "2s").Should(Succeed())
+		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
@@ -312,6 +365,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+
 })
 
 var failed bool
