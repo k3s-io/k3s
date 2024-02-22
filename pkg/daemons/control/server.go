@@ -286,7 +286,6 @@ func prepare(ctx context.Context, config *config.Control) error {
 	deps.CreateRuntimeCertFiles(config)
 
 	cluster := cluster.New(config)
-
 	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
 		return err
 	}

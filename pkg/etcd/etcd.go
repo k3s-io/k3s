@@ -379,7 +379,6 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 					continue
 				}
 			}
-
 		}
 	}()
 
@@ -442,7 +441,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	go e.manageLearners(ctx)
 
 	if isInitialized {
-		//check etcd dir permission
+		// check etcd dir permission
 		etcdDir := dbDir(e.config)
 		info, err := os.Stat(etcdDir)
 		if err != nil {
