@@ -178,6 +178,7 @@ type Control struct {
 	KubeConfigMode           string
 	HelmJobImage             string
 	DataDir                  string
+	KineTLS                  bool
 	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
 	DisableAPIServer         bool

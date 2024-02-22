@@ -84,7 +84,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return nil, err
 	}
 
-	if err := c.startStorage(ctx); err != nil {
+	if err := c.startStorage(ctx, false); err != nil {
 		return nil, err
 	}
 
@@ -132,11 +132,18 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 // This calls into the kine endpoint code, which sets up the database client
 // and unix domain socket listener if using an external database. In the case of an etcd
 // backend it just returns the user-provided etcd endpoints and tls config.
-func (c *Cluster) startStorage(ctx context.Context) error {
-	if c.storageStarted {
+func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
+	if c.storageStarted && !c.config.KineTLS {
 		return nil
 	}
 	c.storageStarted = true
+
+	if !bootstrap {
+		// set the tls config for the kine storage
+		c.config.Datastore.ServerTLSConfig.CAFile = c.config.Runtime.ETCDServerCA
+		c.config.Datastore.ServerTLSConfig.CertFile = c.config.Runtime.ServerETCDCert
+		c.config.Datastore.ServerTLSConfig.KeyFile = c.config.Runtime.ServerETCDKey
+	}
 
 	// start listening on the kine socket as an etcd endpoint, or return the external etcd endpoints
 	etcdConfig, err := endpoint.Listen(ctx, c.config.Datastore)
@@ -148,9 +155,15 @@ func (c *Cluster) startStorage(ctx context.Context) error {
 	// based on what the kine wrapper tells us about the datastore. Single-node datastores like sqlite don't require
 	// leader election, while basically all others (etcd, external database, etc) do since they allow multiple servers.
 	c.config.Runtime.EtcdConfig = etcdConfig
-	c.config.Datastore.BackendTLSConfig = etcdConfig.TLSConfig
-	c.config.Datastore.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
-	c.config.NoLeaderElect = !etcdConfig.LeaderElect
+
+	// after the bootstrap we need to set the args for api-server with kine in unixs or just set the
+	// values if the datastoreTLS is not enabled
+	if !bootstrap || !c.config.KineTLS {
+		c.config.Datastore.BackendTLSConfig = etcdConfig.TLSConfig
+		c.config.Datastore.Endpoint = strings.Join(etcdConfig.Endpoints, ",")
+		c.config.NoLeaderElect = !etcdConfig.LeaderElect
+	}
+
 	return nil
 }
 
