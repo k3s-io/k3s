@@ -75,7 +75,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		node, err := client.CoreV1().Nodes().Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Errorf("Error getting the node object: %v", err)
-			return false, err
+			return false, nil
 		}
 		// Check for the uninitialized taint that should be removed by cloud-provider
 		// If there is no cloud-provider, the taint will not be there
