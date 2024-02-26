@@ -58,4 +58,5 @@ Tracking these changes is with [this issue](https://github.com/k3s-io/k3s/issues
 - The testing infrastructure will be more organized and easier to maintain.
 - The move to GitHub Actions will allow for faster feedback on PRs and issues.
 - The removal of old tests will reduce the maintenance overhead.
+- New testing process can be used as a model for related projects.
 
