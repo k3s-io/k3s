@@ -425,7 +425,7 @@ func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[s
 	if ls.Has(cp.InternalIPKey) || ls.Has(cp.HostnameKey) {
 		result := map[string]string{
 			cp.InternalIPKey: agentConfig.NodeIP,
-			cp.HostnameKey:   agentConfig.NodeName,
+			cp.HostnameKey:   getHostname(agentConfig),
 		}
 
 		if agentConfig.NodeExternalIP != "" {
@@ -443,7 +443,7 @@ func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map
 	agentConfig := &nodeConfig.AgentConfig
 	result := map[string]string{
 		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
-		cp.HostnameKey:   agentConfig.NodeName,
+		cp.HostnameKey:   getHostname(agentConfig),
 	}
 
 	if agentConfig.NodeExternalIP != "" {
@@ -537,4 +537,14 @@ func tunnelSetup(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Ag
 		return nil
 	}
 	return tunnel.Setup(ctx, nodeConfig, proxy)
+}
+
+// getHostname returns the actual system hostname.
+// If the hostname cannot be determined, or is invalid, the node name is used.
+func getHostname(agentConfig *daemonconfig.Agent) string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" || strings.Contains(hostname, "localhost") {
+		return agentConfig.NodeName
+	}
+	return hostname
 }
