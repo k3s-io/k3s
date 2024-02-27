@@ -74,19 +74,20 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		// Get the node object
 		node, err := client.CoreV1().Nodes().Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
-			logrus.Errorf("Error getting the node object: %v", err)
+			logrus.Debugf("Network policy controller waiting to get Node %s: %v", nodeConfig.AgentConfig.NodeName, err)
 			return false, nil
 		}
 		// Check for the uninitialized taint that should be removed by cloud-provider
 		// If there is no cloud-provider, the taint will not be there
 		for _, taint := range node.Spec.Taints {
 			if taint.Key == cloudproviderapi.TaintExternalCloudProvider {
+				logrus.Debugf("Network policy controller waiting for removal of %s taint", cloudproviderapi.TaintExternalCloudProvider)
 				return false, nil
 			}
 		}
 		return true, nil
 	}); err != nil {
-		return err
+		return errors.Wrapf(err, "network policy controller timed out waiting for %s taint to be removed from Node %s", cloudproviderapi.TaintExternalCloudProvider, nodeConfig.AgentConfig.NodeName)
 	}
 
 	krConfig := options.NewKubeRouterConfig()
