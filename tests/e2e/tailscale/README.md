@@ -16,3 +16,14 @@ Tailscale requires three steps before running the test:
 ```
 
 3 - In `Settings` > `Keys`, generate an auth key which is Reusable and Ephemeral. That key should be the value of a new env variable `E2E_TAILSCALE_KEY`
+
+# Typical problems
+
+### The cluster does not start correctly
+
+Please verify that the tailscale key was correctly passed to the config. To verify this, check the config in the server/agent in the file /etc/rancher/k3s/config.yaml
+
+
+### The verification on the routing fails
+
+Please verify that you filled the autoApprovers section and that the config applies to your key. If you access the tailscale UI and see that the machine has "Subnets" that require manual approval, the test will not work
