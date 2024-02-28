@@ -15,6 +15,7 @@ import (
 
 	json "github.com/json-iterator/go"
 	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -170,7 +171,11 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		}
 	}
 	testOptions += " E2E_RELEASE_VERSION=skip"
-
+	b, err := exec.Command("whoami").CombinedOutput()
+	if err != nil {
+		fmt.Println("Error getting username")
+	}
+	logrus.Warn("USER: ", string(b))
 	// Bring up the all of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for i, node := range append(serverNodeNames, agentNodeNames...) {
