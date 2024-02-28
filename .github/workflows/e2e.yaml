@@ -56,7 +56,9 @@ jobs:
           sudo rm -rf /root/.vagrant.d/boxes
           sudo mv -f /tmp/boxes /root/.vagrant.d
       - name: "Vagrant Plugin(s)"
-        run: sudo vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+        run: |
+          sudo vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+          vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       
       - name: Install Go
         uses: actions/setup-go@v5
