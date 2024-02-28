@@ -175,7 +175,12 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 	if err != nil {
 		fmt.Println("Error getting username")
 	}
-	logrus.Warn("USER: ", string(b))
+	logrus.Warn("USER1: ", string(b))
+	bs, err := RunCommand("whoami")
+	if err != nil {
+		fmt.Println("Error getting username")
+	}
+	logrus.Warn("USER2: ", bs)
 	// Bring up the all of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for i, node := range append(serverNodeNames, agentNodeNames...) {
