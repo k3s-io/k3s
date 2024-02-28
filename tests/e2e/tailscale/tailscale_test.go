@@ -59,7 +59,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
-		}, "620s", "5s").Should(Succeed())
+		}, "300s", "5s").Should(Succeed())
 		_, err := e2e.ParseNodes(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -85,7 +85,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
-		}, "620s", "5s").Should(Succeed())
+		}, "300s", "5s").Should(Succeed())
 		_, err := e2e.ParseNodes(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
