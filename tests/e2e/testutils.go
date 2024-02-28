@@ -181,6 +181,10 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		fmt.Println("Error getting username")
 	}
 	logrus.Warn("USER2: ", bs)
+	bbs, _ := RunCommand("vagrant status")
+	logrus.Warn("VAGRANT STATUS: ", bbs)
+	bbs, _ = RunCommand("vagrant plugin list")
+	logrus.Warn("VAGRANT PLUGINS: ", bbs)
 	// Bring up the all of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for i, node := range append(serverNodeNames, agentNodeNames...) {
