@@ -2,9 +2,9 @@
 
 Thanks for taking the time to contribute to K3s!
 
-Please review and follow the [Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md).
+Please review and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/k3s-io/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://slack.rancher.io/).
+Contributing is not limited to writing code and submitting a PR. Feel free to submit an [issue](https://github.com/k3s-io/k3s/issues/new/choose) or comment on an existing one to report a bug, provide feedback, or suggest a new feature. You can also join the discussion on [slack](https://rancher-users.slack.com/channels/k3s).
 
 Of course, contributing code is more than welcome! To keep things simple, if you're fixing a small issue, you can simply submit a PR and we will pick it up. However, if you're planning to submit a bigger PR to implement a new feature or fix a relatively complex bug, please open an issue that explains the change and the motivation for it. If you're addressing a bug, please explain how to reproduce it.
 
@@ -12,7 +12,11 @@ If you're interested in contributing documentation, please note the following:
 - Doc issues are raised in this repository, and they are tracked under the `kind/documentation` label.
 - Pull requests are submitted to the K3s documentation source in the [k3s-io docs repository.](https://github.com/k3s-io/docs).
 
-If you're interested in contributing new tests, please see the `TESTING.md` in the tests directory.
+If you're interested in contributing new tests, please see the [TESTING.md](./tests/TESTING.md).
+
+## Code Convetion
+
+See the [code convetions documentation](./docs/contrib/code_conventions.md) for more information on how to write code for K3s.
 
 ### Opening PRs and organizing commits
 PRs should generally address only 1 issue at a time. If you need to fix two bugs, open two separate PRs. This will keep the scope of your pull requests smaller and allow them to be reviewed and merged more quickly.
