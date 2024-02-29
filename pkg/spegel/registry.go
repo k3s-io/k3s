@@ -30,8 +30,8 @@ func (c *Config) InjectMirror(nodeConfig *config.Node) error {
 		registry.Mirrors = map[string]registries.Mirror{}
 	}
 	for host, mirror := range registry.Mirrors {
-		// Don't handle wildcard or local registry entries
-		if host != "*" && !docker.IsLocalhost(host) {
+		// Don't handle local registry entries
+		if !docker.IsLocalhost(host) {
 			mirror.Endpoints = append([]string{mirrorURL}, mirror.Endpoints...)
 			registry.Mirrors[host] = mirror
 		}
