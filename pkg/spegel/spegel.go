@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/containerd/containerd/remotes/docker"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -115,8 +116,8 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	urls := []url.URL{}
 	registries := []string{}
 	for host := range nodeConfig.AgentConfig.Registry.Mirrors {
-		if u, err := url.Parse("https://" + host); err != nil || host == "*" {
-			logrus.Errorf("Distributed registry mirror skipping unsupported registry: %s", host)
+		if u, err := url.Parse("https://" + host); err != nil || docker.IsLocalhost(host) {
+			logrus.Errorf("Distributed registry mirror skipping invalid registry: %s", host)
 		} else {
 			urls = append(urls, *u)
 			registries = append(registries, host)
