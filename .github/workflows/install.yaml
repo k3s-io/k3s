@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
+        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-2204]
       max-parallel: 2
     defaults:
       run:
@@ -47,7 +47,7 @@ jobs:
           path: |
             ~/.vagrant.d/boxes
             ~/.vagrant.d/gems
-          key: install-${{ hashFiles(format('tests/install/{0}/Vagrantfile', matrix.vm)) }}
+          key: vagrant-box-${{ matrix.vm }}
         id: vagrant-cache
         continue-on-error: true
       - name: "Vagrant Plugin(s)"
@@ -65,6 +65,9 @@ jobs:
           vagrant scp k3s /tmp/k3s
           vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
           vagrant provision --provision-with=k3s-upload
+      - name: Add binary to PATH
+        if: matrix.vm == 'centos-7' || matrix.vm == 'rocky-8' || matrix.vm == 'opensuse-leap'
+        run: vagrant provision --provision-with=add-bin-path
       - name: "⏩ Install K3s"
         run: |
           vagrant provision --provision-with=k3s-prepare
