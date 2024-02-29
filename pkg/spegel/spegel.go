@@ -54,6 +54,9 @@ var (
 	P2pAddressAnnotation = "p2p." + version.Program + ".cattle.io/node-address"
 	P2pEnabledLabel      = "p2p." + version.Program + ".cattle.io/enabled"
 	P2pPortEnv           = version.ProgramUpper + "_P2P_PORT"
+	P2pEnableLatestEnv   = version.ProgramUpper + "_P2P_ENABLE_LATEST"
+
+	resolveLatestTag = false
 )
 
 type authFunc func() authenticator.Request
@@ -93,7 +96,6 @@ type Config struct {
 
 // These values are not currently configurable
 const (
-	resolveLatestTag  = false
 	resolveRetries    = 0
 	resolveTimeout    = time.Second * 5
 	registryNamespace = "k8s.io"
@@ -171,11 +173,20 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		return errors.Wrap(err, "failed to create peerstore")
 	}
 
+	// get latest tag configuration override
+	if env := os.Getenv(P2pEnableLatestEnv); env != "" {
+		if b, err := strconv.ParseBool(env); err != nil {
+			logrus.Warnf("Invalid %s value; using default %v", P2pEnableLatestEnv, resolveLatestTag)
+		} else {
+			resolveLatestTag = b
+		}
+	}
+
 	// get port and start p2p router
 	routerPort := defaultRouterPort
 	if env := os.Getenv(P2pPortEnv); env != "" {
 		if i, err := strconv.Atoi(env); i == 0 || err != nil {
-			logrus.Warnf("Invalid P2P node port; using default")
+			logrus.Warnf("Invalid %s value; using default %v", P2pPortEnv, defaultRouterPort)
 		} else {
 			routerPort = env
 		}
