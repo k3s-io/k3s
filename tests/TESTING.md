@@ -126,7 +126,7 @@ vagrant provision --provision-with=k3s-procps
 ```
 
 The **Snapshotter** test requires that k3s binary is built at `dist/artifacts/k3s`.
-It are invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
+It is invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
 Take a look at the individual Vagrantfiles and/or the Github Actions workflows that harness them to get
 an idea of how they can be invoked.
 
