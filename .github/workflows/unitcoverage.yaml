@@ -36,10 +36,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v4
-      with: 
-        go-version-file: go.mod # Just use whatever version is in the go.mod file
-        check-latest: true
+      uses: .github/actions/setup-go
     - name: Run Unit Tests
       run: | 
         go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
