@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 'stable'
-
+          cache: false
       - name: Delete leftover UpdateCLI branches
         run: |
           gh pr list --search "is:closed is:pr head:updatecli_" --json headRefName --jq ".[].headRefName" | sort -u > closed_prs_branches.txt
