@@ -111,11 +111,15 @@ func init() {
 
 // Start starts the embedded p2p router, and binds the registry API to an existing HTTP router.
 func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
+	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
 	// distribute images for all configured mirrors. there doesn't need to be a
 	// configured endpoint, just having a key for the registry will do.
 	urls := []url.URL{}
 	registries := []string{}
 	for host := range nodeConfig.AgentConfig.Registry.Mirrors {
+		if host == localAddr {
+			continue
+		}
 		if u, err := url.Parse("https://" + host); err != nil || docker.IsLocalhost(host) {
 			logrus.Errorf("Distributed registry mirror skipping invalid registry: %s", host)
 		} else {
@@ -210,7 +214,6 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to read server CA")
 	}
-	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
 	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
 	registryOpts := []registry.Option{
