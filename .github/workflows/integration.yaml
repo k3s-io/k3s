@@ -46,14 +46,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v5
-      with: 
-        go-version: '1.21.7'
-        check-latest: true
-        cache: true
-        cache-dependency-path: |
-          **/go.sum
-          **/go.mod
+      uses: .github/actions/setup-go
     - name: "Download k3s binary"
       uses: actions/download-artifact@v3
       with:
