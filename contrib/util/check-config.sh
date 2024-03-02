@@ -55,7 +55,7 @@ is_set_as_module() {
 }
 
 color() {
-  if [[ -n "$NO_COLOR" ]]; then
+  if [ -n "$NO_COLOR" ]; then
     return
   fi
 
