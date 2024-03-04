@@ -1,6 +1,6 @@
 #!/bin/bash
 set -x -e
-cd $(dirname $0)/..
+cd $(dirname $0)/../..
 
 # ---
 
