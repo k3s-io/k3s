@@ -69,6 +69,7 @@ if [ -z "$VERSION_CRI_DOCKERD" ]; then
 fi
 
 VERSION_CNIPLUGINS="v1.4.0-k3s2"
+VERSION_FLANNEL_PLUGIN="v1.4.0-flannel1"
 
 VERSION_KUBE_ROUTER=$(get-module-version github.com/cloudnativelabs/kube-router/v2)
 if [ -z "$VERSION_KUBE_ROUTER" ]; then
