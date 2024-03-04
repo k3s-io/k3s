@@ -20,6 +20,14 @@ runs:
       run: |
         sudo apt-get build-dep -y vagrant ruby-libvirt
         sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
+    # This is a workaround for the libvirt group not being available in the current shell
+    # https://github.com/actions/runner-images/issues/7670#issuecomment-1900711711
+    - name: Make the libvirt socket rw accessible to everyone
+      shell: bash
+      run: |
+        sudo chmod a+rw /var/run/libvirt/libvirt-sock
+    
+
     - name: Install vagrant-libvirt plugin
       shell: bash
-      run: sudo vagrant plugin install vagrant-libvirt
+      run: vagrant plugin install vagrant-libvirt
