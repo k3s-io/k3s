@@ -54,6 +54,17 @@ jobs:
         chmod +x ./dist/artifacts/k3s
         sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration
     - name: On Failure, Launch Debug Session
+      uses: lhotari/action-upterm@v1
       if: ${{ failure() }}
-      uses: mxschmitt/action-tmate@v3
-      timeout-minutes: 5
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
+    - name: Generate coverage report
+      run: go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./${{ matrix.itest }}.out
+        flags: inttests # optional
+        verbose: true # optional (default = false)
