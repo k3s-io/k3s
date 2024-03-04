@@ -10,6 +10,7 @@ runs:
 
     - name: Prepare for go cache
       if: ${{ github.ref != 'refs/heads/master' }}
+      shell: bash
       run: |
         echo "GO_CACHE=$(go env GOCACHE)" | tee -a "$GITHUB_ENV"
         echo "GO_MODCACHE=$(go env GOMODCACHE)" | tee -a "$GITHUB_ENV"
