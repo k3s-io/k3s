@@ -36,7 +36,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: .github/actions/setup-go
+      uses: ./.github/actions/setup-go
     - name: Run Unit Tests
       run: | 
         go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
