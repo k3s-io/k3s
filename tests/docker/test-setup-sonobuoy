@@ -1,18 +1,17 @@
 #!/bin/bash
 
-. ./scripts/test-setup-sonobuoy
-
 export NUM_SERVERS=1
 export NUM_AGENTS=1
-export SERVER_1_ARGS="--cluster-init"
+export SERVER_ARGS='--disable=traefik'
+export WAIT_SERVICES='coredns local-path-provisioner metrics-server'
 
-server-post-hook() {
-  if [ $1 -eq 1 ]; then
-    local url=$(cat $TEST_DIR/servers/1/metadata/url)
-    export SERVER_ARGS="--server $url"
-  fi
+export sonobuoyParallelArgs=(--e2e-focus='\[Conformance\]' --e2e-skip='\[Serial\]' --e2e-parallel=y)
+export sonobuoySerialArgs=(--e2e-focus='\[Serial\].*\[Conformance\]')
+
+start-test() {
+  sonobuoy-test $@
 }
-export -f server-post-hook
+export -f start-test
 
 test-post-hook() {
   if [[ $1 -eq 0 ]] || [[ ! -f "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log" ]]; then
@@ -20,9 +19,8 @@ test-post-hook() {
   fi
   local failures=$(awk '/^Summarizing .* Failures?:$/,0' "$TEST_DIR/sonobuoy/plugins/e2e/results/global/e2e.log")
   # Ignore sonobuoy failures if only these flaky tests have failed
-  flakyFails=$( grep -scF -f ./scripts/flaky-tests <<< "$failures" )
+  flakyFails=$( grep -scF -f ./tests/docker/flaky-tests <<< "$failures" )
   totalFails=$( grep -scF -e "[Fail]" <<< "$failures" )
   [ "$totalFails" -le "$flakyFails" ]
 }
 export -f test-post-hook
-
