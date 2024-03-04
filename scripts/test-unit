@@ -1,2 +1,0 @@
-#!/bin/bash
-go test -v ./pkg/... -run Unit

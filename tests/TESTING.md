@@ -3,6 +3,7 @@
 Testing in K3s comes in 5 forms: 
 - [Unit](#unit-tests)
 - [Integration](#integration-tests)
+- [Docker](#docker-tests)
 - [Smoke](#smoke-tests)
 - [Performance](#performance)
 - [End-to-End (E2E)](#end-to-end-e2e-tests)
@@ -55,6 +56,12 @@ Integration tests should be used to test a specific functionality of k3s that ex
 Integration tests should be used for "black box" testing. 
 
 See [integration/README.md](./integration/README.md) for more info.
+
+___
+
+## Docker Tests
+
+Docker tests run clusters of K3s nodes as containers and test basic functionality. These tests are run in the Drone CI pipeline `test` stage.
 
 ___
 
