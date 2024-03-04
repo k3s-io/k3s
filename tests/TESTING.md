@@ -60,28 +60,25 @@ ___
 
 ## Smoke Tests
 
-Smoke tests are a collection of tests defined under the [tests](../tests) path at the root of this repository.
-The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path" scenarios. These fixtures are mostly self-contained Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
+Smoke tests are a collection of tests defined under the [tests](./tests) and fall into two categories: install and snapshotter. These tests are used to validate the installation and operation of K3s on a variety of operating systems. The sub-directories therein contain fixtures for running simple clusters to assert correct behavior for "happy path" scenarios. The test themses are Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
-- [Install Script](../tests/install) :arrow_right: scheduled nightly
-  - [CentOS 7](../tests/install/centos-7) (stand-in for RHEL 7)
-  - [Rocky Linux 8](../tests/install/rocky-8) (stand-in for RHEL 8)
-  - [Fedora 37](../tests/install/fedora)
-  - [Leap 15.4](../tests/install/opensuse-leap) (stand-in for SLES)
-  - [MicroOS](../tests/install/opensuse-microos) (stand-in for SLE-Micro)
-  - [Ubuntu 20.04](../tests/install/ubuntu-focal) (Focal Fossa)
-- [Control Groups](../tests/cgroup) :arrow_right: on any code change
-  - [mode=unified](../tests/cgroup/unified) (cgroups v2)
-    - [Fedora 37](../tests/cgroup/unified/fedora) (rootfull + rootless)
-- [Snapshotter](../tests/snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
-  - [BTRFS](../tests/snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
+- [Install Script](install) :arrow_right: scheduled nightly and on an install script change
+  - [CentOS 7](install/centos-7) (stand-in for RHEL 7)
+  - [Rocky Linux 8](install/rocky-8) (stand-in for RHEL 8)
+  - [Rocky Linux 9](install/rocky-9) (stand-in for RHEL 9)
+  - [Fedora 37](install/fedora)
+  - [Leap 15.5](install/opensuse-leap) (stand-in for SLES)
+  - [Ubuntu 22.04](install/ubuntu-2204)
+- [Snapshotter](snapshotter/btrfs/opensuse-leap) :arrow_right: on any code change
+  - [BTRFS](snapshotter/btrfs) ([containerd built-in](https://github.com/containerd/containerd/tree/main/snapshots/btrfs))
     - [Leap 15.4](../tests/snapshotter/btrfs/opensuse-leap)
 
+## Format
 When adding new installer test(s) please copy the prevalent style for the `Vagrantfile`.
-Ideally, the boxes used for additional assertions will support the default `virtualbox` provider which
+Ideally, the boxes used for additional assertions will support the default `libvirt` provider which
 enables them to be used by our Github Actions Workflow(s). See:
-- [cgroup.yaml](../.github/workflows/cgroup.yaml).
 - [install.yaml](../.github/workflows/install.yaml).
+- [snapshotter.yaml](../.github/workflows/snapshotter.yaml).
 
 ### Framework
 
@@ -91,11 +88,14 @@ If you are new to Vagrant, Hashicorp has written some pretty decent introductory
 
 #### Plugins and Providers
 
-The `libvirt` and `vmware_desktop` providers cannot be used without first [installing the relevant plugins](https://www.vagrantup.com/docs/cli/plugin#plugin-install)
-which are [`vagrant-libvirt`](https://github.com/vagrant-libvirt/vagrant-libvirt) and
-[`vagrant-vmware-desktop`](https://www.vagrantup.com/docs/providers/vmware/installation), respectively.
-Much like the default [`virtualbox` provider](https://www.vagrantup.com/docs/providers/virtualbox) these will do
-nothing useful without also installing the relevant server runtimes and/or client programs.
+The `libvirt`provider cannot be used without first [installing the `vagrant-libvirt` plugin](https://github.com/vagrant-libvirt/vagrant-libvirt). Libvirtd service must be installed and running on the host machine as well.
+
+Additionally, the `vagrant-scp` and `vagrant-k3s` plugins are required.
+
+All three can be and can be installed with:
+```shell
+vagrant plugin install vagrant-scp vagrant-k3s vagrant-libvirt
+```
 
 #### Environment Variables
 
@@ -113,8 +113,8 @@ The **Install Script** tests can be run by changing to the fixture directory and
 ```shell
 cd tests/install/rocky-8
 vagrant up
-# the following provisioners are optional. the do not run by default but are invoked
-# explicitly by github actions workflow to avoid certain timeout issues on slow runners
+# The following provisioners are optional. In GitHub Actions CI they are invoked
+# explicitly to avoid certain timeout issues on slow runners
 vagrant provision --provision-with=k3s-wait-for-node
 vagrant provision --provision-with=k3s-wait-for-coredns
 vagrant provision --provision-with=k3s-wait-for-local-storage
@@ -124,8 +124,8 @@ vagrant provision --provision-with=k3s-status
 vagrant provision --provision-with=k3s-procps
 ```
 
-The **Control Groups** and **Snapshotter** tests require that k3s binary is built at `dist/artifacts/k3s`.
-They are invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
+The **Snapshotter** test requires that k3s binary is built at `dist/artifacts/k3s`.
+It is invoked similarly, i.e. `vagrant up`, but with different sets of named shell provisioners.
 Take a look at the individual Vagrantfiles and/or the Github Actions workflows that harness them to get
 an idea of how they can be invoked.
 
