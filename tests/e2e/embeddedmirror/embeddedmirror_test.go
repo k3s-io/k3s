@@ -142,14 +142,13 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed {
+		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+	}
+	if !failed || *ci {
 		r2, err := e2e.RunCmdOnNode("kubectl delete deployment my-webpage-1 my-webpage-2 my-webpage-3", serverNodeNames[0])
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
