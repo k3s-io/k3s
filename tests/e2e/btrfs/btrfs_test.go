@@ -90,9 +90,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

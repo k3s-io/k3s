@@ -130,17 +130,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 		// https://github.com/rancher/rke2/issues/3714
 		// Once fixed, ensure that the snapshots list are actually reduced to 2
 		It("prunes s3 snapshots", func() {
-			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
+			_, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			res, err = e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
+			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
-			res, err = e2e.RunCmdOnNode("sudo k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(ContainSubstring("Reconciliation of ETCDSnapshotFile resources complete"))
 
 			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot ls|grep 'on-demand'|wc -l>count", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
 			res, err = e2e.RunCmdOnNode("grep '^[4]$' ./count", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
 			Expect(strings.TrimSpace(res)).To(Equal("4"))
 		})
 	})
@@ -152,10 +153,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
