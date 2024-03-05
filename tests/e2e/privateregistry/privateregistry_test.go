@@ -146,10 +146,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed || *ci {
 		r1, err := e2e.RunCmdOnNode("docker rm -f registry", serverNodeNames[0])
 		Expect(err).NotTo(HaveOccurred(), r1)
 		r2, err := e2e.RunCmdOnNode("kubectl delete deployment my-webpage", serverNodeNames[0])
