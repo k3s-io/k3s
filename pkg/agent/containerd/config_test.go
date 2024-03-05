@@ -1148,8 +1148,16 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				"_default": templates.HostConfig{
 					Program: "k3s",
 					Endpoints: []templates.RegistryEndpoint{
-						// note that the embedded registry mirror is NOT listed as an endpoint.
-						// individual registries must be enabled for mirroring by name.
+						{
+							URL: u("https://127.0.0.1:6443/v2"),
+							Config: registries.RegistryConfig{
+								TLS: &registries.TLSConfig{
+									CAFile:   "server-ca",
+									KeyFile:  "client-key",
+									CertFile: "client-cert",
+								},
+							},
+						},
 						{
 							URL: u("https://registry.example.com/v2"),
 						},
