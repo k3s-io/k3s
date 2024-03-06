@@ -1,6 +1,6 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-etcd-0", "server-etcd-1", "server-etcd-2", "server-cp-0", "server-cp-1", "agent-0"])
+  ["server-etcd-0", "server-etcd-1", "server-etcd-2", "server-cp-0", "server-cp-1", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
@@ -24,10 +24,11 @@ def provision(vm, role, role_num, node_num)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
 
   vm.provision "ping k3s.io", type: "shell", inline: "ping -c 2 k3s.io"
-  
   if node_num == 0 && !role.include?("server") && !role.include?("etcd")
-    puts "first node must be a etcd server"
-    abort
+    if ARGV.include?("up") || (ARGV.include?("reload") && ARGV.include?("--provision"))
+      puts "Error: first node provisioned must be a etcd server"
+      abort
+    end
   elsif role.include?("server") && role.include?("etcd") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server"
@@ -118,6 +119,7 @@ Vagrant.configure("2") do |config|
   end
 
   NODE_ROLES.each_with_index do |role, i|
+    # Find the first number in the role name
     role_num = role.split("-", -1).pop.to_i
     config.vm.define role do |node|
       provision(node.vm, role, role_num, i)
