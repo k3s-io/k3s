@@ -20,9 +20,24 @@ mkdir -p $artifacts
 docker ps
 
 # ---
+# Only run basic tests on non amd64 archs, we use GitHub Actions for amd64
+if [ "$ARCH" != 'amd64' ]; then
 
-. ./tests/docker/test-run-basics
-echo "Did test-run-basics $?"
+  . ./tests/docker/test-run-basics
+  echo "Did test-run-basics $?"
+
+  . ./tests/docker/test-run-cacerts
+  echo "Did test-run-cacerts $?"
+
+  . ./tests/docker/test-run-bootstraptoken
+  echo "Did test-run-bootstraptoken $?"
+
+  . ./tests/docker/test-run-upgrade
+  echo "Did test-run-upgrade $?"
+
+  . ./tests/docker/test-run-lazypull
+  echo "Did test-run-lazypull $?"
+fi
 
 . ./tests/docker/test-run-compat
 echo "Did test-run-compat $?"
@@ -30,20 +45,8 @@ echo "Did test-run-compat $?"
 . ./tests/docker/test-run-hardened
 echo "Did test-run-hardened $?"
 
-. ./tests/docker/test-run-cacerts
-echo "Did test-run-cacerts $?"
-
-. ./tests/docker/test-run-bootstraptoken
-echo "Did test-run-bootstraptoken $?"
-
-. ./tests/docker/test-run-upgrade
-echo "Did test-run-upgrade $?"
-
 . ./tests/docker/test-run-etcd
 echo "Did test-run-etcd $?"
-
-. ./tests/docker/test-run-lazypull
-echo "Did test-run-lazypull $?"
 
 # ---
 
