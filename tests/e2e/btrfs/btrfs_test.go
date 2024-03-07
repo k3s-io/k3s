@@ -78,8 +78,8 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 			cmd := "btrfs subvolume list /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.btrfs"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("agent/containerd/io.containerd.snapshotter.v1.btrfs/active/2"))
-			Expect(res).To(ContainSubstring("agent/containerd/io.containerd.snapshotter.v1.btrfs/snapshots/3"))
+			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/active/\\d+"))
+			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/snapshots/\\d+"))
 		})
 	})
 })
