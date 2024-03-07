@@ -476,6 +476,86 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 		},
 		{
+			name: "registry with mirror endpoint - duplicate endpoints",
+			args: args{
+				registryContent: `
+				  mirrors:
+						docker.io:
+							endpoint:
+								- registry.example.com
+								- registry.example.com
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
+					Endpoints: []templates.RegistryEndpoint{
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "registry with mirror endpoint - duplicate endpoints in different formats",
+			args: args{
+				registryContent: `
+				  mirrors:
+						docker.io:
+							endpoint:
+								- registry.example.com
+								- https://registry.example.com
+								- https://registry.example.com/v2
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
+					Endpoints: []templates.RegistryEndpoint{
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "registry with mirror endpoint - duplicate endpoints in different positions",
+			args: args{
+				registryContent: `
+				  mirrors:
+						docker.io:
+							endpoint:
+								- https://registry.example.com
+								- https://registry.example.org
+								- https://registry.example.com
+				`,
+			},
+			want: HostConfigs{
+				"docker.io": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://registry-1.docker.io/v2"),
+					},
+					Endpoints: []templates.RegistryEndpoint{
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+						{
+							URL: u("https://registry.example.org/v2"),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "registry with mirror endpoint - localhost and port only",
 			args: args{
 				registryContent: `
