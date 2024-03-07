@@ -49,7 +49,7 @@ jobs:
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: k3s
         path: ./dist/artifacts
