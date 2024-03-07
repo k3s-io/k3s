@@ -41,12 +41,10 @@ def provision(vm, role, role_num, node_num)
   addCoverageDir(vm, role, GOCOVER)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
 
-  vm.provision "shell", inline: "ping -c 2 k3s.io"
   vm.provision "Install run-wasi containerd shims", type: "shell", inline: INSTALL_WASM_SHIMS
 
   if role.include?("server") && role_num == 0
 
-    dockerInstall(vm)
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
       k3s.config = <<~YAML
