@@ -51,7 +51,7 @@ jobs:
         with:
           path: |
              ~/.vagrant.d/boxes
-          key: vagrant-box-${{ matrix.vm }}
+          key: vagrant-box-ubuntu-2204
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       
