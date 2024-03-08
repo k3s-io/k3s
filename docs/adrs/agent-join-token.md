@@ -50,7 +50,7 @@ documentation can be referenced for more information.
 * K3s will allow joining agents to the cluster using bootstrap token secrets.
 * K3s will NOT allow joining servers to the cluster using bootstrap token secrets.
 * K3s will include a `k3s token` subcommand that allows for token create/list/delete operations, similar to
-  the the functionality offered by `kubeadm`.
+  the functionality offered by `kubeadm`.
 * K3s will enable the `tokencleaner` controller, in order to ensure that bootstrap token secrets are cleaned
   up when their TTL expires.
 * K3s agent bootstrap functionality will allow a agent to connect the cluster using existing [Node

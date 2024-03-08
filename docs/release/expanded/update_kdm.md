@@ -8,7 +8,7 @@ After the RCs are cut you need to generate the KDM PR within a few hours
 1. clear out (remove) kontainer-driver-metadata repo if is already there (just makes things smoother with a new clone)
 1. fork kdm repo
 1. clone your fork into that directory as "origin" (you won't need a local copy of upstream)
-   1. it is important to follow these steps because Go is very particular about the file structure (it uses the the file structure to infer the urls it will pull dependencies from)
+   1. it is important to follow these steps because Go is very particular about the file structure (it uses the file structure to infer the urls it will pull dependencies from)
    1. go generate needs to be able to fully use Go as expected, so it is important to get the file structure correct
    1. this is why it is important that the repo is in the github.com/rancher directory, and that the repo's directory is "kontainer-driver-metadata" matching the upstream copy's name
       1. $HOME/go/src/github.com/rancher/kontainer-driver-metadata
