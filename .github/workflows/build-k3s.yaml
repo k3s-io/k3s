@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: Checkout K3s
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Build K3s binary
       run: |
         DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
