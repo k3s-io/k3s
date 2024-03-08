@@ -33,7 +33,7 @@ jobs:
   test:
     needs: build
     name: Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
