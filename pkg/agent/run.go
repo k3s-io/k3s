@@ -48,7 +48,7 @@ import (
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	utilsnet "k8s.io/utils/net"
-	utilpointer "k8s.io/utils/pointer"
+	utilsptr "k8s.io/utils/ptr"
 )
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
@@ -201,8 +201,8 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 // When running rootless, we do not attempt to set conntrack sysctls - this behavior is copied from kubeadm.
 func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubeProxyConntrackConfiguration, error) {
 	ctConfig := &kubeproxyconfig.KubeProxyConntrackConfiguration{
-		MaxPerCore:            utilpointer.Int32Ptr(0),
-		Min:                   utilpointer.Int32Ptr(0),
+		MaxPerCore:            utilsptr.To(int32(0)),
+		Min:                   utilsptr.To(int32(0)),
 		TCPEstablishedTimeout: &metav1.Duration{},
 		TCPCloseWaitTimeout:   &metav1.Duration{},
 	}
