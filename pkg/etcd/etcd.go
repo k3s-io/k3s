@@ -88,8 +88,9 @@ var (
 	NodeNameAnnotation    = "etcd." + version.Program + ".cattle.io/node-name"
 	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
 
-	ErrAddressNotSet = errors.New("apiserver addresses not yet set")
-	ErrNotMember     = errNotMember()
+	ErrAddressNotSet    = errors.New("apiserver addresses not yet set")
+	ErrNotMember        = errNotMember()
+	ErrMemberListFailed = errMemberListFailed()
 
 	invalidKeyChars = regexp.MustCompile(`[^-._a-zA-Z0-9]`)
 )
@@ -143,6 +144,24 @@ func (e *MembershipError) Is(target error) bool {
 }
 
 func errNotMember() error { return &MembershipError{} }
+
+type MemberListError struct {
+	Err error
+}
+
+func (e *MemberListError) Error() string {
+	return fmt.Sprintf("failed to get MemberList from server: %v", e.Err)
+}
+
+func (e *MemberListError) Is(target error) bool {
+	switch target {
+	case ErrMemberListFailed:
+		return true
+	}
+	return false
+}
+
+func errMemberListFailed() error { return &MemberListError{} }
 
 // NewETCD creates a new value of type
 // ETCD with an initialized cron value.
@@ -459,6 +478,11 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 							logrus.Infof("Waiting for other members to finish joining etcd cluster: %v", err)
 							return false, nil
 						}
+						// Retry the join if waiting to retrieve the member list from the server
+						if errors.Is(err, ErrMemberListFailed) {
+							logrus.Infof("Waiting to retrieve etcd cluster member list: %v", err)
+							return false, nil
+						}
 						return false, err
 					}
 					return true, nil
@@ -655,16 +679,8 @@ func (e *ETCD) infoHandler() http.Handler {
 
 		members, err := e.client.MemberList(ctx)
 		if err != nil {
-			logrus.Warnf("Failed to get etcd MemberList for %s: %v", req.RemoteAddr, err)
-			members = &clientv3.MemberListResponse{
-				Members: []*etcdserverpb.Member{
-					{
-						Name:       e.name,
-						PeerURLs:   []string{e.peerURL()},
-						ClientURLs: []string{e.clientURL()},
-					},
-				},
-			}
+			util.SendError(errors.Wrap(err, "failed to get etcd MemberList"), rw, req, http.StatusInternalServerError)
+			return
 		}
 
 		rw.Header().Set("Content-Type", "application/json")
@@ -1366,7 +1382,7 @@ func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP
 	var memberList Members
 	resp, err := clientAccessInfo.Get("/db/info")
 	if err != nil {
-		return nil, memberList, err
+		return nil, memberList, &MemberListError{Err: err}
 	}
 
 	if err := json.Unmarshal(resp, &memberList); err != nil {
