@@ -264,7 +264,7 @@ func (c *Config) peerInfo() http.HandlerFunc {
 		logrus.Debugf("Serving p2p peer addr %s to client at %s", info, client)
 		resp.WriteHeader(http.StatusOK)
 		resp.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.Pretty())
+		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.String())
 	})
 }
 
