@@ -92,8 +92,10 @@ func getHostConfigs(registry *registries.Registry, noDefaultEndpoint bool, mirro
 				logrus.Errorf("Failed to generate config for registry %s: %v", host, err)
 				continue
 			} else {
-				if host == "*" || noDefaultEndpoint {
+				if noDefaultEndpoint {
 					c.Default = nil
+				} else if host == "*" {
+					c.Default = &templates.RegistryEndpoint{URL: &url.URL{}}
 				}
 				config = *c
 			}
