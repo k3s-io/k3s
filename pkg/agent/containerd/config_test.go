@@ -1193,6 +1193,16 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			},
 		},
 		{
+			name: "wildcard mirror endpoint - no endpoints",
+			args: args{
+				registryContent: `
+				  mirrors:
+						"*":
+				`,
+			},
+			want: HostConfigs{},
+		},
+		{
 			name: "wildcard mirror endpoint - full URL",
 			args: args{
 				registryContent: `
@@ -1205,6 +1215,9 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			want: HostConfigs{
 				"_default": templates.HostConfig{
 					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u(""),
+					},
 					Endpoints: []templates.RegistryEndpoint{
 						{
 							URL: u("https://registry.example.com/v2"),
@@ -1217,6 +1230,55 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			name: "wildcard mirror endpoint - full URL, embedded registry",
 			args: args{
 				mirrorAddr: "127.0.0.1:6443",
+				registryContent: `
+				  mirrors:
+						"*":
+							endpoint:
+								- https://registry.example.com/v2
+				`,
+			},
+			want: HostConfigs{
+				"_default": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u(""),
+					},
+					Endpoints: []templates.RegistryEndpoint{
+						{
+							URL: u("https://127.0.0.1:6443/v2"),
+							Config: registries.RegistryConfig{
+								TLS: &registries.TLSConfig{
+									CAFile:   "server-ca",
+									KeyFile:  "client-key",
+									CertFile: "client-cert",
+								},
+							},
+						},
+						{
+							URL: u("https://registry.example.com/v2"),
+						},
+					},
+				},
+				"127.0.0.1:6443": templates.HostConfig{
+					Program: "k3s",
+					Default: &templates.RegistryEndpoint{
+						URL: u("https://127.0.0.1:6443/v2"),
+						Config: registries.RegistryConfig{
+							TLS: &registries.TLSConfig{
+								CAFile:   "server-ca",
+								KeyFile:  "client-key",
+								CertFile: "client-cert",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "wildcard mirror endpoint - full URL, embedded registry, no default",
+			args: args{
+				noDefaultEndpoint: true,
+				mirrorAddr:        "127.0.0.1:6443",
 				registryContent: `
 				  mirrors:
 						"*":
@@ -1258,6 +1320,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				},
 			},
 		},
+
 		{
 			name: "wildcard config",
 			args: args{
