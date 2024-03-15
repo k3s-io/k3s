@@ -16,7 +16,7 @@ scms:
 
 actions:
   github:
-    title: "Bump golang:alpine image version"
+    title: "[{{ .k3s.branch }}] Bump golang:alpine image version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
