@@ -2,7 +2,9 @@ package util
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,19 @@ import (
 
 func SetFileModeForPath(name string, mode os.FileMode) error {
 	return os.Chmod(name, mode)
+}
+
+func SetFileGroupForPath(name string, group string) error {
+	g, err := user.LookupGroup(group)
+	if err != nil {
+		return err
+	}
+	gid, err := strconv.Atoi(g.Gid)
+	if err == nil {
+		return os.Chown(name, -1, gid)
+	} else {
+		return err
+	}
 }
 
 func SetFileModeForFile(file *os.File, mode os.FileMode) error {
