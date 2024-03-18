@@ -1,6 +1,6 @@
 #!/bin/bash
 
-nodeOS=${1:-"generic/ubuntu2204"}
+nodeOS=${1:-"generic/ubuntu2310"}
 servercount=${2:-3}
 agentcount=${3:-1}
 db=${4:-"etcd"}
