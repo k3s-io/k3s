@@ -38,7 +38,6 @@ def provision(vm, role, role_num, node_num)
 
   if role.include?("server") && role_num == 0
     vm.provision "private-registry", type: "shell", inline: writePrivateRegistry
-    dockerInstall(vm)
 
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
