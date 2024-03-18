@@ -83,54 +83,58 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
-			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage-1 --image=docker.io/library/nginx:1.25.3", serverNodeNames[0])
+			res, err := e2e.RunCommand("kubectl create deployment my-webpage-1 --image=docker.io/library/nginx:1.25.3")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-webpage-1 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-webpage-1"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCmdOnNode(patchCmd, serverNodeNames[0])
+			res, err = e2e.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCmdOnNode("kubectl rollout status deployment my-webpage-1 --watch=true --timeout=360s", serverNodeNames[0])
+			res, err = e2e.RunCommand("kubectl rollout status deployment my-webpage-1 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Should create and validate deployment with embedded registry mirror using image digest for existing tag", func() {
-			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage-2 --image=docker.io/library/nginx:sha256:9784f7985f6fba493ba30fb68419f50484fee8faaf677216cb95826f8491d2e9", serverNodeNames[0])
+			res, err := e2e.RunCommand("kubectl create deployment my-webpage-2 --image=docker.io/library/nginx:nginx@sha256:c7a6ad68be85142c7fe1089e48faa1e7c7166a194caa9180ddea66345876b9d2")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-webpage-2 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-webpage-2"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCmdOnNode(patchCmd, serverNodeNames[0])
+			res, err = e2e.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCmdOnNode("kubectl rollout status deployment my-webpage-2 --watch=true --timeout=360s", serverNodeNames[0])
+			res, err = e2e.RunCommand("kubectl rollout status deployment my-webpage-2 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Should create and validate deployment with embedded registry mirror using image digest without corresponding tag", func() {
-			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage-3 --image=docker.io/library/nginx:sha256:b4af4f8b6470febf45dc10f564551af682a802eda1743055a7dfc8332dffa595", serverNodeNames[0])
+			res, err := e2e.RunCommand("kubectl create deployment my-webpage-3 --image=docker.io/library/nginx@sha256:b4af4f8b6470febf45dc10f564551af682a802eda1743055a7dfc8332dffa595")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-webpage-3 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-webpage-3"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCmdOnNode(patchCmd, serverNodeNames[0])
+			res, err = e2e.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCmdOnNode("kubectl rollout status deployment my-webpage-3 --watch=true --timeout=360s", serverNodeNames[0])
+			res, err = e2e.RunCommand("kubectl rollout status deployment my-webpage-3 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Should expose embedded registry metrics", func() {
 			grepCmd := fmt.Sprintf("kubectl get --raw /api/v1/nodes/%s/proxy/metrics | grep -F 'spegel_advertised_images{registry=\"docker.io\"}'", serverNodeNames[0])
-			res, err := e2e.RunCmdOnNode(grepCmd, serverNodeNames[0])
+			res, err := e2e.RunCommand(grepCmd)
 			fmt.Println(res)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("Should cleanup deployments", func() {
+			_, err := e2e.RunCommand("kubectl delete deployment my-webpage-1 my-webpage-2 my-webpage-3")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -146,9 +150,6 @@ var _ = AfterSuite(func() {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	}
 	if !failed || *ci {
-		r2, err := e2e.RunCmdOnNode("kubectl delete deployment my-webpage-1 my-webpage-2 my-webpage-3", serverNodeNames[0])
-		Expect(err).NotTo(HaveOccurred(), r2)
-		Expect(err).NotTo(HaveOccurred())
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}
