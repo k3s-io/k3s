@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"net"
 	sysnet "net"
 	"net/url"
 	"strconv"
@@ -14,13 +15,14 @@ import (
 
 type Proxy interface {
 	Update(addresses []string)
-	SetAPIServerPort(ctx context.Context, port int, isIPv6 bool) error
+	SetAPIServerPort(port int, isIPv6 bool) error
 	SetSupervisorDefault(address string)
 	IsSupervisorLBEnabled() bool
 	SupervisorURL() string
 	SupervisorAddresses() []string
 	APIServerURL() string
 	IsAPIServerLBEnabled() bool
+	SetHealthCheck(address string, healthCheck func() bool)
 }
 
 // NewSupervisorProxy sets up a new proxy for retrieving supervisor and apiserver addresses.  If
@@ -38,6 +40,7 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 		supervisorURL:        supervisorURL,
 		apiServerURL:         supervisorURL,
 		lbServerPort:         lbServerPort,
+		context:              ctx,
 	}
 
 	if lbEnabled {
@@ -70,6 +73,7 @@ type proxy struct {
 	apiServerEnabled bool
 
 	apiServerURL              string
+	apiServerPort             string
 	supervisorURL             string
 	supervisorPort            string
 	initialSupervisorURL      string
@@ -78,6 +82,7 @@ type proxy struct {
 
 	apiServerLB  *loadbalancer.LoadBalancer
 	supervisorLB *loadbalancer.LoadBalancer
+	context      context.Context
 }
 
 func (p *proxy) Update(addresses []string) {
@@ -94,6 +99,18 @@ func (p *proxy) Update(addresses []string) {
 		p.supervisorLB.Update(supervisorAddresses)
 	}
 	p.supervisorAddresses = supervisorAddresses
+}
+
+func (p *proxy) SetHealthCheck(address string, healthCheck func() bool) {
+	if p.supervisorLB != nil {
+		p.supervisorLB.SetHealthCheck(address, healthCheck)
+	}
+
+	if p.apiServerLB != nil {
+		host, _, _ := net.SplitHostPort(address)
+		address = net.JoinHostPort(host, p.apiServerPort)
+		p.apiServerLB.SetHealthCheck(address, healthCheck)
+	}
 }
 
 func (p *proxy) setSupervisorPort(addresses []string) []string {
@@ -114,12 +131,13 @@ func (p *proxy) setSupervisorPort(addresses []string) []string {
 // load-balancing is enabled, another load-balancer is started on a port one below the supervisor
 // load-balancer, and the address of this load-balancer is returned instead of the actual apiserver
 // addresses.
-func (p *proxy) SetAPIServerPort(ctx context.Context, port int, isIPv6 bool) error {
+func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 	u, err := url.Parse(p.initialSupervisorURL)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse server URL %s", p.initialSupervisorURL)
 	}
-	u.Host = sysnet.JoinHostPort(u.Hostname(), strconv.Itoa(port))
+	p.apiServerPort = strconv.Itoa(port)
+	u.Host = sysnet.JoinHostPort(u.Hostname(), p.apiServerPort)
 
 	p.apiServerURL = u.String()
 	p.apiServerEnabled = true
@@ -129,7 +147,7 @@ func (p *proxy) SetAPIServerPort(ctx context.Context, port int, isIPv6 bool) err
 		if lbServerPort != 0 {
 			lbServerPort = lbServerPort - 1
 		}
-		lb, err := loadbalancer.New(ctx, p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort, isIPv6)
+		lb, err := loadbalancer.New(p.context, p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort, isIPv6)
 		if err != nil {
 			return err
 		}
