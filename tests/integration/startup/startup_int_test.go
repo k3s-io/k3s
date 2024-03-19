@@ -124,6 +124,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(apiInfo).To(ContainSubstring("11.11.22.22"))
 		})
+
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
@@ -263,7 +264,6 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
-
 })
 
 var failed bool

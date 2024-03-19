@@ -133,8 +133,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(KillK3sCluster(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		})
 	})
 	Context("Verify prefer-bundled-bin flag", func() {
@@ -177,8 +176,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			_, _ = e2e.ParsePods(kubeConfigFile, true)
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(KillK3sCluster(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		})
 	})
 	Context("Verify disable-agent and egress-selector-mode flags", func() {
@@ -248,8 +246,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(KillK3sCluster(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 		})
 	})
 	Context("Verify server fails to start with bootstrap token", func() {
@@ -265,8 +262,60 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(KillK3sCluster(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		})
+	})
+	Context("Verify k3s killall subcommand works on all nodes", func() {
+		It("Starts K3s with no issues", func() {
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), "", "")
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+
+			fmt.Println("CLUSTER CONFIG")
+			fmt.Println("OS:", *nodeOS)
+			fmt.Println("Server Nodes:", serverNodeNames)
+			fmt.Println("Agent Nodes:", agentNodeNames)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Checks node and pod status", func() {
+			fmt.Printf("\nFetching node status\n")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+
+			fmt.Printf("\nFetching pods status\n")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParsePods(kubeConfigFile, true)
+		})
+
+		It("Kills the cluster", func() {
+			for _, node := range append(serverNodeNames, agentNodeNames...) {
+				_, err := e2e.RunCmdOnNode("k3s killall", node)
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+		It("Checks that no k3s processes are running", func() {
+			Eventually(func(g Gomega) {
+				for _, node := range append(serverNodeNames, agentNodeNames...) {
+					g.Expect(e2e.RunCmdOnNode("ps x | grep k3s || true", node)).To(BeEmpty())
+				}
+			}, "20s", "5s").Should(Succeed())
 		})
 	})
 })
