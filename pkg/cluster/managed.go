@@ -126,7 +126,7 @@ func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 	return nil
 }
 
-// setupEtcdProxy periodically updates the etcd proxy with the current list of
+// setupEtcdProxy starts a goroutine to periodically update the etcd proxy with the current list of
 // cluster client URLs, as retrieved from etcd.
 func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 	if c.managedDB == nil {
@@ -138,7 +138,7 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 		for range t.C {
 			newAddresses, err := c.managedDB.GetMembersClientURLs(ctx)
 			if err != nil {
-				logrus.Warnf("failed to get etcd client URLs: %v", err)
+				logrus.Warnf("Failed to get etcd client URLs: %v", err)
 				continue
 			}
 			// client URLs are a full URI, but the proxy only wants host:port
@@ -146,7 +146,7 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 			for _, address := range newAddresses {
 				u, err := url.Parse(address)
 				if err != nil {
-					logrus.Warnf("failed to parse etcd client URL: %v", err)
+					logrus.Warnf("Failed to parse etcd client URL: %v", err)
 					continue
 				}
 				hosts = append(hosts, u.Host)
@@ -162,7 +162,7 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 	secretsClient := c.config.Runtime.Core.Core().V1().Secret()
 	if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
 		if apierrors.IsNotFound(err) {
-			logrus.Debugf("node password secret is not found for node %s", nodeName)
+			logrus.Debugf("Node password secret is not found for node %s", nodeName)
 			return
 		}
 		logrus.Warnf("failed to delete old node password secret: %v", err)
