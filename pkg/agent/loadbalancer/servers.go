@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
 	http_dialer "github.com/mwitkow/go-http-dialer"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 var defaultDialer proxy.Dialer = &net.Dialer{}
@@ -73,7 +75,11 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 
 	for addedServer := range newAddresses.Difference(curAddresses) {
 		logrus.Infof("Adding server to load balancer %s: %s", lb.serviceName, addedServer)
-		lb.servers[addedServer] = &server{connections: make(map[net.Conn]struct{})}
+		lb.servers[addedServer] = &server{
+			address:     addedServer,
+			connections: make(map[net.Conn]struct{}),
+			healthCheck: func() bool { return true },
+		}
 	}
 
 	for removedServer := range curAddresses.Difference(newAddresses) {
@@ -106,8 +112,8 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 }
 
 func (lb *LoadBalancer) nextServer(failedServer string) (string, error) {
-	lb.mutex.Lock()
-	defer lb.mutex.Unlock()
+	lb.mutex.RLock()
+	defer lb.mutex.RUnlock()
 
 	if len(lb.randomServers) == 0 {
 		return "", errors.New("No servers in load balancer proxy list")
@@ -162,10 +168,12 @@ func (s *server) closeAll() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	logrus.Debugf("Closing %d connections to load balancer server", len(s.connections))
-	for conn := range s.connections {
-		// Close the connection in a goroutine so that we don't hold the lock while doing so.
-		go conn.Close()
+	if l := len(s.connections); l > 0 {
+		logrus.Infof("Closing %d connections to load balancer server %s", len(s.connections), s.address)
+		for conn := range s.connections {
+			// Close the connection in a goroutine so that we don't hold the lock while doing so.
+			go conn.Close()
+		}
 	}
 }
 
@@ -177,4 +185,56 @@ func (sc *serverConn) Close() error {
 
 	delete(sc.server.connections, sc)
 	return sc.Conn.Close()
+}
+
+// SetDefault sets the selected address as the default / fallback address
+func (lb *LoadBalancer) SetDefault(serverAddress string) {
+	lb.mutex.Lock()
+	defer lb.mutex.Unlock()
+
+	_, hasOriginalServer := sortServers(lb.ServerAddresses, lb.defaultServerAddress)
+	// if the old default server is not currently in use, remove it from the server map
+	if server := lb.servers[lb.defaultServerAddress]; server != nil && !hasOriginalServer {
+		defer server.closeAll()
+		delete(lb.servers, lb.defaultServerAddress)
+	}
+	// if the new default server doesn't have an entry in the map, add one
+	if _, ok := lb.servers[serverAddress]; !ok {
+		lb.servers[serverAddress] = &server{
+			address:     serverAddress,
+			healthCheck: func() bool { return true },
+			connections: make(map[net.Conn]struct{}),
+		}
+	}
+
+	lb.defaultServerAddress = serverAddress
+	logrus.Infof("Updated load balancer %s default server address -> %s", lb.serviceName, serverAddress)
+}
+
+// SetHealthCheck adds a health-check callback to an address, replacing the default no-op function.
+func (lb *LoadBalancer) SetHealthCheck(address string, healthCheck func() bool) {
+	lb.mutex.Lock()
+	defer lb.mutex.Unlock()
+
+	if server := lb.servers[address]; server != nil {
+		logrus.Debugf("Added health check for load balancer %s: %s", lb.serviceName, address)
+		server.healthCheck = healthCheck
+	} else {
+		logrus.Errorf("Failed to add health check for load balancer %s: no server found for %s", lb.serviceName, address)
+	}
+}
+
+// runHealthChecks periodically health-checks all servers. Any servers that fail the health-check will have their
+// connections closed, to force clients to switch over to a healthy server.
+func (lb *LoadBalancer) runHealthChecks(ctx context.Context) {
+	wait.Until(func() {
+		lb.mutex.RLock()
+		defer lb.mutex.RUnlock()
+		for _, server := range lb.servers {
+			if !server.healthCheck() {
+				defer server.closeAll()
+			}
+		}
+	}, time.Second, ctx.Done())
+	logrus.Debugf("Stopped health checking for load balancer %s", lb.serviceName)
 }
