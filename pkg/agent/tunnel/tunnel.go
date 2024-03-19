@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -289,7 +290,9 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 	disconnect := map[string]context.CancelFunc{}
 	for _, address := range proxy.SupervisorAddresses() {
 		if _, ok := disconnect[address]; !ok {
-			disconnect[address] = a.connect(ctx, wg, address, tlsConfig)
+			conn := a.connect(ctx, wg, address, tlsConfig)
+			disconnect[address] = conn.cancel
+			proxy.SetHealthCheck(address, conn.connected)
 		}
 	}
 
@@ -361,7 +364,9 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 				for _, address := range proxy.SupervisorAddresses() {
 					validEndpoint[address] = true
 					if _, ok := disconnect[address]; !ok {
-						disconnect[address] = a.connect(ctx, nil, address, tlsConfig)
+						conn := a.connect(ctx, nil, address, tlsConfig)
+						disconnect[address] = conn.cancel
+						proxy.SetHealthCheck(address, conn.connected)
 					}
 				}
 
@@ -403,13 +408,22 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 	return false
 }
 
+type agentConnection struct {
+	cancel    context.CancelFunc
+	connected func() bool
+}
+
 // connect initiates a connection to the remotedialer server. Incoming dial requests from
 // the server will be checked by the authorizer function prior to being fulfilled.
-func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) context.CancelFunc {
+func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) agentConnection {
 	wsURL := fmt.Sprintf("wss://%s/v1-"+version.Program+"/connect", address)
 	ws := &websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 	}
+
+	// Assume that the connection to the server will succeed, to avoid failing health checks while attempting to connect.
+	// If we cannot connect, connected will be set to false when the initial connection attempt fails.
+	connected := true
 
 	once := sync.Once{}
 	if waitGroup != nil {
@@ -417,18 +431,31 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}
 
 	ctx, cancel := context.WithCancel(rootCtx)
+	auth := func(proto, address string) bool {
+		return a.authorized(rootCtx, proto, address)
+	}
 
+	onConnect := func(_ context.Context, _ *remotedialer.Session) error {
+		connected = true
+		logrus.WithField("url", wsURL).Info("Remotedialer connected to proxy")
+		if waitGroup != nil {
+			once.Do(waitGroup.Done)
+		}
+		return nil
+	}
+
+	// Start remotedialer connect loop in a goroutine to ensure a connection to the target server
 	go func() {
 		for {
-			remotedialer.ClientConnect(ctx, wsURL, nil, ws, func(proto, address string) bool {
-				return a.authorized(rootCtx, proto, address)
-			}, func(_ context.Context, _ *remotedialer.Session) error {
-				if waitGroup != nil {
-					once.Do(waitGroup.Done)
-				}
-				return nil
-			})
-
+			// ConnectToProxy blocks until error or context cancellation
+			err := remotedialer.ConnectToProxy(ctx, wsURL, nil, auth, ws, onConnect)
+			connected = false
+			if err != nil && !errors.Is(err, context.Canceled) {
+				logrus.WithField("url", wsURL).WithError(err).Error("Remotedialer proxy error; reconecting...")
+				// wait between reconnection attempts to avoid hammering the server
+				time.Sleep(endpointDebounceDelay)
+			}
+			// If the context has been cancelled, exit the goroutine instead of retrying
 			if ctx.Err() != nil {
 				if waitGroup != nil {
 					once.Do(waitGroup.Done)
@@ -438,7 +465,10 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 		}
 	}()
 
-	return cancel
+	return agentConnection{
+		cancel:    cancel,
+		connected: func() bool { return connected },
+	}
 }
 
 // isKubeletPort returns true if the connection is to a reserved TCP port on a loopback address.
