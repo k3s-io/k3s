@@ -16,6 +16,7 @@ func main() {
 	app := cmds.NewApp()
 	app.Commands = []cli.Command{
 		cmds.NewCertCommands(
+			cert.Check,
 			cert.Rotate,
 			cert.RotateCA,
 		),
