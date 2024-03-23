@@ -131,6 +131,7 @@ require (
 	github.com/opencontainers/selinux v1.11.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.19.0
 	github.com/rancher/dynamiclistener v0.3.6
 	github.com/rancher/lasso v0.0.0-20230830164424-d684fdeb6f29
 	github.com/rancher/remotedialer v0.3.0
@@ -433,7 +434,6 @@ require (
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
-	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
