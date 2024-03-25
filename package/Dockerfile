@@ -3,6 +3,8 @@ RUN apk add -U ca-certificates tar zstd tzdata
 COPY build/out/data.tar.zst /
 RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware && \
     tar -xa -C /image -f /data.tar.zst && \
+    echo "root:x:0:0:root:/:/bin/sh" > /image/etc/passwd && \
+    echo "root:x:0:" > /image/etc/group && \
     cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
 
 FROM scratch as collect
