@@ -14,9 +14,17 @@ def defaultOSConfigure(vm)
     vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
   elsif box.include?("alpine")
     vm.provision "Install tools", type: "shell", inline: "apk add jq coreutils"
-  elsif box.include?("microos")
-    vm.provision "Install jq", type: "shell", inline: "transactional-update pkg install -y jq"
-    vm.provision 'reload', run: 'once'
+  elsif box.include?("opensuse/MicroOS")
+    vm.box_version = "16.0.0.20220225" # https://github.com/hashicorp/vagrant/issues/12777
+    scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
+    combustion_path = File.expand_path(scripts_location + "/combustion.sh")
+    # To avoid issues with AppArmor or SELinux, we copy out the script to /tmp
+    FileUtils.cp(combustion_path, "/tmp/")
+    vm.provider "libvirt" do |v|
+      v.qemuargs value: '-fw_cfg'
+      v.qemuargs value: "name=opt/org.opensuse.combustion/script,file=/tmp/combustion.sh"
+    end
+    vm.synced_folder ".", "/vagrant", disabled: true
   end 
 end
 
