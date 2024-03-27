@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"context"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -174,6 +175,23 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	nodeList, err := nodes.List(metav1.ListOptions{LabelSelector: etcdSelector.String()})
 	if err != nil {
 		return err
+	}
+
+	// If running without an agent there will not be a node for this server;
+	// create a dummy node and assume it has reconciled.
+	if e.etcd.config.DisableAgent {
+		node := v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: os.Getenv("NODE_NAME"),
+				Annotations: map[string]string{
+					annotationLocalReconciled: "true",
+				},
+			},
+		}
+		if e.etcd.s3 != nil {
+			node.Annotations[annotationS3Reconciled] = "true"
+		}
+		nodeList.Items = append(nodeList.Items, node)
 	}
 
 	// Once a node has set the reconcile annotation, it is considered to have
