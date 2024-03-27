@@ -181,6 +181,7 @@ type Control struct {
 	DataDir                  string
 	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
+	DisableAgent             bool
 	DisableAPIServer         bool
 	DisableControllerManager bool
 	DisableETCD              bool
