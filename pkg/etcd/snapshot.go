@@ -850,6 +850,12 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 		}
 	}
 
+	// Agentless servers do not have a node. If we are running agentless, return early to avoid pruning
+	// snapshots for nonexistent nodes and trying to patch the reconcile annotations on our node.
+	if e.config.DisableAgent {
+		return nil
+	}
+
 	// List all snapshots in Kubernetes not stored on S3 or a current etcd node.
 	// These snapshots are local to a node that no longer runs etcd and cannot be restored.
 	// If the node rejoins later and has local snapshots, it will reconcile them itself.
