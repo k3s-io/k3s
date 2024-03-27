@@ -105,6 +105,7 @@ type Server struct {
 	EtcdS3Folder             string
 	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
+	Multus					 bool
 	ServiceLBNamespace       string
 }
 
@@ -488,6 +489,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "embedded-registry",
 		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd",
 		Destination: &ServerConfig.EmbeddedRegistry,
+	},
+	&cli.BoolFlag{
+		Name:        "multus",
+		Usage:       "(experimental/networking) Enable multus",
+		Destination: &ServerConfig.Multus,
 	},
 	NodeNameFlag,
 	WithNodeIDFlag,

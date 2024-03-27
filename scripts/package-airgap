@@ -5,12 +5,23 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
+function createTarball() {
+  images=$(cat "${1}")
+  xargs -n1 docker pull <<< "${images}"
+  docker save ${images} -o dist/artifacts/${2}-${ARCH}.tar
+  zstd --no-progress -T0 -16 -f --long=25 dist/artifacts/${2}-${ARCH}.tar -o dist/artifacts/${2}-${ARCH}.tar.zst
+  pigz -v -c dist/artifacts/${2}-${ARCH}.tar > dist/artifacts/${2}-${ARCH}.tar.gz
+}
+
+
 airgap_image_file='scripts/airgap/image-list.txt'
-images=$(cat "${airgap_image_file}")
-xargs -n1 docker pull <<< "${images}"
-docker save ${images} -o dist/artifacts/k3s-airgap-images-${ARCH}.tar
-zstd --no-progress -T0 -16 -f --long=25 dist/artifacts/k3s-airgap-images-${ARCH}.tar -o dist/artifacts/k3s-airgap-images-${ARCH}.tar.zst
-pigz -v -c dist/artifacts/k3s-airgap-images-${ARCH}.tar > dist/artifacts/k3s-airgap-images-${ARCH}.tar.gz
+multus_airgap_image_file='scripts/airgap/image-list-multus.txt'
+createTarball ${airgap_image_file} "k3s-airgap-images"
+# multus and cni-plugins image do not support arm yet 
+if [ ${ARCH} != arm ]; then
+  createTarball ${multus_airgap_image_file} "multus-airgap-images"
+fi
 if [ ${ARCH} = amd64 ]; then
   cp "${airgap_image_file}" dist/artifacts/k3s-images.txt
+  cp "${multus_airgap_image_file}" dist/artifacts/multus-images.txt
 fi

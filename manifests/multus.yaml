@@ -1,0 +1,14 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: multus
+  namespace: kube-system
+spec:
+  chart: https://%{KUBERNETES_API}%/static/charts/multus-4.0.201+upv4.0.2-build2024020802.tgz
+  valuesContent: |-
+    config:
+      cni_conf:
+        confDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
+        binDir: %{DATA_DIR}%
+        kubeconfig: /var/lib/rancher/k3s/agent/etc/cni/net.d/multus.d/multus.kubeconfig

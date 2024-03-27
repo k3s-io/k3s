@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime/debug"
@@ -270,6 +271,13 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		dnsIPFamilyPolicy = "RequireDualStack"
 	}
 
+	// Find the /var/lib/rancher/k3s/data/${SHA}/bin/ directory. Same procedure we use in pkg/agent/config/config.go
+	hostLocal, err := exec.LookPath("host-local")
+	if err != nil {
+		return errors.Wrap(err, "failed to find host-local")
+	}
+	CNIBinDir := filepath.Dir(hostLocal)
+
 	templateVars := map[string]string{
 		"%{CLUSTER_DNS}%":                 controlConfig.ClusterDNS.String(),
 		"%{CLUSTER_DNS_LIST}%":            fmt.Sprintf("[%s]", util.JoinIPs(controlConfig.ClusterDNSs)),
@@ -279,6 +287,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		"%{SYSTEM_DEFAULT_REGISTRY}%":     registryTemplate(controlConfig.SystemDefaultRegistry),
 		"%{SYSTEM_DEFAULT_REGISTRY_RAW}%": controlConfig.SystemDefaultRegistry,
 		"%{PREFERRED_ADDRESS_TYPES}%":     addrTypesPrioTemplate(controlConfig.FlannelExternalIP),
+		"%{DATA_DIR}%":                    CNIBinDir,
 	}
 
 	skip := controlConfig.Skips
