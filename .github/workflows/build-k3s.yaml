@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
     - name: Checkout K3s
