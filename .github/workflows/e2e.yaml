@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         # TODO fix embeddedmirror and add it to the matrix
-        etest: [startup, s3, btrfs, externalip, privateregistry]
+        etest: [startup, s3, btrfs, externalip, privateregistry, wasm]
       max-parallel: 3
     steps:
       - name: "Checkout"
@@ -60,6 +60,10 @@ jobs:
         with: 
           go-version-file: 'go.mod'
           cache: false
+      - name: Install Kubectl
+        run: |
+           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - name: "Download k3s binary"
         uses: actions/download-artifact@v4
         with:
