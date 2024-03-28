@@ -137,6 +137,7 @@ require (
 	github.com/opencontainers/runc v1.1.12
 	github.com/opencontainers/selinux v1.11.0
 	github.com/otiai10/copy v1.7.0
+	github.com/pdtpartners/nix-snapshotter v0.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.48.0
 	github.com/rancher/dynamiclistener v0.3.6
@@ -186,6 +187,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
@@ -221,7 +223,7 @@ require (
 	github.com/checkpoint-restore/go-criu/v5 v5.3.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
-	github.com/container-orchestrated-devices/container-device-interface v0.5.4 // indirect
+	github.com/container-orchestrated-devices/container-device-interface v0.6.0 // indirect
 	github.com/container-storage-interface/spec v1.8.0 // indirect
 	github.com/containerd/btrfs/v2 v2.0.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect

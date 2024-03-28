@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/opencontainers/runc/libcontainer/userns"
+	"github.com/pdtpartners/nix-snapshotter/pkg/nix"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -116,4 +117,8 @@ func FuseoverlayfsSupported(root string) error {
 
 func StargzSupported(root string) error {
 	return stargz.Supported(root)
+}
+
+func NixSupported(root string) error {
+	return nix.Supported(root)
 }
