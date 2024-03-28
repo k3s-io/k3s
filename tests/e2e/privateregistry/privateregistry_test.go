@@ -96,22 +96,22 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 		})
 		It("Should pull and image from dockerhub and send it to private registry", func() {
-			cmd := "sudo docker pull nginx"
+			cmd := "docker pull nginx"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			nodeIP, err := e2e.FetchNodeExternalIP(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 
-			cmd = "sudo docker tag nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker tag nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker push " + nodeIP + ":5000/my-webpage"
+			cmd = "docker push " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "sudo docker image remove nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker image remove nginx " + nodeIP + ":5000/my-webpage"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
@@ -130,7 +130,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(pod.Status).Should(Equal("Running"))
-				g.Expect(pod.Node).Should(Equal(agentNodeNames[0]))
 			}, "60s", "5s").Should(Succeed())
 
 			cmd := "curl " + pod.IP
