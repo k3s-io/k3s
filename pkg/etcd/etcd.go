@@ -25,6 +25,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
@@ -664,7 +665,9 @@ func (e *ETCD) setName(force bool) error {
 // handler wraps the handler with routes for database info
 func (e *ETCD) handler(next http.Handler) http.Handler {
 	mux := mux.NewRouter().SkipClean(true)
+	mux.Use(auth.Middleware(e.config, version.Program+":server"))
 	mux.Handle("/db/info", e.infoHandler())
+	mux.Handle("/db/snapshot", e.snapshotHandler())
 	mux.NotFoundHandler = next
 	return mux
 }
@@ -673,6 +676,11 @@ func (e *ETCD) handler(next http.Handler) http.Handler {
 // If we can't retrieve an actual MemberList from etcd, we return a canned response with only the local node listed.
 func (e *ETCD) infoHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.SendError(fmt.Errorf("method not allowed"), rw, req, http.StatusMethodNotAllowed)
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 		defer cancel()
 
