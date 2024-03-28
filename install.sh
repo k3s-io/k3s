@@ -983,6 +983,7 @@ depend() {
 }
 
 start_pre() {
+    (ps -ef | grep -E "k3s .*(server|agent)" | grep -E -v "(init|grep|channelserver|supervise-daemon)" | awk '{print $2}' | xargs kill 2>/dev/null) || true
     rm -f /tmp/k3s.*
 }
 
