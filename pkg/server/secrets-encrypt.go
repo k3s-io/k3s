@@ -45,12 +45,12 @@ type EncryptionRequest struct {
 	Skip   bool    `json:"skip"`
 }
 
-func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
+func getEncryptionRequest(req *http.Request) (*EncryptionRequest, error) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
-		return EncryptionRequest{}, err
+		return nil, err
 	}
-	result := EncryptionRequest{}
+	result := &EncryptionRequest{}
 	err = json.Unmarshal(b, &result)
 	return result, err
 }
@@ -71,6 +71,7 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 			genErrorMessage(resp, http.StatusInternalServerError, err, "secrets-encrypt")
 			return
 		}
+		resp.Header().Set("Content-Type", "application/json")
 		resp.Write(b)
 	})
 }

@@ -76,10 +76,10 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverAuthed := mux.NewRouter().SkipClean(true)
 	serverAuthed.NotFoundHandler = nodeAuthed
 	serverAuthed.Use(authMiddleware(serverConfig, version.Program+":server"))
+	serverAuthed.PathPrefix("/db/").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
 	serverAuthed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(ctx, serverConfig))
 	serverAuthed.Path(prefix + "/cert/cacerts").Handler(caCertReplaceHandler(serverConfig))
-	serverAuthed.Path("/db/info").Handler(nodeAuthed)
 	serverAuthed.Path(prefix + "/server-bootstrap").Handler(bootstrapHandler(serverConfig.Runtime))
 	serverAuthed.Path(prefix + "/token").Handler(tokenRequestHandler(ctx, serverConfig))
 
