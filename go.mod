@@ -7,19 +7,15 @@ replace (
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.9-k3s2 // k3s/release-1.28
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.11-k3s2
-	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/docker/distribution => github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/docker => github.com/docker/docker v24.0.0-rc.2.0.20230801142700-69c9adb7d386+incompatible
-	github.com/docker/libnetwork => github.com/docker/libnetwork v0.8.0-dev.2.0.20190624125649-f0e46a78ea34
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
-	github.com/juju/errors => github.com/k3s-io/nocode v0.0.0-20200630202308-cb097102c09f
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.29.0-k3s1
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/runc => github.com/k3s-io/runc v1.1.12-k3s1
-	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
-	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.10.1
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/common => github.com/prometheus/common v0.45.0
 	github.com/quic-go/qtls-go1-20 => github.com/quic-go/qtls-go1-20 v0.3.3
@@ -37,18 +33,6 @@ replace (
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1
-	go.opentelemetry.io/contrib/propagators/b3 => go.opentelemetry.io/contrib/propagators/b3 v1.13.0
-	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.13.0
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry => go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.13.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric => go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.32.1
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc => go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.32.1
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace => go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.13.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc => go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.13.0
-	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v0.32.1
-	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.13.0
-	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.13.0
-	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.19.0
 	golang.org/x/crypto => golang.org/x/crypto v0.17.0
 	golang.org/x/net => golang.org/x/net v0.17.0
 	golang.org/x/sys => golang.org/x/sys v0.13.0
@@ -89,7 +73,6 @@ replace (
 	k8s.io/sample-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-apiserver v1.29.3-k3s1
 	k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.29.3-k3s1
 	k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.29.3-k3s1
-	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20210104141923-aac4ce9116a7
 	sourcegraph.com/sourcegraph/go-diff => github.com/sourcegraph/go-diff v0.6.0
 )
 
@@ -105,7 +88,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.14.4-0.20230913082252-7275d45b185c
 	github.com/containerd/zfs v1.1.0
 	github.com/coreos/go-iptables v0.7.0
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.24.2
@@ -242,7 +225,6 @@ require (
 	github.com/containers/ocicrypt v1.1.6 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/danwinship/knftables v0.0.13 // indirect
@@ -470,7 +452,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
 	go.opentelemetry.io/otel v1.21.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.21.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0 // indirect
 	go.opentelemetry.io/otel/metric v1.21.0 // indirect
