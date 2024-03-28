@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"os"
 	"strings"
@@ -44,12 +43,12 @@ type EncryptionRequest struct {
 	Skip   bool    `json:"skip"`
 }
 
-func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
+func getEncryptionRequest(req *http.Request) (*EncryptionRequest, error) {
 	b, err := io.ReadAll(req.Body)
 	if err != nil {
-		return EncryptionRequest{}, err
+		return nil, err
 	}
-	result := EncryptionRequest{}
+	result := &EncryptionRequest{}
 	err = json.Unmarshal(b, &result)
 	return result, err
 }
@@ -62,14 +61,15 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 		}
 		status, err := encryptionStatus(server)
 		if err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err, "secrets-encrypt")
+			util.SendErrorWithID(err, "secret-encrypt", resp, req, http.StatusInternalServerError)
 			return
 		}
 		b, err := json.Marshal(status)
 		if err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err, "secrets-encrypt")
+			util.SendErrorWithID(err, "secret-encrypt", resp, req, http.StatusInternalServerError)
 			return
 		}
+		resp.Header().Set("Content-Type", "application/json")
 		resp.Write(b)
 	})
 }
@@ -185,7 +185,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 		}
 
 		if err != nil {
-			genErrorMessage(resp, http.StatusBadRequest, err, "secrets-encrypt")
+			util.SendErrorWithID(err, "secret-encrypt", resp, req, http.StatusBadRequest)
 			return
 		}
 		// If a user kills the k3s server immediately after this call, we run into issues where the files
@@ -367,19 +367,4 @@ func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.In
 	}
 
 	return nil
-}
-
-// genErrorMessage sends and logs a random error ID so that logs can be correlated
-// between the REST API (which does not provide any detailed error output, to avoid
-// information disclosure) and the server logs.
-func genErrorMessage(resp http.ResponseWriter, statusCode int, passedErr error, component string) {
-	errID, err := rand.Int(rand.Reader, big.NewInt(99999))
-	if err != nil {
-		resp.WriteHeader(http.StatusInternalServerError)
-		resp.Write([]byte(err.Error()))
-		return
-	}
-	logrus.Warnf("%s error ID %05d: %s", component, errID, passedErr.Error())
-	resp.WriteHeader(statusCode)
-	resp.Write([]byte(fmt.Sprintf("%s error ID %05d", component, errID)))
 }

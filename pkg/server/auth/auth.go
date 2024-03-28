@@ -1,4 +1,4 @@
-package server
+package auth
 
 import (
 	"net/http"
@@ -51,7 +51,7 @@ func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw 
 	next.ServeHTTP(rw, req)
 }
 
-func authMiddleware(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
+func Middleware(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			doAuth(roles, serverConfig, next, rw, req)

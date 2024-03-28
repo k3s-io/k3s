@@ -21,6 +21,14 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
+	ServerToken,
+	&cli.StringFlag{
+		Name:        "server, s",
+		Usage:       "(cluster) Server to connect to",
+		EnvVar:      version.ProgramUpper + "_URL",
+		Value:       "https://127.0.0.1:6443",
+		Destination: &ServerConfig.ServerURL,
+	},
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
 		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",

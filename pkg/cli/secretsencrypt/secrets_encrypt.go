@@ -66,7 +66,6 @@ func Enable(app *cli.Context) error {
 }
 
 func Disable(app *cli.Context) error {
-
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
