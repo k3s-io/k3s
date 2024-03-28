@@ -42,7 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -1074,7 +1074,7 @@ func (sf *snapshotFile) toETCDSnapshotFile(esf *apisv1.ETCDSnapshotFile) {
 	esf.Spec.SnapshotName = sf.Name
 	esf.Spec.Location = sf.Location
 	esf.Status.CreationTime = sf.CreatedAt
-	esf.Status.ReadyToUse = pointer.Bool(sf.Status == successfulSnapshotStatus)
+	esf.Status.ReadyToUse = ptr.To(sf.Status == successfulSnapshotStatus)
 	esf.Status.Size = resource.NewQuantity(sf.Size, resource.DecimalSI)
 
 	if sf.nodeSource != "" {
