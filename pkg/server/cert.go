@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
@@ -35,7 +36,7 @@ func caCertReplaceHandler(server *config.Control) http.HandlerFunc {
 		}
 		force, _ := strconv.ParseBool(req.FormValue("force"))
 		if err := caCertReplace(server, req.Body, force); err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err, "certificate")
+			util.SendErrorWithID(err, "certificate", resp, req, http.StatusInternalServerError)
 			return
 		}
 		logrus.Infof("certificate: Cluster Certificate Authority data has been updated, %s must be restarted.", version.Program)
