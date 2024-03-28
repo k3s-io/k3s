@@ -666,6 +666,7 @@ func (e *ETCD) setName(force bool) error {
 func (e *ETCD) handler(next http.Handler) http.Handler {
 	mux := mux.NewRouter().SkipClean(true)
 	mux.Handle("/db/info", e.infoHandler())
+	mux.Handle("/db/snapshot", e.snapshotHandler())
 	mux.NotFoundHandler = next
 	return mux
 }
