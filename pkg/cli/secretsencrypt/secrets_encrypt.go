@@ -17,7 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
@@ -53,7 +53,7 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(true)})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: ptr.To(true)})
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(false)})
+	b, err := json.Marshal(server.EncryptionRequest{Enable: ptr.To(false)})
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionPrepare),
+		Stage: ptr.To(secretsencrypt.EncryptionPrepare),
 		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
@@ -176,7 +176,7 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionRotate),
+		Stage: ptr.To(secretsencrypt.EncryptionRotate),
 		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
@@ -198,7 +198,7 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionReencryptActive),
+		Stage: ptr.To(secretsencrypt.EncryptionReencryptActive),
 		Force: cmds.ServerConfig.EncryptForce,
 		Skip:  cmds.ServerConfig.EncryptSkip,
 	})
@@ -221,7 +221,7 @@ func RotateKeys(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionRotateKeys),
+		Stage: ptr.To(secretsencrypt.EncryptionRotateKeys),
 	})
 	if err != nil {
 		return err

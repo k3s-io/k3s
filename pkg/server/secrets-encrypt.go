@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const aescbcKeySize = 32
@@ -84,9 +84,9 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 		return state, err
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
-		state.Enable = pointer.Bool(true)
+		state.Enable = ptr.To(true)
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
-		state.Enable = pointer.Bool(false)
+		state.Enable = ptr.To(false)
 	}
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), ""); err != nil {
