@@ -89,21 +89,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("save s3 snapshot", func() {
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("S3 bucket test exists"))
-			Expect(res).To(ContainSubstring("Uploading snapshot"))
-			Expect(res).To(ContainSubstring("S3 upload complete for"))
+			Expect(res).To(ContainSubstring("Snapshot on-demand-server-0"))
 		})
 		It("lists saved s3 snapshot", func() {
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot list", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("on-demand-server-0"))
+			Expect(res).To(ContainSubstring("file:///var/lib/rancher/k3s/server/db/snapshots/on-demand-server-0"))
 		})
 		It("save 3 more s3 snapshots", func() {
 			for _, i := range []string{"1", "2", "3"} {
 				res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save --name special-"+i, serverNodeNames[0])
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(ContainSubstring("Uploading snapshot"))
-				Expect(res).To(ContainSubstring("S3 upload complete for special-" + i))
+				Expect(res).To(ContainSubstring("Snapshot special-" + i + "-server-0"))
 			}
 		})
 		It("lists saved s3 snapshot", func() {
@@ -117,18 +114,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("delete first on-demand s3 snapshot", func() {
 			_, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot ls >> ./snapshotname.txt", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			snapshotName, err := e2e.RunCmdOnNode("grep -Eo 'on-demand-server-0-([0-9]+)' ./snapshotname.txt |head -1", serverNodeNames[0])
+			snapshotName, err := e2e.RunCmdOnNode("grep -Eo 'on-demand-server-0-([0-9]+)' ./snapshotname.txt | head -1", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			res, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot delete "+snapshotName, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("Reconciling ETCDSnapshotFile resources"))
-			Expect(res).To(ContainSubstring("Snapshot " + strings.TrimSpace(snapshotName) + " deleted from S3"))
-			Expect(res).To(ContainSubstring("Reconciliation of ETCDSnapshotFile resources complete"))
+			Expect(res).To(ContainSubstring("Snapshot " + strings.TrimSpace(snapshotName) + " deleted"))
 		})
-
-		// TODO, there is currently a bug that prevents pruning on s3 snapshots that are not prefixed with "on-demand"
-		// https://github.com/rancher/rke2/issues/3714
-		// Once fixed, ensure that the snapshots list are actually reduced to 2
 		It("prunes s3 snapshots", func() {
 			_, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
@@ -136,11 +127,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("Reconciliation of ETCDSnapshotFile resources complete"))
-
-			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot ls|grep 'on-demand'|wc -l>count", serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred())
-			res, err = e2e.RunCmdOnNode("grep '^[4]$' ./count", serverNodeNames[0])
+			// There should now be 4 on-demand snapshots - 2 local, and 2 on s3
+			res, err = e2e.RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep on-demand | wc -l", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(strings.TrimSpace(res)).To(Equal("4"))
 		})
