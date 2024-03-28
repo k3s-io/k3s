@@ -83,13 +83,6 @@ jobs:
         with:
           ## If no one connects after 5 minutes, shut down server.
           wait-timeout-minutes: 5
-      - name: Upload Results To Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: tests/e2e/${{ matrix.etest }}/coverage.out
-          flags: e2etests # optional
-          verbose: true # optional (default = false)
   docker:
     needs: build
     name: Docker Tests
