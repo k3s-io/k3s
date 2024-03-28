@@ -15,7 +15,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -80,7 +80,7 @@ func Ensure(secretClient coreclient.SecretController, nodeName, pass string) err
 				Name:      getSecretName(nodeName),
 				Namespace: metav1.NamespaceSystem,
 			},
-			Immutable: pointer.Bool(true),
+			Immutable: ptr.To(true),
 			Data:      map[string][]byte{"hash": []byte(hash)},
 		})
 	}
