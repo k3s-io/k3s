@@ -9,7 +9,7 @@ import (
 	v1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	kubeproxyconfigv1alpha1 "k8s.io/kubernetes/pkg/proxy/apis/config/v1alpha1"
-	utilpointer "k8s.io/utils/pointer"
+	utilsptr "k8s.io/utils/ptr"
 )
 
 func Test_UnitGetConntrackConfig(t *testing.T) {
@@ -23,7 +23,7 @@ func Test_UnitGetConntrackConfig(t *testing.T) {
 	}
 
 	customConfig := defaultConfig.DeepCopy()
-	customConfig.Conntrack.Min = utilpointer.Int32Ptr(100)
+	customConfig.Conntrack.Min = utilsptr.To(int32(100))
 	customConfig.Conntrack.TCPCloseWaitTimeout.Duration = 42 * time.Second
 
 	type args struct {
