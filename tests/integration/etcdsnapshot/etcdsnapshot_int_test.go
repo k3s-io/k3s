@@ -58,13 +58,13 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-				To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
+				To(ContainSubstring("Snapshot " + snapshotName + " deleted"))
 		})
 	})
 	When("saving a custom name", func() {
 		It("saves an etcd snapshot with a custom name", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "save --name ALIVEBEEF")).
-				To(ContainSubstring("Saving etcd snapshot to /var/lib/rancher/k3s/server/db/snapshots/ALIVEBEEF"))
+				To(ContainSubstring("Snapshot ALIVEBEEF-"))
 		})
 		It("deletes that snapshot", func() {
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
@@ -73,7 +73,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			snapshotName := reg.FindString(lsResult)
 			Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-				To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
+				To(ContainSubstring("Snapshot " + snapshotName + " deleted"))
 		})
 	})
 	When("using etcd snapshot prune", func() {
@@ -98,7 +98,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 		})
 		It("prunes snapshots down to 2", func() {
 			Expect(testutil.K3sCmd("etcd-snapshot", "prune --snapshot-retention 2 --name PRUNE_TEST")).
-				To(ContainSubstring("Removing local snapshot"))
+				To(ContainSubstring(" deleted."))
 			lsResult, err := testutil.K3sCmd("etcd-snapshot", "ls")
 			Expect(err).ToNot(HaveOccurred())
 			reg, err := regexp.Compile(`(?m):///var/lib/rancher/k3s/server/db/snapshots/PRUNE_TEST`)
@@ -113,7 +113,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			for _, snapshotName := range reg.FindAllString(lsResult, -1) {
 				Expect(testutil.K3sCmd("etcd-snapshot", "delete", snapshotName)).
-					To(ContainSubstring("Snapshot " + snapshotName + " deleted locally"))
+					To(ContainSubstring("Snapshot " + snapshotName + " deleted"))
 			}
 		})
 	})

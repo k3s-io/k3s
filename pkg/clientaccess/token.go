@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,9 @@ import (
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/net"
 )
 
 const (
@@ -291,7 +295,6 @@ func (i *Info) Get(path string, option ...ClientOption) ([]byte, error) {
 
 // Put makes a request to a subpath of info's BaseURL
 func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
-
 	u, err := url.Parse(i.BaseURL)
 	if err != nil {
 		return err
@@ -303,6 +306,21 @@ func (i *Info) Put(path string, body []byte, option ...ClientOption) error {
 	p.Scheme = u.Scheme
 	p.Host = u.Host
 	return put(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
+}
+
+// Post makes a request to a subpath of info's BaseURL
+func (i *Info) Post(path string, body []byte, option ...ClientOption) ([]byte, error) {
+	u, err := url.Parse(i.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+	p, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	p.Scheme = u.Scheme
+	p.Host = u.Host
+	return post(p.String(), body, GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, option...), i.Username, i.Password, i.Token())
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
@@ -400,13 +418,8 @@ func get(u string, client *http.Client, username, password, token string) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("%s: %s", u, resp.Status)
-	}
-
-	return io.ReadAll(resp.Body)
+	return readBody(resp)
 }
 
 // put makes a request to a url using a provided client and credentials,
@@ -427,14 +440,59 @@ func put(u string, body []byte, client *http.Client, username, password, token s
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("%s: %s %s", u, resp.Status, string(respBody))
+	_, err = readBody(resp)
+	return err
+}
+
+// post makes a request to a url using a provided client and credentials,
+// returning the response body and error.
+func post(u string, body []byte, client *http.Client, username, password, token string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, u, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
+	} else if username != "" {
+		req.SetBasicAuth(username, password)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return readBody(resp)
+}
+
+// readBody attempts to get the body from the response. If the response status
+// code is not in the 2XX range, an error is returned. An attempt is made to
+// decode the error body as a metav1.Status and return a StatusError, if
+// possible.
+func readBody(resp *http.Response) ([]byte, error) {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	warnings, _ := net.ParseWarningHeaders(resp.Header["Warning"])
+	for _, warning := range warnings {
+		if warning.Code == 299 && len(warning.Text) != 0 {
+			logrus.Warnf(warning.Text)
+		}
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		status := metav1.Status{}
+		if err := json.Unmarshal(b, &status); err == nil && status.Kind == "Status" {
+			return nil, &apierrors.StatusError{ErrStatus: status}
+		}
+		return nil, fmt.Errorf("%s: %s", resp.Request.URL, resp.Status)
+	}
+	return b, nil
 }
 
 // FormatToken takes a username:password string or join token, and a path to a certificate bundle, and
