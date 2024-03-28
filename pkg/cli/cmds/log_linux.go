@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	systemd "github.com/coreos/go-systemd/daemon"
+	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
