@@ -12,6 +12,7 @@ const (
 	APIServer            = "api-server"
 	Admin                = "admin"
 	AuthProxy            = "auth-proxy"
+	CertificateAuthority = "certificate-authority"
 	CloudController      = "cloud-controller"
 	ControllerManager    = "controller-manager"
 	ETCD                 = "etcd"
@@ -20,7 +21,7 @@ const (
 	ProgramController    = "-controller"
 	ProgramServer        = "-server"
 	Scheduler            = "scheduler"
-	CertificateAuthority = "certificate-authority"
+	Supervisor           = "supervisor"
 )
 
 var Agent = []string{
@@ -30,13 +31,14 @@ var Agent = []string{
 }
 
 var Server = []string{
-	Admin,
 	APIServer,
+	Admin,
 	AuthProxy,
 	CloudController,
 	ControllerManager,
 	ETCD,
 	Scheduler,
+	Supervisor,
 	version.Program + ProgramServer,
 }
 
@@ -95,6 +97,11 @@ func FilesForServices(controlConfig config.Control, services []string) (map[stri
 				controlConfig.Runtime.ClientK3sControllerKey,
 				filepath.Join(agentDataDir, "client-"+version.Program+"-controller.crt"),
 				filepath.Join(agentDataDir, "client-"+version.Program+"-controller.key"),
+			}
+		case Supervisor:
+			fileMap[service] = []string{
+				controlConfig.Runtime.ClientSupervisorCert,
+				controlConfig.Runtime.ClientSupervisorKey,
 			}
 		case AuthProxy:
 			fileMap[service] = []string{
