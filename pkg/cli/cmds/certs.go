@@ -23,7 +23,7 @@ var (
 		DataDirFlag,
 		&cli.StringSliceFlag{
 			Name:  "service,s",
-			Usage: "List of services to manage certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
+			Usage: "List of services to manage certificates for. Options include (admin, api-server, controller-manager, scheduler, supervisor, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
 			Value: &ServicesList,
 		},
 	}
