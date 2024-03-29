@@ -88,6 +88,10 @@ func Test_UnitFilesForServices(t *testing.T) {
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
 				},
+				"supervisor": []string{
+					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
+					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
+				},
 			},
 		},
 		{
@@ -137,6 +141,10 @@ func Test_UnitFilesForServices(t *testing.T) {
 				"scheduler": []string{
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
 					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
+				},
+				"supervisor": []string{
+					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
+					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
 				},
 			},
 		},
