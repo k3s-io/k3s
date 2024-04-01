@@ -60,7 +60,7 @@ skip_verify = true
 {{- end }}
 {{ end }}
 {{ end }}
-
+[host]
 {{ range $e := .Endpoints -}}
 [host."{{ $e.URL }}"]
   capabilities = ["pull", "resolve"]
