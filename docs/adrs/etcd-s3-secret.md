@@ -35,11 +35,14 @@ avoids embedding the credentials directly in the system configuration, chart val
   settings that golang's default HTTP client reads from the `HTTP_PROXY/HTTPS_PROXY/NO_PROXY` environment varibles.
 * We will add support for reading etcd snapshot S3 configuration from a Secret. The secret name will be specified via a new
   `--etcd-s3-secret` flag, which accepts the name of the Secret in the `kube-system` namespace.
-* The Secret will ONLY be used for on-demand and scheduled snapshot operations.
+* Presence of the `--etcd-s3-secret` flag does not imply `--etcd-s3`. If S3 is not enabled by use of the `--etcd-s3` flag,
+  the Secret will not be used.
 * The Secret does not need to exist when K3s starts; it will be checked for every time a snapshot operation is performed.
-* The Secret will provide default values; if S3 configuration is passed via CLI flags or configuration file, ALL fields
-* set by the Secret will be ignored. Secret and CLI/config values will NOT be merged.
-* Snapshot restore operations that want to retrieve a snapshot from S3 will need to pass the appropriate configuration
+* Secret and CLI/config values will NOT be merged. The Secret will provide values to be used in absence of other
+  configuration; if S3 configuration is passed via CLI flags or configuration file, ALL fields set by the Secret
+  will be ignored.
+* The Secret will ONLY be used for on-demand and scheduled snapshot save operations; it will not be used by snapshot restore.
+  Snapshot restore operations that want to retrieve a snapshot from S3 will need to pass the appropriate configuration
   via environment variables or CLI flags, as the Secret is not available during the restore process.
 
 Fields within the Secret will match `k3s server` CLI flags / config file keys. For the `etcd-s3-endpoint-ca`, which
