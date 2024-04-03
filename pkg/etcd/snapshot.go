@@ -814,7 +814,7 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 	}
 
 	// If a snapshot from Kubernetes was found on disk/s3, it is in sync and we can remove it from the map to sync.
-	// If a snapshot from Kubernetes was not found on disk/s3, is is gone and can be removed from Kubernetes.
+	// If a snapshot from Kubernetes was not found on disk/s3, it is gone and can be removed from Kubernetes.
 	// The one exception to the last rule is failed snapshots - these must be retained for a period of time.
 	for _, esf := range esfList.Items {
 		sfKey := generateETCDSnapshotFileConfigMapKey(esf)

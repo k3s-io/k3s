@@ -245,7 +245,7 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 				// Don't have a session and we're trying to remote dial the kubelet via loopback, reject the connection.
 				return conn, err
 			}
-			// any other error is ignored; fall back to to dialing directly.
+			// any other error is ignored; fall back to dialing directly.
 		} else {
 			// Have a session and it is safe to use for this destination, do so.
 			logrus.Debugf("Tunnel server egress proxy dialing %s via Session to %s", addr, nodeName)
