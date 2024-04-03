@@ -18,8 +18,6 @@ replace (
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/common => github.com/prometheus/common v0.45.0
-	github.com/quic-go/qtls-go1-20 => github.com/quic-go/qtls-go1-20 v0.3.3
-	github.com/quic-go/quic-go => github.com/quic-go/quic-go v0.38.2
 	github.com/rancher/wrangler => github.com/rancher/wrangler v1.1.1-0.20230818201331-3604a6be798d
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.0.20-k3s1
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
@@ -409,7 +407,6 @@ require (
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.3.4 // indirect
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
