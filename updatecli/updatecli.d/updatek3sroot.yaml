@@ -27,7 +27,7 @@ targets:
     spec:
       file: "scripts/version.sh"
       matchpattern: '(?m)^VERSION_ROOT=(.*)'
-      replacepattern: 'VERSION_ROOT={{ source "k3sroot" }}'
+      replacepattern: 'VERSION_ROOT="{{ source "k3sroot" }}"'
  
 
 scms:
