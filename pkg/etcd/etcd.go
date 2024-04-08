@@ -725,7 +725,6 @@ func getClientConfig(ctx context.Context, control *config.Control, endpoints ...
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
-		AutoSyncInterval:     defaultKeepAliveTimeout,
 		PermitWithoutStream:  true,
 	}
 
@@ -1387,35 +1386,50 @@ func (e *ETCD) defragment(ctx context.Context) error {
 // The list is retrieved from the remote server that is being joined.
 func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP string) ([]string, Members, error) {
 	var memberList Members
-	resp, err := clientAccessInfo.Get("/db/info")
-	if err != nil {
-		return nil, memberList, &MemberListError{Err: err}
-	}
 
-	if err := json.Unmarshal(resp, &memberList); err != nil {
-		return nil, memberList, err
-	}
+	// find the address advertised for our own client URL, so that we don't connect to ourselves
 	ip, err := getAdvertiseAddress(selfIP)
 	if err != nil {
 		return nil, memberList, err
 	}
+
+	// find the client URL of the server we're joining, so we can prioritize it
+	joinURL, err := url.Parse(clientAccessInfo.BaseURL)
+	if err != nil {
+		return nil, memberList, err
+	}
+
+	// get the full list from the server we're joining
+	resp, err := clientAccessInfo.Get("/db/info")
+	if err != nil {
+		return nil, memberList, &MemberListError{Err: err}
+	}
+	if err := json.Unmarshal(resp, &memberList); err != nil {
+		return nil, memberList, err
+	}
+
+	// Build a list of client URLs. Learners and the current node are excluded;
+	// the server we're joining is listed first if found.
 	var clientURLs []string
-members:
 	for _, member := range memberList.Members {
-		// excluding learner member from the client list
-		if member.IsLearner {
-			continue
-		}
+		var isSelf, isPreferred bool
 		for _, clientURL := range member.ClientURLs {
-			u, err := url.Parse(clientURL)
-			if err != nil {
-				continue
-			}
-			if u.Hostname() == ip {
-				continue members
+			if u, err := url.Parse(clientURL); err == nil {
+				switch u.Hostname() {
+				case ip:
+					isSelf = true
+				case joinURL.Hostname():
+					isPreferred = true
+				}
 			}
 		}
-		clientURLs = append(clientURLs, member.ClientURLs...)
+		if !member.IsLearner && !isSelf {
+			if isPreferred {
+				clientURLs = append(member.ClientURLs, clientURLs...)
+			} else {
+				clientURLs = append(clientURLs, member.ClientURLs...)
+			}
+		}
 	}
 	return clientURLs, memberList, nil
 }
@@ -1545,7 +1559,21 @@ func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]strin
 // GetMembersClientURLs will list through the member lists in etcd and return
 // back a combined list of client urls for each member in the cluster
 func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
-	return e.client.Endpoints(), nil
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+
+	members, err := e.client.MemberList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var clientURLs []string
+	for _, member := range members.Members {
+		if !member.IsLearner {
+			clientURLs = append(clientURLs, member.ClientURLs...)
+		}
+	}
+	return clientURLs, nil
 }
 
 // GetMembersNames will list through the member lists in etcd and return
