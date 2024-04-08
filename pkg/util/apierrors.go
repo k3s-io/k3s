@@ -12,7 +12,8 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 )
 
-var ErrNotReady = errors.New("apiserver not ready")
+var ErrAPINotReady = errors.New("apiserver not ready")
+var ErrAPIDisabled = errors.New("apiserver disabled")
 
 // SendError sends a properly formatted error response
 func SendError(err error, resp http.ResponseWriter, req *http.Request, status ...int) {
@@ -24,8 +25,8 @@ func SendError(err error, resp http.ResponseWriter, req *http.Request, status ..
 		code = http.StatusInternalServerError
 	}
 
-	// Don't log "apiserver not ready" errors, they are frequent during startup
-	if !errors.Is(err, ErrNotReady) {
+	// Don't log "apiserver not ready" or "apiserver disabled" errors, they are frequent during startup
+	if !errors.Is(err, ErrAPINotReady) && !errors.Is(err, ErrAPIDisabled) {
 		logrus.Errorf("Sending HTTP %d response to %s: %v", code, req.RemoteAddr, err)
 	}
 
