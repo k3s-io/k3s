@@ -43,23 +43,37 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		ready := make(chan struct{})
 		defer close(ready)
 
-		// try to get /db/info urls first before attempting to use join url
+		// try to get /db/info urls first, for a current list of etcd cluster member client URLs
 		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.PrivateIP)
 		if err != nil {
 			return nil, err
 		}
-		if len(clientURLs) < 1 {
+		// If we somehow got no error but also no client URLs, just use the address of the server we're joining
+		if len(clientURLs) == 0 {
 			clientURL, err := url.Parse(c.config.JoinURL)
 			if err != nil {
 				return nil, err
 			}
 			clientURL.Host = clientURL.Hostname() + ":2379"
 			clientURLs = append(clientURLs, clientURL.String())
+			logrus.Warnf("Got empty etcd ClientURL list; using server URL %s", clientURL)
 		}
 		etcdProxy, err := etcd.NewETCDProxy(ctx, c.config.SupervisorPort, c.config.DataDir, clientURLs[0], utilsnet.IsIPv6CIDR(c.config.ServiceIPRanges[0]))
 		if err != nil {
 			return nil, err
 		}
+		// immediately update the load balancer with all etcd addresses
+		// client URLs are a full URI, but the proxy only wants host:port
+		for i, c := range clientURLs {
+			u, err := url.Parse(c)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to parse etcd ClientURL")
+			}
+			clientURLs[i] = u.Host
+		}
+		etcdProxy.Update(clientURLs)
+
+		// start periodic endpoint sync goroutine
 		c.setupEtcdProxy(ctx, etcdProxy)
 
 		// remove etcd member if it exists
