@@ -104,14 +104,14 @@ func apiserver(runtime *config.ControlRuntime) http.Handler {
 		if runtime != nil && runtime.APIServer != nil {
 			runtime.APIServer.ServeHTTP(resp, req)
 		} else {
-			util.SendError(util.ErrNotReady, resp, req, http.StatusServiceUnavailable)
+			util.SendError(util.ErrAPINotReady, resp, req, http.StatusServiceUnavailable)
 		}
 	})
 }
 
 func apiserverDisabled() http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		util.SendError(errors.New("apiserver disabled"), resp, req, http.StatusServiceUnavailable)
+		util.SendError(util.ErrAPIDisabled, resp, req, http.StatusServiceUnavailable)
 	})
 }
 
