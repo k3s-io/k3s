@@ -17,6 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // testClusterDB returns a channel that will be closed when the datastore connection is available.
@@ -132,28 +133,25 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 	if c.managedDB == nil {
 		return
 	}
-	go func() {
-		t := time.NewTicker(30 * time.Second)
-		defer t.Stop()
-		for range t.C {
-			newAddresses, err := c.managedDB.GetMembersClientURLs(ctx)
-			if err != nil {
-				logrus.Warnf("Failed to get etcd client URLs: %v", err)
-				continue
-			}
-			// client URLs are a full URI, but the proxy only wants host:port
-			var hosts []string
-			for _, address := range newAddresses {
-				u, err := url.Parse(address)
-				if err != nil {
-					logrus.Warnf("Failed to parse etcd client URL: %v", err)
-					continue
-				}
-				hosts = append(hosts, u.Host)
-			}
-			etcdProxy.Update(hosts)
+	// We use Poll here instead of Until because we want to wait the interval before running the function.
+	go wait.PollUntilWithContext(ctx, 30*time.Second, func(ctx context.Context) (bool, error) {
+		clientURLs, err := c.managedDB.GetMembersClientURLs(ctx)
+		if err != nil {
+			logrus.Warnf("Failed to get etcd ClientURLs: %v", err)
+			return false, nil
 		}
-	}()
+		// client URLs are a full URI, but the proxy only wants host:port
+		for i, c := range clientURLs {
+			u, err := url.Parse(c)
+			if err != nil {
+				logrus.Warnf("Failed to parse etcd ClientURL: %v", err)
+				return false, nil
+			}
+			clientURLs[i] = u.Host
+		}
+		etcdProxy.Update(clientURLs)
+		return false, nil
+	})
 }
 
 // deleteNodePasswdSecret wipes out the node password secret after restoration
