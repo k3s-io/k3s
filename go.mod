@@ -4,11 +4,11 @@ go 1.21
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.0
-	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.9-k3s1 // k3s/release-1.27
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.12-k3s1.27 // k3s/release-1.27
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.0.1
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.11-k3s2.27
-	github.com/docker/distribution => github.com/docker/distribution v2.8.2+incompatible
-	github.com/docker/docker => github.com/docker/docker v24.0.0-rc.2.0.20230801142700-69c9adb7d386+incompatible
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.15-k3s1.27
+	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
+	github.com/docker/docker => github.com/docker/docker v24.0.8+incompatible
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.1.1
@@ -94,8 +94,8 @@ require (
 	github.com/containerd/aufs v1.0.0
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/containerd v1.7.14
-	github.com/containerd/fuse-overlayfs-snapshotter v1.0.5
-	github.com/containerd/stargz-snapshotter v0.14.4-0.20230913082252-7275d45b185c
+	github.com/containerd/fuse-overlayfs-snapshotter v1.0.8
+	github.com/containerd/stargz-snapshotter v0.15.1
 	github.com/containerd/zfs v1.1.0
 	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -109,7 +109,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/golang/mock v1.6.0
 	github.com/google/cadvisor v0.47.2
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/ipfs/go-ds-leveldb v0.5.0
@@ -156,7 +156,7 @@ require (
 	golang.org/x/net v0.21.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.18.0
-	google.golang.org/grpc v1.60.1
+	google.golang.org/grpc v1.62.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.28.8
@@ -167,7 +167,7 @@ require (
 	k8s.io/cluster-bootstrap v0.0.0
 	k8s.io/component-base v0.27.12
 	k8s.io/component-helpers v0.27.12
-	k8s.io/cri-api v0.29.0-alpha.0
+	k8s.io/cri-api v0.29.0-alpha.2
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kube-proxy v0.0.0
 	k8s.io/kubectl v0.25.0
@@ -179,6 +179,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible // indirect
@@ -215,19 +216,18 @@ require (
 	github.com/checkpoint-restore/go-criu/v5 v5.3.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
-	github.com/container-orchestrated-devices/container-device-interface v0.5.4 // indirect
 	github.com/container-storage-interface/spec v1.7.0 // indirect
 	github.com/containerd/btrfs/v2 v2.0.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/containerd/continuity v0.4.2 // indirect
+	github.com/containerd/continuity v0.4.3 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/go-cni v1.1.9 // indirect
 	github.com/containerd/go-runc v1.0.0 // indirect
 	github.com/containerd/imgcrypt v1.1.7 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/nri v0.4.0 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
+	github.com/containerd/nri v0.6.0 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
 	github.com/containerd/ttrpc v1.2.3 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
@@ -242,7 +242,8 @@ require (
 	github.com/daviddengcn/go-colortext v1.0.0 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/docker/cli v24.0.5+incompatible // indirect
+	github.com/distribution/reference v0.5.0 // indirect
+	github.com/docker/cli v24.0.7+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
@@ -299,7 +300,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
-	github.com/hanwen/go-fuse/v2 v2.3.0 // indirect
+	github.com/hanwen/go-fuse/v2 v2.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -375,6 +376,7 @@ require (
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/symlink v0.2.0 // indirect
+	github.com/moby/sys/user v0.1.0 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -484,7 +486,7 @@ require (
 	gonum.org/v1/gonum v0.13.0 // indirect
 	google.golang.org/api v0.152.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
+	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/gcfg.v1 v1.2.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -517,4 +519,6 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.0.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.14.1 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
+	tags.cncf.io/container-device-interface v0.6.2 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.6.0 // indirect
 )
