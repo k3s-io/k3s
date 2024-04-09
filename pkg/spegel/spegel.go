@@ -32,11 +32,11 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/xenitab/spegel/pkg/metrics"
-	"github.com/xenitab/spegel/pkg/oci"
-	"github.com/xenitab/spegel/pkg/registry"
-	"github.com/xenitab/spegel/pkg/routing"
-	"github.com/xenitab/spegel/pkg/state"
+	"github.com/spegel-org/spegel/pkg/metrics"
+	"github.com/spegel-org/spegel/pkg/oci"
+	"github.com/spegel-org/spegel/pkg/registry"
+	"github.com/spegel-org/spegel/pkg/routing"
+	"github.com/spegel-org/spegel/pkg/state"
 	"k8s.io/component-base/metrics/legacyregistry"
 )
 
@@ -264,7 +264,7 @@ func (c *Config) peerInfo() http.HandlerFunc {
 		logrus.Debugf("Serving p2p peer addr %s to client at %s", info, client)
 		resp.WriteHeader(http.StatusOK)
 		resp.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.Pretty())
+		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.String())
 	})
 }
 

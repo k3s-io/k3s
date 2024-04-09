@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
-	"github.com/xenitab/spegel/pkg/routing"
+	"github.com/spegel-org/spegel/pkg/routing"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
