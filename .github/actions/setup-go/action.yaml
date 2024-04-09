@@ -23,6 +23,7 @@ runs:
         path: |
           ${{ env.GO_MODCACHE }}
           ${{ env.GO_CACHE }}
-        key: setup-go-${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('go.sum') }}
+        # Match the cache key to the setup-go action https://github.com/actions/setup-go/blob/main/src/cache-restore.ts#L34
+        key: setup-go-${{ runner.os }}-${{ env.ImageOS }}-go-${{ env.GO_VERSION }}-${{ hashFiles('go.sum') }}
         restore-keys: |
           setup-go-${{ runner.os }}-
