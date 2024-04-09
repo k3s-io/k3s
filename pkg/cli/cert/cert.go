@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -191,14 +190,20 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 }
 
 func backupCertificates(serverDataDir, agentDataDir string, fileMap map[string][]string) (string, error) {
+	backupDirName := fmt.Sprintf("tls-%d", time.Now().Unix())
 	serverTLSDir := filepath.Join(serverDataDir, "tls")
-	tlsBackupDir := filepath.Join(serverDataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
+	tlsBackupDir := filepath.Join(agentDataDir, backupDirName)
 
+	// backup the server TLS dir if it exists
 	if _, err := os.Stat(serverTLSDir); err != nil {
-		return "", err
-	}
-	if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
-		return "", err
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+	} else {
+		tlsBackupDir = filepath.Join(serverDataDir, backupDirName)
+		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
+			return "", err
+		}
 	}
 
 	for _, files := range fileMap {
