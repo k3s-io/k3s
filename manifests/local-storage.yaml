@@ -67,7 +67,7 @@ spec:
             effect: "NoSchedule"
       containers:
       - name: local-path-provisioner
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.26
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.26"
         imagePullPolicy: IfNotPresent
         command:
         - local-path-provisioner
@@ -92,6 +92,7 @@ kind: StorageClass
 metadata:
   name: local-path
   annotations:
+    defaultVolumeType: "local"
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: rancher.io/local-path
 volumeBindingMode: WaitForFirstConsumer
@@ -155,5 +156,5 @@ data:
     spec:
       containers:
       - name: helper-pod
-        image: %{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.36.1
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.36.1"
         imagePullPolicy: IfNotPresent
