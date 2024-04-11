@@ -252,6 +252,39 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+	Context("Verify server picks up preloaded images on start", func() {
+		It("Downloads and preloads images", func() {
+			_, err := e2e.RunCmdOnNode("docker pull ranchertest/mytestcontainer:latest", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			_, err = e2e.RunCmdOnNode("docker save ranchertest/mytestcontainer:latest -o /tmp/mytestcontainer.tar", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			_, err = e2e.RunCmdOnNode("mkdir -p /var/lib/rancher/k3s/agent/images/", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			_, err = e2e.RunCmdOnNode("mv /tmp/mytestcontainer.tar /var/lib/rancher/k3s/agent/images/", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("Starts K3s with no issues", func() {
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), "", "")
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+
+			fmt.Println("CLUSTER CONFIG")
+			fmt.Println("OS:", *nodeOS)
+			fmt.Println("Server Nodes:", serverNodeNames)
+			fmt.Println("Agent Nodes:", agentNodeNames)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("has loaded the test container image", func() {
+			Eventually(func() (string, error) {
+				cmd := "k3s crictl images | grep ranchertest/mytestcontainer"
+				return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			}, "120s", "5s").Should(ContainSubstring("ranchertest/mytestcontainer"))
+		})
+		It("Kills the cluster", func() {
+			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 	Context("Verify server fails to start with bootstrap token", func() {
 		It("Fails to start with a meaningful error", func() {
 			tokenYAML := "token: aaaaaa.bbbbbbbbbbbbbbbb"
