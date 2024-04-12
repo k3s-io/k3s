@@ -618,7 +618,7 @@ steps:
   - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
   # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
-  - ./tests/e2e/scripts/cleanup_vms.sh
+  - tests/e2e/scripts/cleanup_vms.sh
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - |
     cd tests/e2e/validatecluster
