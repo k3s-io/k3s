@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"net/url"
+	"strings"
 	"text/template"
 
 	"github.com/rancher/wharfie/pkg/registries"
@@ -62,7 +63,7 @@ skip_verify = true
 {{ end }}
 [host]
 {{ range $e := .Endpoints -}}
-[host."{{ $e.URL }}"]
+[host."{{ $e.URL | keyencode }}"]
   capabilities = ["pull", "resolve"]
   {{- if $e.OverridePath }}
   override_path = true
@@ -79,7 +80,7 @@ skip_verify = true
   {{- end }}
 {{ end }}
 {{- if $e.Rewrites }}
-  [host."{{ $e.URL }}".rewrite]
+  [host."{{ $e.URL | keyencode }}".rewrite]
   {{- range $pattern, $replace := $e.Rewrites }}
     "{{ $pattern }}" = "{{ $replace }}"
   {{- end }}
@@ -104,4 +105,13 @@ func ParseHostsTemplateFromConfig(templateBuffer string, config interface{}) (st
 		return "", err
 	}
 	return out.String(), nil
+}
+
+// keyEncode replaces invalid table keys with escaped unicode equivalents.
+func keyEncode(s string) string {
+	// Square brackets are not valid in toml table keys, see
+	// https://github.com/containerd/containerd/issues/10055
+	s = strings.ReplaceAll(s, "[", "\\u005B")
+	s = strings.ReplaceAll(s, "]", "\\u005D")
+	return s
 }

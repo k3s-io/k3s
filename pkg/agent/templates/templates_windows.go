@@ -145,6 +145,7 @@ oom_score = 0
 
 // Windows config templates need named pipe addresses fixed up
 var templateFuncs = template.FuncMap{
+	"keyencode": keyEncode,
 	"deschemify": func(s string) string {
 		if strings.HasPrefix(s, "npipe:") {
 			u, err := url.Parse(s)

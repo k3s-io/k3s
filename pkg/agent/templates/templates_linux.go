@@ -121,6 +121,7 @@ enable_keychain = true
 
 // Linux config templates do not need fixups
 var templateFuncs = template.FuncMap{
+	"keyencode": keyEncode,
 	"deschemify": func(s string) string {
 		return s
 	},
