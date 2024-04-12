@@ -283,6 +283,11 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if !failed {
+		allNodes := append(cpNodeNames, etcdNodeNames...)
+		allNodes = append(allNodes, agentNodeNames...)
+		Expect(e2e.GetCoverageReport(allNodes)).To(Succeed())
+	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
