@@ -218,6 +218,7 @@ func SearchK3sLog(k3s *K3sServer, target string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.Contains(scanner.Text(), target) {
