@@ -14,14 +14,14 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("must provide a valid SHELL argument")
 	}
 	shell := ctx.Args()[0]
-	completetionScript, err := genCompletionScript(shell)
+	completionScript, err := genCompletionScript(shell)
 	if err != nil {
 		return err
 	}
 	if ctx.Bool("i") {
 		return writeToRC(shell)
 	}
-	fmt.Println(completetionScript)
+	fmt.Println(completionScript)
 	return nil
 }
 

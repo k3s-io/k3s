@@ -24,7 +24,7 @@ type Parser struct {
 	OverrideFlags []string
 	EnvName       string
 	DefaultConfig string
-	// ValidFlags are maps of flags that are valid for that particular conmmand. This enables us to ignore flags in
+	// ValidFlags are maps of flags that are valid for that particular command. This enables us to ignore flags in
 	// the config file that do no apply to the current command.
 	ValidFlags map[string][]cli.Flag
 }

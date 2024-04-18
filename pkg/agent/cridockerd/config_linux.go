@@ -31,7 +31,7 @@ func setupDockerCRIConfig(ctx context.Context, cfg *config.Node) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get docker runtime info")
 	}
-	// note: this mutatation of the passed agent.Config is later used to set the
+	// note: this mutation of the passed agent.Config is later used to set the
 	// kubelet's cgroup-driver flag. This may merit moving to somewhere else in order
 	// to avoid mutating the configuration while setting up the docker CRI.
 	cfg.AgentConfig.Systemd = i.CgroupDriver == "systemd"

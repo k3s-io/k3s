@@ -49,7 +49,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 	if disableCgroup {
 		logrus.Warn("cgroup v2 controllers are not delegated for rootless. Disabling cgroup.")
 	} else {
-		// note: this mutatation of the passed agent.Config is later used to set the
+		// note: this mutation of the passed agent.Config is later used to set the
 		// kubelet's cgroup-driver flag. This may merit moving to somewhere else in order
 		// to avoid mutating the configuration while setting up containerd.
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
