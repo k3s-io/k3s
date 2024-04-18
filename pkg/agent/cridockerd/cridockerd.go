@@ -53,6 +53,7 @@ func getDockerCRIArgs(cfg *config.Node) []string {
 	argsMap := map[string]string{
 		"container-runtime-endpoint": cfg.CRIDockerd.Address,
 		"cri-dockerd-root-directory": cfg.CRIDockerd.Root,
+		"streaming-bind-addr":        "127.0.0.1:10010",
 	}
 
 	if dualNode, _ := utilsnet.IsDualStackIPs(cfg.AgentConfig.NodeIPs); dualNode {
