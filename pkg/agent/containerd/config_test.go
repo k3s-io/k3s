@@ -1471,6 +1471,17 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				t.Fatalf("failed to parse %s: %v\n", registriesFile, err)
 			}
 
+			nodeConfig := &config.Node{
+				Containerd: config.Containerd{
+					Registry: tempDir + "/hosts.d",
+				},
+				AgentConfig: config.Agent{
+					ImageServiceSocket: "containerd-stargz-grpc.sock",
+					Registry:           registry.Registry,
+					Snapshotter:        "stargz",
+				},
+			}
+
 			// set up embedded registry, if enabled for the test
 			if tt.args.mirrorAddr != "" {
 				conf := spegel.DefaultRegistry
@@ -1478,7 +1489,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				conf.ClientKeyFile = "client-key"
 				conf.ClientCertFile = "client-cert"
 				conf.InternalAddress, conf.RegistryPort, _ = net.SplitHostPort(tt.args.mirrorAddr)
-				conf.InjectMirror(&config.Node{AgentConfig: config.Agent{Registry: registry.Registry}})
+				conf.InjectMirror(nodeConfig)
 			}
 
 			// Generate config template struct for all hosts
@@ -1494,11 +1505,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 
 			// Confirm that the main containerd config.toml renders properly
 			containerdConfig := templates.ContainerdConfig{
-				NodeConfig: &config.Node{
-					Containerd: config.Containerd{
-						Registry: tempDir + "/hosts.d",
-					},
-				},
+				NodeConfig:            nodeConfig,
 				PrivateRegistryConfig: registry.Registry,
 				Program:               "k3s",
 			}
