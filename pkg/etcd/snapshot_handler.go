@@ -170,14 +170,15 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 	}
 	if sr.S3 != nil {
 		re.config.EtcdS3 = true
-		re.config.EtcdS3BucketName = sr.S3.Bucket
 		re.config.EtcdS3AccessKey = sr.S3.AccessKey
-		re.config.EtcdS3SecretKey = sr.S3.SecretKey
+		re.config.EtcdS3BucketName = sr.S3.Bucket
 		re.config.EtcdS3Endpoint = sr.S3.Endpoint
 		re.config.EtcdS3EndpointCA = sr.S3.EndpointCA
-		re.config.EtcdS3SkipSSLVerify = sr.S3.SkipSSLVerify
+		re.config.EtcdS3Folder = sr.S3.Folder
 		re.config.EtcdS3Insecure = sr.S3.Insecure
 		re.config.EtcdS3Region = sr.S3.Region
+		re.config.EtcdS3SecretKey = sr.S3.SecretKey
+		re.config.EtcdS3SkipSSLVerify = sr.S3.SkipSSLVerify
 		re.config.EtcdS3Timeout = sr.S3.Timeout.Duration
 	}
 	return re
