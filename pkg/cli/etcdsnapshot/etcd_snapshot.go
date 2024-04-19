@@ -2,6 +2,7 @@ package etcdsnapshot
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/printers"
 )
+
+var timeout = 2 * time.Minute
 
 // commandSetup setups up common things needed
 // for each etcd command.
@@ -58,6 +61,8 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 		sr.S3.SecretKey = cfg.EtcdS3SecretKey
 		sr.S3.SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
 		sr.S3.Timeout = metav1.Duration{Duration: cfg.EtcdS3Timeout}
+		// extend request timeout to allow the S3 operation to complete
+		timeout += cfg.EtcdS3Timeout
 	}
 
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
@@ -78,6 +83,11 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 }
 
 func wrapServerError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		// if the request timed out the server log likely won't contain anything useful,
+		// since the operation may have actualy succeeded despite the client timing out the request.
+		return err
+	}
 	return errors.Wrap(err, "see server log for details")
 }
 
@@ -110,7 +120,7 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return err
 	}
-	r, err := info.Post("/db/snapshot", b)
+	r, err := info.Post("/db/snapshot", b, clientaccess.WithTimeout(timeout))
 	if err != nil {
 		return wrapServerError(err)
 	}
@@ -151,7 +161,7 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return err
 	}
-	r, err := info.Post("/db/snapshot", b)
+	r, err := info.Post("/db/snapshot", b, clientaccess.WithTimeout(timeout))
 	if err != nil {
 		return wrapServerError(err)
 	}
@@ -206,7 +216,7 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return err
 	}
-	r, err := info.Post("/db/snapshot", b)
+	r, err := info.Post("/db/snapshot", b, clientaccess.WithTimeout(timeout))
 	if err != nil {
 		return wrapServerError(err)
 	}
@@ -269,7 +279,7 @@ func prune(app *cli.Context, cfg *cmds.Server) error {
 	if err != nil {
 		return err
 	}
-	r, err := info.Post("/db/snapshot", b)
+	r, err := info.Post("/db/snapshot", b, clientaccess.WithTimeout(timeout))
 	if err != nil {
 		return wrapServerError(err)
 	}
