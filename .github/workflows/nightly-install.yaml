@@ -10,18 +10,14 @@ permissions:
 jobs:
   test:
     name: "Smoke Test"
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        channel: [stable]
-        vm: [centos-7, rocky-8, fedora, opensuse-leap, ubuntu-focal]
-        include:
-          - {channel: latest, vm: rocky-8}
-          - {channel: latest, vm: ubuntu-focal}
-          - {channel: latest, vm: opensuse-leap}
-      max-parallel: 2
+        channel: [stable, latest]
+        vm: [rocky-8, fedora, opensuse-leap, ubuntu-2204]
+      max-parallel: 4
     defaults:
       run:
         working-directory: tests/install/${{ matrix.vm }}
@@ -31,15 +27,15 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Cache"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.vagrant.d/boxes
-            ~/.vagrant.d/gems
-          key: install-${{ matrix.vm }}-${{ hashFiles('tests/install/${{ matrix.vm }}/Vagrantfile') }}
+             ~/.vagrant.d/boxes
+          key: vagrant-box-${{ matrix.vm }}
         id: vagrant-cache
-        continue-on-error: true
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up ⏩ Install K3s"

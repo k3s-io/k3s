@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -41,11 +42,20 @@ type handler struct {
 
 func Register(
 	ctx context.Context,
-	k8s kubernetes.Interface,
+	controllerName string,
 	controlConfig *config.Control,
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
 ) error {
+	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigSupervisor)
+	if err != nil {
+		return err
+	}
+	k8s, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
 	h := &handler{
 		ctx:           ctx,
 		controlConfig: controlConfig,
@@ -54,7 +64,7 @@ func Register(
 		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, metav1.NamespaceDefault),
 	}
 
-	nodes.OnChange(ctx, "reencrypt-controller", h.onChangeNode)
+	nodes.OnChange(ctx, controllerName, h.onChangeNode)
 	return nil
 }
 
@@ -126,22 +136,19 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	}
 
 	// Remove last key
-	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime)
+	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime, false)
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
+	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
 	curKeys = curKeys[:len(curKeys)-1]
 	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, true); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
-	if err != nil {
-		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
-		return node, err
-	}
+
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		node, err = h.nodes.Get(nodeName, metav1.GetOptions{})
 		if err != nil {

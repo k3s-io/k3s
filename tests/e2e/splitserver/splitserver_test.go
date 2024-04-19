@@ -13,9 +13,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
-var etcdCount = flag.Int("etcdCount", 1, "number of server nodes only deploying etcd")
+// Valid nodeOS: generic/ubuntu2310, opensuse/Leap-15.3.x86_64
+var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
+var etcdCount = flag.Int("etcdCount", 3, "number of server nodes only deploying etcd")
 var controlPlaneCount = flag.Int("controlPlaneCount", 1, "number of server nodes acting as control plane")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -229,9 +229,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

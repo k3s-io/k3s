@@ -45,7 +45,7 @@ func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handl
 			return
 		}
 		if err = tokenRotate(ctx, server, *sTokenReq.NewToken); err != nil {
-			genErrorMessage(resp, http.StatusInternalServerError, err, "token")
+			util.SendErrorWithID(err, "token", resp, req, http.StatusInternalServerError)
 			return
 		}
 		resp.WriteHeader(http.StatusOK)

@@ -27,8 +27,9 @@ func mustGetAddress() string {
 }
 
 func generateTestConfig() *config.Control {
-	agentReady := make(chan struct{})
-	close(agentReady)
+	hostname, _ := os.Hostname()
+	containerRuntimeReady := make(chan struct{})
+	close(containerRuntimeReady)
 	criticalControlArgs := config.CriticalControlArgs{
 		ClusterDomain:  "cluster.local",
 		ClusterDNS:     net.ParseIP("10.43.0.10"),
@@ -37,7 +38,8 @@ func generateTestConfig() *config.Control {
 		ServiceIPRange: testutil.ServiceIPNet(),
 	}
 	return &config.Control{
-		Runtime:               config.NewRuntime(agentReady),
+		ServerNodeName:        hostname,
+		Runtime:               config.NewRuntime(containerRuntimeReady),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
@@ -47,7 +49,7 @@ func generateTestConfig() *config.Control {
 		EtcdSnapshotRetention: 5,
 		EtcdS3Endpoint:        "s3.amazonaws.com",
 		EtcdS3Region:          "us-east-1",
-		SANs:                  []string{"127.0.0.1"},
+		SANs:                  []string{"127.0.0.1", mustGetAddress()},
 		CriticalControlArgs:   criticalControlArgs,
 	}
 }

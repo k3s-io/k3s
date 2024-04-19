@@ -30,15 +30,15 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
-  test:
+  itest:
     needs: build
     name: Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        itest: [certrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption]
+        itest: [certrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption, flannelnone]
       max-parallel: 3
     steps:
     - name: Checkout
@@ -46,16 +46,9 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v5
-      with: 
-        go-version: '1.21.5'
-        check-latest: true
-        cache: true
-        cache-dependency-path: |
-          **/go.sum
-          **/go.mod
+      uses: ./.github/actions/setup-go
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: k3s
         path: ./dist/artifacts
@@ -65,14 +58,17 @@ jobs:
         mkdir -p $GOCOVERDIR
         sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration
     - name: On Failure, Launch Debug Session
+      uses: lhotari/action-upterm@v1
       if: ${{ failure() }}
-      uses: mxschmitt/action-tmate@v3
-      timeout-minutes: 5
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
     - name: Generate coverage report
       run: go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./${{ matrix.itest }}.out
         flags: inttests # optional
         verbose: true # optional (default = false)

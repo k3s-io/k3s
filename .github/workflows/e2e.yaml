@@ -1,0 +1,119 @@
+name: E2E Test Coverage
+on: 
+  push:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - ".github/**"
+      - "!.github/workflows/e2e.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - ".github/**"
+      - "!.github/workflows/e2e.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      upload-image: true
+  e2e:
+    name: "E2E Tests"
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        # TODO fix embeddedmirror and add it to the matrix
+        etest: [startup, s3, btrfs, externalip, privateregistry, wasm]
+      max-parallel: 3
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      - name: "Vagrant Cache"
+        uses: actions/cache@v4
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: vagrant-box-ubuntu-2204
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+      
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with: 
+          go-version-file: 'go.mod'
+          cache: false
+      - name: Install Kubectl
+        run: |
+           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      - name: "Download k3s binary"
+        uses: actions/download-artifact@v4
+        with:
+          name: k3s
+          path: ./dist/artifacts
+      
+      - name: Run ${{ matrix.etest }} Test
+        env:
+          E2E_GOCOVER: "true"
+        run: | 
+          chmod +x ./dist/artifacts/k3s
+          cd tests/e2e/${{ matrix.etest }}
+          go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+      - name: On Failure, Launch Debug Session
+        uses: lhotari/action-upterm@v1
+        if: ${{ failure() }}
+        with:
+          ## If no one connects after 5 minutes, shut down server.
+          wait-timeout-minutes: 5
+      - name: Upload Results To Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: tests/e2e/${{ matrix.etest }}/coverage.out
+          flags: e2etests # optional
+          verbose: true # optional (default = false)
+  docker:
+    needs: build
+    name: Docker Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [basics, bootstraptoken, cacerts, lazypull, upgrade]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: "Download k3s image"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s
+        path: ./dist/artifacts
+    - name: Load k3s image
+      run: docker image load -i ./dist/artifacts/k3s-image.tar
+    - name: Run ${{ matrix.dtest }} Test
+      run: | 
+        chmod +x ./dist/artifacts/k3s
+        . ./tests/docker/test-helpers
+        . ./tests/docker/test-run-${{ matrix.dtest }}
+        echo "Did test-run-${{ matrix.dtest }} pass $?"

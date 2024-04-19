@@ -1,8 +1,8 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
+  ["server-0", "agent-0"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+  ['generic/ubuntu2310', 'generic/ubuntu2310'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 GOCOVER = (ENV['E2E_GOCOVER'] || "")
@@ -27,7 +27,6 @@ def provision(vm, role, role_num, node_num)
   addCoverageDir(vm, role, GOCOVER)
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
-  vm.provision "shell", inline: "ping -c 2 k3s.io"
  
   # The formatting on this is a little weird, but it allows inserting variables
   # and still using the heredoc formatting with escapped quotes
@@ -39,7 +38,6 @@ def provision(vm, role, role_num, node_num)
 
   if role.include?("server") && role_num == 0
     vm.provision "private-registry", type: "shell", inline: writePrivateRegistry
-    dockerInstall(vm)
 
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
@@ -112,13 +110,10 @@ Vagrant.configure("2") do |config|
     NODE_BOXES = NODE_BOXES.split(" ", -1)
   end
 
-  # Must iterate on the index, vagrant does not understand iterating 
-  # over the node roles themselves
-  NODE_ROLES.length.times do |i|
-    name = NODE_ROLES[i]
-    role_num = name.split("-", -1).pop.to_i
-    config.vm.define name do |node|
-      provision(node.vm, name, role_num, i)
+  NODE_ROLES.each_with_index do |role, i|
+    role_num = role.split("-", -1).pop.to_i
+    config.vm.define role do |node|
+      provision(node.vm, role, role_num, i)
     end
   end
 end

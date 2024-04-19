@@ -22,6 +22,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	logs.InitLogs()
 	defer logs.FlushLogs()
+
 	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
 		return err
 	}

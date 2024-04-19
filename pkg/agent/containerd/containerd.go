@@ -41,10 +41,6 @@ var (
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
 // or pulled from files found in the agent images directory.
 func Run(ctx context.Context, cfg *config.Node) error {
-	if err := setupContainerdConfig(ctx, cfg); err != nil {
-		return err
-	}
-
 	args := getContainerdArgs(cfg)
 	stdOut := io.Writer(os.Stdout)
 	stdErr := io.Writer(os.Stderr)
@@ -99,24 +95,26 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		cmd.Env = append(env, cenv...)
 
 		addDeathSig(cmd)
-		if err := cmd.Run(); err != nil {
+		err := cmd.Run()
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("containerd exited: %s", err)
+			os.Exit(1)
 		}
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	if err := cri.WaitForService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
 		return err
 	}
 
-	return preloadImages(ctx, cfg)
+	return PreloadImages(ctx, cfg)
 }
 
-// preloadImages reads the contents of the agent images directory, and attempts to
+// PreloadImages reads the contents of the agent images directory, and attempts to
 // import into containerd any files found there. Supported compressed types are decompressed, and
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
 // If configured, imported images are retagged as being pulled from additional registries.
-func preloadImages(ctx context.Context, cfg *config.Node) error {
+func PreloadImages(ctx context.Context, cfg *config.Node) error {
 	fileInfo, err := os.Stat(cfg.Images)
 	if os.IsNotExist(err) {
 		return nil
@@ -355,19 +353,23 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 	scanner := bufio.NewScanner(imageList)
 	for scanner.Scan() {
 		name := strings.TrimSpace(scanner.Text())
-		if _, err := imageClient.ImageStatus(ctx, &runtimeapi.ImageStatusRequest{
+
+		if status, err := imageClient.ImageStatus(ctx, &runtimeapi.ImageStatusRequest{
 			Image: &runtimeapi.ImageSpec{
 				Image: name,
 			},
-		}); err == nil {
+		}); err == nil && status.Image != nil && len(status.Image.RepoTags) > 0 {
 			logrus.Infof("Image %s has already been pulled", name)
-			if image, err := imageService.Get(ctx, name); err != nil {
-				errs = append(errs, err)
-			} else {
-				images = append(images, image)
+			for _, tag := range status.Image.RepoTags {
+				if image, err := imageService.Get(ctx, tag); err != nil {
+					errs = append(errs, err)
+				} else {
+					images = append(images, image)
+				}
 			}
 			continue
 		}
+
 		logrus.Infof("Pulling image %s", name)
 		if _, err := imageClient.PullImage(ctx, &runtimeapi.PullImageRequest{
 			Image: &runtimeapi.ImageSpec{

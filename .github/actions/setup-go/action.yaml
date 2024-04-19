@@ -1,0 +1,29 @@
+name: 'Setup golang with master only caching'
+description: 'A composite action that installs golang, but with a caching strategy that only updates the cache on master branch.'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'  # Just use whatever version is in the go.mod file
+        cache: ${{ github.ref == 'refs/heads/master' }}
+
+    - name: Prepare for go cache
+      if: ${{ github.ref != 'refs/heads/master' }}
+      shell: bash
+      run: |
+        echo "GO_CACHE=$(go env GOCACHE)" | tee -a "$GITHUB_ENV"
+        echo "GO_MODCACHE=$(go env GOMODCACHE)" | tee -a "$GITHUB_ENV"
+        echo "GO_VERSION=$(go env GOVERSION | tr -d 'go')" | tee -a "$GITHUB_ENV"
+
+    - name: Setup read-only cache
+      if: ${{ github.ref != 'refs/heads/master' }}
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ${{ env.GO_MODCACHE }}
+          ${{ env.GO_CACHE }}
+        # Match the cache key to the setup-go action https://github.com/actions/setup-go/blob/main/src/cache-restore.ts#L34
+        key: setup-go-${{ runner.os }}-${{ env.ImageOS }}-go-${{ env.GO_VERSION }}-${{ hashFiles('go.sum') }}
+        restore-keys: |
+          setup-go-${{ runner.os }}-

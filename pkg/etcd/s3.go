@@ -93,7 +93,7 @@ func NewS3(ctx context.Context, config *config.Control) (*S3, error) {
 
 	exists, err := c.BucketExists(ctx, config.EtcdS3BucketName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to test for existence of bucket %s", config.EtcdS3BucketName)
 	}
 	if !exists {
 		return nil, fmt.Errorf("bucket %s does not exist", config.EtcdS3BucketName)
@@ -280,9 +280,10 @@ func (s *S3) snapshotPrefix() string {
 }
 
 // snapshotRetention prunes snapshots in the configured S3 compatible backend for this specific node.
-func (s *S3) snapshotRetention(ctx context.Context) error {
+// Returns a list of pruned snapshot names.
+func (s *S3) snapshotRetention(ctx context.Context) ([]string, error) {
 	if s.config.EtcdSnapshotRetention < 1 {
-		return nil
+		return nil, nil
 	}
 	logrus.Infof("Applying snapshot retention=%d to snapshots stored in s3://%s/%s", s.config.EtcdSnapshotRetention, s.config.EtcdS3BucketName, s.snapshotPrefix())
 
@@ -297,7 +298,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	}
 	for info := range s.client.ListObjects(toCtx, s.config.EtcdS3BucketName, opts) {
 		if info.Err != nil {
-			return info.Err
+			return nil, info.Err
 		}
 
 		// skip metadata
@@ -309,7 +310,7 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 	}
 
 	if len(snapshotFiles) <= s.config.EtcdSnapshotRetention {
-		return nil
+		return nil, nil
 	}
 
 	// sort newest-first so we can prune entries past the retention count
@@ -317,21 +318,16 @@ func (s *S3) snapshotRetention(ctx context.Context) error {
 		return snapshotFiles[j].LastModified.Before(snapshotFiles[i].LastModified)
 	})
 
+	deleted := []string{}
 	for _, df := range snapshotFiles[s.config.EtcdSnapshotRetention:] {
 		logrus.Infof("Removing S3 snapshot: s3://%s/%s", s.config.EtcdS3BucketName, df.Key)
-		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, df.Key, minio.RemoveObjectOptions{}); err != nil {
-			return err
+		if err := s.deleteSnapshot(ctx, df.Key); err != nil {
+			return deleted, err
 		}
-		metadataKey := path.Join(path.Dir(df.Key), metadataDir, path.Base(df.Key))
-		if err := s.client.RemoveObject(toCtx, s.config.EtcdS3BucketName, metadataKey, minio.RemoveObjectOptions{}); err != nil {
-			if isNotExist(err) {
-				return nil
-			}
-			return err
-		}
+		deleted = append(deleted, df.Key)
 	}
 
-	return nil
+	return deleted, nil
 }
 
 func (s *S3) deleteSnapshot(ctx context.Context, key string) error {

@@ -362,7 +362,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
 		isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{envInfo.NodeIP.String()}[0]))
-		if err := proxy.SetAPIServerPort(ctx, controlConfig.HTTPSPort, isIPv6); err != nil {
+		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, isIPv6); err != nil {
 			return nil, errors.Wrapf(err, "failed to setup access to API Server port %d on at %s", controlConfig.HTTPSPort, proxy.SupervisorURL())
 		}
 	}
@@ -444,6 +444,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 			if err != nil {
 				return nil, errors.Wrapf(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
 			}
+		}
+	}
+
+	if controlConfig.ClusterIPRange != nil {
+		if utilsnet.IPFamilyOfCIDR(controlConfig.ClusterIPRange) != utilsnet.IPFamilyOf(nodeIPs[0]) && len(nodeIPs) > 1 {
+			firstNodeIP := nodeIPs[0]
+			nodeIPs[0] = nodeIPs[1]
+			nodeIPs[1] = firstNodeIP
 		}
 	}
 
@@ -568,7 +576,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Containerd.Debug = envInfo.Debug
 	applyContainerdStateAndAddress(nodeConfig)
 	applyCRIDockerdAddress(nodeConfig)
-	applyContainerdQoSClassConfigFileIfPresent(envInfo, nodeConfig)
+	applyContainerdQoSClassConfigFileIfPresent(envInfo, &nodeConfig.Containerd)
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
 	nodeConfig.Certificate = servingCert
 

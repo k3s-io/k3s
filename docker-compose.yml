@@ -1,7 +1,6 @@
 # to run define K3S_TOKEN, K3S_VERSION is optional, eg:
 #   K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM} docker-compose up
 
-version: '3'
 services:
 
   server:
@@ -45,6 +44,9 @@ services:
     environment:
     - K3S_URL=https://server:6443
     - K3S_TOKEN=${K3S_TOKEN:?err}
+    volumes:
+    - k3s-agent:/var/lib/rancher/k3s
 
 volumes:
   k3s-server: {}
+  k3s-agent: {}

@@ -1,0 +1,99 @@
+ENV['VAGRANT_NO_PARALLEL'] = 'no'
+ENV['VAGRANT_EXPERIMENTAL']="disks"
+ENV['VAGRANT_LOG']="error"
+NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
+  ["server-0"])
+NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
+  ['opensuse/Leap-15.5.x86_64'])
+GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
+RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
+# Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
+NETWORK_PREFIX = "10.10.10"
+install_type = ""
+
+def provision(vm, role, role_num, node_num)
+  vm.box = NODE_BOXES[node_num]
+  vm.hostname = role
+  # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
+  vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
+
+  vagrant_defaults = '../vagrantdefaults.rb'
+  load vagrant_defaults if File.exists?(vagrant_defaults)
+  
+  defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
+  
+  vm.provision 'setup-btrfs', type: 'shell', run: 'once', privileged: true do |sh|
+    sh.inline = <<~EOF
+      #!/usr/bin/env bash
+      set -eu -o pipefail
+      zypper install -y apparmor-parser btrfsprogs hostname
+      mkdir -p /var/lib/rancher/k3s /etc/rancher/k3s /usr/local/bin
+      if ! mountpoint -q /var/lib/rancher/k3s; then
+          : ${BTRFS_DEV:=#{ENV['BTRFS_DEV']}}
+          for disk in sd[b-d] vd[b-d] xd[b-d]; do
+              if [ -n "${BTRFS_DEV}" ]; then break; fi
+              : ${BTRFS_DEV:=$(test -b /dev/$disk && echo $disk)}
+          done
+          btrfs filesystem show /dev/${BTRFS_DEV:?unable to determine automatically, please specify} 2>/dev/null || mkfs -t btrfs /dev/${BTRFS_DEV}
+          mountpoint -q /mnt || mount -t btrfs /dev/${BTRFS_DEV} /mnt
+          btrfs subvolume show /mnt/@k3s 2>/dev/null || btrfs subvolume create /mnt/@k3s
+          umount /mnt
+          mount -t btrfs -o subvol=@k3s /dev/${BTRFS_DEV} /var/lib/rancher/k3s
+      fi
+    EOF
+  end
+  
+  if role.include?("server") && role_num == 0
+    vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.args = ["server"]
+      k3s.env = %W[#{install_type}]
+      k3s.config = <<~YAML
+        cluster-init: true
+        node-external-ip: "#{NETWORK_PREFIX}.100"
+        flannel-iface: eth1
+        snapshotter: btrfs
+        token: vagrant
+        disable:
+        - local-storage 
+        - metrics-server
+        - servicelb
+        - traefik
+        write-kubeconfig-mode: '0644'
+      YAML
+    end
+  end
+end
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload"]
+  # Default provider is libvirt, virtualbox is only provided as a backup
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+    v.storage :file, :size => '8G' # Requires VAGRANT_EXPERIMENTAL="disks"
+  end
+  config.vm.provider "virtualbox" do |v,o|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+    v.gui = false
+    v.check_guest_additions = false
+    o.vm.disk :disk, name: "btrfs", size: "8GB" # Requires VAGRANT_EXPERIMENTAL="disks"
+  end
+
+  if NODE_ROLES.kind_of?(String)
+    NODE_ROLES = NODE_ROLES.split(" ", -1)
+  end
+  if NODE_BOXES.kind_of?(String)
+    NODE_BOXES = NODE_BOXES.split(" ", -1)
+  end
+
+  NODE_ROLES.each_with_index do |role, i|
+    role_num = role.split("-", -1).pop.to_i
+    config.vm.define role do |node|
+      provision(node.vm, role, role_num, i)
+    end
+  end
+end

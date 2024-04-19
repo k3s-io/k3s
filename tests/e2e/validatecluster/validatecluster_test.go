@@ -14,9 +14,9 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2004, generic/centos7, generic/rocky8,
+// generic/ubuntu2310, generic/centos7, generic/rocky8,
 // opensuse/Leap-15.3.x86_64
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
+var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")
@@ -345,7 +345,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 			// Everything else should be changed.
 			var expectResult = []string{
 				"client-ca.crt", "client-ca.key", "client-ca.nochain.crt",
-				"client-supervisor.crt", "client-supervisor.key",
 				"peer-ca.crt", "peer-ca.key",
 				"server-ca.crt", "server-ca.key",
 				"request-header-ca.crt", "request-header-ca.key",
@@ -382,10 +381,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+	}
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

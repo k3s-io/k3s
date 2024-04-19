@@ -179,8 +179,10 @@ type Control struct {
 	KubeConfigMode           string
 	HelmJobImage             string
 	DataDir                  string
+	KineTLS                  bool
 	Datastore                endpoint.Config `json:"-"`
 	Disables                 map[string]bool
+	DisableAgent             bool
 	DisableAPIServer         bool
 	DisableControllerManager bool
 	DisableETCD              bool
@@ -295,7 +297,7 @@ type ControlRuntime struct {
 
 	HTTPBootstrap                        bool
 	APIServerReady                       <-chan struct{}
-	AgentReady                           <-chan struct{}
+	ContainerRuntimeReady                <-chan struct{}
 	ETCDReady                            <-chan struct{}
 	StartupHooksWg                       *sync.WaitGroup
 	ClusterControllerStarts              map[string]leader.Callback
@@ -361,9 +363,9 @@ type ControlRuntime struct {
 	EtcdConfig endpoint.ETCDConfig
 }
 
-func NewRuntime(agentReady <-chan struct{}) *ControlRuntime {
+func NewRuntime(containerRuntimeReady <-chan struct{}) *ControlRuntime {
 	return &ControlRuntime{
-		AgentReady:                           agentReady,
+		ContainerRuntimeReady:                containerRuntimeReady,
 		ClusterControllerStarts:              map[string]leader.Callback{},
 		LeaderElectedClusterControllerStarts: map[string]leader.Callback{},
 	}

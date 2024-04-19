@@ -228,6 +228,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		helmchart.Register(ctx,
 			metav1.NamespaceAll,
 			helmcommon.Name,
+			"cluster-admin",
 			strconv.Itoa(config.ControlConfig.APIServerPort),
 			k8s,
 			apply,
@@ -242,16 +243,6 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			core.V1().ServiceAccount(),
 			core.V1().ConfigMap(),
 			core.V1().Secret())
-	}
-
-	if config.ControlConfig.EncryptSecrets {
-		if err := secretsencrypt.Register(ctx,
-			sc.K8s,
-			&config.ControlConfig,
-			sc.Core.Core().V1().Node(),
-			sc.Core.Core().V1().Secret()); err != nil {
-			return err
-		}
 	}
 
 	if config.ControlConfig.Rootless {

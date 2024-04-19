@@ -21,6 +21,14 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
+	ServerToken,
+	&cli.StringFlag{
+		Name:        "server, s",
+		Usage:       "(cluster) Server to connect to",
+		EnvVar:      version.ProgramUpper + "_URL",
+		Value:       "https://127.0.0.1:6443",
+		Destination: &ServerConfig.ServerURL,
+	},
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
 		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
@@ -36,6 +44,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Name:        "snapshot-compress,etcd-snapshot-compress",
 		Usage:       "(db) Compress etcd snapshot",
 		Destination: &ServerConfig.EtcdSnapshotCompress,
+	},
+	&cli.IntFlag{
+		Name:        "snapshot-retention,etcd-snapshot-retention",
+		Usage:       "(db) Number of snapshots to retain.",
+		Destination: &ServerConfig.EtcdSnapshotRetention,
+		Value:       defaultSnapshotRentention,
 	},
 	&cli.BoolFlag{
 		Name:        "s3,etcd-s3",
@@ -140,12 +154,7 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,
 				Action:          prune,
-				Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
-					Name:        "snapshot-retention",
-					Usage:       "(db) Number of snapshots to retain.",
-					Destination: &ServerConfig.EtcdSnapshotRetention,
-					Value:       defaultSnapshotRentention,
-				}),
+				Flags:           EtcdSnapshotFlags,
 			},
 		},
 		Flags: EtcdSnapshotFlags,

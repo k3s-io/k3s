@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"context"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,13 @@ const (
 var (
 	snapshotConfigMapName = version.Program + "-etcd-snapshots"
 	errNotReconciled      = errors.New("no nodes have reconciled ETCDSnapshotFile resources")
+	reconcileBackoff      = wait.Backoff{
+		Steps:    9,
+		Duration: 10 * time.Millisecond,
+		Factor:   3.0,
+		Jitter:   0.1,
+		Cap:      30 * time.Second,
+	}
 )
 
 type etcdSnapshotHandler struct {
@@ -62,7 +70,7 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 		err := e.reconcile()
 		if err == errNotReconciled {
 			logrus.Debugf("Failed to reconcile snapshot ConfigMap: %v, requeuing", err)
-			e.snapshots.Enqueue(key)
+			e.snapshots.EnqueueAfter(key, reconcileBackoff.Step())
 			return nil, nil
 		}
 		return nil, err
@@ -167,6 +175,23 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	nodeList, err := nodes.List(metav1.ListOptions{LabelSelector: etcdSelector.String()})
 	if err != nil {
 		return err
+	}
+
+	// If running without an agent there will not be a node for this server;
+	// create a dummy node and assume it has reconciled.
+	if e.etcd.config.DisableAgent {
+		node := v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: os.Getenv("NODE_NAME"),
+				Annotations: map[string]string{
+					annotationLocalReconciled: "true",
+				},
+			},
+		}
+		if e.etcd.s3 != nil {
+			node.Annotations[annotationS3Reconciled] = "true"
+		}
+		nodeList.Items = append(nodeList.Items, node)
 	}
 
 	// Once a node has set the reconcile annotation, it is considered to have

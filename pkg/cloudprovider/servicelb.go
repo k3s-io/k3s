@@ -30,7 +30,7 @@ import (
 	servicehelper "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
-	utilpointer "k8s.io/utils/pointer"
+	utilsptr "k8s.io/utils/ptr"
 )
 
 var (
@@ -49,7 +49,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.5"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.7"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -488,7 +488,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName:           "svclb",
-					AutomountServiceAccountToken: utilpointer.Bool(false),
+					AutomountServiceAccountToken: utilsptr.To(false),
 					SecurityContext: &core.PodSecurityContext{
 						Sysctls: sysctls,
 					},

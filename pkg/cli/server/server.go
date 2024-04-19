@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	systemd "github.com/coreos/go-systemd/daemon"
+	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/erikdubbelboer/gspt"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
@@ -49,9 +49,7 @@ func RunWithControllers(app *cli.Context, leaderControllers server.CustomControl
 }
 
 func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
-	var (
-		err error
-	)
+	var err error
 	// Validate build env
 	cmds.MustValidateGolang()
 
@@ -110,11 +108,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	agentReady := make(chan struct{})
+	containerRuntimeReady := make(chan struct{})
 
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
-	serverConfig.ControlConfig.Runtime = config.NewRuntime(agentReady)
+	serverConfig.ControlConfig.Runtime = config.NewRuntime(containerRuntimeReady)
 	serverConfig.ControlConfig.Token = cfg.Token
 	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
 	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
@@ -149,10 +147,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
+	serverConfig.ControlConfig.Datastore.NotifyInterval = 5 * time.Second
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CAFile = cfg.DatastoreCAFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
+	serverConfig.ControlConfig.KineTLS = cfg.KineTLS
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
@@ -168,6 +168,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DisableAPIServer = cfg.DisableAPIServer
 	serverConfig.ControlConfig.DisableScheduler = cfg.DisableScheduler
 	serverConfig.ControlConfig.DisableControllerManager = cfg.DisableControllerManager
+	serverConfig.ControlConfig.DisableAgent = cfg.DisableAgent
 	serverConfig.ControlConfig.EmbeddedRegistry = cfg.EmbeddedRegistry
 	serverConfig.ControlConfig.ClusterInit = cfg.ClusterInit
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
@@ -211,6 +212,14 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if serverConfig.ControlConfig.DisableETCD && serverConfig.ControlConfig.JoinURL == "" {
 		return errors.New("invalid flag use; --server is required with --disable-etcd")
+	}
+
+	if serverConfig.ControlConfig.Datastore.Endpoint != "" && serverConfig.ControlConfig.DisableAPIServer {
+		return errors.New("invalid flag use; cannot use --disable-apiserver with --datastore-endpoint")
+	}
+
+	if serverConfig.ControlConfig.Datastore.Endpoint != "" && serverConfig.ControlConfig.DisableETCD {
+		return errors.New("invalid flag use; cannot use --disable-etcd with --datastore-endpoint")
 	}
 
 	if serverConfig.ControlConfig.DisableAPIServer {
@@ -439,6 +448,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableControllerManager = true
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
+		serverConfig.ControlConfig.DisableServiceLB = true
 
 		// If the supervisor and apiserver are on the same port, everything is running embedded
 		// and we don't need the kubelet or containerd up to perform a cluster reset.
@@ -511,7 +521,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	agentConfig := cmds.AgentConfig
-	agentConfig.AgentReady = agentReady
+	agentConfig.ContainerRuntimeReady = containerRuntimeReady
 	agentConfig.Debug = app.GlobalBool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url

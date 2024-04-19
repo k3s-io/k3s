@@ -14,9 +14,9 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2004, generic/centos7, generic/rocky8, opensuse/Leap-15.4.x86_64
+// generic/ubuntu2310, generic/centos7, generic/rocky8, opensuse/Leap-15.5.x86_64
 
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
+var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -201,10 +201,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+	}
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

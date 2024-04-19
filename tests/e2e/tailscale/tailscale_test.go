@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS: generic/ubuntu2004, opensuse/Leap-15.3.x86_64
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2004", "VM operating system")
+// Valid nodeOS: generic/ubuntu2310, opensuse/Leap-15.3.x86_64
+var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -59,7 +59,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
-		}, "620s", "5s").Should(Succeed())
+		}, "300s", "5s").Should(Succeed())
 		_, err := e2e.ParseNodes(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -85,7 +85,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
-		}, "620s", "5s").Should(Succeed())
+		}, "300s", "5s").Should(Succeed())
 		_, err := e2e.ParseNodes(kubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -117,10 +117,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if failed && !*ci {
-		fmt.Println("FAILED!")
-	} else {
+	if !failed {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+	}
+	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
 	}

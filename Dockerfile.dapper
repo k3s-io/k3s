@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.21.5-alpine3.18
+ARG GOLANG=golang:1.21.9-alpine3.18
 FROM ${GOLANG}
 
 # Set proxy environment variables
@@ -22,7 +22,7 @@ RUN apk -U --no-cache add \
 RUN python3 -m pip install awscli
 
 # Install Trivy
-ENV TRIVY_VERSION="0.48.1"
+ENV TRIVY_VERSION="0.50.1"
 RUN case "$(go env GOARCH)" in \
     arm64) TRIVY_ARCH="ARM64" ;; \
     amd64) TRIVY_ARCH="64bit" ;; \

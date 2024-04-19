@@ -511,7 +511,7 @@ run-test() {
     )
 
     export PROVISION_LOCK=$(mktemp)
-    ./scripts/test-runner "$@" &
+    ./tests/docker/test-runner "$@" &
     pids+=($!)
 
     (
@@ -585,7 +585,7 @@ test-run-sonobuoy() {
     fi
 
     cleanup-test-env
-    . ./scripts/test-setup-sonobuoy$suffix
+    . ./tests/docker/test-setup-sonobuoy$suffix
     
     if [ "$1" = "parallel" ] || [ "$2" = "parallel" ]; then
         label=PARALLEL \

@@ -28,10 +28,7 @@ permissions:
 jobs:
   test:
     name: Unit Tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
     - name: Checkout
@@ -39,25 +36,20 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v5
-      with: 
-        go-version: '1.21.5'
-        check-latest: true
-        cache: true
-        cache-dependency-path: |
-          **/go.sum
-          **/go.mod
+      uses: ./.github/actions/setup-go
     - name: Run Unit Tests
       run: | 
         go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
-      uses: mxschmitt/action-tmate@v3
-      timeout-minutes: 5
-    - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v3
+      uses: lhotari/action-upterm@v1
       with:
+        wait-timeout-minutes: 5
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.out
         flags: unittests # optional
         verbose: true # optional (default = false)

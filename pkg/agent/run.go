@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	systemd "github.com/coreos/go-systemd/daemon"
+	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
-	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	"github.com/k3s-io/k3s/pkg/agent/syssetup"
 	"github.com/k3s-io/k3s/pkg/agent/tunnel"
+	"github.com/k3s-io/k3s/pkg/certmonitor"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
@@ -49,7 +49,7 @@ import (
 	app2 "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"
 	utilsnet "k8s.io/utils/net"
-	utilpointer "k8s.io/utils/pointer"
+	utilsptr "k8s.io/utils/ptr"
 )
 
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
@@ -133,21 +133,23 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	}
 
 	if nodeConfig.Docker {
-		if err := cridockerd.Run(ctx, nodeConfig); err != nil {
+		if err := executor.Docker(ctx, nodeConfig); err != nil {
 			return err
 		}
 	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
-		if err := containerd.Run(ctx, nodeConfig); err != nil {
+		if err := containerd.SetupContainerdConfig(nodeConfig); err != nil {
+			return err
+		}
+		if err := executor.Containerd(ctx, nodeConfig); err != nil {
 			return err
 		}
 	}
-
-	// the agent runtime is ready to host workloads when containerd is up and the airgap
+	// the container runtime is ready to host workloads when containerd is up and the airgap
 	// images have finished loading, as that portion of startup may block for an arbitrary
 	// amount of time depending on how long it takes to import whatever the user has placed
 	// in the images directory.
-	if cfg.AgentReady != nil {
-		close(cfg.AgentReady)
+	if cfg.ContainerRuntimeReady != nil {
+		close(cfg.ContainerRuntimeReady)
 	}
 
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
@@ -200,8 +202,8 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 // When running rootless, we do not attempt to set conntrack sysctls - this behavior is copied from kubeadm.
 func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubeProxyConntrackConfiguration, error) {
 	ctConfig := &kubeproxyconfig.KubeProxyConntrackConfiguration{
-		MaxPerCore:            utilpointer.Int32Ptr(0),
-		Min:                   utilpointer.Int32Ptr(0),
+		MaxPerCore:            utilsptr.To(int32(0)),
+		Min:                   utilsptr.To(int32(0)),
 		TCPEstablishedTimeout: &metav1.Duration{},
 		TCPCloseWaitTimeout:   &metav1.Duration{},
 	}
@@ -257,11 +259,14 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	if cfg.AgentReady != nil {
-		close(cfg.AgentReady)
+	if cfg.ContainerRuntimeReady != nil {
+		close(cfg.ContainerRuntimeReady)
 	}
 
 	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
+		return err
+	}
+	if err := certMonitorSetup(ctx, nodeConfig, cfg); err != nil {
 		return err
 	}
 
@@ -425,7 +430,7 @@ func updateLegacyAddressLabels(agentConfig *daemonconfig.Agent, nodeLabels map[s
 	if ls.Has(cp.InternalIPKey) || ls.Has(cp.HostnameKey) {
 		result := map[string]string{
 			cp.InternalIPKey: agentConfig.NodeIP,
-			cp.HostnameKey:   agentConfig.NodeName,
+			cp.HostnameKey:   getHostname(agentConfig),
 		}
 
 		if agentConfig.NodeExternalIP != "" {
@@ -443,7 +448,7 @@ func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map
 	agentConfig := &nodeConfig.AgentConfig
 	result := map[string]string{
 		cp.InternalIPKey: util.JoinIPs(agentConfig.NodeIPs),
-		cp.HostnameKey:   agentConfig.NodeName,
+		cp.HostnameKey:   getHostname(agentConfig),
 	}
 
 	if agentConfig.NodeExternalIP != "" {
@@ -500,6 +505,10 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
 		return err
 	}
+	if err := certMonitorSetup(ctx, nodeConfig, cfg); err != nil {
+		return err
+	}
+
 	if !agentRan {
 		return agent.Agent(ctx, nodeConfig, proxy)
 	}
@@ -537,4 +546,21 @@ func tunnelSetup(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Ag
 		return nil
 	}
 	return tunnel.Setup(ctx, nodeConfig, proxy)
+}
+
+func certMonitorSetup(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	if cfg.ClusterReset {
+		return nil
+	}
+	return certmonitor.Setup(ctx, nodeConfig, cfg.DataDir)
+}
+
+// getHostname returns the actual system hostname.
+// If the hostname cannot be determined, or is invalid, the node name is used.
+func getHostname(agentConfig *daemonconfig.Agent) string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" || strings.Contains(hostname, "localhost") {
+		return agentConfig.NodeName
+	}
+	return hostname
 }

@@ -1,0 +1,54 @@
+---
+name: "Update k3sroot version" 
+
+sources:
+ k3sroot:
+   name: Get k3s-root version
+   kind: githubrelease
+   spec:
+     owner: k3s-io
+     repository: k3s-root
+     token: '{{ requiredEnv .github.token }}'
+     typefilter:
+       release: true
+       draft: false
+       prerelease: false
+     versionfilter:
+       kind: semver
+       # pattern accepts any semver constraint
+       pattern: "*"
+
+targets:
+  versionfile:
+    name: "Bump to latest k3s-root version in scripts/version.sh"
+    kind: file
+    scmid: default
+    sourceid: k3sroot
+    spec:
+      file: "scripts/version.sh"
+      matchpattern: '(?m)^VERSION_ROOT=(.*)'
+      replacepattern: 'VERSION_ROOT="{{ source "k3sroot" }}"'
+ 
+
+scms:
+  default:
+    kind: github
+    spec:
+      token: '{{ requiredEnv .github.token }}'
+      username: '{{ requiredEnv .github.username }}'
+      user: '{{ .github.user }}'
+      email: '{{ .github.email }}'
+      owner: '{{ .k3s.org }}'
+      repository: '{{ .k3s.repo }}'
+      branch: '{{ .k3s.branch }}'
+      
+actions:
+    default:
+        title: 'Bump K3s-root version to {{ source "k3sroot" }}'
+        kind: github/pullrequest
+        spec:
+            automerge: false
+            labels:
+                - dependencies
+        scmid: default
+

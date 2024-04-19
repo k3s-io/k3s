@@ -68,14 +68,15 @@ if [ -z "$VERSION_CRI_DOCKERD" ]; then
   VERSION_CRI_DOCKERD="v0.0.0"
 fi
 
-VERSION_CNIPLUGINS="v1.3.0-k3s1"
+VERSION_CNIPLUGINS="v1.4.0-k3s2"
+VERSION_FLANNEL_PLUGIN="v1.4.0-flannel1"
 
 VERSION_KUBE_ROUTER=$(get-module-version github.com/cloudnativelabs/kube-router/v2)
 if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.12.2"
+VERSION_ROOT="v0.13.0"
 
 DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
 VERSION_GOLANG="go"$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)

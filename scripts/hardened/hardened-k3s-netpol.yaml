@@ -81,7 +81,7 @@ spec:
   policyTypes:
   - Ingress
 ---
-# Allow all access to the the servicelb traefik HTTP/HTTPS ports
+# Allow all access to the servicelb traefik HTTP/HTTPS ports
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -13,7 +13,7 @@ This guide helps you navigate the creation of those variables.
 1. set NEW_K8S_CLIENT to the client version which corresponds with the newly released k8s version
 1. set OLD_K3S_VER to the previous k3s version (the one which corresponds to the previous k8s version), replacing the plus symbol with a dash (eg. for "v1.25.0+k3s1" use "v1.25.0-k3s1")
 1. set NEW_K3S_VER to the k3s version which corresponds to the newly released k8s version, replacing the plus symbol with a dash
-1. set RELEASE_BRANCH to the the k3s release branch which corresponds to the newly released k8s version
+1. set RELEASE_BRANCH to the k3s release branch which corresponds to the newly released k8s version
 1. set GOPATH to the path to the "go" directory (usually $HOME/go)
 1. set GOVERSION to the version of go which the newly released k8s version uses
    1. you can find this in the kubernetes/kubernetes repo

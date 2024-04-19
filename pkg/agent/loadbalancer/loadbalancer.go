@@ -16,7 +16,10 @@ import (
 
 // server tracks the connections to a server, so that they can be closed when the server is removed.
 type server struct {
+	// This mutex protects access to the connections map. All direct access to the map should be protected by it.
 	mutex       sync.Mutex
+	address     string
+	healthCheck func() bool
 	connections map[net.Conn]struct{}
 }
 
@@ -31,7 +34,9 @@ type serverConn struct {
 // actually balance connections, but instead fails over to a new server only
 // when a connection attempt to the currently selected server fails.
 type LoadBalancer struct {
-	mutex sync.Mutex
+	// This mutex protects access to servers map and randomServers list.
+	// All direct access to the servers map/list should be protected by it.
+	mutex sync.RWMutex
 	proxy *tcpproxy.Proxy
 
 	serviceName          string
@@ -123,26 +128,9 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 	}
 	logrus.Infof("Running load balancer %s %s -> %v [default: %s]", serviceName, lb.localAddress, lb.ServerAddresses, lb.defaultServerAddress)
 
+	go lb.runHealthChecks(ctx)
+
 	return lb, nil
-}
-
-func (lb *LoadBalancer) SetDefault(serverAddress string) {
-	lb.mutex.Lock()
-	defer lb.mutex.Unlock()
-
-	_, hasOriginalServer := sortServers(lb.ServerAddresses, lb.defaultServerAddress)
-	// if the old default server is not currently in use, remove it from the server map
-	if server := lb.servers[lb.defaultServerAddress]; server != nil && !hasOriginalServer {
-		defer server.closeAll()
-		delete(lb.servers, lb.defaultServerAddress)
-	}
-	// if the new default server doesn't have an entry in the map, add one
-	if _, ok := lb.servers[serverAddress]; !ok {
-		lb.servers[serverAddress] = &server{connections: make(map[net.Conn]struct{})}
-	}
-
-	lb.defaultServerAddress = serverAddress
-	logrus.Infof("Updated load balancer %s default server address -> %s", lb.serviceName, serverAddress)
 }
 
 func (lb *LoadBalancer) Update(serverAddresses []string) {
@@ -166,7 +154,10 @@ func (lb *LoadBalancer) LoadBalancerServerURL() string {
 	return lb.localServerURL
 }
 
-func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string) (net.Conn, error) {
+func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net.Conn, error) {
+	lb.mutex.RLock()
+	defer lb.mutex.RUnlock()
+
 	startIndex := lb.nextServerIndex
 	for {
 		targetServer := lb.currentServerAddress
@@ -174,7 +165,7 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, address string
 		server := lb.servers[targetServer]
 		if server == nil || targetServer == "" {
 			logrus.Debugf("Nil server for load balancer %s: %s", lb.serviceName, targetServer)
-		} else {
+		} else if server.healthCheck() {
 			conn, err := server.dialContext(ctx, network, targetServer)
 			if err == nil {
 				return conn, nil

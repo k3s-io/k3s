@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Create(app *cli.Context) error {
@@ -155,7 +155,7 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.TokenRotateRequest{
-		NewToken: pointer.String(cmds.TokenConfig.NewToken),
+		NewToken: ptr.To(cmds.TokenConfig.NewToken),
 	})
 	if err != nil {
 		return err
