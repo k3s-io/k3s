@@ -95,6 +95,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot list", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(ContainSubstring("file:///var/lib/rancher/k3s/server/db/snapshots/on-demand-server-0"))
+			Expect(res).To(ContainSubstring("s3://test-bucket/test-folder/on-demand-server-0"))
 		})
 		It("save 3 more s3 snapshots", func() {
 			for _, i := range []string{"1", "2", "3"} {
@@ -106,10 +107,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("lists saved s3 snapshot", func() {
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot list", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainSubstring("on-demand-server-0"))
-			Expect(res).To(ContainSubstring("special-1-server-0"))
-			Expect(res).To(ContainSubstring("special-2-server-0"))
-			Expect(res).To(ContainSubstring("special-3-server-0"))
+			Expect(res).To(ContainSubstring("s3://test-bucket/test-folder/on-demand-server-0"))
+			Expect(res).To(ContainSubstring("s3://test-bucket/test-folder/special-1-server-0"))
+			Expect(res).To(ContainSubstring("s3://test-bucket/test-folder/special-2-server-0"))
+			Expect(res).To(ContainSubstring("s3://test-bucket/test-folder/special-3-server-0"))
 		})
 		It("delete first on-demand s3 snapshot", func() {
 			_, err := e2e.RunCmdOnNode("sudo k3s etcd-snapshot ls >> ./snapshotname.txt", serverNodeNames[0])
