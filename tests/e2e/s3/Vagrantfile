@@ -29,7 +29,7 @@ def provision(vm, role, role_num, node_num)
 
 
   runS3mock = <<~'SCRIPT'
-    docker run -p 9090:9090 -p 9191:9191 -d -e initialBuckets=test -e debug=true -t adobe/s3mock
+    docker run -p 9090:9090 -p 9191:9191 -d -e initialBuckets=test-bucket -e debug=true -t adobe/s3mock
   SCRIPT
 
 
@@ -45,7 +45,8 @@ def provision(vm, role, role_num, node_num)
         flannel-iface: eth1
         cluster-init: true
         etcd-s3-insecure: true
-        etcd-s3-bucket: test
+        etcd-s3-bucket: test-bucket
+        etcd-s3-folder: test-folder
         etcd-s3: true
         etcd-s3-endpoint: localhost:9090
         etcd-s3-skip-ssl-verify: true
