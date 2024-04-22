@@ -52,7 +52,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter().SkipClean(true)
-	authed.Use(auth.Middleware(serverConfig, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup))
+	authed.Use(auth.HasRole(serverConfig, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup))
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
@@ -71,12 +71,12 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 
 	nodeAuthed := mux.NewRouter().SkipClean(true)
 	nodeAuthed.NotFoundHandler = authed
-	nodeAuthed.Use(auth.Middleware(serverConfig, user.NodesGroup))
+	nodeAuthed.Use(auth.HasRole(serverConfig, user.NodesGroup))
 	nodeAuthed.Path(prefix + "/connect").Handler(serverConfig.Runtime.Tunnel)
 
 	serverAuthed := mux.NewRouter().SkipClean(true)
 	serverAuthed.NotFoundHandler = nodeAuthed
-	serverAuthed.Use(auth.Middleware(serverConfig, version.Program+":server"))
+	serverAuthed.Use(auth.HasRole(serverConfig, version.Program+":server"))
 	serverAuthed.Path(prefix + "/encrypt/status").Handler(encryptionStatusHandler(serverConfig))
 	serverAuthed.Path(prefix + "/encrypt/config").Handler(encryptionConfigHandler(ctx, serverConfig))
 	serverAuthed.Path(prefix + "/cert/cacerts").Handler(caCertReplaceHandler(serverConfig))
@@ -86,7 +86,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	systemAuthed := mux.NewRouter().SkipClean(true)
 	systemAuthed.NotFoundHandler = serverAuthed
 	systemAuthed.MethodNotAllowedHandler = serverAuthed
-	systemAuthed.Use(auth.Middleware(serverConfig, user.SystemPrivilegedGroup))
+	systemAuthed.Use(auth.HasRole(serverConfig, user.SystemPrivilegedGroup))
 	systemAuthed.Methods(http.MethodConnect).Handler(serverConfig.Runtime.Tunnel)
 
 	staticDir := filepath.Join(serverConfig.DataDir, "static")
