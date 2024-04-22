@@ -664,12 +664,18 @@ func (e *ETCD) setName(force bool) error {
 
 // handler wraps the handler with routes for database info
 func (e *ETCD) handler(next http.Handler) http.Handler {
-	mux := mux.NewRouter().SkipClean(true)
-	mux.Use(auth.Middleware(e.config, version.Program+":server"))
-	mux.Handle("/db/info", e.infoHandler())
-	mux.Handle("/db/snapshot", e.snapshotHandler())
-	mux.NotFoundHandler = next
-	return mux
+	r := mux.NewRouter().SkipClean(true)
+	r.NotFoundHandler = next
+
+	ir := r.Path("/db/info").Subrouter()
+	ir.Use(auth.IsLocalOrHasRole(e.config, version.Program+":server"))
+	ir.Handle("", e.infoHandler())
+
+	sr := r.Path("/db/snapshot").Subrouter()
+	sr.Use(auth.HasRole(e.config, version.Program+":server"))
+	sr.Handle("", e.snapshotHandler())
+
+	return r
 }
 
 // infoHandler returns etcd cluster information. This is used by new members when joining the cluster.
