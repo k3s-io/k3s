@@ -5,8 +5,8 @@ import (
 
 	bindata "github.com/go-bindata/go-bindata"
 	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	controllergen "github.com/rancher/wrangler/pkg/controller-gen"
-	"github.com/rancher/wrangler/pkg/controller-gen/args"
+	controllergen "github.com/rancher/wrangler/v3/pkg/controller-gen"
+	"github.com/rancher/wrangler/v3/pkg/controller-gen/args"
 	"github.com/sirupsen/logrus"
 )
 

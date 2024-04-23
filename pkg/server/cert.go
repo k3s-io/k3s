@@ -23,7 +23,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
-	"github.com/rancher/wrangler/pkg/merr"
+	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/util/keyutil"
 )

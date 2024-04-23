@@ -33,7 +33,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/registries"
-	"github.com/rancher/wrangler/pkg/slice"
+	"github.com/rancher/wrangler/v3/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
