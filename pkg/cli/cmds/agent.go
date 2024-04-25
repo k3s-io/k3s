@@ -20,6 +20,7 @@ type Agent struct {
 	LBServerPort             int
 	ResolvConf               string
 	DataDir                  string
+	BindAddress              string
 	NodeIP                   cli.StringSlice
 	NodeExternalIP           cli.StringSlice
 	NodeName                 string
@@ -36,6 +37,7 @@ type Agent struct {
 	VPNAuth                  string
 	VPNAuthFile              string
 	Debug                    bool
+	EnablePProf              bool
 	Rootless                 bool
 	RootlessAlreadyUnshared  bool
 	WithNodeID               bool
@@ -226,6 +228,16 @@ var (
 		Usage:       "(agent/containerd) Disables containerd's fallback default registry endpoint when a mirror is configured for that registry",
 		Destination: &AgentConfig.ContainerdNoDefault,
 	}
+	EnablePProfFlag = &cli.BoolFlag{
+		Name:        "enable-pprof",
+		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
+		Destination: &AgentConfig.EnablePProf,
+	}
+	BindAddressFlag = &cli.StringFlag{
+		Name:        "bind-address",
+		Usage:       "(listener) " + version.Program + " bind address (default: 0.0.0.0)",
+		Destination: &AgentConfig.BindAddress,
+	}
 )
 
 func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
@@ -278,6 +290,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			DisableDefaultRegistryEndpointFlag,
 			AirgapExtraRegistryFlag,
 			NodeIPFlag,
+			BindAddressFlag,
 			NodeExternalIPFlag,
 			ResolvConfFlag,
 			FlannelIfaceFlag,
@@ -286,6 +299,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			ExtraKubeletArgs,
 			ExtraKubeProxyArgs,
 			// Experimental flags
+			EnablePProfFlag,
 			&cli.BoolFlag{
 				Name:        "rootless",
 				Usage:       "(experimental) Run rootless",
