@@ -19,25 +19,25 @@ import (
 
 	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/netpol"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/healthcheck"
-	"github.com/cloudnativelabs/kube-router/v2/pkg/metrics"
+	krmetrics "github.com/cloudnativelabs/kube-router/v2/pkg/metrics"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/options"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/utils"
 	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1core "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/component-base/metrics/legacyregistry"
 )
 
 func init() {
 	// ensure that kube-router exposes metrics through the same registry used by Kubernetes components
-	metrics.DefaultRegisterer = legacyregistry.Registerer()
-	metrics.DefaultGatherer = legacyregistry.DefaultGatherer
+	krmetrics.DefaultRegisterer = metrics.DefaultRegisterer
+	krmetrics.DefaultGatherer = metrics.DefaultGatherer
 }
 
 // Run creates and starts a new instance of the kube-router network policy controller
@@ -156,7 +156,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	}
 
 	// Start kube-router metrics controller to avoid complaints about metrics heartbeat missing
-	mc, err := metrics.NewMetricsController(krConfig)
+	mc, err := krmetrics.NewMetricsController(krConfig)
 	if err != nil {
 		return nil
 	}
@@ -188,13 +188,13 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 }
 
 // metricsRunCheck is a stub version of mc.Run() that doesn't start up a dedicated http server.
-func metricsRunCheck(mc *metrics.Controller, healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
+func metricsRunCheck(mc *krmetrics.Controller, healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
 	t := time.NewTicker(3 * time.Second)
 	defer wg.Done()
 
 	// register metrics for this controller
-	metrics.BuildInfo.WithLabelValues(runtime.Version(), version.Version).Set(1)
-	metrics.DefaultRegisterer.MustRegister(metrics.BuildInfo)
+	krmetrics.BuildInfo.WithLabelValues(runtime.Version(), version.Version).Set(1)
+	krmetrics.DefaultRegisterer.MustRegister(krmetrics.BuildInfo)
 
 	for {
 		healthcheck.SendHeartBeat(healthChan, "MC")
