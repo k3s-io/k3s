@@ -524,12 +524,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		SELinux:                  envInfo.EnableSELinux,
 		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
 		ImageServiceEndpoint:     envInfo.ImageServiceEndpoint,
+		EnablePProf:              envInfo.EnablePProf,
 		EmbeddedRegistry:         controlConfig.EmbeddedRegistry,
 		FlannelBackend:           controlConfig.FlannelBackend,
 		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
 		FlannelExternalIP:        controlConfig.FlannelExternalIP,
 		EgressSelectorMode:       controlConfig.EgressSelectorMode,
 		ServerHTTPSPort:          controlConfig.HTTPSPort,
+		SupervisorMetrics:        controlConfig.SupervisorMetrics,
 		Token:                    info.String(),
 	}
 	nodeConfig.FlannelIface = flannelIface
@@ -592,13 +594,18 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
 	nodeConfig.Certificate = servingCert
 
-	nodeConfig.AgentConfig.NodeIPs = nodeIPs
-	listenAddress, _, _, err := util.GetDefaultAddresses(nodeIPs[0])
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-ip")
+	if envInfo.BindAddress != "" {
+		nodeConfig.AgentConfig.ListenAddress = envInfo.BindAddress
+	} else {
+		listenAddress, _, _, err := util.GetDefaultAddresses(nodeIPs[0])
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-ip")
+		}
+		nodeConfig.AgentConfig.ListenAddress = listenAddress
 	}
+
 	nodeConfig.AgentConfig.NodeIP = nodeIPs[0].String()
-	nodeConfig.AgentConfig.ListenAddress = listenAddress
+	nodeConfig.AgentConfig.NodeIPs = nodeIPs
 	nodeConfig.AgentConfig.NodeExternalIPs = nodeExternalIPs
 
 	// if configured, set NodeExternalIP to the first IPv4 address, for legacy clients
@@ -689,6 +696,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.ImageCredProvConfig = envInfo.ImageCredProvConfig
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
+	nodeConfig.AgentConfig.MinTLSVersion = controlConfig.MinTLSVersion
+	nodeConfig.AgentConfig.CipherSuites = controlConfig.CipherSuites
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
