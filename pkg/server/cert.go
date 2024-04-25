@@ -30,8 +30,8 @@ import (
 
 func caCertReplaceHandler(server *config.Control) http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil || req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusNotFound)
+		if req.Method != http.MethodPut {
+			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 		force, _ := strconv.ParseBool(req.FormValue("force"))

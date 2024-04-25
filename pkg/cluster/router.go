@@ -1,7 +1,10 @@
 package cluster
 
 import (
+	"fmt"
 	"net/http"
+
+	"github.com/k3s-io/k3s/pkg/util"
 )
 
 // getHandler returns a basic request handler that processes requests through
@@ -19,11 +22,10 @@ func (c *Cluster) getHandler(handler http.Handler) (http.Handler, error) {
 // if no additional handlers are available.
 func (c *Cluster) router() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if c.config.Runtime.Handler == nil {
-			http.Error(rw, "starting", http.StatusServiceUnavailable)
-			return
+		if c.config.Runtime.Handler != nil {
+			c.config.Runtime.Handler.ServeHTTP(rw, req)
+		} else {
+			util.SendError(fmt.Errorf("starting"), rw, req, http.StatusServiceUnavailable)
 		}
-
-		c.config.Runtime.Handler.ServeHTTP(rw, req)
 	})
 }
