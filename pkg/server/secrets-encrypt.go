@@ -55,10 +55,6 @@ func getEncryptionRequest(req *http.Request) (*EncryptionRequest, error) {
 
 func encryptionStatusHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
 		status, err := encryptionStatus(server)
 		if err != nil {
 			util.SendErrorWithID(err, "secret-encrypt", resp, req, http.StatusInternalServerError)
@@ -155,18 +151,13 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
 		if req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
+			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 		encryptReq, err := getEncryptionRequest(req)
 		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
+			util.SendError(err, resp, req, http.StatusBadRequest)
 			return
 		}
 		if encryptReq.Stage != nil {

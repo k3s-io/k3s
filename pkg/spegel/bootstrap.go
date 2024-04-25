@@ -10,6 +10,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
@@ -133,7 +134,7 @@ func (s *serverBootstrapper) Run(_ context.Context, id string) error {
 
 func (s *serverBootstrapper) Get() (addrInfo *peer.AddrInfo, err error) {
 	if s.controlConfig.Runtime.Core == nil {
-		return nil, errors.New("runtime core not ready")
+		return nil, util.ErrCoreNotReady
 	}
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {

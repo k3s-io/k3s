@@ -761,7 +761,7 @@ func getEndpoints(control *config.Control) []string {
 // for use by etcd.
 func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 	if runtime.ClientETCDCert == "" || runtime.ClientETCDKey == "" || runtime.ETCDServerCA == "" {
-		return nil, errors.New("runtime is not ready yet")
+		return nil, util.ErrCoreNotReady
 	}
 
 	clientCert, err := tls.LoadX509KeyPair(runtime.ClientETCDCert, runtime.ClientETCDKey)
@@ -1177,7 +1177,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 
 func (e *ETCD) getETCDNodes() ([]*v1.Node, error) {
 	if e.config.Runtime.Core == nil {
-		return nil, errors.New("runtime core not ready")
+		return nil, util.ErrCoreNotReady
 	}
 
 	nodes := e.config.Runtime.Core.Core().V1().Node()
