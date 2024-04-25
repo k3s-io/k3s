@@ -29,8 +29,7 @@ var defaultDialer = net.Dialer{}
 
 func loggingErrorWriter(rw http.ResponseWriter, req *http.Request, code int, err error) {
 	logrus.Debugf("Tunnel server error: %d %v", code, err)
-	rw.WriteHeader(code)
-	rw.Write([]byte(err.Error()))
+	util.SendError(err, rw, req, code)
 }
 
 func setupTunnel(ctx context.Context, cfg *config.Control) (http.Handler, error) {
