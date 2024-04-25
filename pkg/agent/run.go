@@ -27,7 +27,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
+	"github.com/k3s-io/k3s/pkg/profile"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -110,6 +112,18 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig); err != nil {
 			return errors.Wrap(err, "failed to start embedded registry")
+		}
+	}
+
+	if nodeConfig.SupervisorMetrics {
+		if err := metrics.DefaultMetrics.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to serve metrics")
+		}
+	}
+
+	if nodeConfig.EnablePProf {
+		if err := profile.DefaultProfiler.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to serve pprof")
 		}
 	}
 
