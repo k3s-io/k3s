@@ -42,6 +42,8 @@ type Node struct {
 	NoFlannel                bool
 	SELinux                  bool
 	MultiClusterCIDR         bool
+	EnablePProf              bool
+	SupervisorMetrics        bool
 	EmbeddedRegistry         bool
 	FlannelBackend           string
 	FlannelConfFile          string
@@ -129,6 +131,8 @@ type Agent struct {
 	AirgapExtraRegistry     []string
 	DisableCCM              bool
 	DisableNPC              bool
+	MinTLSVersion           string
+	CipherSuites            []string
 	Rootless                bool
 	ProtectKernelDefaults   bool
 	DisableServiceLB        bool
@@ -157,6 +161,7 @@ type CriticalControlArgs struct {
 	EgressSelectorMode    string       `cli:"egress-selector-mode"`
 	ServiceIPRange        *net.IPNet   `cli:"service-cidr"`
 	ServiceIPRanges       []*net.IPNet `cli:"service-cidr"`
+	SupervisorMetrics     bool         `cli:"supervisor-metrics"`
 }
 
 type Control struct {
@@ -189,7 +194,6 @@ type Control struct {
 	DisableServiceLB         bool
 	Rootless                 bool
 	ServiceLBNamespace       string
-	EnablePProf              bool
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
@@ -206,8 +210,10 @@ type Control struct {
 	ClusterResetRestorePath  string
 	EncryptForce             bool
 	EncryptSkip              bool
-	TLSMinVersion            uint16
-	TLSCipherSuites          []uint16
+	MinTLSVersion            string
+	CipherSuites             []string
+	TLSMinVersion            uint16        `json:"-"`
+	TLSCipherSuites          []uint16      `json:"-"`
 	EtcdSnapshotName         string        `json:"-"`
 	EtcdDisableSnapshots     bool          `json:"-"`
 	EtcdExposeMetrics        bool          `json:"-"`
