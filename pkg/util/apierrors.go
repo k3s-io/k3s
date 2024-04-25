@@ -17,6 +17,7 @@ import (
 
 var ErrAPINotReady = errors.New("apiserver not ready")
 var ErrAPIDisabled = errors.New("apiserver disabled")
+var ErrCoreNotReady = errors.New("runtime core not ready")
 
 // SendErrorWithID sends and logs a random error ID so that logs can be correlated
 // between the REST API (which does not provide any detailed error output, to avoid
