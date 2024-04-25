@@ -32,16 +32,15 @@ func getServerTokenRequest(req *http.Request) (TokenRotateRequest, error) {
 
 func tokenRequestHandler(ctx context.Context, server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil || req.Method != http.MethodPut {
-			resp.WriteHeader(http.StatusBadRequest)
+		if req.Method != http.MethodPut {
+			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 		var err error
 		sTokenReq, err := getServerTokenRequest(req)
 		logrus.Debug("Received token request")
 		if err != nil {
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(err.Error()))
+			util.SendError(err, resp, req, http.StatusBadRequest)
 			return
 		}
 		if err = tokenRotate(ctx, server, *sTokenReq.NewToken); err != nil {
