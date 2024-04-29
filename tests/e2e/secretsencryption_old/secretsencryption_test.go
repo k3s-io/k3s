@@ -22,7 +22,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 or nil for latest commit from master
 
-func Test_E2ESecretsEncryption(t *testing.T) {
+func Test_E2ESecretsEncryptionOld(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
