@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/pkg/start"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -619,6 +620,12 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 			registerEndpointsHandlers(ctx, e)
 			registerMemberHandlers(ctx, e)
 			registerSnapshotHandlers(ctx, e)
+
+			// Re-run informer factory startup after core and leader-elected controllers have started.
+			// Additional caches may need to start for the newly added OnChange/OnRemove callbacks.
+			if err := start.All(ctx, 5, e.config.Runtime.K3s, e.config.Runtime.Core); err != nil {
+				panic(errors.Wrap(err, "failed to start wrangler controllers"))
+			}
 		}
 	}
 
