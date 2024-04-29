@@ -91,7 +91,9 @@ func (c *Cluster) start(ctx context.Context) error {
 	return c.managedDB.Start(ctx, c.clientAccessInfo)
 }
 
-// registerDBHandlers registers routes for database info with the http request handler
+// registerDBHandlers registers managed-datastore-specific callbacks, and installs additional HTTP route handlers.
+// Note that for etcd, controllers only run on nodes with a local apiserver, in order to provide stable external
+// management of etcd cluster membership without being disrupted when a member is removed from the cluster.
 func (c *Cluster) registerDBHandlers(handler http.Handler) (http.Handler, error) {
 	if c.managedDB == nil {
 		return handler, nil
