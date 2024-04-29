@@ -166,8 +166,8 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 		}
 	}
 
-	// Re-run context startup after core and leader-elected controllers have started. Additional
-	// informer caches may need to start for the newly added OnChange callbacks.
+	// Re-run informer factory startup after core and leader-elected controllers have started.
+	// Additional caches may need to start for the newly added OnChange/OnRemove callbacks.
 	if err := sc.Start(ctx); err != nil {
 		panic(errors.Wrap(err, "failed to start wranger controllers"))
 	}
