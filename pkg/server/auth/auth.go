@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -22,6 +23,7 @@ func hasRole(mustRoles []string, roles []string) bool {
 	return false
 }
 
+// doAuth calls the cluster's authenticator to validate that the client has at least one of the listed roles
 func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw http.ResponseWriter, req *http.Request) {
 	switch {
 	case serverConfig == nil:
@@ -51,10 +53,27 @@ func doAuth(roles []string, serverConfig *config.Control, next http.Handler, rw 
 	next.ServeHTTP(rw, req)
 }
 
-func Middleware(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
+// HasRole returns a middleware function that validates that the request
+// is being made with at least one of the listed roles.
+func HasRole(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			doAuth(roles, serverConfig, next, rw, req)
+		})
+	}
+}
+
+// IsLocalOrHasRole returns a middleware function that validates that the request
+// is from a local client or has at least one of the listed roles.
+func IsLocalOrHasRole(serverConfig *config.Control, roles ...string) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			client, _, _ := net.SplitHostPort(req.RemoteAddr)
+			if client == "127.0.0.1" || client == "::1" {
+				next.ServeHTTP(rw, req)
+			} else {
+				doAuth(roles, serverConfig, next, rw, req)
+			}
 		})
 	}
 }

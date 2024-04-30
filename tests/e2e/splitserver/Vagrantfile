@@ -1,14 +1,15 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-etcd-0", "server-etcd-1", "server-etcd-2", "server-cp-0", "server-cp-1", "agent-0"])
+  ["server-etcd-0", "server-etcd-1", "server-etcd-2", "server-cp-0", "server-cp-1", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
   ['generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+GOCOVER = (ENV['E2E_GOCOVER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
-NETWORK_PREFIX = "10.10.10"
+NETWORK_PREFIX = "10.10.12"
 
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
@@ -22,12 +23,14 @@ def provision(vm, role, role_num, node_num)
   defaultOSConfigure(vm)
   
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
+  addCoverageDir(vm, role, GOCOVER)
 
   vm.provision "ping k3s.io", type: "shell", inline: "ping -c 2 k3s.io"
-  
   if node_num == 0 && !role.include?("server") && !role.include?("etcd")
-    puts "first node must be a etcd server"
-    abort
+    if ARGV.include?("up") || (ARGV.include?("reload") && ARGV.include?("--provision"))
+      puts "Error: first node provisioned must be a etcd server"
+      abort
+    end
   elsif role.include?("server") && role.include?("etcd") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server"
@@ -102,6 +105,8 @@ Vagrant.configure("2") do |config|
   config.vm.provider "libvirt" do |v|
     v.cpus = NODE_CPUS
     v.memory = NODE_MEMORY
+    # We replicate the default prefix, but add a timestamp to enable parallel runs and cleanup of old VMs
+    v.default_prefix = File.basename(Dir.getwd) + "_" + Time.now.to_i.to_s + "_"
   end
   config.vm.provider "virtualbox" do |v|
     v.cpus = NODE_CPUS
@@ -116,6 +121,7 @@ Vagrant.configure("2") do |config|
   end
 
   NODE_ROLES.each_with_index do |role, i|
+    # Find the first number in the role name
     role_num = role.split("-", -1).pop.to_i
     config.vm.define role do |node|
       provision(node.vm, role, role_num, i)

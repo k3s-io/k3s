@@ -617,33 +617,24 @@ steps:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
-  # Cleanup VMs running, happens if a previous test panics
-  # Cleanup inactive domains, happens if previous test is canceled
-  - |
-    VMS=$(virsh list --name | grep '_server-\|_agent-' || true)
-    if [ -n "$VMS" ]; then
-      for vm in $VMS
-      do
-        virsh destroy $vm
-        virsh undefine $vm --remove-all-storage
-      done
-    fi 
-    VMS=$(virsh list --name --inactive | grep '_server-\|_agent-' || true)
-    if [ -n "$VMS" ]; then
-      for vm in $VMS
-      do
-        virsh undefine $vm
-      done
-    fi 
+  # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
+  - tests/e2e/scripts/cleanup_vms.sh
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
-  - cd tests/e2e/validatecluster
-  - vagrant destroy -f
-  - go test -v -timeout=45m ./validatecluster_test.go -ci -local
-  - cp ./coverage.out /tmp/artifacts/validate-coverage.out
-  - cd ../secretsencryption
-  - vagrant destroy -f
-  - go test -v -timeout=30m ./secretsencryption_test.go -ci -local
-  - cp ./coverage.out /tmp/artifacts/se-coverage.out
+  - |
+    cd tests/e2e/validatecluster
+    vagrant destroy -f
+    go test -v -timeout=45m ./validatecluster_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/validate-coverage.out
+  - |
+    cd ../secretsencryption
+    vagrant destroy -f
+    go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/se-coverage.out
+  - |
+    cd ../splitserver
+    vagrant destroy -f
+    go test -v -timeout=30m ./splitserver_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/split-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
@@ -669,6 +660,7 @@ steps:
     files:
       - /tmp/artifacts/validate-coverage.out
       - /tmp/artifacts/se-coverage.out
+      - /tmp/artifacts/split-coverage.out
       - /tmp/artifacts/upgrade-coverage.out
     flags: 
       - e2etests
