@@ -219,7 +219,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			return err
 		}
 
-		apply := apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup()
+		apply := apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup().WithSetOwnerReference(false, false)
 		helm := sc.Helm.WithAgent(restConfig.UserAgent)
 		batch := sc.Batch.WithAgent(restConfig.UserAgent)
 		auth := sc.Auth.WithAgent(restConfig.UserAgent)
