@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to to point k3s to the docker registry running on the host
+# Script to point k3s to the docker registry running on the host
 # This is used to avoid hitting dockerhub rate limits on E2E runners
 ip_addr=$1
 
