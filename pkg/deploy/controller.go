@@ -119,6 +119,26 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		if err != nil {
 			return err
 		}
+		// Descend into symlinked directories, however, only top-level links are followed
+		if info.Mode()&os.ModeSymlink != 0 {
+			linkInfo, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if linkInfo.IsDir() {
+				evalPath, err := filepath.EvalSymlinks(path)
+				if err != nil {
+					return err
+				}
+				filepath.Walk(evalPath, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					files[path] = info
+					return nil
+				})
+			}
+		}
 		files[path] = info
 		return nil
 	}); err != nil {
