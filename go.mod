@@ -21,6 +21,7 @@ replace (
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/common => github.com/prometheus/common v0.45.0
+	github.com/rancher/dynamiclistener => github.com/tomleb/rancher-dynamiclistener v0.0.0-20240502191517-2d785be06a08
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.0.20-k3s1
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.9-k3s1
@@ -105,7 +106,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.16.0
+	github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6
 	github.com/k3s-io/kine v0.11.8-0.20240430184817-f9ce6f8da97b
 	github.com/klauspost/compress v1.17.7
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -401,7 +402,6 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
-	github.com/rancher/wrangler/v2 v2.2.0-rc5 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
