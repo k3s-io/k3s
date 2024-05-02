@@ -14,7 +14,7 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2310, generic/centos7, generic/rocky8, opensuse/Leap-15.5.x86_64
+// generic/ubuntu2310, generic/centos7, generic/rocky8, opensuse/Leap-15.6.x86_64
 
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")

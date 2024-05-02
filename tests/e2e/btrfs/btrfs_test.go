@@ -38,9 +38,9 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 			var err error
 			// OS and server are hardcoded because only openSUSE Leap 15.5 natively supports Btrfs
 			if *local {
-				serverNodeNames, _, err = e2e.CreateLocalCluster("opensuse/Leap-15.5.x86_64", 1, 0)
+				serverNodeNames, _, err = e2e.CreateLocalCluster("opensuse/Leap-15.6.x86_64", 1, 0)
 			} else {
-				serverNodeNames, _, err = e2e.CreateCluster("opensuse/Leap-15.5.x86_64", 1, 0)
+				serverNodeNames, _, err = e2e.CreateCluster("opensuse/Leap-15.6.x86_64", 1, 0)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
