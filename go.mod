@@ -19,7 +19,6 @@ replace (
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/common => github.com/prometheus/common v0.45.0
-	github.com/rancher/dynamiclistener => github.com/tomleb/rancher-dynamiclistener v0.0.0-20240502191517-2d785be06a08
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.0.20-k3s1
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.9-k3s1
@@ -122,7 +121,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.49.0
-	github.com/rancher/dynamiclistener v0.5.0-rc5
+	github.com/rancher/dynamiclistener v0.6.0-rc1
 	github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5
 	github.com/rancher/remotedialer v0.3.0
 	github.com/rancher/wharfie v0.6.4

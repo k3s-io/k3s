@@ -1406,6 +1406,8 @@ github.com/quic-go/quic-go v0.42.0 h1:uSfdap0eveIl8KXnipv9K7nlwZ5IqLlYOpJ58u5utp
 github.com/quic-go/quic-go v0.42.0/go.mod h1:132kz4kL3F9vxhW3CtQJLDVwcFe5wdWeJXXijhsO57M=
 github.com/quic-go/webtransport-go v0.6.0 h1:CvNsKqc4W2HljHJnoT+rMmbRJybShZ0YPFDD3NxaZLY=
 github.com/quic-go/webtransport-go v0.6.0/go.mod h1:9KjU4AEBqEQidGHNDkZrb8CAa1abRaosM2yGOyiikEc=
+github.com/rancher/dynamiclistener v0.6.0-rc1 h1:Emwf9o7PMLdQNv4lvFx7xJKxDuDa4Y69GvVEGU9U9Js=
+github.com/rancher/dynamiclistener v0.6.0-rc1/go.mod h1:BIPgJ8xFSUyuTyGvRMVt++S1qjD3+7Ptvq1TXl6hcTM=
 github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5 h1:6K4RhfmCy7uxaw9OzCljNLfFcgD/q7SeF+/2gCQ3Tvw=
 github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5/go.mod h1:7WkdfPEvWAdnHVioMUkhpZkshJzjDY62ocHVhcbw89M=
 github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcpvX1sM=
@@ -1556,8 +1558,6 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 h1:6fotK7otjonDflCTK0BCfls4SPy3NcCVb5dqqmbRknE=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75/go.mod h1:KO6IkyS8Y3j8OdNO85qEYBsRPuteD+YciPomcXdrMnk=
-github.com/tomleb/rancher-dynamiclistener v0.0.0-20240502191517-2d785be06a08 h1:sKoKsOiHTGIEKpgARMaZQhVF1i2WcUV+txvcar9n7uI=
-github.com/tomleb/rancher-dynamiclistener v0.0.0-20240502191517-2d785be06a08/go.mod h1:BIPgJ8xFSUyuTyGvRMVt++S1qjD3+7Ptvq1TXl6hcTM=
 github.com/tonglil/buflogr v1.0.1 h1:WXFZLKxLfqcVSmckwiMCF8jJwjIgmStJmg63YKRF1p0=
 github.com/tonglil/buflogr v1.0.1/go.mod h1:yYWwvSpn/3uAaqjf6mJg/XMiAciaR0QcRJH2gJGDxNE=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
