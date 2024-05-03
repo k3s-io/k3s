@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -23,7 +23,7 @@ import (
 func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
-	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
+	proctitle.SetProcTitle(os.Args[0] + " secrets-encrypt")
 
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
