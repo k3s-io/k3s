@@ -11,10 +11,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/kubeadm"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -171,7 +171,7 @@ func Rotate(app *cli.Context) error {
 
 func serverAccess(cfg *cmds.Token) (*clientaccess.Info, error) {
 	// hide process arguments from ps output, since they likely contain tokens.
-	gspt.SetProcTitle(os.Args[0] + " token")
+	proctitle.SetProcTitle(os.Args[0] + " token")
 
 	dataDir, err := server.ResolveDataDir("")
 	if err != nil {
