@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
-	"github.com/erikdubbelboer/gspt"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
@@ -42,7 +42,7 @@ func forkIfLoggingOrReaping() error {
 	}
 
 	if enableLogRedirect || enableReaping {
-		gspt.SetProcTitle(os.Args[0] + " init")
+		proctitle.SetProcTitle(os.Args[0] + " init")
 
 		pwd, err := os.Getwd()
 		if err != nil {

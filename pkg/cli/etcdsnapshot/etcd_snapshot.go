@@ -11,12 +11,12 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/erikdubbelboer/gspt"
 	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
 	util2 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ import (
 func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *clientaccess.Info, error) {
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
-	gspt.SetProcTitle(os.Args[0] + " etcd-snapshot")
+	proctitle.SetProcTitle(os.Args[0] + " etcd-snapshot")
 
 	sr := &etcd.SnapshotRequest{}
 	// Operation and name are set by the command handler.
