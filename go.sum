@@ -912,8 +912,8 @@ github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/containerd v1.7.15-k3s1 h1:X+GVNp3FiBy8rZzTMXShQJBmycPVi8vcwzsRBLdvqhM=
 github.com/k3s-io/containerd v1.7.15-k3s1/go.mod h1:SOFk39t+bfDZC8jPYg11uxrzG3Fh30ZOociJwXfvk8Y=
-github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-2 h1:AY3aW776/tXYVP+huGZ9gNCaWfQKBsMhrxv18zxLNbQ=
-github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-2/go.mod h1:L7HNeF+iZZ/btgefGZI5v7oB1TQgpFyWvbhmFzfsWAY=
+github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-3 h1:lmvoMmpiprwTdQFW5p3f+Y1ZRnx2YDKENSsUZsUCszc=
+github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-3/go.mod h1:L7HNeF+iZZ/btgefGZI5v7oB1TQgpFyWvbhmFzfsWAY=
 github.com/k3s-io/cri-tools v1.29.0-k3s1 h1:16IXZ5lbPCmZM8FkgSMAPkhI4O2wVGExe3qEZbisFT0=
 github.com/k3s-io/cri-tools v1.29.0-k3s1/go.mod h1:fZeWlv+qq4gZ005I13j4JcvgFb6ZobVTtON3PqM5JVc=
 github.com/k3s-io/etcd/api/v3 v3.5.9-k3s1 h1:y4ont0HdnS7gtWNTXM8gahpKjAHtctgON/sjVRthlZY=
