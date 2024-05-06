@@ -67,27 +67,26 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 
-	// As kube-router netpol requires addresses to be available in the node object
-	// Wait until the node has ready addresses to avoid race conditions (max 1 minute).
+	// kube-router netpol requires addresses to be available in the node object.
+	// Wait until the uninitialized taint has been removed, at which point the addresses should be set.
 	// TODO: Replace with non-deprecated PollUntilContextTimeout when our and Kubernetes code migrate to it
-	if err := wait.PollImmediateWithContext(ctx, 2*time.Second, 60*time.Second, func(ctx context.Context) (bool, error) {
+	if err := wait.PollImmediateInfiniteWithContext(ctx, 2*time.Second, func(ctx context.Context) (bool, error) {
 		// Get the node object
 		node, err := client.CoreV1().Nodes().Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
-			logrus.Debugf("Network policy controller waiting to get Node %s: %v", nodeConfig.AgentConfig.NodeName, err)
+			logrus.Infof("Network policy controller waiting to get Node %s: %v", nodeConfig.AgentConfig.NodeName, err)
 			return false, nil
 		}
-		// Check for the uninitialized taint that should be removed by cloud-provider
-		// If there is no cloud-provider, the taint will not be there
+		// Check for the taint that should be removed by cloud-provider when the node has been initialized.
 		for _, taint := range node.Spec.Taints {
 			if taint.Key == cloudproviderapi.TaintExternalCloudProvider {
-				logrus.Debugf("Network policy controller waiting for removal of %s taint", cloudproviderapi.TaintExternalCloudProvider)
+				logrus.Infof("Network policy controller waiting for removal of %s taint", cloudproviderapi.TaintExternalCloudProvider)
 				return false, nil
 			}
 		}
 		return true, nil
 	}); err != nil {
-		return errors.Wrapf(err, "network policy controller timed out waiting for %s taint to be removed from Node %s", cloudproviderapi.TaintExternalCloudProvider, nodeConfig.AgentConfig.NodeName)
+		return errors.Wrapf(err, "network policy controller failed to wait for %s taint to be removed from Node %s", cloudproviderapi.TaintExternalCloudProvider, nodeConfig.AgentConfig.NodeName)
 	}
 
 	krConfig := options.NewKubeRouterConfig()
