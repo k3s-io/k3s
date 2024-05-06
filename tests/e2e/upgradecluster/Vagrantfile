@@ -10,6 +10,7 @@ REGISTRY = (ENV['E2E_REGISTRY'] || "")
 GOCOVER = (ENV['E2E_GOCOVER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
+GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
 NETWORK_PREFIX = "10.10.11"
 install_type = ""
@@ -26,19 +27,8 @@ def provision(vm, role, role_num, node_num)
   load vagrant_defaults
 
   defaultOSConfigure(vm)
-  
-  if RELEASE_VERSION == "skip"
-    install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
-  elsif !RELEASE_VERSION.empty?
-    install_type = "INSTALL_K3S_VERSION=#{RELEASE_VERSION}"
-  elsif RELEASE_CHANNEL == "commit"
-    vm.provision "shell", path: "../scripts/latest_commit.sh", args: ["master", "/tmp/k3s_commits"]
-    install_type = "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
-  else
-    install_type = "INSTALL_K3S_CHANNEL=#{RELEASE_CHANNEL}"
-  end
 
-
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH, RELEASE_CHANNEL)
 
   vm.provision "shell", inline: "ping -c 2 k3s.io"
   db_type = getDBType(role, role_num, vm)
