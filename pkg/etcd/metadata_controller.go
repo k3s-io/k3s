@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/retry"
-	nodeUtil "k8s.io/kubernetes/pkg/controller/util/node"
+	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 )
 
 func registerMetadataHandlers(ctx context.Context, etcd *ETCD) {
@@ -109,7 +109,7 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 			node.Labels = map[string]string{}
 		}
 
-		if find, _ := nodeUtil.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
+		if find, _ := nodeutil.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
 			node.Status.Conditions = append(node.Status.Conditions[:find], node.Status.Conditions[find+1:]...)
 		}
 
