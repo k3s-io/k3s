@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/k3s-io/k3s/pkg/util"
-	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	controllerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )

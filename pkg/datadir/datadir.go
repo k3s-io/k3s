@@ -6,7 +6,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/resolvehome"
+	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 )
 
 var (
