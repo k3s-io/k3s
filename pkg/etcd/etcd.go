@@ -615,7 +615,11 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 	// also needs to run on a non-etcd node as to avoid disruption if running on the node that
 	// is being removed from the cluster.
 	if !e.config.DisableAPIServer {
-		e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program+"-etcd"] = func(ctx context.Context) {
+		cb := e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program]
+		e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
+			if cb != nil {
+				cb(ctx)
+			}
 			registerEndpointsHandlers(ctx, e)
 			registerMemberHandlers(ctx, e)
 			registerSnapshotHandlers(ctx, e)

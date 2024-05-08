@@ -133,7 +133,11 @@ func runControllers(ctx context.Context, config *Config) error {
 	}
 
 	if !controlConfig.DisableAPIServer {
+		cb := controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program]
 		controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
+			if cb != nil {
+				cb(ctx)
+			}
 			apiserverControllers(ctx, sc, config)
 		}
 	}
@@ -144,11 +148,25 @@ func runControllers(ctx context.Context, config *Config) error {
 
 	if controlConfig.NoLeaderElect {
 		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
-			go runOrDie(ctx, name, cb)
+			go runOrDie(ctx, name, func(ctx context.Context) {
+				cb(ctx)
+				// Re-run context startup after core and leader-elected controllers have started. Additional
+				// informer caches may need to start for the newly added OnChange callbacks.
+				if err := sc.Start(ctx); err != nil {
+					panic(errors.Wrap(err, "failed to start wranger controllers"))
+				}
+			})
 		}
 	} else {
 		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
-			go leader.RunOrDie(ctx, "", name, sc.K8s, cb)
+			go leader.RunOrDie(ctx, "", name, sc.K8s, func(ctx context.Context) {
+				cb(ctx)
+				// Re-run context startup after core and leader-elected controllers have started. Additional
+				// informer caches may need to start for the newly added OnChange callbacks.
+				if err := sc.Start(ctx); err != nil {
+					panic(errors.Wrap(err, "failed to start wranger controllers"))
+				}
+			})
 		}
 	}
 
@@ -165,12 +183,6 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 		if err := controller(ctx, sc); err != nil {
 			panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 		}
-	}
-
-	// Re-run context startup after core and leader-elected controllers have started. Additional
-	// informer caches may need to start for the newly added OnChange callbacks.
-	if err := sc.Start(ctx); err != nil {
-		panic(errors.Wrap(err, "failed to start wranger controllers"))
 	}
 }
 
