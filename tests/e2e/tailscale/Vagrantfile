@@ -19,8 +19,8 @@ def provision(vm, roles, role_num, node_num)
   node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
   vm.network "private_network", ip: node_ip4, netmask: "255.255.255.0"
     
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
-  vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
   
   defaultOSConfigure(vm)
