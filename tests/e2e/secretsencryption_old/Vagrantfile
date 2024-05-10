@@ -19,7 +19,7 @@ def provision(vm, role, role_num, node_num)
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
 
   vagrant_defaults = '../vagrantdefaults.rb'
-  load vagrant_defaults if File.exists?(vagrant_defaults)
+  load vagrant_defaults if File.exist?(vagrant_defaults)
   
   defaultOSConfigure(vm)
   addCoverageDir(vm, role, GOCOVER)
