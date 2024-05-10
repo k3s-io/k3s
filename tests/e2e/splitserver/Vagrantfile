@@ -17,7 +17,7 @@ def provision(vm, role, role_num, node_num)
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
   vm.network "private_network", ip: "#{NETWORK_PREFIX}.#{100+node_num}", netmask: "255.255.255.0"
 
-  vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
 
   defaultOSConfigure(vm)
