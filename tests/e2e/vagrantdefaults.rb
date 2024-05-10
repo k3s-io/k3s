@@ -25,7 +25,7 @@ def getInstallType(vm, release_version, branch, release_channel='')
     return "INSTALL_K3S_CHANNEL=#{release_channel}"
   else
     jqInstall(vm)
-    scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
+    scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
     # MicroOS requires it not be in a /tmp/ or other root system folder
     vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", args: [branch, "/tmp/k3s_commits"]
