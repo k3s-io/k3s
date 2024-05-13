@@ -10,7 +10,10 @@
 		]
 	},
 	"run": {
-		"skip-dirs": [
+		"deadline": "5m"
+	},
+	"issues": {
+		"exclude-dirs": [
 			"build",
 			"contrib",
 			"manifests",
@@ -18,12 +21,9 @@
 			"scripts",
 			"vendor"
 		],
-		"skip-files": [
+		"exclude-files": [
 			"/zz_generated_"
 		],
-		"deadline": "5m"
-	},
-	"issues": {
 		"exclude-rules": [
 			{
 				"linters": "typecheck",
