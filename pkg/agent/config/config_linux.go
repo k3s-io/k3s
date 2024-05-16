@@ -23,7 +23,7 @@ func applyCRIDockerdAddress(nodeConfig *config.Node) {
 }
 
 func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdConfig *config.Containerd) {
-    containerdConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd")
+	containerdConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "containerd")
 
 	blockioPath := filepath.Join(containerdConfigDir, "blockio_config.yaml")
 
@@ -44,4 +44,10 @@ func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdC
 			containerdConfig.RDTConfig = rdtPath
 		}
 	}
+}
+
+// configureACL will configure an Access Control List for the specified file.
+// On Linux, this function is a no-op
+func configureACL(file string) error {
+	return nil
 }

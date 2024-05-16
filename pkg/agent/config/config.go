@@ -200,7 +200,16 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 		return "", err
 	}
 	nodePassword := hex.EncodeToString(password)
-	return nodePassword, os.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
+
+	if err = os.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600); err != nil {
+		return nodePassword, err
+	}
+
+	if err = configureACL(nodePassword); err != nil {
+		return nodePassword, err
+	}
+
+	return nodePassword, nil
 }
 
 func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string) {
