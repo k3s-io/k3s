@@ -45,3 +45,9 @@ func applyContainerdQoSClassConfigFileIfPresent(envInfo *cmds.Agent, containerdC
 		}
 	}
 }
+
+// configureACL will configure an Access Control List for the specified file.
+// On Linux, this function is a no-op
+func configureACL(file string) error {
+	return nil
+}
