@@ -6,13 +6,12 @@ replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.0
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-3 // k3s/release-1.30
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.1.0
-	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.15-k3s1
+	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.17-k3s1
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker => github.com/docker/docker v25.0.4+incompatible
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
-
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.29.0-k3s1
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/runc => github.com/k3s-io/runc v1.1.12-k3s1
@@ -30,10 +29,10 @@ replace (
 	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.45.0
 	golang.org/x/crypto => golang.org/x/crypto v0.17.0
 	golang.org/x/net => golang.org/x/net v0.17.0
-	golang.org/x/sys => golang.org/x/sys v0.13.0
+	golang.org/x/sys => golang.org/x/sys v0.18.0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20230525234035-dd9d682886f9
 	google.golang.org/grpc => google.golang.org/grpc v1.58.3
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.6.0
@@ -75,7 +74,7 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.11.4
+	github.com/Microsoft/hcsshim v0.11.5
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cloudnativelabs/kube-router/v2 v2.0.0-00010101000000-000000000000
@@ -176,7 +175,7 @@ require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.18.1-0.20220218231025-f11817397a1b // indirect
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
-	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.1.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
@@ -203,16 +202,16 @@ require (
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/go-cni v1.1.9 // indirect
 	github.com/containerd/go-runc v1.0.0 // indirect
-	github.com/containerd/imgcrypt v1.1.7 // indirect
+	github.com/containerd/imgcrypt v1.1.8 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/nri v0.6.0 // indirect
+	github.com/containerd/nri v0.6.1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
-	github.com/containerd/ttrpc v1.2.3 // indirect
+	github.com/containerd/ttrpc v1.2.4 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/containernetworking/cni v1.1.2 // indirect
 	github.com/containernetworking/plugins v1.3.0 // indirect
-	github.com/containers/ocicrypt v1.1.6 // indirect
+	github.com/containers/ocicrypt v1.1.10 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
@@ -247,6 +246,7 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/go-openapi/swag v0.22.9 // indirect
@@ -409,7 +409,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
-	github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980 // indirect
+	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
@@ -497,6 +497,6 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.0.4-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	tags.cncf.io/container-device-interface v0.6.2 // indirect
-	tags.cncf.io/container-device-interface/specs-go v0.6.0 // indirect
+	tags.cncf.io/container-device-interface v0.7.2 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.7.0 // indirect
 )
