@@ -45,13 +45,15 @@ def provision(vm, roles, role_num, node_num)
     end
   end
   if roles.include?("agent")
-    vpn_auth = "name=tailscale,joinKey=#{TAILSCALE_KEY}"
+    vpn_auth = nil
     vpn_auth_method = nil
     if role_num == 0
       vpn_auth_method = "vpn-auth"
+      vpn_auth = "name=tailscale,joinKey=#{TAILSCALE_KEY}"
     else
       vpn_auth_method = "vpn-auth-file"
       File.write("./vpn-auth-file", vpn_auth)
+      vpn_auth = File.expand_path("./vpn-auth-file")
     end
     vm.provision :k3s, run: 'once' do |k3s|
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
