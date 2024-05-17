@@ -474,12 +474,11 @@ installed_hash_matches() {
 
 # Use the GitHub API to identify the artifact associated with a given PR
 get_pr_artifact_url() {
-    GITHUB_API_URL=https://api.github.com/repos/k3s-io/k3s
+    github_api_url=https://api.github.com/repos/k3s-io/k3s
 
     # Check if jq is installed
     if ! [ -x "$(command -v jq)" ]; then
-        echo "jq is required to use INSTALL_K3S_PR. Please install jq and try again"
-        exit 1
+        fatal "Installing PR builds requires jq"
     fi
 
     if [ -z "${GITHUB_TOKEN}" ]; then
@@ -487,17 +486,17 @@ get_pr_artifact_url() {
     fi
 
     # GET request to the GitHub API to retrieve the latest commit SHA from the pull request
-    COMMIT_ID=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
+    commit_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
     
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
-    wf_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/commits/$COMMIT_ID/check-runs")
+    wf_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/commits/$commit_id/check-runs")
     build_workflow=$(printf "%s" "$wf_raw" | jq -r '.check_runs[] |  select(.name == "build / Build")')
     
     # Extract the Run ID from the build workflow and lookup artifacts associated with the run
-    RUN_ID=$(echo "$build_workflow" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}')
+    run_id=$(echo "$build_workflow" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}' | sort -rn | head -1)
 
-    # Extract the artifat ID for the "k3s" artifact    
-    artifacts=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$GITHUB_API_URL/actions/runs/$RUN_ID/artifacts")
+    # Extract the artifact ID for the "k3s" artifact    
+    artifacts=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/actions/runs/$run_id/artifacts")
     artifacts_url=$(echo "$artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
     GITHUB_PR_URL=$artifacts_url
 }
