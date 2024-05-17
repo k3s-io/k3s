@@ -1,8 +1,8 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-0", "agent-0" ])
+  ["server-0", "agent-0", "agent-1" ])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2310', 'generic/ubuntu2310'])
+  ['generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 GOCOVER = (ENV['E2E_GOCOVER'] || "")
@@ -45,13 +45,25 @@ def provision(vm, roles, role_num, node_num)
     end
   end
   if roles.include?("agent")
+    vpn_auth = nil
+    vpn_auth_method = nil
+    auth_info = "name=tailscale,joinKey=#{TAILSCALE_KEY}"
+    if role_num == 0
+      vpn_auth_method = "vpn-auth"
+      vpn_auth = auth_info
+    else
+      vpn_auth_method = "vpn-auth-file"
+      File.write("./vpn-auth-file", auth_info)
+      vm.provision "file", source: "./vpn-auth-file", destination: "/home/vagrant/vpn-auth-file"
+      vpn_auth = "/home/vagrant/vpn-auth-file"
+    end
     vm.provision :k3s, run: 'once' do |k3s|
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "agent "
       k3s.config = <<~YAML
         server: https://TAILSCALEIP:6443
         token: vagrant
-        vpn-auth: "name=tailscale,joinKey=#{TAILSCALE_KEY}"
+        #{vpn_auth_method}: #{vpn_auth}
       YAML
       k3s.env = ["K3S_KUBECONFIG_MODE=0644",  "INSTALL_K3S_SKIP_START=true", install_type]
     end

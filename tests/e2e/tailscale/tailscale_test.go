@@ -14,7 +14,7 @@ import (
 // Valid nodeOS: generic/ubuntu2310, opensuse/Leap-15.3.x86_64
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
-var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
+var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
@@ -82,6 +82,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 		Eventually(func(g Gomega) {
 			nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(len(nodes)).To(Equal(*agentCount + *serverCount))
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
