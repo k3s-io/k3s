@@ -147,7 +147,8 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	ipfslog.SetAllLoggers(level)
 
 	// Get containerd client
-	ociClient, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls)
+	ociOpts := []oci.Option{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
+	ociClient, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
 	if err != nil {
 		return errors.Wrap(err, "failed to create OCI client")
 	}
@@ -222,9 +223,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		registry.WithResolveRetries(resolveRetries),
 		registry.WithResolveTimeout(resolveTimeout),
 		registry.WithTransport(client.Transport),
+		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
 	reg := registry.NewRegistry(ociClient, router, registryOpts...)
-	regSvr := reg.Server(":"+c.RegistryPort, logr.FromContextOrDiscard(ctx))
+	regSvr := reg.Server(":" + c.RegistryPort)
 
 	// Close router on shutdown
 	go func() {
