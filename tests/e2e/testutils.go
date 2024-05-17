@@ -121,6 +121,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
 		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		fmt.Println(cmd)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
