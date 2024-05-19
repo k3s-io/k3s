@@ -932,8 +932,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1 h1:nlix2+EM1UDofoHgp/X2VHzMvJW7oYbZbE
 github.com/k3s-io/etcd/raft/v3 v3.5.9-k3s1/go.mod h1:WnFkqzFdZua4LVlVXQEGhmooLeyS7mqzS4Pf4BCVqXg=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1 h1:B3039IkTPnwQEt4tIMjC6yd6b1Q3Z9ZZe8rfaBPfbXo=
 github.com/k3s-io/etcd/server/v3 v3.5.9-k3s1/go.mod h1:GgI1fQClQCFIzuVjlvdbMxNbnISt90gdfYyqiAIt65g=
-github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6 h1:2VcBFT2iPskZqNEVY5636Fk8NHiM/x4zQ9/h+f3WMSA=
-github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6/go.mod h1:AcSxEhOIUgeVvBTnJOAwcezBZXtYew/RhKwO5xp3RlM=
+github.com/k3s-io/helm-controller v0.16.0 h1:GcPbK45oOodOqMv8K+eaoxoM4YCp9s7HV/tYlf3FAxU=
+github.com/k3s-io/helm-controller v0.16.0/go.mod h1:CjndapCqBrPKQAvNSOjz5PqBGAZFwaUvn0CiC2fBPJQ=
 github.com/k3s-io/kine v0.11.8-0.20240430184817-f9ce6f8da97b h1:t3gQARoXVPqHkRXwYObNokrL+KU7/plVIjhXaNH6MUw=
 github.com/k3s-io/kine v0.11.8-0.20240430184817-f9ce6f8da97b/go.mod h1:TcTDRPVgcPQXL9E+lLXA1KVpHUxceN7xBICJUI2abPU=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
@@ -1414,6 +1414,8 @@ github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcp
 github.com/rancher/remotedialer v0.3.0/go.mod h1:BwwztuvViX2JrLLUwDlsYt5DiyUwHLlzynRwkZLAY0Q=
 github.com/rancher/wharfie v0.6.4 h1:JwYB+q661n8ut/ysgsjKe0P0z6bHCCFoC+29995ME90=
 github.com/rancher/wharfie v0.6.4/go.mod h1:kWv97z0sMAbnVNT/oe+JFZJVKn4xkas7ZdFf6UifWis=
+github.com/rancher/wrangler/v2 v2.2.0-rc5 h1:HxqFJyVuLRSAyexEJ3dETa8HPhSJtWO7dhrfheoQBD0=
+github.com/rancher/wrangler/v2 v2.2.0-rc5/go.mod h1:CxFixTM6jrm17WJSQ0CBwc3zHwrbk4GkTYj56P53WuA=
 github.com/rancher/wrangler/v3 v3.0.0-rc2 h1:XGSPPp6GXELqlLvwJp5MsdqyCPu6SCA4UKJ7rQJzE40=
 github.com/rancher/wrangler/v3 v3.0.0-rc2/go.mod h1:f54hh7gFkwwbjsieT2b63FowzTU8FvrBonPe//0CIXo=
 github.com/raulk/go-watchdog v1.3.0 h1:oUmdlHxdkXRJlwfG0O9omj8ukerm8MEQavSiDTEtBsk=
