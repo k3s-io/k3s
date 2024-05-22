@@ -208,7 +208,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		defer imageReader.Close()
 
 		logrus.Infof("Importing images from %s", filePath)
-		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true))
+		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true), containerd.WithSkipMissing())
 		if err != nil {
 			return errors.Wrap(err, "failed to import images from "+filePath)
 		}
