@@ -82,6 +82,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 		Eventually(func(g Gomega) {
 			nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(len(nodes)).To(Equal(*agentCount + *serverCount))
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
