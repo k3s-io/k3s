@@ -924,8 +924,8 @@ github.com/k3s-io/kine v0.11.8-0.20240430184817-f9ce6f8da97b h1:t3gQARoXVPqHkRXw
 github.com/k3s-io/kine v0.11.8-0.20240430184817-f9ce6f8da97b/go.mod h1:TcTDRPVgcPQXL9E+lLXA1KVpHUxceN7xBICJUI2abPU=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
-github.com/k3s-io/kube-router/v2 v2.1.0 h1:BWVFMS78Duw/MRdZ8HpvVboO0yjqkIFKs51rHpI2EWM=
-github.com/k3s-io/kube-router/v2 v2.1.0/go.mod h1:JU/k2Qqcph0myF1cRDLidz1SZdoSrPczuYcGxYRSP0A=
+github.com/k3s-io/kube-router/v2 v2.1.2 h1:/eLfIsELLsqqRW1skIJ2qe7bWL6IZZ9Hg3IniIgObXo=
+github.com/k3s-io/kube-router/v2 v2.1.2/go.mod h1:a7QUTzCmDayYvqh6tXSKEB/ICSuGCs64qD4aCtaJqAU=
 github.com/k3s-io/kubernetes v1.30.1-k3s1 h1:UTQE4dXUvfOL6ESIxTKsqr6NTCIF+feNtlU5znXo3Lo=
 github.com/k3s-io/kubernetes v1.30.1-k3s1/go.mod h1:yPbIk3MhmhGigX62FLJm+CphNtjxqCvAIFQXup6RKS0=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.30.1-k3s1 h1:VzECjZ5j1WQJPXYMcRd3TqfRKoQRdq90NowWd4S3F7Q=
@@ -1302,8 +1302,8 @@ github.com/onsi/gomega v1.27.10/go.mod h1:RsS8tutOdbdgzbPtzzATp12yT7kM5I5aElG3ev
 github.com/onsi/gomega v1.29.0/go.mod h1:9sxs+SwGrKI0+PWe4Fxa9tFQQBG5xSsSbMXOI8PPpoQ=
 github.com/onsi/gomega v1.30.0/go.mod h1:9sxs+SwGrKI0+PWe4Fxa9tFQQBG5xSsSbMXOI8PPpoQ=
 github.com/onsi/gomega v1.31.0/go.mod h1:DW9aCi7U6Yi40wNVAvT6kzFnEVEI5n3DloYBiKiT6zk=
-github.com/onsi/gomega v1.31.1 h1:KYppCUK+bUgAZwHOu7EXVBKyQA6ILvOESHkn/tgoqvo=
-github.com/onsi/gomega v1.31.1/go.mod h1:y40C95dwAD1Nz36SsEnxvfFe8FFfNxzI5eJ0EYGyAy0=
+github.com/onsi/gomega v1.32.0 h1:JRYU78fJ1LPxlckP6Txi/EYqJvjtMrDC04/MM5XRHPk=
+github.com/onsi/gomega v1.32.0/go.mod h1:a4x4gW6Pz2yK1MAmvluYme5lvYTn61afQ2ETw/8n4Lg=
 github.com/open-policy-agent/opa v0.59.0/go.mod h1:rdJSkEc4oQ+0074/3Fsgno5bkPsYxTjU5aLNmMujIvI=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
