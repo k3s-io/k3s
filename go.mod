@@ -102,6 +102,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
+	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/helm-controller v0.15.9
 	github.com/k3s-io/kine v0.11.7
