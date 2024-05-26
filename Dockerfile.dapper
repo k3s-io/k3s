@@ -22,7 +22,7 @@ RUN apk -U --no-cache add \
 RUN python3 -m pip install awscli
 
 # Install Trivy
-ENV TRIVY_VERSION="0.50.1"
+ENV TRIVY_VERSION="0.51.4"
 RUN case "$(go env GOARCH)" in \
     arm64) TRIVY_ARCH="ARM64" ;; \
     amd64) TRIVY_ARCH="64bit" ;; \
