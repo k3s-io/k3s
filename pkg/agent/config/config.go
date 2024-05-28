@@ -33,7 +33,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/registries"
-	"github.com/rancher/wrangler/pkg/slice"
+	"github.com/rancher/wrangler/v3/pkg/slice"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -200,7 +200,16 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 		return "", err
 	}
 	nodePassword := hex.EncodeToString(password)
-	return nodePassword, os.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600)
+
+	if err = os.WriteFile(nodePasswordFile, []byte(nodePassword+"\n"), 0600); err != nil {
+		return nodePassword, err
+	}
+
+	if err = configureACL(nodePassword); err != nil {
+		return nodePassword, err
+	}
+
+	return nodePassword, nil
 }
 
 func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string) {
@@ -307,19 +316,22 @@ func isValidResolvConf(resolvConfFile string) bool {
 
 	nameserver := regexp.MustCompile(`^nameserver\s+([^\s]*)`)
 	scanner := bufio.NewScanner(file)
+	foundNameserver := false
 	for scanner.Scan() {
 		ipMatch := nameserver.FindStringSubmatch(scanner.Text())
 		if len(ipMatch) == 2 {
 			ip := net.ParseIP(ipMatch[1])
 			if ip == nil || !ip.IsGlobalUnicast() {
 				return false
+			} else {
+				foundNameserver = true
 			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return false
 	}
-	return true
+	return foundNameserver
 }
 
 func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {

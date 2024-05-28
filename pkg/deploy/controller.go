@@ -20,10 +20,10 @@ import (
 	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	pkgutil "github.com/k3s-io/k3s/pkg/util"
 	errors2 "github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/apply"
-	"github.com/rancher/wrangler/pkg/kv"
-	"github.com/rancher/wrangler/pkg/merr"
-	"github.com/rancher/wrangler/pkg/objectset"
+	"github.com/rancher/wrangler/v3/pkg/apply"
+	"github.com/rancher/wrangler/v3/pkg/kv"
+	"github.com/rancher/wrangler/v3/pkg/merr"
+	"github.com/rancher/wrangler/v3/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -118,6 +118,26 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+		// Descend into symlinked directories, however, only top-level links are followed
+		if info.Mode()&os.ModeSymlink != 0 {
+			linkInfo, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if linkInfo.IsDir() {
+				evalPath, err := filepath.EvalSymlinks(path)
+				if err != nil {
+					return err
+				}
+				filepath.Walk(evalPath, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					files[path] = info
+					return nil
+				})
+			}
 		}
 		files[path] = info
 		return nil

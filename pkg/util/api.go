@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/merr"
-	"github.com/rancher/wrangler/pkg/schemes"
+	"github.com/rancher/wrangler/v3/pkg/merr"
+	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"

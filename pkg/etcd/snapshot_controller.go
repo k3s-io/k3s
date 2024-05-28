@@ -13,7 +13,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
+	controllerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

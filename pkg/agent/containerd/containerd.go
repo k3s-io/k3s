@@ -25,7 +25,7 @@ import (
 	"github.com/natefinch/lumberjack"
 	"github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
-	"github.com/rancher/wrangler/pkg/merr"
+	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
@@ -208,7 +208,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		defer imageReader.Close()
 
 		logrus.Infof("Importing images from %s", filePath)
-		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true))
+		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true), containerd.WithSkipMissing())
 		if err != nil {
 			return errors.Wrap(err, "failed to import images from "+filePath)
 		}

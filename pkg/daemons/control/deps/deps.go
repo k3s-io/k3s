@@ -30,7 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/apis/apiserver"
-	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/util/keyutil"
 )
@@ -829,11 +829,12 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 
 func genCloudConfig(controlConfig *config.Control) error {
 	cloudConfig := cloudprovider.Config{
-		LBEnabled:   !controlConfig.DisableServiceLB,
-		LBNamespace: controlConfig.ServiceLBNamespace,
-		LBImage:     cloudprovider.DefaultLBImage,
-		Rootless:    controlConfig.Rootless,
-		NodeEnabled: !controlConfig.DisableCCM,
+		LBDefaultPriorityClassName: cloudprovider.DefaultLBPriorityClassName,
+		LBEnabled:                  !controlConfig.DisableServiceLB,
+		LBNamespace:                controlConfig.ServiceLBNamespace,
+		LBImage:                    cloudprovider.DefaultLBImage,
+		Rootless:                   controlConfig.Rootless,
+		NodeEnabled:                !controlConfig.DisableCCM,
 	}
 	if controlConfig.SystemDefaultRegistry != "" {
 		cloudConfig.LBImage = controlConfig.SystemDefaultRegistry + "/" + cloudConfig.LBImage

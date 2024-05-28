@@ -2,7 +2,7 @@ package crd
 
 import (
 	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	"github.com/rancher/wrangler/pkg/crd"
+	"github.com/rancher/wrangler/v3/pkg/crd"
 )
 
 func List() []crd.CRD {

@@ -14,7 +14,7 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2310, generic/centos7, generic/rocky8, opensuse/Leap-15.5.x86_64
+// generic/ubuntu2310, generic/centos7, generic/rocky8, opensuse/Leap-15.6.x86_64
 
 var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
@@ -155,7 +155,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 		serverToken := "1234"
 		It("Creates a new server token", func() {
 			Expect(e2e.RunCmdOnNode("k3s token rotate -t vagrant --new-token="+serverToken, serverNodeNames[0])).
-				To(ContainSubstring("Token rotated, restart k3s with new token"))
+				To(ContainSubstring("Token rotated, restart k3s nodes with new token"))
 		})
 		It("Restarts servers with the new token", func() {
 			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)

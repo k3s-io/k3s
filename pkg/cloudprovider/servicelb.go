@@ -10,11 +10,11 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/rancher/wrangler/pkg/condition"
-	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
-	discoveryclient "github.com/rancher/wrangler/pkg/generated/controllers/discovery/v1"
-	"github.com/rancher/wrangler/pkg/merr"
-	"github.com/rancher/wrangler/pkg/objectset"
+	"github.com/rancher/wrangler/v3/pkg/condition"
+	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
+	discoveryclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/discovery/v1"
+	"github.com/rancher/wrangler/v3/pkg/merr"
+	"github.com/rancher/wrangler/v3/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -23,6 +23,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/retry"
@@ -40,12 +41,14 @@ var (
 	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
+	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
 	controllerName         = ccmapp.DefaultInitFuncConstructors["service"].InitContext.ClientName
 )
 
 const (
-	Ready       = condition.Cond("Ready")
-	DefaultLBNS = meta.NamespaceSystem
+	Ready                      = condition.Cond("Ready")
+	DefaultLBNS                = meta.NamespaceSystem
+	DefaultLBPriorityClassName = "system-node-critical"
 )
 
 var (
@@ -320,10 +323,8 @@ func (k *k3s) patchStatus(svc *core.Service, previousStatus, newStatus *core.Loa
 // If at least one node has External IPs available, only external IPs are returned.
 // If no nodes have External IPs set, the Internal IPs of all nodes running pods are returned.
 func (k *k3s) podIPs(pods []*core.Pod, svc *core.Service, readyNodes map[string]bool) ([]string, error) {
-	// Go doesn't have sets so we stuff things into a map of bools and then get lists of keys
-	// to determine the unique set of IPs in use by pods.
-	extIPs := map[string]bool{}
-	intIPs := map[string]bool{}
+	extIPs := sets.Set[string]{}
+	intIPs := sets.Set[string]{}
 
 	for _, pod := range pods {
 		if pod.Spec.NodeName == "" || pod.Status.PodIP == "" {
@@ -345,25 +346,18 @@ func (k *k3s) podIPs(pods []*core.Pod, svc *core.Service, readyNodes map[string]
 
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == core.NodeExternalIP {
-				extIPs[addr.Address] = true
+				extIPs.Insert(addr.Address)
 			} else if addr.Type == core.NodeInternalIP {
-				intIPs[addr.Address] = true
+				intIPs.Insert(addr.Address)
 			}
 		}
 	}
 
-	keys := func(addrs map[string]bool) (ips []string) {
-		for k := range addrs {
-			ips = append(ips, k)
-		}
-		return ips
-	}
-
 	var ips []string
-	if len(extIPs) > 0 {
-		ips = keys(extIPs)
+	if extIPs.Len() > 0 {
+		ips = extIPs.UnsortedList()
 	} else {
-		ips = keys(intIPs)
+		ips = intIPs.UnsortedList()
 	}
 
 	ips, err := filterByIPFamily(ips, svc)
@@ -436,6 +430,7 @@ func (k *k3s) deleteDaemonSet(ctx context.Context, svc *core.Service) error {
 func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	name := generateName(svc)
 	oneInt := intstr.FromInt(1)
+	priorityClassName := k.getPriorityClassName(svc)
 	localTraffic := servicehelper.RequestsOnlyLocalTraffic(svc)
 	sourceRangesSet, err := servicehelper.GetLoadBalancerSourceRanges(svc)
 	if err != nil {
@@ -443,18 +438,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	}
 	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
 
-	var sysctls []core.Sysctl
 	for _, ipFamily := range svc.Spec.IPFamilies {
-		switch ipFamily {
-		case core.IPv4Protocol:
-			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
-		case core.IPv6Protocol:
-			sysctls = append(sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+		if ipFamily == core.IPv6Protocol && sourceRanges == "0.0.0.0/0" {
 			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
 			// If using the default range, and IPv6 is enabled, also allow IPv6.
-			if sourceRanges == "0.0.0.0/0" {
-				sourceRanges += ",::/0"
-			}
+			sourceRanges += ",::/0"
 		}
 	}
 
@@ -487,10 +475,14 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					},
 				},
 				Spec: core.PodSpec{
+					PriorityClassName:            priorityClassName,
 					ServiceAccountName:           "svclb",
 					AutomountServiceAccountToken: utilsptr.To(false),
 					SecurityContext: &core.PodSecurityContext{
-						Sysctls: sysctls,
+						Sysctls: []core.Sysctl{
+							{Name: "net.ipv4.ip_forward", Value: "1"},
+							{Name: "net.ipv6.conf.all.forwarding", Value: "1"},
+						},
 					},
 					Tolerations: []core.Toleration{
 						{
@@ -692,6 +684,17 @@ func (k *k3s) removeFinalizer(ctx context.Context, svc *core.Service) (*core.Ser
 		return k.client.CoreV1().Services(svc.Namespace).Update(ctx, svc, meta.UpdateOptions{})
 	}
 	return svc, nil
+}
+
+// getPriorityClassName returns the value of the priority class name annotation on the service,
+// or the system default priority class name.
+func (k *k3s) getPriorityClassName(svc *core.Service) string {
+	if svc != nil {
+		if v, ok := svc.Annotations[priorityAnnotation]; ok {
+			return v
+		}
+	}
+	return k.LBDefaultPriorityClassName
 }
 
 // generateName generates a distinct name for the DaemonSet based on the service name and UID

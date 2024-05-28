@@ -7,15 +7,15 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/rancher/wrangler/pkg/apply"
-	"github.com/rancher/wrangler/pkg/generated/controllers/apps"
-	appsclient "github.com/rancher/wrangler/pkg/generated/controllers/apps/v1"
-	"github.com/rancher/wrangler/pkg/generated/controllers/core"
-	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
-	"github.com/rancher/wrangler/pkg/generated/controllers/discovery"
-	discoveryclient "github.com/rancher/wrangler/pkg/generated/controllers/discovery/v1"
-	"github.com/rancher/wrangler/pkg/generic"
-	"github.com/rancher/wrangler/pkg/start"
+	"github.com/rancher/wrangler/v3/pkg/apply"
+	"github.com/rancher/wrangler/v3/pkg/generated/controllers/apps"
+	appsclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/apps/v1"
+	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
+	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
+	"github.com/rancher/wrangler/v3/pkg/generated/controllers/discovery"
+	discoveryclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/discovery/v1"
+	"github.com/rancher/wrangler/v3/pkg/generic"
+	"github.com/rancher/wrangler/v3/pkg/start"
 	"github.com/sirupsen/logrus"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -28,11 +28,12 @@ import (
 // Config describes externally-configurable cloud provider configuration.
 // This is normally unmarshalled from a JSON config file.
 type Config struct {
-	LBEnabled   bool   `json:"lbEnabled"`
-	LBImage     string `json:"lbImage"`
-	LBNamespace string `json:"lbNamespace"`
-	NodeEnabled bool   `json:"nodeEnabled"`
-	Rootless    bool   `json:"rootless"`
+	LBDefaultPriorityClassName string `json:"lbDefaultPriorityClassName"`
+	LBEnabled                  bool   `json:"lbEnabled"`
+	LBImage                    string `json:"lbImage"`
+	LBNamespace                string `json:"lbNamespace"`
+	NodeEnabled                bool   `json:"nodeEnabled"`
+	Rootless                   bool   `json:"rootless"`
 }
 
 type k3s struct {
@@ -56,10 +57,11 @@ func init() {
 		var err error
 		k := k3s{
 			Config: Config{
-				LBEnabled:   true,
-				LBImage:     DefaultLBImage,
-				LBNamespace: DefaultLBNS,
-				NodeEnabled: true,
+				LBDefaultPriorityClassName: DefaultLBPriorityClassName,
+				LBEnabled:                  true,
+				LBImage:                    DefaultLBImage,
+				LBNamespace:                DefaultLBNS,
+				NodeEnabled:                true,
 			},
 		}
 

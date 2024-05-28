@@ -26,8 +26,8 @@ def provision(vm, role, role_num, node_num)
     :libvirt__ipv6_address => "#{NETWORK6_PREFIX}::1",
     :libvirt__ipv6_prefix => "64"
     
-  scripts_location = Dir.exists?("./scripts") ? "./scripts" : "../scripts" 
-  vagrant_defaults = File.exists?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
   
   defaultOSConfigure(vm)

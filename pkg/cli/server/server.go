@@ -10,7 +10,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
-	"github.com/erikdubbelboer/gspt"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
@@ -19,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/spegel"
@@ -26,7 +26,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
-	"github.com/rancher/wrangler/pkg/signals"
+	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -55,7 +55,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
-	gspt.SetProcTitle(os.Args[0] + " server")
+	proctitle.SetProcTitle(os.Args[0] + " server")
 
 	// If the agent is enabled, evacuate cgroup v2 before doing anything else that may fork.
 	// If the agent is disabled, we don't need to bother doing this as it is only the kubelet

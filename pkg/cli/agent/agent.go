@@ -9,17 +9,17 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/erikdubbelboer/gspt"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/datadir"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	"github.com/rancher/wrangler/pkg/signals"
+	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	apiauth "k8s.io/apiserver/pkg/authentication/authenticator"
@@ -31,7 +31,7 @@ func Run(ctx *cli.Context) error {
 
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
-	gspt.SetProcTitle(os.Args[0] + " agent")
+	proctitle.SetProcTitle(os.Args[0] + " agent")
 
 	// Evacuate cgroup v2 before doing anything else that may fork.
 	if err := cmds.EvacuateCgroup2(); err != nil {
@@ -90,16 +90,16 @@ func Run(ctx *cli.Context) error {
 	contextCtx := signals.SetupSignalContext()
 
 	go cmds.WriteCoverage(contextCtx)
-	if cmds.AgentConfig.VPNAuthFile != "" {
-		cmds.AgentConfig.VPNAuth, err = util.ReadFile(cmds.AgentConfig.VPNAuthFile)
+	if cfg.VPNAuthFile != "" {
+		cfg.VPNAuth, err = util.ReadFile(cfg.VPNAuthFile)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Starts the VPN in the agent if config was set up
-	if cmds.AgentConfig.VPNAuth != "" {
-		err := vpn.StartVPN(cmds.AgentConfig.VPNAuth)
+	if cfg.VPNAuth != "" {
+		err := vpn.StartVPN(cfg.VPNAuth)
 		if err != nil {
 			return err
 		}

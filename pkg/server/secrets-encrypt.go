@@ -17,11 +17,11 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
+	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 )

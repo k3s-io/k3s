@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -16,6 +15,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/datadir"
+	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/util/services"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -27,7 +27,7 @@ import (
 )
 
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, error) {
-	gspt.SetProcTitle(os.Args[0])
+	proctitle.SetProcTitle(os.Args[0])
 
 	dataDir, err := datadir.Resolve(cfg.DataDir)
 	if err != nil {

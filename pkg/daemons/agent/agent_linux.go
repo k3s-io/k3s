@@ -112,9 +112,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 			argsMap["container-runtime-endpoint"] = socketPrefix + cfg.RuntimeSocket
 		}
 	}
-	if cfg.PauseImage != "" {
-		argsMap["pod-infra-container-image"] = cfg.PauseImage
-	}
 	if cfg.ImageServiceSocket != "" {
 		if strings.HasPrefix(cfg.ImageServiceSocket, socketPrefix) {
 			argsMap["image-service-endpoint"] = cfg.ImageServiceSocket
