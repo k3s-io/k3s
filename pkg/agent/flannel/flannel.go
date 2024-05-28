@@ -23,8 +23,9 @@ import (
 
 	"github.com/flannel-io/flannel/pkg/backend"
 	"github.com/flannel-io/flannel/pkg/ip"
-	"github.com/flannel-io/flannel/pkg/iptables"
 	"github.com/flannel-io/flannel/pkg/subnet/kube"
+	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
+	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -80,49 +81,36 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	if err != nil {
 		return errors.Wrap(err, "failed to register flannel network")
 	}
+	trafficMngr := &iptables.IPTablesManager{}
+	err = trafficMngr.Init(ctx, &sync.WaitGroup{})
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize flannel ipTables manager")
+	}
 
 	if netMode == (ipv4+ipv6) || netMode == ipv4 {
-		net, err := config.GetFlannelNetwork(&bn.Lease().Subnet)
-		if err != nil {
-			return errors.Wrap(err, "failed to get flannel network details")
+		if config.Network.Empty() {
+			return errors.New("ipv4 mode requested but no ipv4 network provided")
 		}
-		iptables.CreateIP4Chain("nat", "FLANNEL-POSTRTG")
-		iptables.CreateIP4Chain("filter", "FLANNEL-FWD")
-		getMasqRules := func() []iptables.IPTablesRule {
-			if config.HasNetworks() {
-				return iptables.MasqRules(config.Networks, bn.Lease())
-			}
-			return iptables.MasqRules([]ip.IP4Net{config.Network}, bn.Lease())
-		}
-		getFwdRules := func() []iptables.IPTablesRule {
-			return iptables.ForwardRules(net.String())
-		}
-		go iptables.SetupAndEnsureIP4Tables(getMasqRules, 60)
-		go iptables.SetupAndEnsureIP4Tables(getFwdRules, 50)
 	}
 
-	if config.IPv6Network.String() != emptyIPv6Network {
-		ip6net, err := config.GetFlannelIPv6Network(&bn.Lease().IPv6Subnet)
-		if err != nil {
-			return errors.Wrap(err, "failed to get ipv6 flannel network details")
-		}
-		if flannelIPv6Masq {
-			logrus.Debugf("Creating IPv6 masquerading iptables rules for %s network", config.IPv6Network.String())
-			iptables.CreateIP6Chain("nat", "FLANNEL-POSTRTG")
-			getRules := func() []iptables.IPTablesRule {
-				if config.HasIPv6Networks() {
-					return iptables.MasqIP6Rules(config.IPv6Networks, bn.Lease())
-				}
-				return iptables.MasqIP6Rules([]ip.IP6Net{config.IPv6Network}, bn.Lease())
-			}
-			go iptables.SetupAndEnsureIP6Tables(getRules, 60)
-		}
-		iptables.CreateIP6Chain("filter", "FLANNEL-FWD")
-		getRules := func() []iptables.IPTablesRule {
-			return iptables.ForwardRules(ip6net.String())
-		}
-		go iptables.SetupAndEnsureIP6Tables(getRules, 50)
+	//setup masq rules
+	prevNetwork := ReadCIDRFromSubnetFile(subnetFile, "FLANNEL_NETWORK")
+	prevSubnet := ReadCIDRFromSubnetFile(subnetFile, "FLANNEL_SUBNET")
+
+	prevIPv6Network := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_NETWORK")
+	prevIPv6Subnet := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_SUBNET")
+	if flannelIPv6Masq {
+		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, config.IPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
+	} else {
+		//set empty flannel ipv6 Network to prevent masquerading
+		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
 	}
+	if err != nil {
+		return errors.Wrap(err, "failed to setup masq rules")
+	}
+
+	//setup forward rules
+	trafficMngr.SetupAndEnsureForwardRules(ctx, config.Network, config.IPv6Network, 50)
 
 	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, netMode); err != nil {
 		// Continue, even though it failed.
@@ -236,4 +224,38 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	// atomically visible with the contents
 	return os.Rename(tempFile, path)
 	//TODO - is this safe? What if it's not on the same FS?
+}
+
+// ReadCIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv4 network CIDRKey
+func ReadCIDRFromSubnetFile(path string, CIDRKey string) ip.IP4Net {
+	var prevCIDR ip.IP4Net
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		prevSubnetVals, err := godotenv.Read(path)
+		if err != nil {
+			logrus.Errorf("Couldn't fetch previous %s from subnet file at %s: %v", CIDRKey, path, err)
+		} else if prevCIDRString, ok := prevSubnetVals[CIDRKey]; ok {
+			err = prevCIDR.UnmarshalJSON([]byte(prevCIDRString))
+			if err != nil {
+				logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+			}
+		}
+	}
+	return prevCIDR
+}
+
+// ReadIP6CIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv6 network CIDRKey
+func ReadIP6CIDRFromSubnetFile(path string, CIDRKey string) ip.IP6Net {
+	var prevCIDR ip.IP6Net
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		prevSubnetVals, err := godotenv.Read(path)
+		if err != nil {
+			logrus.Errorf("Couldn't fetch previous %s from subnet file at %s: %v", CIDRKey, path, err)
+		} else if prevCIDRString, ok := prevSubnetVals[CIDRKey]; ok {
+			err = prevCIDR.UnmarshalJSON([]byte(prevCIDRString))
+			if err != nil {
+				logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+			}
+		}
+	}
+	return prevCIDR
 }
