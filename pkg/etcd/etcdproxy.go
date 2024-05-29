@@ -130,7 +130,7 @@ func (e etcdproxy) createHealthCheck(ctx context.Context, address string) func()
 			statusCode = resp.StatusCode
 		}
 		if err != nil || statusCode != http.StatusOK {
-			logrus.Debugf("Health check %s failed: %v (StatusCode: %d)", url, err, statusCode)
+			logrus.Debugf("Health check %s failed: %v (StatusCode: %d)", address, err, statusCode)
 			connected = false
 		} else {
 			connected = true
