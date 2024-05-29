@@ -227,13 +227,19 @@ func (lb *LoadBalancer) SetHealthCheck(address string, healthCheck func() bool) 
 // runHealthChecks periodically health-checks all servers. Any servers that fail the health-check will have their
 // connections closed, to force clients to switch over to a healthy server.
 func (lb *LoadBalancer) runHealthChecks(ctx context.Context) {
+	previousStatus := map[string]bool{}
 	wait.Until(func() {
 		lb.mutex.RLock()
 		defer lb.mutex.RUnlock()
-		for _, server := range lb.servers {
-			if !server.healthCheck() {
+		for address, server := range lb.servers {
+			status := server.healthCheck()
+			if status == false && previousStatus[address] == true {
+				// Only close connections when the server transitions from healthy to unhealthy;
+				// we don't want to re-close all the connections every time as we might be ignoring
+				// health checks due to all servers being marked unhealthy.
 				defer server.closeAll()
 			}
+			previousStatus[address] = status
 		}
 	}, time.Second, ctx.Done())
 	logrus.Debugf("Stopped health checking for load balancer %s", lb.serviceName)
