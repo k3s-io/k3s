@@ -38,6 +38,9 @@ def provision(vm, role, role_num, node_num)
 
   if role.include?("server") && role_num == 0
     vm.provision "private-registry", type: "shell", inline: writePrivateRegistry
+    vm.provision "create-images-dir", type: "shell", inline: "mkdir -p -m 777 /tmp/images /var/lib/rancher/k3s/agent/images"
+    vm.provision "copy-images-file", type: "file", source: "../../../scripts/airgap/image-list.txt", destination: "/tmp/images/image-list.txt"
+    vm.provision "move-images-file", type: "shell", inline: "mv /tmp/images/image-list.txt /var/lib/rancher/k3s/agent/images/image-list.txt"
 
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server "
@@ -54,6 +57,9 @@ def provision(vm, role, role_num, node_num)
   
   elsif role.include?("server") && role_num != 0
     vm.provision "shell", inline: writePrivateRegistry
+    vm.provision "create-images-dir", type: "shell", inline: "mkdir -p -m 777 /tmp/images /var/lib/rancher/k3s/agent/images"
+    vm.provision "copy-images-file", type: "file", source: "../../../scripts/airgap/image-list.txt", destination: "/tmp/images/image-list.txt"
+    vm.provision "move-images-file", type: "shell", inline: "mv /tmp/images/image-list.txt /var/lib/rancher/k3s/agent/images/image-list.txt"
 
     vm.provision 'k3s-secondary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server"
