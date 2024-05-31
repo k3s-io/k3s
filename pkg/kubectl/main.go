@@ -54,7 +54,8 @@ func checkReadConfigPermissions(configFile string) error {
 	if err != nil {
 		if os.IsPermission(err) {
 			return fmt.Errorf("Unable to read %s, please start server "+
-				"with --write-kubeconfig-mode to modify kube config permissions", configFile)
+				"with --write-kubeconfig-mode or --write-kubeconfig-group "+
+				"to modify kube config permissions", configFile)
 		}
 	}
 	file.Close()
