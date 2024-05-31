@@ -182,6 +182,7 @@ type Control struct {
 	ServiceNodePortRange     *utilnet.PortRange
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	KubeConfigGroup          string
 	HelmJobImage             string
 	DataDir                  string
 	KineTLS                  bool
