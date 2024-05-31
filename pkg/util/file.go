@@ -2,6 +2,8 @@ package util
 
 import (
 	"os"
+	"os/user"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +13,27 @@ import (
 
 func SetFileModeForPath(name string, mode os.FileMode) error {
 	return os.Chmod(name, mode)
+}
+
+func SetFileGroupForPath(name string, group string) error {
+	// Try to use as group id
+	gid, err := strconv.Atoi(group)
+	if err == nil {
+		return os.Chown(name, -1, gid)
+	}
+
+	// Otherwise, it must be a group name
+	g, err := user.LookupGroup(group)
+	if err != nil {
+		return err
+	}
+
+	gid, err = strconv.Atoi(g.Gid)
+	if err != nil {
+		return err
+	}
+
+	return os.Chown(name, -1, gid)
 }
 
 func SetFileModeForFile(file *os.File, mode os.FileMode) error {
