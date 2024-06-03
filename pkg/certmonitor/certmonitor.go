@@ -126,7 +126,7 @@ func checkCerts(fileMap map[string][]string, warningPeriod time.Duration) error 
 				} else if now.After(cert.NotAfter) {
 					errs = append(errs, fmt.Errorf("%s/%s: certificate %s expired at %s", service, basename, cert.Subject, cert.NotAfter.Format(time.RFC3339)))
 				} else if warn.After(cert.NotAfter) {
-					errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, daemonconfig.CertificateRenewDays, cert.NotAfter.Format(time.RFC3339)))
+					errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, int(warningPeriod.Hours()/24), cert.NotAfter.Format(time.RFC3339)))
 				}
 			}
 		}
