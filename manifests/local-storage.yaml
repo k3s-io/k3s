@@ -67,7 +67,7 @@ spec:
             effect: "NoSchedule"
       containers:
       - name: local-path-provisioner
-        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.26"
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/local-path-provisioner:v0.0.27"
         imagePullPolicy: IfNotPresent
         command:
         - local-path-provisioner
