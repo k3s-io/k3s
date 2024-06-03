@@ -1,0 +1,59 @@
+name: Create linked issues for PRs without one
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Setup env
+        run: |
+          echo "USER=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
+          echo "ORG=k3s-io" >> $GITHUB_ENV
+          echo "REPO=k3s" >> $GITHUB_ENV
+          echo "TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
+      - name: Check user membership
+        run: |
+          if gh api "orgs/${{ env.ORG }}/public_members/${{ env.USER }}" --silent; then
+            echo "${{ env.USER }}  is a public member of ${{ env.ORG }}"
+            echo "MEMBER=true" >> $GITHUB_ENV
+          else
+            echo "${{ env.USER }} is not a public member of ${{ env.ORG }}"
+            echo "MEMBER=false" >> $GITHUB_ENV 
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      - name: Check issue
+        if: env.MEMBER == 'false'
+        run: |
+          issue_links=$(echo "${{ github.event.pull_request.body }}" | grep -o 'https://github.com/${{ env.ORG }}/${{ env.REPO }}/issues/[0-9]\+' || true)
+          
+          if [ -z "$issue_links" ]; then
+            echo "No linked issue found."
+            echo "ISSUE_EXISTS=false" >> $GITHUB_ENV
+          else
+            echo "Linked issue found: $issue_links"
+            echo "ISSUE_EXISTS=true" >> $GITHUB_ENV
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      - name: Create an issue
+        if: (env.MEMBER == 'false') && (env.ISSUE_EXISTS == 'false')
+        run: |
+          new_issue=$(gh issue create --title "${{ env.TITLE }}" --body "${{ github.event.pull_request.body }}" --repo "${{ env.ORG }}/${{ env.REPO }}" 2>&1)
+          echo "Created a new issue: $new_issue"
+          echo "ISSUE_URL=$new_issue" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+      - name: Comment on PR with issue link
+        if: (env.MEMBER == 'false') && (env.ISSUE_EXISTS == 'false')
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "Created a new issue to track the PR: ${{ env.ISSUE_URL }}" --repo "${{ env.ORG }}/${{ env.REPO }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
