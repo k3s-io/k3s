@@ -172,6 +172,11 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 				return conn, nil
 			}
 			logrus.Debugf("Dial error from load balancer %s: %s", lb.serviceName, err)
+			// Don't close connections to the failed server if we're retrying with health checks ignored.
+			// We don't want to disrupt active connections if it is unlikely they will have anywhere to go.
+			if !allChecksFailed {
+				defer server.closeAll()
+			}
 		}
 
 		newServer, err := lb.nextServer(targetServer)
@@ -179,7 +184,7 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 			return nil, err
 		}
 		if targetServer != newServer {
-			logrus.Debugf("Failed over to new server for load balancer %s: %s", lb.serviceName, newServer)
+			logrus.Debugf("Failed over to new server for load balancer %s: %s -> %s", lb.serviceName, targetServer, newServer)
 		}
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
