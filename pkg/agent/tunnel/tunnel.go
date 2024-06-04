@@ -437,7 +437,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 
 	onConnect := func(_ context.Context, _ *remotedialer.Session) error {
 		connected = true
-		logrus.WithField("url", wsURL).Info("Remotedialer connected to proxy")
+		logrus.Infof("Remotedialer connected to proxy: %s", wsURL)
 		if waitGroup != nil {
 			once.Do(waitGroup.Done)
 		}
@@ -451,7 +451,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 			err := remotedialer.ConnectToProxy(ctx, wsURL, nil, auth, ws, onConnect)
 			connected = false
 			if err != nil && !errors.Is(err, context.Canceled) {
-				logrus.WithField("url", wsURL).WithError(err).Error("Remotedialer proxy error; reconecting...")
+				logrus.Errorf("Remotedialer proxy error; reconecting to %s... %v", wsURL, err)
 				// wait between reconnection attempts to avoid hammering the server
 				time.Sleep(endpointDebounceDelay)
 			}
