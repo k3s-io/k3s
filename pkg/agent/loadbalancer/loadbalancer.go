@@ -158,6 +158,7 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 	lb.mutex.RLock()
 	defer lb.mutex.RUnlock()
 
+	var allChecksFailed bool
 	startIndex := lb.nextServerIndex
 	for {
 		targetServer := lb.currentServerAddress
@@ -165,12 +166,17 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 		server := lb.servers[targetServer]
 		if server == nil || targetServer == "" {
 			logrus.Debugf("Nil server for load balancer %s: %s", lb.serviceName, targetServer)
-		} else if server.healthCheck() {
+		} else if allChecksFailed || server.healthCheck() {
 			conn, err := server.dialContext(ctx, network, targetServer)
 			if err == nil {
 				return conn, nil
 			}
 			logrus.Debugf("Dial error from load balancer %s: %s", lb.serviceName, err)
+			// Don't close connections to the failed server if we're retrying with health checks ignored.
+			// We don't want to disrupt active connections if it is unlikely they will have anywhere to go.
+			if !allChecksFailed {
+				defer server.closeAll()
+			}
 		}
 
 		newServer, err := lb.nextServer(targetServer)
@@ -178,7 +184,7 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 			return nil, err
 		}
 		if targetServer != newServer {
-			logrus.Debugf("Failed over to new server for load balancer %s: %s", lb.serviceName, newServer)
+			logrus.Debugf("Failed over to new server for load balancer %s: %s -> %s", lb.serviceName, targetServer, newServer)
 		}
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -189,7 +195,11 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 			startIndex = maxIndex
 		}
 		if lb.nextServerIndex == startIndex {
-			return nil, errors.New("all servers failed")
+			if allChecksFailed {
+				return nil, errors.New("all servers failed")
+			}
+			logrus.Debugf("Health checks for all servers in load balancer %s have failed: retrying with health checks ignored", lb.serviceName)
+			allChecksFailed = true
 		}
 	}
 }

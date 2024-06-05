@@ -4,17 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener"
 	"github.com/rancher/dynamiclistener/factory"
@@ -24,7 +23,6 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilsnet "k8s.io/utils/net"
 )
 
 // newListener returns a new TCP listener and HTTP request handler using dynamiclistener.
@@ -43,11 +41,7 @@ func (c *Cluster) newListener(ctx context.Context) (net.Listener, http.Handler, 
 			os.Remove(filepath.Join(c.config.DataDir, "tls/dynamic-cert.json"))
 		}
 	}
-	ip := c.config.BindAddress
-	if utilsnet.IsIPv6String(ip) {
-		ip = fmt.Sprintf("[%s]", ip)
-	}
-	tcp, err := dynamiclistener.NewTCPListener(ip, c.config.SupervisorPort)
+	tcp, err := util.ListenWithLoopback(ctx, c.config.BindAddress, strconv.Itoa(c.config.SupervisorPort))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,17 +106,6 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 	handler, err = c.registerDBHandlers(handler)
 	if err != nil {
 		return err
-	}
-
-	if c.config.EnablePProf {
-		mux := mux.NewRouter().SkipClean(true)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		mux.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
-		mux.NotFoundHandler = handler
-		handler = mux
 	}
 
 	// Create a HTTP server with the registered request handlers, using logrus for logging

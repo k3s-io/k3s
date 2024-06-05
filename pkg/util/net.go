@@ -1,12 +1,15 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	apinet "k8s.io/apimachinery/pkg/util/net"
@@ -318,4 +321,112 @@ func getIPFromInterface(ifaceName string) (string, error) {
 	}
 
 	return "", fmt.Errorf("can't find ip for interface %s", ifaceName)
+}
+
+type multiListener struct {
+	listeners []net.Listener
+	closing   chan struct{}
+	conns     chan acceptRes
+}
+
+type acceptRes struct {
+	conn net.Conn
+	err  error
+}
+
+// explicit interface check
+var _ net.Listener = &multiListener{}
+
+var loopbacks = []string{"127.0.0.1", "::1"}
+
+// ListenWithLoopback listens on the given address, as well as on IPv4 and IPv6 loopback addresses.
+// If the address is a wildcard, the listener is return unwrapped.
+func ListenWithLoopback(ctx context.Context, addr string, port string) (net.Listener, error) {
+	lc := &net.ListenConfig{
+		KeepAlive: 3 * time.Minute,
+		Control:   permitReuse,
+	}
+	l, err := lc.Listen(ctx, "tcp", net.JoinHostPort(addr, port))
+	if err != nil {
+		return nil, err
+	}
+
+	// If we're listening on a wildcard address, we don't need to wrap with the other loopback addresses
+	switch addr {
+	case "", "::", "0.0.0.0":
+		return l, nil
+	}
+
+	ml := &multiListener{
+		listeners: []net.Listener{l},
+		closing:   make(chan struct{}),
+		conns:     make(chan acceptRes),
+	}
+
+	for _, laddr := range loopbacks {
+		if laddr == addr {
+			continue
+		}
+		if l, err := lc.Listen(ctx, "tcp", net.JoinHostPort(laddr, port)); err == nil {
+			ml.listeners = append(ml.listeners, l)
+		} else {
+			logrus.Debugf("Failed to listen on %s: %v", net.JoinHostPort(laddr, port), err)
+		}
+	}
+
+	for i := range ml.listeners {
+		go ml.accept(ml.listeners[i])
+	}
+
+	return ml, nil
+}
+
+// Addr returns the address of the non-loopback address that this multiListener is listening on
+func (ml *multiListener) Addr() net.Addr {
+	return ml.listeners[0].Addr()
+}
+
+// Close closes all the listeners
+func (ml *multiListener) Close() error {
+	close(ml.closing)
+	var errs merr.Errors
+	for i := range ml.listeners {
+		err := ml.listeners[i].Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return merr.NewErrors(errs)
+}
+
+// Accept returns a Conn/err pair from one of the waiting listeners
+func (ml *multiListener) Accept() (net.Conn, error) {
+	select {
+	case res, ok := <-ml.conns:
+		if ok {
+			return res.conn, res.err
+		}
+		return nil, fmt.Errorf("connection channel closed")
+	case <-ml.closing:
+		return nil, fmt.Errorf("listener closed")
+	}
+}
+
+// accept runs a loop, accepting connections and trying to send on the result channel
+func (ml *multiListener) accept(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		r := acceptRes{
+			conn: conn,
+			err:  err,
+		}
+		select {
+		case ml.conns <- r:
+		case <-ml.closing:
+			if r.err == nil {
+				r.conn.Close()
+			}
+			return
+		}
+	}
 }
