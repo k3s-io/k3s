@@ -205,7 +205,7 @@ func ensureNodePassword(nodePasswordFile string) (string, error) {
 		return nodePassword, err
 	}
 
-	if err = configureACL(nodePassword); err != nil {
+	if err = configureACL(nodePasswordFile); err != nil {
 		return nodePassword, err
 	}
 
