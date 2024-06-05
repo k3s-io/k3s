@@ -123,6 +123,7 @@ require (
 	github.com/prometheus/common v0.49.0
 	github.com/rancher/dynamiclistener v0.6.0-rc1
 	github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5
+	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.3.0
 	github.com/rancher/wharfie v0.6.4
 	github.com/rancher/wrangler/v3 v3.0.0-rc2
