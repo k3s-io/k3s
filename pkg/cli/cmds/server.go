@@ -45,11 +45,10 @@ type Server struct {
 	DisableAgent             bool
 	KubeConfigOutput         string
 	KubeConfigMode           string
+	KubeConfigGroup          string
 	HelmJobImage             string
 	TLSSan                   cli.StringSlice
 	TLSSanSecurity           bool
-	BindAddress              string
-	EnablePProf              bool
 	ExtraAPIArgs             cli.StringSlice
 	ExtraEtcdArgs            cli.StringSlice
 	ExtraSchedulerArgs       cli.StringSlice
@@ -87,6 +86,7 @@ type Server struct {
 	EncryptSkip              bool
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook
+	SupervisorMetrics        bool
 	EtcdSnapshotName         string
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
@@ -178,11 +178,7 @@ var ServerFlags = []cli.Flag{
 	VModule,
 	LogFile,
 	AlsoLogToStderr,
-	&cli.StringFlag{
-		Name:        "bind-address",
-		Usage:       "(listener) " + version.Program + " bind address (default: 0.0.0.0)",
-		Destination: &ServerConfig.BindAddress,
-	},
+	BindAddressFlag,
 	&cli.IntFlag{
 		Name:        "https-listen-port",
 		Usage:       "(listener) HTTPS listen port",
@@ -254,6 +250,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(client) Write kubeconfig with this mode",
 		Destination: &ServerConfig.KubeConfigMode,
 		EnvVar:      version.ProgramUpper + "_KUBECONFIG_MODE",
+	},
+	&cli.StringFlag{
+		Name:        "write-kubeconfig-group",
+		Usage:       "(client) Write kubeconfig with this group",
+		Destination: &ServerConfig.KubeConfigGroup,
+		EnvVar:      version.ProgramUpper + "_KUBECONFIG_GROUP",
 	},
 	&cli.StringFlag{
 		Name:        "helm-job-image",
@@ -493,8 +495,13 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "embedded-registry",
-		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd",
+		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd; when enabled agents will also listen on the supervisor port",
 		Destination: &ServerConfig.EmbeddedRegistry,
+	},
+	&cli.BoolFlag{
+		Name:        "supervisor-metrics",
+		Usage:       "(experimental/components) Enable serving " + version.Program + " internal metrics on the supervisor port; when enabled agents will also listen on the supervisor port",
+		Destination: &ServerConfig.SupervisorMetrics,
 	},
 	NodeNameFlag,
 	WithNodeIDFlag,
@@ -534,11 +541,7 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.EncryptSecrets,
 	},
 	// Experimental flags
-	&cli.BoolFlag{
-		Name:        "enable-pprof",
-		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
-		Destination: &ServerConfig.EnablePProf,
-	},
+	EnablePProfFlag,
 	&cli.BoolFlag{
 		Name:        "rootless",
 		Usage:       "(experimental) Run rootless",

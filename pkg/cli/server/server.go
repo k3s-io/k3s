@@ -12,13 +12,16 @@ import (
 	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
+	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
+	k3smetrics "github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/proctitle"
+	"github.com/k3s-io/k3s/pkg/profile"
 	"github.com/k3s-io/k3s/pkg/rootless"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/spegel"
@@ -30,7 +33,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
@@ -131,17 +133,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
+	serverConfig.ControlConfig.KubeConfigGroup = cfg.KubeConfigGroup
 	serverConfig.ControlConfig.HelmJobImage = cfg.HelmJobImage
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
 	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)
 	serverConfig.ControlConfig.SANSecurity = cfg.TLSSanSecurity
-	serverConfig.ControlConfig.BindAddress = cfg.BindAddress
+	serverConfig.ControlConfig.BindAddress = cmds.AgentConfig.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.ControlConfig.APIServerPort = cfg.APIServerPort
 	serverConfig.ControlConfig.APIServerBindAddress = cfg.APIServerBindAddress
-	serverConfig.ControlConfig.EnablePProf = cfg.EnablePProf
 	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
 	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
 	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs
@@ -174,6 +176,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.EncryptSecrets = cfg.EncryptSecrets
 	serverConfig.ControlConfig.EtcdExposeMetrics = cfg.EtcdExposeMetrics
 	serverConfig.ControlConfig.EtcdDisableSnapshots = cfg.EtcdDisableSnapshots
+	serverConfig.ControlConfig.SupervisorMetrics = cfg.SupervisorMetrics
 	serverConfig.ControlConfig.VLevel = cmds.LogConfig.VLevel
 	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
 
@@ -406,6 +409,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	tlsMinVersionArg := getArgValueFromList("tls-min-version", serverConfig.ControlConfig.ExtraAPIArgs)
+	serverConfig.ControlConfig.MinTLSVersion = tlsMinVersionArg
 	serverConfig.ControlConfig.TLSMinVersion, err = kubeapiserverflag.TLSVersion(tlsMinVersionArg)
 	if err != nil {
 		return errors.Wrap(err, "invalid tls-min-version")
@@ -435,6 +439,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		serverConfig.ControlConfig.ExtraAPIArgs = append(serverConfig.ControlConfig.ExtraAPIArgs, "tls-cipher-suites="+strings.Join(tlsCipherSuites, ","))
 	}
+	serverConfig.ControlConfig.CipherSuites = tlsCipherSuites
 	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(tlsCipherSuites)
 	if err != nil {
 		return errors.Wrap(err, "invalid tls-cipher-suites")
@@ -556,26 +561,34 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
 	}
 
+	// Until the agent is run and retrieves config from the server, we won't know
+	// if the embedded registry is enabled. If it is not enabled, these are not
+	// used as the registry is never started.
+	registry := spegel.DefaultRegistry
+	registry.Bootstrapper = spegel.NewChainingBootstrapper(
+		spegel.NewServerBootstrapper(&serverConfig.ControlConfig),
+		spegel.NewAgentBootstrapper(cfg.ServerURL, token, agentConfig.DataDir),
+		spegel.NewSelfBootstrapper(),
+	)
+	registry.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, serverConfig.ControlConfig.Runtime)
+	}
+
+	// same deal for metrics - these are not used if the extra metrics listener is not enabled.
+	metrics := k3smetrics.DefaultMetrics
+	metrics.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, serverConfig.ControlConfig.Runtime)
+	}
+
+	// and for pprof as well
+	pprof := profile.DefaultProfiler
+	pprof.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, serverConfig.ControlConfig.Runtime)
+	}
+
 	if cfg.DisableAgent {
 		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
 		return agent.RunStandalone(ctx, agentConfig)
-	}
-
-	if cfg.EmbeddedRegistry {
-		conf := spegel.DefaultRegistry
-		conf.Bootstrapper = spegel.NewChainingBootstrapper(
-			spegel.NewServerBootstrapper(&serverConfig.ControlConfig),
-			spegel.NewAgentBootstrapper(cfg.ServerURL, token, agentConfig.DataDir),
-			spegel.NewSelfBootstrapper(),
-		)
-		conf.HandlerFunc = func(_ *spegel.Config, router *mux.Router) error {
-			router.NotFoundHandler = serverConfig.ControlConfig.Runtime.Handler
-			serverConfig.ControlConfig.Runtime.Handler = router
-			return nil
-		}
-		conf.AuthFunc = func() authenticator.Request {
-			return serverConfig.ControlConfig.Runtime.Authenticator
-		}
 	}
 
 	return agent.Run(ctx, agentConfig)
