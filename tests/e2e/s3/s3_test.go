@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
@@ -126,10 +127,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
-			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune --snapshot-retention 2", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			// There should now be 4 on-demand snapshots - 2 local, and 2 on s3
 			res, err = e2e.RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep on-demand | wc -l", serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(strings.TrimSpace(res)).To(Equal("4"))
+		})
+		It("ensure snapshots retention is working in s3 and local", func() {
+			// Wait until the retention works with 3 minutes
+			fmt.Printf("\nWaiting 3 minutes until retention works\n")
+			time.Sleep(3 * time.Minute)
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep etcd-snapshot | wc -l", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(strings.TrimSpace(res)).To(Equal("4"))
 		})
