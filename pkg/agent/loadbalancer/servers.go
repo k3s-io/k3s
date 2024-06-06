@@ -115,23 +115,33 @@ func (lb *LoadBalancer) nextServer(failedServer string) (string, error) {
 	lb.mutex.RLock()
 	defer lb.mutex.RUnlock()
 
+	// note: these fields are not protected by the mutex, so we clamp the index value and update
+	// the index/current address using local variables, to avoid time-of-check vs time-of-use
+	// race conditions caused by goroutine A incrementing it in between the time goroutine B
+	// validates its value, and uses it as a list index.
+	currentServerAddress := lb.currentServerAddress
+	nextServerIndex := lb.nextServerIndex
+
 	if len(lb.randomServers) == 0 {
 		return "", errors.New("No servers in load balancer proxy list")
 	}
 	if len(lb.randomServers) == 1 {
-		return lb.currentServerAddress, nil
+		return currentServerAddress, nil
 	}
-	if failedServer != lb.currentServerAddress {
-		return lb.currentServerAddress, nil
+	if failedServer != currentServerAddress {
+		return currentServerAddress, nil
 	}
-	if lb.nextServerIndex >= len(lb.randomServers) {
-		lb.nextServerIndex = 0
+	if nextServerIndex >= len(lb.randomServers) {
+		nextServerIndex = 0
 	}
 
-	lb.currentServerAddress = lb.randomServers[lb.nextServerIndex]
-	lb.nextServerIndex++
+	currentServerAddress = lb.randomServers[nextServerIndex]
+	nextServerIndex++
 
-	return lb.currentServerAddress, nil
+	lb.currentServerAddress = currentServerAddress
+	lb.nextServerIndex = nextServerIndex
+
+	return currentServerAddress, nil
 }
 
 // dialContext dials a new connection using the environment's proxy settings, and adds its wrapped connection to the map
