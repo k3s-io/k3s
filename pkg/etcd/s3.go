@@ -321,10 +321,12 @@ func (s *S3) snapshotRetention(ctx context.Context) ([]string, error) {
 	deleted := []string{}
 	for _, df := range snapshotFiles[s.config.EtcdSnapshotRetention:] {
 		logrus.Infof("Removing S3 snapshot: s3://%s/%s", s.config.EtcdS3BucketName, df.Key)
-		if err := s.deleteSnapshot(ctx, df.Key); err != nil {
+
+		key := path.Base(df.Key)
+		if err := s.deleteSnapshot(ctx, key); err != nil {
 			return deleted, err
 		}
-		deleted = append(deleted, df.Key)
+		deleted = append(deleted, key)
 	}
 
 	return deleted, nil
