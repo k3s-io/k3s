@@ -44,6 +44,8 @@ def provision(vm, role, role_num, node_num)
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
         cluster-init: true
+        etcd-snapshot-schedule-cron: '*/1 * * * *'
+        etcd-snapshot-retention: 2
         etcd-s3-insecure: true
         etcd-s3-bucket: test-bucket
         etcd-s3-folder: test-folder

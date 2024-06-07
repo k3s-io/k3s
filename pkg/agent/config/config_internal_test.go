@@ -11,12 +11,12 @@ func Test_isValidResolvConf(t *testing.T) {
 		fileContent    string
 		expectedResult bool
 	}{
-		{"Valid ResolvConf", "nameserver 8.8.8.8\nnameserver 2001:4860:4860::8888\n", true},
-		{"Invalid ResolvConf", "nameserver 999.999.999.999\nnameserver not.an.ip\n", false},
-		{"Wrong Nameserver", "search example.com\n", false},
+		{name: "Valid ResolvConf", fileContent: "nameserver 8.8.8.8\nnameserver 2001:4860:4860::8888\n", expectedResult: true},
+		{name: "Invalid ResolvConf", fileContent: "nameserver 999.999.999.999\nnameserver not.an.ip\n", expectedResult: false},
+		{name: "Wrong Nameserver", fileContent: "search example.com\n", expectedResult: false},
 		{name: "One valid nameserver", fileContent: "test test.com\nnameserver 8.8.8.8", expectedResult: true},
-		{"Non GlobalUnicast", "nameserver ::1\nnameserver 169.254.0.1\nnameserver fe80::1\n", false},
-		{"Empty File", "", false},
+		{name: "Non GlobalUnicast", fileContent: "nameserver ::1\nnameserver 169.254.0.1\nnameserver fe80::1\n", expectedResult: false},
+		{name: "Empty File", fileContent: "", expectedResult: false},
 	}
 
 	for _, tt := range tests {
@@ -28,7 +28,7 @@ func Test_isValidResolvConf(t *testing.T) {
 			defer os.Remove(tmpfile.Name())
 
 			if _, err := tmpfile.WriteString(tt.fileContent); err != nil {
-				t.Errorf("Error writing to file: %v with content: %v", tmpfile.Name(), tt.fileContent)
+				t.Errorf("error writing to file: %v with content: %v", tmpfile.Name(), tt.fileContent)
 			}
 
 			res := isValidResolvConf(tmpfile.Name())
