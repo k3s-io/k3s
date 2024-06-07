@@ -32,6 +32,11 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+  build-arm64:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      arch: ubuntu-24.04-arm
+      upload-image: true
   e2e:
     name: "E2E Tests"
     needs: build
@@ -132,6 +137,9 @@ jobs:
   build-go-tests:
     name: "Build Go Tests"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     outputs:
       branch_name: ${{ steps.branch_step.outputs.BRANCH_NAME }}
     steps:
@@ -142,11 +150,11 @@ jobs:
     - name: Build Go Tests
       run: |
         mkdir -p ./dist/artifacts
-        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
+        GOOS=linux GOARCH=${{ matrix.arch }} go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
     - name: Upload Go Tests
       uses: actions/upload-artifact@v4
       with:
-        name: docker-go-tests
+        name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts/*.test
         compression-level: 9
         retention-days: 1
@@ -187,7 +195,7 @@ jobs:
 
   docker-go:
     needs: [build, build-go-tests]
-    name: Docker Tests In GO
+    name: Docker AMD64
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -213,7 +221,7 @@ jobs:
     - name: Download Go Tests
       uses: actions/download-artifact@v4
       with:
-        name: docker-go-tests
+        name: docker-go-tests-amd64
         path: ./dist/artifacts
     - name: Run ${{ matrix.dtest }} Test
       # Put the compiled test binary back in the same place as the test source
@@ -228,3 +236,48 @@ jobs:
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
         fi
+
+  docker-go-arm64:
+    needs: [build-arm64, build-go-tests]
+    name: Docker ARM64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [basics, bootstraptoken, cacerts, etcd ]
+    env:
+      BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: "Download K3s image"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s-arm64
+        path: ./dist/artifacts
+    - name: Load and set K3s image
+      run: |
+        mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s 
+        chmod +x ./dist/artifacts/k3s
+        docker image load -i ./dist/artifacts/k3s-image.tar
+        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
+        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Download Go Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-go-tests-arm64
+        path: ./dist/artifacts
+    - name: Run ${{ matrix.dtest }} Test
+      # Put the compiled test binary back in the same place as the test source
+      run: |
+        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
+        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
+        cd ./tests/docker/${{ matrix.dtest }}
+        ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
+    - name: On Failure, Launch Debug Session
+      uses: dereknola/action-upterm@v1.1
+      if: ${{ failure() }}
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
