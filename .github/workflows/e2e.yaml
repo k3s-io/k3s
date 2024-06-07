@@ -32,6 +32,12 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+  build-arm64:
+    if : github.repository == 'k3s-io/k3s'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      arch: oracle-aarch64-4cpu-16gb
+      upload-image: true
   e2e:
     name: "E2E Tests"
     needs: build
@@ -214,3 +220,52 @@ jobs:
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
         fi
+
+  docker-arm64:
+    needs: build-arm64
+    name: Docker Tests Arm64
+    if: github.repository == 'k3s-io/k3s'
+    runs-on: oracle-aarch64-4cpu-16gb
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [basics, bootstraptoken, cacerts, compat, upgrade]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with: 
+        go-version-file: 'go.mod'
+        cache: false
+    - name: Install Support Tools
+      run: |
+        sudo apt-get update && sudo apt-get install -y wget gawk openssh-client openssh-server net-tools iptables
+        sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64 -O /usr/bin/yq &&\
+        sudo chmod +x /usr/bin/yq
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    - name: "Download k3s image"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s-arm64
+        path: ./dist/artifacts
+    - name: Load k3s image
+      run: docker image load -i ./dist/artifacts/k3s-image.tar
+    - name: Run ${{ matrix.dtest }} Test
+      run: |
+        mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s 
+        chmod +x ./dist/artifacts/k3s
+        . ./scripts/version.sh
+        . ./tests/docker/test-helpers
+        . ./tests/docker/test-run-${{ matrix.dtest }}
+        echo "Did test-run-${{ matrix.dtest }} pass $?"
+    - name: On Failure, Launch Debug Session
+      uses: dereknola/action-upterm@v1.1
+      if: ${{ failure() }}
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
