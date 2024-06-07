@@ -3,6 +3,10 @@ name: Build K3s
 on: 
   workflow_call:
    inputs:
+    arch:
+      type: string
+      description: 'Architecture to build'
+      default: 'amd64'
     upload-repo:
       type: boolean
       required: false
@@ -16,8 +20,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-amd64:
     name: Build
+    if: inputs.arch == 'amd64'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -50,3 +55,45 @@ jobs:
       with:
         name: k3s
         path: dist/artifacts/k3s*
+  build-arm64:
+    # Build using CNCF arm64 custom runners
+    name: Build Arm
+    if: github.repository == 'k3s-io/k3s' && inputs.arch == 'arm64'
+    runs-on: oracle-aarch64-4cpu-16gb
+    timeout-minutes: 20
+    steps:
+    - name: Checkout K3s
+      uses: actions/checkout@v4
+    - name: Build K3s binary
+      run: |
+        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 make
+        sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
+    - name: Build K3s image
+      if: inputs.upload-image == true
+      run: make package-image
+    - name: bundle repo
+      if: inputs.upload-repo == true
+      run: |
+        tar -czvf ../k3s-repo.tar.gz .
+        mv ../k3s-repo.tar.gz .
+    - name: "Upload K3s directory"
+      if: inputs.upload-repo == true
+      uses: actions/upload-artifact@v4
+      with:
+        name: k3s-repo.tar.gz
+        path: k3s-repo.tar.gz
+    - name: "Save K3s image"
+      if: inputs.upload-image == true
+      run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
+    - name: "Upload K3s binary"
+      if: inputs.upload-repo == false
+      uses: actions/upload-artifact@v4
+      with:
+        name: k3s
+        path: dist/artifacts/k3s*
+    - name: On Failure, Launch Debug Session
+      uses: dereknola/action-upterm@v1.1
+      if: ${{ failure() }}
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
