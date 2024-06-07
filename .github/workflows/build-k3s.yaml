@@ -58,7 +58,7 @@ jobs:
   build-arm64:
     # Build using CNCF arm64 custom runners
     name: Build Arm
-    if: github.repository == 'k3s-io/k3s' && inputs.arch == 'arm64'
+    if: inputs.arch == 'arm64'
     runs-on: oracle-aarch64-4cpu-16gb
     timeout-minutes: 20
     steps:
