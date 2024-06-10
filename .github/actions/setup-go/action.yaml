@@ -6,10 +6,10 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'  # Just use whatever version is in the go.mod file
-        cache: ${{ github.ref == 'refs/heads/master' }}
+        cache: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release-1.29' }}
 
     - name: Prepare for go cache
-      if: ${{ github.ref != 'refs/heads/master' }}
+      if: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/release-1.29' }}
       shell: bash
       run: |
         echo "GO_CACHE=$(go env GOCACHE)" | tee -a "$GITHUB_ENV"
@@ -17,7 +17,7 @@ runs:
         echo "GO_VERSION=$(go env GOVERSION | tr -d 'go')" | tee -a "$GITHUB_ENV"
 
     - name: Setup read-only cache
-      if: ${{ github.ref != 'refs/heads/master' }}
+      if: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/release-1.29' }}
       uses: actions/cache/restore@v4
       with:
         path: |
