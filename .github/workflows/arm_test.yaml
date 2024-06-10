@@ -1,4 +1,4 @@
-name: Integration Test Coverage
+name: Test arm64
 on: 
   workflow_dispatch: {}
   pull_request:
@@ -10,14 +10,15 @@ env:
   GOCOVERDIR: /tmp/k3scov
   
 jobs:
-  build:
-    uses: ./.github/workflows/build-k3s.yaml
-    with:
-      arch: arm64
+  # build:
+  #   uses: ./.github/workflows/build-k3s.yaml
+  #   with:
+  #     arch: arm64
   itest:
-    needs: build
-    name: Integration Tests
-    runs-on: ubuntu-latest
+    # needs: build
+    name: Hello World
+    runs-on:
+      group: default
     timeout-minutes: 45
     steps:
     - name: Checkout
@@ -26,11 +27,6 @@ jobs:
         fetch-depth: 1
     - name: Install Go
       uses: ./.github/actions/setup-go
-    - name: "Download k3s binary"
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s
-        path: ./dist/artifacts
     - name: Launch Debug Session
       uses: dereknola/action-upterm@v1.1
       with:
