@@ -18,7 +18,7 @@ jobs:
     # needs: build
     name: Hello World
     runs-on:
-      group: organization/default
+      group: enterprise/default
     timeout-minutes: 45
     steps:
     - name: Checkout
