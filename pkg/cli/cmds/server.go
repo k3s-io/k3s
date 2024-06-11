@@ -104,6 +104,8 @@ type Server struct {
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
+	EtcdS3Proxy              string
+	EtcdS3ConfigSecret       string
 	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
 	ServiceLBNamespace       string
@@ -429,6 +431,16 @@ var ServerFlags = []cli.Flag{
 		Name:        "etcd-s3-folder",
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-s3-proxy",
+		Usage:       "(db) Proxy server to use when connecting to S3, overriding any proxy-releated environment variables",
+		Destination: &ServerConfig.EtcdS3Proxy,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-s3-config-secret",
+		Usage:       "(db) Name of secret in the kube-system namespace used to configure S3, if etcd-s3 is enabled and no other etcd-s3 options are set",
+		Destination: &ServerConfig.EtcdS3ConfigSecret,
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-s3-insecure",
