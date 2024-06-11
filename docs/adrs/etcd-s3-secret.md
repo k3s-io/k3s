@@ -1,6 +1,7 @@
 # Support etcd Snapshot Configuration via Kubernetes Secret
 
 Date: 2024-02-06
+Revised: 2024-06-10
 
 ## Status
 
@@ -34,8 +35,8 @@ avoids embedding the credentials directly in the system configuration, chart val
 * We will add a `--etcd-s3-proxy` flag that can be used to set the proxy used by the S3 client. This will override the
   settings that golang's default HTTP client reads from the `HTTP_PROXY/HTTPS_PROXY/NO_PROXY` environment varibles.
 * We will add support for reading etcd snapshot S3 configuration from a Secret. The secret name will be specified via a new
-  `--etcd-s3-secret` flag, which accepts the name of the Secret in the `kube-system` namespace.
-* Presence of the `--etcd-s3-secret` flag does not imply `--etcd-s3`. If S3 is not enabled by use of the `--etcd-s3` flag,
+  `--etcd-s3-config-secret` flag, which accepts the name of the Secret in the `kube-system` namespace.
+* Presence of the `--etcd-s3-config-secret` flag does not imply `--etcd-s3`. If S3 is not enabled by use of the `--etcd-s3` flag,
   the Secret will not be used.
 * The Secret does not need to exist when K3s starts; it will be checked for every time a snapshot operation is performed.
 * Secret and CLI/config values will NOT be merged. The Secret will provide values to be used in absence of other
@@ -64,6 +65,7 @@ stringData:
   etcd-s3-access-key: "AWS_ACCESS_KEY_ID"
   etcd-s3-secret-key: "AWS_SECRET_ACCESS_KEY"
   etcd-s3-bucket: "bucket"
+  etcd-s3-folder: "folder"
   etcd-s3-region: "us-east-1"
   etcd-s3-insecure: "false"
   etcd-s3-timeout: "5m"
@@ -73,3 +75,9 @@ stringData:
 ## Consequences
 
 This will require additional documentation, tests, and QA work to validate use of secrets for s3 snapshot configuration.
+
+## Revisions
+
+#### 2024-06-10:
+* Changed flag to `etcd-s3-config-secret` to avoid confusion with `etcd-s3-secret-key`.
+* Added `etcd-s3-folder` to example Secret.
