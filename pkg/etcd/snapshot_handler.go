@@ -11,8 +11,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type SnapshotOperation string
@@ -24,21 +24,13 @@ const (
 	SnapshotOperationDelete SnapshotOperation = "delete"
 )
 
-type SnapshotRequestS3 struct {
-	s3Config
-	Timeout   metav1.Duration `json:"timeout"`
-	AccessKey string          `json:"accessKey"`
-	SecretKey string          `json:"secretKey"`
-}
-
 type SnapshotRequest struct {
 	Operation SnapshotOperation `json:"operation"`
 	Name      []string          `json:"name,omitempty"`
 	Dir       *string           `json:"dir,omitempty"`
 	Compress  *bool             `json:"compress,omitempty"`
 	Retention *int              `json:"retention,omitempty"`
-
-	S3 *SnapshotRequestS3 `json:"s3,omitempty"`
+	S3        *config.EtcdS3    `json:"s3,omitempty"`
 
 	ctx context.Context
 }
@@ -76,9 +68,12 @@ func (e *ETCD) snapshotHandler() http.Handler {
 }
 
 func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
-	if err := e.initS3IfNil(req.Context()); err != nil {
-		util.SendError(err, rw, req, http.StatusBadRequest)
-		return nil
+	if e.config.EtcdS3 != nil {
+		if _, err := e.getS3Client(req.Context()); err != nil {
+			err = errors.Wrap(err, "failed to initialize S3 client")
+			util.SendError(err, rw, req, http.StatusBadRequest)
+			return nil
+		}
 	}
 	sf, err := e.ListSnapshots(req.Context())
 	if sf == nil {
@@ -90,9 +85,12 @@ func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (e *ETCD) handleSave(rw http.ResponseWriter, req *http.Request) error {
-	if err := e.initS3IfNil(req.Context()); err != nil {
-		util.SendError(err, rw, req, http.StatusBadRequest)
-		return nil
+	if e.config.EtcdS3 != nil {
+		if _, err := e.getS3Client(req.Context()); err != nil {
+			err = errors.Wrap(err, "failed to initialize S3 client")
+			util.SendError(err, rw, req, http.StatusBadRequest)
+			return nil
+		}
 	}
 	sr, err := e.Snapshot(req.Context())
 	if sr == nil {
@@ -104,9 +102,12 @@ func (e *ETCD) handleSave(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
-	if err := e.initS3IfNil(req.Context()); err != nil {
-		util.SendError(err, rw, req, http.StatusBadRequest)
-		return nil
+	if e.config.EtcdS3 != nil {
+		if _, err := e.getS3Client(req.Context()); err != nil {
+			err = errors.Wrap(err, "failed to initialize S3 client")
+			util.SendError(err, rw, req, http.StatusBadRequest)
+			return nil
+		}
 	}
 	sr, err := e.PruneSnapshots(req.Context())
 	if sr == nil {
@@ -118,9 +119,12 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
-	if err := e.initS3IfNil(req.Context()); err != nil {
-		util.SendError(err, rw, req, http.StatusBadRequest)
-		return nil
+	if e.config.EtcdS3 != nil {
+		if _, err := e.getS3Client(req.Context()); err != nil {
+			err = errors.Wrap(err, "failed to initialize S3 client")
+			util.SendError(err, rw, req, http.StatusBadRequest)
+			return nil
+		}
 	}
 	sr, err := e.DeleteSnapshots(req.Context(), snapshots)
 	if sr == nil {
@@ -149,7 +153,9 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			EtcdSnapshotCompress:  e.config.EtcdSnapshotCompress,
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
+			EtcdS3:                sr.S3,
 		},
+		s3:         e.s3,
 		name:       e.name,
 		address:    e.address,
 		cron:       e.cron,
@@ -167,19 +173,6 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 	}
 	if sr.Retention != nil {
 		re.config.EtcdSnapshotRetention = *sr.Retention
-	}
-	if sr.S3 != nil {
-		re.config.EtcdS3 = true
-		re.config.EtcdS3AccessKey = sr.S3.AccessKey
-		re.config.EtcdS3BucketName = sr.S3.Bucket
-		re.config.EtcdS3Endpoint = sr.S3.Endpoint
-		re.config.EtcdS3EndpointCA = sr.S3.EndpointCA
-		re.config.EtcdS3Folder = sr.S3.Folder
-		re.config.EtcdS3Insecure = sr.S3.Insecure
-		re.config.EtcdS3Region = sr.S3.Region
-		re.config.EtcdS3SecretKey = sr.S3.SecretKey
-		re.config.EtcdS3SkipSSLVerify = sr.S3.SkipSSLVerify
-		re.config.EtcdS3Timeout = sr.S3.Timeout.Duration
 	}
 	return re
 }
