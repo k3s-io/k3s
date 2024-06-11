@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
@@ -50,17 +51,20 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 	}
 
 	if cfg.EtcdS3 {
-		sr.S3 = &etcd.SnapshotRequestS3{}
-		sr.S3.AccessKey = cfg.EtcdS3AccessKey
-		sr.S3.Bucket = cfg.EtcdS3BucketName
-		sr.S3.Endpoint = cfg.EtcdS3Endpoint
-		sr.S3.EndpointCA = cfg.EtcdS3EndpointCA
-		sr.S3.Folder = cfg.EtcdS3Folder
-		sr.S3.Insecure = cfg.EtcdS3Insecure
-		sr.S3.Region = cfg.EtcdS3Region
-		sr.S3.SecretKey = cfg.EtcdS3SecretKey
-		sr.S3.SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
-		sr.S3.Timeout = metav1.Duration{Duration: cfg.EtcdS3Timeout}
+		sr.S3 = &config.EtcdS3{
+			AccessKey:     cfg.EtcdS3AccessKey,
+			Bucket:        cfg.EtcdS3BucketName,
+			ConfigSecret:  cfg.EtcdS3ConfigSecret,
+			Endpoint:      cfg.EtcdS3Endpoint,
+			EndpointCA:    cfg.EtcdS3EndpointCA,
+			Folder:        cfg.EtcdS3Folder,
+			Insecure:      cfg.EtcdS3Insecure,
+			Proxy:         cfg.EtcdS3Proxy,
+			Region:        cfg.EtcdS3Region,
+			SecretKey:     cfg.EtcdS3SecretKey,
+			SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
+			Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
+		}
 		// extend request timeout to allow the S3 operation to complete
 		timeout += cfg.EtcdS3Timeout
 	}

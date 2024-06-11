@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -81,10 +82,10 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 		return nil, nil
 	}
 
-	sf := snapshotFile{}
-	sf.fromETCDSnapshotFile(esf)
-	sfKey := generateSnapshotConfigMapKey(sf)
-	m, err := marshalSnapshotFile(sf)
+	sf := &snapshot.File{}
+	sf.FromETCDSnapshotFile(esf)
+	sfKey := sf.GenerateConfigMapKey()
+	m, err := sf.Marshal()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal snapshot ConfigMap data")
 	}
@@ -283,9 +284,9 @@ func (e *etcdSnapshotHandler) reconcile() error {
 
 	// Ensure keys for existing snapshots
 	for sfKey, esf := range snapshots {
-		sf := snapshotFile{}
-		sf.fromETCDSnapshotFile(esf)
-		m, err := marshalSnapshotFile(sf)
+		sf := &snapshot.File{}
+		sf.FromETCDSnapshotFile(esf)
+		m, err := sf.Marshal()
 		if err != nil {
 			logrus.Warnf("Failed to marshal snapshot ConfigMap data for %s", sfKey)
 			continue
@@ -327,12 +328,12 @@ func pruneConfigMap(snapshotConfigMap *v1.ConfigMap, pruneCount int) error {
 		return errors.New("unable to reduce snapshot ConfigMap size by eliding old snapshots")
 	}
 
-	var snapshotFiles []snapshotFile
+	var snapshotFiles []snapshot.File
 	retention := len(snapshotConfigMap.Data) - pruneCount
 	for name := range snapshotConfigMap.Data {
-		basename, compressed := strings.CutSuffix(name, compressedExtension)
+		basename, compressed := strings.CutSuffix(name, snapshot.CompressedExtension)
 		ts, _ := strconv.ParseInt(basename[strings.LastIndexByte(basename, '-')+1:], 10, 64)
-		snapshotFiles = append(snapshotFiles, snapshotFile{Name: name, CreatedAt: &metav1.Time{Time: time.Unix(ts, 0)}, Compressed: compressed})
+		snapshotFiles = append(snapshotFiles, snapshot.File{Name: name, CreatedAt: &metav1.Time{Time: time.Unix(ts, 0)}, Compressed: compressed})
 	}
 
 	// sort newest-first so we can prune entries past the retention count

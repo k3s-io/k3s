@@ -100,6 +100,16 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
 	},
+	&cli.StringFlag{
+		Name:        "s3-proxy,etcd-s3-proxy",
+		Usage:       "(db) Proxy server to use when connecting to S3, overriding any proxy-releated environment variables",
+		Destination: &ServerConfig.EtcdS3Proxy,
+	},
+	&cli.StringFlag{
+		Name:        "s3-config-secret,etcd-s3-config-secret",
+		Usage:       "(db) Name of secret in the kube-system namespace used to configure S3, if etcd-s3 is enabled and no other etcd-s3 options are set",
+		Destination: &ServerConfig.EtcdS3ConfigSecret,
+	},
 	&cli.BoolFlag{
 		Name:        "s3-insecure,etcd-s3-insecure",
 		Usage:       "(db) Disables S3 over HTTPS",

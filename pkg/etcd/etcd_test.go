@@ -11,8 +11,10 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/etcd/s3"
 	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -47,10 +49,12 @@ func generateTestConfig() *config.Control {
 		EtcdSnapshotName:      "etcd-snapshot",
 		EtcdSnapshotCron:      "0 */12 * * *",
 		EtcdSnapshotRetention: 5,
-		EtcdS3Endpoint:        "s3.amazonaws.com",
-		EtcdS3Region:          "us-east-1",
-		SANs:                  []string{"127.0.0.1", mustGetAddress()},
-		CriticalControlArgs:   criticalControlArgs,
+		EtcdS3: &config.EtcdS3{
+			Endpoint: "s3.amazonaws.com",
+			Region:   "us-east-1",
+		},
+		SANs:                []string{"127.0.0.1", mustGetAddress()},
+		CriticalControlArgs: criticalControlArgs,
 	}
 }
 
@@ -112,6 +116,10 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 			want:    false,
 		},
 	}
+
+	// enable logging
+	logrus.SetLevel(logrus.DebugLevel)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewETCD()
@@ -227,7 +235,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 		name    string
 		address string
 		cron    *cron.Cron
-		s3      *S3
+		s3      *s3.Controller
 	}
 	type args struct {
 		clientAccessInfo *clientaccess.Info
