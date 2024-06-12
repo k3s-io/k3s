@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.21.11-alpine3.19
+ARG GOLANG=golang:1.22.4-alpine3.19
 FROM ${GOLANG}
 
 # Set proxy environment variables
@@ -15,8 +15,11 @@ RUN apk -U --no-cache add \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp \
     libseccomp-dev libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux \
     libselinux-dev zlib-dev zlib-static zstd pigz alpine-sdk binutils-gold btrfs-progs-dev \
-    btrfs-progs-static gawk yq aws-cli \
+    btrfs-progs-static gawk yq \
     && [ "$(go env GOARCH)" = "amd64" ] && apk -U --no-cache add mingw-w64-gcc || true
+
+# Install AWS CLI
+RUN python3 -m pip install --user awscli
 
 # Install Trivy
 ENV TRIVY_VERSION="0.51.4"
@@ -40,7 +43,7 @@ RUN rm -rf /go/src /go/pkg
 
 # Install golangci-lint for amd64
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2;  \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2;  \
     fi
     
 # Set SELINUX environment variable
