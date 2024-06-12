@@ -1,4 +1,4 @@
-ARG GOLANG=rancher/hardened-build-base:v1.21.11b2
+ARG GOLANG=golang:1.21.11-alpine3.19
 FROM ${GOLANG}
 
 COPY --from=plugins/manifest:1.2.3 /bin/* /bin/
