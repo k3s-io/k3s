@@ -1,6 +1,6 @@
 module github.com/k3s-io/k3s
 
-go 1.21.9
+go 1.21.11
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.0
