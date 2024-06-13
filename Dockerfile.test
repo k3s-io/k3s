@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.22.2-alpine3.18
+ARG GOLANG=golang:1.22.4-alpine3.19
 FROM ${GOLANG} as test-base
 
 RUN apk -U --no-cache add bash jq
@@ -14,9 +14,9 @@ ENTRYPOINT ["/bin/test-mods"]
 
 FROM test-base as test-k3s
 
-RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils yq
+RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils yq pipx
 
-RUN python3 -m pip install awscli
+RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
 
 ENV SONOBUOY_VERSION 0.57.1
 

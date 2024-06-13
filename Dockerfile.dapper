@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.22.2-alpine3.18
+ARG GOLANG=golang:1.22.4-alpine3.19
 FROM ${GOLANG}
 
 # Set proxy environment variables
@@ -15,11 +15,11 @@ RUN apk -U --no-cache add \
     zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp \
     libseccomp-dev libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux \
     libselinux-dev zlib-dev zlib-static zstd pigz alpine-sdk binutils-gold btrfs-progs-dev \
-    btrfs-progs-static gawk yq \
+    btrfs-progs-static gawk yq pipx \
     && [ "$(go env GOARCH)" = "amd64" ] && apk -U --no-cache add mingw-w64-gcc || true
 
 # Install AWS CLI
-RUN python3 -m pip install awscli
+RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
 
 # Install Trivy
 ENV TRIVY_VERSION="0.51.4"
