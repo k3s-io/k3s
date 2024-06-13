@@ -36,7 +36,7 @@ func Start(ctx context.Context, nodeConfig *config.Node, runtime *config.Control
 
 		if runtime == nil {
 			// If we do not have an existing handler, set up a new listener
-			tcp, lerr := util.ListenWithLoopback(ctx, nodeConfig.AgentConfig.ListenAddress, strconv.Itoa(nodeConfig.ServerHTTPSPort))
+			tcp, lerr := util.ListenWithLoopback(ctx, nodeConfig.AgentConfig.ListenAddress, strconv.Itoa(nodeConfig.SupervisorPort))
 			if lerr != nil {
 				err = lerr
 				return
