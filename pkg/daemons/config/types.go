@@ -58,6 +58,7 @@ type Node struct {
 	Token                    string
 	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
+	SupervisorPort           int
 	DefaultRuntime           string
 }
 
