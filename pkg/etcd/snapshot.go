@@ -29,7 +29,6 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
-	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,10 +43,9 @@ import (
 )
 
 const (
-	maxConcurrentSnapshots = 1
-	compressedExtension    = ".zip"
-	metadataDir            = ".metadata"
-	errorTTL               = 24 * time.Hour
+	compressedExtension = ".zip"
+	metadataDir         = ".metadata"
+	errorTTL            = 24 * time.Hour
 )
 
 var (
@@ -104,16 +102,6 @@ func snapshotDir(config *config.Control, create bool) (string, error) {
 	}
 
 	return snapshotDir, nil
-}
-
-// preSnapshotSetup checks to see if the necessary components are in place
-// to perform an Etcd snapshot. This is necessary primarily for on-demand
-// snapshots since they're performed before normal Etcd setup is completed.
-func (e *ETCD) preSnapshotSetup(ctx context.Context) error {
-	if e.snapshotSem == nil {
-		e.snapshotSem = semaphore.NewWeighted(maxConcurrentSnapshots)
-	}
-	return nil
 }
 
 // compressSnapshot compresses the given snapshot and provides the
@@ -208,14 +196,10 @@ func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFile string) (string, err
 // subcommand for prune that can be run manually if the user wants to remove old snapshots.
 // Returns metadata about the new and pruned snapshots.
 func (e *ETCD) Snapshot(ctx context.Context) (*managed.SnapshotResult, error) {
-	if err := e.preSnapshotSetup(ctx); err != nil {
-		return nil, err
+	if !e.snapshotMu.TryLock() {
+		return nil, errors.New("snapshot save already in progress")
 	}
-	if !e.snapshotSem.TryAcquire(maxConcurrentSnapshots) {
-		return nil, fmt.Errorf("%d snapshots already in progress", maxConcurrentSnapshots)
-	}
-	defer e.snapshotSem.Release(maxConcurrentSnapshots)
-
+	defer e.snapshotMu.Unlock()
 	// make sure the core.Factory is initialized before attempting to add snapshot metadata
 	var extraMetadata *v1.ConfigMap
 	if e.config.Runtime.Core == nil {
