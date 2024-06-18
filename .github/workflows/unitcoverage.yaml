@@ -43,7 +43,7 @@ jobs:
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
-      uses: lhotari/action-upterm@v1
+      uses: dereknola/action-upterm@v1.1
       with:
         wait-timeout-minutes: 5
     - name: Upload Results To Codecov

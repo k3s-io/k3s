@@ -77,7 +77,7 @@ jobs:
           cd tests/e2e/${{ matrix.etest }}
           go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
       - name: On Failure, Launch Debug Session
-        uses: lhotari/action-upterm@v1
+        uses: dereknola/action-upterm@v1.1
         if: ${{ failure() }}
         with:
           ## If no one connects after 5 minutes, shut down server.
