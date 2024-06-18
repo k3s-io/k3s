@@ -482,11 +482,15 @@ get_pr_artifact_url() {
     fi
 
     if [ -z "${GITHUB_TOKEN}" ]; then
-        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo authorization"
+        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
-
     # GET request to the GitHub API to retrieve the latest commit SHA from the pull request
-    commit_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
+    pr_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/pulls/$INSTALL_K3S_PR")
+    
+    if ! echo "$pr_raw" | grep -q "Bad credentials.*401" ; then
+        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
+    fi
+    commit_id=$( echo "$pr_raw" | jq -r '.head.sha')
     
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
     wf_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/commits/$commit_id/check-runs")
@@ -507,7 +511,7 @@ download_binary() {
         # Since Binary and Hash are zipped together, check if TMP_ZIP already exists
         if ! [ -f ${TMP_ZIP} ]; then
             info "Downloading K3s artifact ${GITHUB_PR_URL}"
-            curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+            curl -o -f ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
         fi
         # extract k3s binary from zip
         unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
