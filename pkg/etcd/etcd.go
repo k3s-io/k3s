@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,7 +44,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.uber.org/zap"
-	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -105,14 +105,14 @@ var _ managed.Driver = &ETCD{}
 type MemberStatus string
 
 type ETCD struct {
-	client      *clientv3.Client
-	config      *config.Control
-	name        string
-	address     string
-	cron        *cron.Cron
-	s3          *S3
-	cancel      context.CancelFunc
-	snapshotSem *semaphore.Weighted
+	client     *clientv3.Client
+	config     *config.Control
+	name       string
+	address    string
+	cron       *cron.Cron
+	s3         *S3
+	cancel     context.CancelFunc
+	snapshotMu *sync.Mutex
 }
 
 type learnerProgress struct {
@@ -166,10 +166,11 @@ func (e *MemberListError) Is(target error) bool {
 func errMemberListFailed() error { return &MemberListError{} }
 
 // NewETCD creates a new value of type
-// ETCD with an initialized cron value.
+// ETCD with initialized cron and snapshot mutex values.
 func NewETCD() *ETCD {
 	return &ETCD{
-		cron: cron.New(cron.WithLogger(cronLogger)),
+		cron:       cron.New(cron.WithLogger(cronLogger)),
+		snapshotMu: &sync.Mutex{},
 	}
 }
 
