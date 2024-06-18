@@ -150,11 +150,11 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
 		},
-		name:        e.name,
-		address:     e.address,
-		cron:        e.cron,
-		cancel:      e.cancel,
-		snapshotSem: e.snapshotSem,
+		name:       e.name,
+		address:    e.address,
+		cron:       e.cron,
+		cancel:     e.cancel,
+		snapshotMu: e.snapshotMu,
 	}
 	if len(sr.Name) > 0 {
 		re.config.EtcdSnapshotName = sr.Name[0]
