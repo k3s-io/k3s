@@ -511,7 +511,7 @@ download_binary() {
         # Since Binary and Hash are zipped together, check if TMP_ZIP already exists
         if ! [ -f ${TMP_ZIP} ]; then
             info "Downloading K3s artifact ${GITHUB_PR_URL}"
-            curl -o -f ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+            curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
         fi
         # extract k3s binary from zip
         unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
