@@ -32,7 +32,7 @@ var (
 	enableIPv6Env      = "K3S_ROOTLESS_ENABLE_IPV6"
 	portDriverEnv      = "K3S_ROOTLESS_PORT_DRIVER"
 	disableLoopbackEnv = "K3S_ROOTLESS_DISABLE_HOST_LOOPBACK"
-	copyUpDirsEnv = "K3S_ROOTLESS_COPYUPDIRS"
+	copyUpDirsEnv      = "K3S_ROOTLESS_COPYUPDIRS"
 )
 
 func Rootless(stateDir string, enableIPv6 bool) error {
