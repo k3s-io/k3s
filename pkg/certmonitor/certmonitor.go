@@ -11,6 +11,7 @@ import (
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/services"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -22,18 +23,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/component-base/metrics/legacyregistry"
 )
 
 var (
-	// DefaultRegisterer and DefaultGatherer are the implementations of the
-	// prometheus Registerer and Gatherer interfaces that all metrics operations
-	// will use. They are variables so that packages that embed this library can
-	// replace them at runtime, instead of having to pass around specific
-	// registries.
-	DefaultRegisterer = legacyregistry.Registerer()
-	DefaultGatherer   = legacyregistry.DefaultGatherer
-
 	// Check certificates twice an hour. Kubernetes events have a TTL of 1 hour by default,
 	// so similar events should be aggregated and refreshed by the event recorder as long
 	// as they are created within the TTL period.
@@ -50,7 +42,7 @@ var (
 // Setup starts the certificate expiration monitor
 func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) error {
 	logrus.Debugf("Starting %s with monitoring period %s", controllerName, certCheckInterval)
-	DefaultRegisterer.MustRegister(certificateExpirationSeconds)
+	metrics.DefaultRegisterer.MustRegister(certificateExpirationSeconds)
 
 	client, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
@@ -134,7 +126,7 @@ func checkCerts(fileMap map[string][]string, warningPeriod time.Duration) error 
 				} else if now.After(cert.NotAfter) {
 					errs = append(errs, fmt.Errorf("%s/%s: certificate %s expired at %s", service, basename, cert.Subject, cert.NotAfter.Format(time.RFC3339)))
 				} else if warn.After(cert.NotAfter) {
-					errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, daemonconfig.CertificateRenewDays, cert.NotAfter.Format(time.RFC3339)))
+					errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, int(warningPeriod.Hours()/24), cert.NotAfter.Format(time.RFC3339)))
 				}
 			}
 		}

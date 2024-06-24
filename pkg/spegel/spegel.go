@@ -13,13 +13,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener/cert"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/apiserver/pkg/authentication/request/union"
 	"k8s.io/utils/ptr"
 
 	"github.com/go-logr/logr"
@@ -43,11 +42,8 @@ import (
 // DefaultRegistry is the default instance of a Spegel distributed registry
 var DefaultRegistry = &Config{
 	Bootstrapper: NewSelfBootstrapper(),
-	HandlerFunc: func(_ *Config, _ *mux.Router) error {
-		return errors.New("not implemented")
-	},
-	AuthFunc: func() authenticator.Request {
-		return union.New(nil)
+	Router: func(context.Context, *config.Node) (*mux.Router, error) {
+		return nil, errors.New("not implemented")
 	},
 }
 
@@ -59,9 +55,6 @@ var (
 
 	resolveLatestTag = false
 )
-
-type authFunc func() authenticator.Request
-type handlerFunc func(config *Config, router *mux.Router) error
 
 // Config holds fields for a distributed registry
 type Config struct {
@@ -89,10 +82,7 @@ type Config struct {
 	Bootstrapper routing.Bootstrapper
 
 	// HandlerFunc will be called to add the registry API handler to an existing router.
-	HandlerFunc handlerFunc
-
-	// Authenticator will be called to retrieve an authenticator used to validate the request to the registry API.
-	AuthFunc authFunc
+	Router https.RouterFunc
 }
 
 // These values are not currently configurable
@@ -237,13 +227,12 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	// Track images available in containerd and publish via p2p router
 	go state.Track(ctx, ociClient, router, resolveLatestTag)
 
-	mRouter := mux.NewRouter().SkipClean(true)
-	mRouter.Use(c.authMiddleware())
-	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
-	mRouter.PathPrefix("/v1-" + version.Program + "/p2p").Handler(c.peerInfo())
-	if err := c.HandlerFunc(c, mRouter); err != nil {
+	mRouter, err := c.Router(ctx, nodeConfig)
+	if err != nil {
 		return err
 	}
+	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
+	mRouter.PathPrefix("/v1-" + version.Program + "/p2p").Handler(c.peerInfo())
 
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
@@ -268,17 +257,4 @@ func (c *Config) peerInfo() http.HandlerFunc {
 		resp.Header().Set("Content-Type", "text/plain")
 		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.String())
 	})
-}
-
-// authMiddleware calls the configured authenticator to gate access to the registry API
-func (c *Config) authMiddleware() mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-			if _, ok, err := c.AuthFunc().AuthenticateRequest(req); !ok || err != nil {
-				http.Error(resp, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-			next.ServeHTTP(resp, req)
-		})
-	}
 }

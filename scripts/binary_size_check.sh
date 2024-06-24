@@ -2,6 +2,8 @@
 
 set -e
 
+. ./scripts/version.sh
+
 GO=${GO-go}
 ARCH=${ARCH:-$("${GO}" env GOARCH)}
 
@@ -22,7 +24,7 @@ elif [ ${ARCH} = s390x ]; then
     BIN_SUFFIX="-s390x"
 fi
 
-CMD_NAME="dist/artifacts/k3s${BIN_SUFFIX}"
+CMD_NAME="dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}"
 SIZE=$(stat -c '%s' ${CMD_NAME})
 
 if [ -n "${DEBUG}" ]; then

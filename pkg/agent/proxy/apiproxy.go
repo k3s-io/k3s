@@ -63,6 +63,7 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 	p.fallbackSupervisorAddress = u.Host
 	p.supervisorPort = u.Port()
 
+	logrus.Debugf("Supervisor proxy using supervisor=%s apiserver=%s lb=%v", p.supervisorURL, p.apiServerURL, p.lbEnabled)
 	return &p, nil
 }
 
@@ -132,6 +133,11 @@ func (p *proxy) setSupervisorPort(addresses []string) []string {
 // load-balancer, and the address of this load-balancer is returned instead of the actual apiserver
 // addresses.
 func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
+	if p.apiServerEnabled {
+		logrus.Debugf("Supervisor proxy apiserver port already set")
+		return nil
+	}
+
 	u, err := url.Parse(p.initialSupervisorURL)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse server URL %s", p.initialSupervisorURL)
@@ -139,22 +145,23 @@ func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 	p.apiServerPort = strconv.Itoa(port)
 	u.Host = sysnet.JoinHostPort(u.Hostname(), p.apiServerPort)
 
-	p.apiServerURL = u.String()
-	p.apiServerEnabled = true
-
 	if p.lbEnabled && p.apiServerLB == nil {
 		lbServerPort := p.lbServerPort
 		if lbServerPort != 0 {
 			lbServerPort = lbServerPort - 1
 		}
-		lb, err := loadbalancer.New(p.context, p.dataDir, loadbalancer.APIServerServiceName, p.apiServerURL, lbServerPort, isIPv6)
+		lb, err := loadbalancer.New(p.context, p.dataDir, loadbalancer.APIServerServiceName, u.String(), lbServerPort, isIPv6)
 		if err != nil {
 			return err
 		}
-		p.apiServerURL = lb.LoadBalancerServerURL()
 		p.apiServerLB = lb
+		p.apiServerURL = lb.LoadBalancerServerURL()
+	} else {
+		p.apiServerURL = u.String()
 	}
 
+	logrus.Debugf("Supervisor proxy apiserver port changed; apiserver=%s lb=%v", p.apiServerURL, p.lbEnabled)
+	p.apiServerEnabled = true
 	return nil
 }
 

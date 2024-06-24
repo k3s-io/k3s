@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/k3s-io/k3s/tests/e2e"
 )
 
 // Valid nodeOS: generic/ubuntu2310, opensuse/Leap-15.3.x86_64

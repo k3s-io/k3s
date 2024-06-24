@@ -30,16 +30,6 @@ Vagrant.configure("2") do |config|
       YAML
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
-
-
-    def log_result(test_case, status)
-      File.open("/install/test-results.json", "a") do |f|
-        f.puts({case_id: test_case, status: status}.to_json)
-      end
-    end
-
-
-
     waitForNodeReady(test.vm)
 
     waitForCoreDns(test.vm)

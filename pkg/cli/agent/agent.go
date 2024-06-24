@@ -1,20 +1,22 @@
 package agent
 
 import (
+	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
-	"github.com/k3s-io/k3s/pkg/authenticator"
+	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/datadir"
+	k3smetrics "github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/proctitle"
+	"github.com/k3s-io/k3s/pkg/profile"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -22,7 +24,6 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	apiauth "k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
 func Run(ctx *cli.Context) error {
@@ -108,33 +109,22 @@ func Run(ctx *cli.Context) error {
 	// Until the agent is run and retrieves config from the server, we won't know
 	// if the embedded registry is enabled. If it is not enabled, these are not
 	// used as the registry is never started.
-	conf := spegel.DefaultRegistry
-	conf.Bootstrapper = spegel.NewAgentBootstrapper(cfg.ServerURL, cfg.Token, cfg.DataDir)
-	conf.HandlerFunc = func(conf *spegel.Config, router *mux.Router) error {
-		// Create and bind a new authenticator using the configured client CA
-		authArgs := []string{"--client-ca-file=" + conf.ClientCAFile}
-		auth, err := authenticator.FromArgs(authArgs)
-		if err != nil {
-			return err
-		}
-		conf.AuthFunc = func() apiauth.Request {
-			return auth
-		}
+	registry := spegel.DefaultRegistry
+	registry.Bootstrapper = spegel.NewAgentBootstrapper(cfg.ServerURL, cfg.Token, cfg.DataDir)
+	registry.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, nil)
+	}
 
-		// Create a new server and listen on the configured port
-		server := &http.Server{
-			Handler: router,
-			Addr:    ":" + conf.RegistryPort,
-			TLSConfig: &tls.Config{
-				ClientAuth: tls.RequestClientCert,
-			},
-		}
-		go func() {
-			if err := server.ListenAndServeTLS(conf.ServerCertFile, conf.ServerKeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logrus.Fatalf("registry server failed: %v", err)
-			}
-		}()
-		return nil
+	// same deal for metrics - these are not used if the extra metrics listener is not enabled.
+	metrics := k3smetrics.DefaultMetrics
+	metrics.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, nil)
+	}
+
+	// and for pprof as well
+	pprof := profile.DefaultProfiler
+	pprof.Router = func(ctx context.Context, nodeConfig *config.Node) (*mux.Router, error) {
+		return https.Start(ctx, nodeConfig, nil)
 	}
 
 	return agent.Run(contextCtx, cfg)

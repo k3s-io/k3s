@@ -252,6 +252,8 @@ github.com/Microsoft/go-winio v0.6.0/go.mod h1:cTAf44im0RAYeL23bpB+fzCyDH2MJiz2B
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
+github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
+github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Microsoft/hcsshim v0.11.0 h1:7EFNIY4igHEXUdj1zXgAyU3fLc7QfOKHbkldRVTBdiM=
 github.com/Microsoft/hcsshim v0.11.0/go.mod h1:OEthFdQv/AD2RAdzR6Mm1N1KPCztGKDurW1Z8b8VGMM=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
@@ -274,7 +276,6 @@ github.com/alexflint/go-filemutex v1.2.0/go.mod h1:mYyQSWvw9Tx2/H2n9qXPb52tTYfE0
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/antihax/optional v1.0.0 h1:xK2lYat7ZLaVVcIuj82J8kIro4V6kDe0AUDFboUCwcg=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df h1:7RFfzj4SSt6nnvCPbCqijJi1nWCd+TqAT3bYCStRC18=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df/go.mod h1:pSwJ0fSY5KhvocuWSx4fz3BA8OrA1bQn+K1Eli3BRwM=
@@ -923,8 +924,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.13-k3s1 h1:yexUwAPPdmYfIMWOj6sSyJ2nEe8QOrFzN
 github.com/k3s-io/etcd/raft/v3 v3.5.13-k3s1/go.mod h1:uUFibGLn2Ksm2URMxN1fICGhk8Wu96EfDQyuLhAcAmw=
 github.com/k3s-io/etcd/server/v3 v3.5.13-k3s1 h1:Pqcxkg7V60c26ZpHoekP9QoUdLuduxFn827A/5CIwm4=
 github.com/k3s-io/etcd/server/v3 v3.5.13-k3s1/go.mod h1:K/8nbsGupHqmr5MkgaZpLlH1QdX1pcNQLAkODy44XcQ=
-github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6 h1:2VcBFT2iPskZqNEVY5636Fk8NHiM/x4zQ9/h+f3WMSA=
-github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6/go.mod h1:AcSxEhOIUgeVvBTnJOAwcezBZXtYew/RhKwO5xp3RlM=
+github.com/k3s-io/helm-controller v0.16.1 h1:4sdJSYdAeTvMjjq3Pt1ZcyenRTJIAvKojTWRg/i8Ne4=
+github.com/k3s-io/helm-controller v0.16.1/go.mod h1:AcSxEhOIUgeVvBTnJOAwcezBZXtYew/RhKwO5xp3RlM=
 github.com/k3s-io/kine v0.11.9 h1:7HfWSwtOowb7GuV6nECnNlFKShgRgVBLdWXj0/4t0sE=
 github.com/k3s-io/kine v0.11.9/go.mod h1:N8rc1GDmEvvYRuTxhKTZfSc4fm/vyI6GbDxwBjccAjs=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
@@ -1400,14 +1401,10 @@ github.com/quic-go/quic-go v0.42.0 h1:uSfdap0eveIl8KXnipv9K7nlwZ5IqLlYOpJ58u5utp
 github.com/quic-go/quic-go v0.42.0/go.mod h1:132kz4kL3F9vxhW3CtQJLDVwcFe5wdWeJXXijhsO57M=
 github.com/quic-go/webtransport-go v0.6.0 h1:CvNsKqc4W2HljHJnoT+rMmbRJybShZ0YPFDD3NxaZLY=
 github.com/quic-go/webtransport-go v0.6.0/go.mod h1:9KjU4AEBqEQidGHNDkZrb8CAa1abRaosM2yGOyiikEc=
-github.com/rancher-sandbox/qase-ginkgo v1.0.1 h1:LB9ITLavX3PmcOe0hp0Y7rwQCjJ3WpL8kG8v1MxPadE=
-github.com/rancher-sandbox/qase-ginkgo v1.0.1/go.mod h1:sIF43xaLHtEzmPqADKlZZV6oatc66GHz1N6gpBNn6QY=
 github.com/rancher/dynamiclistener v0.6.0-rc1 h1:Emwf9o7PMLdQNv4lvFx7xJKxDuDa4Y69GvVEGU9U9Js=
 github.com/rancher/dynamiclistener v0.6.0-rc1/go.mod h1:BIPgJ8xFSUyuTyGvRMVt++S1qjD3+7Ptvq1TXl6hcTM=
 github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5 h1:6K4RhfmCy7uxaw9OzCljNLfFcgD/q7SeF+/2gCQ3Tvw=
 github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5/go.mod h1:7WkdfPEvWAdnHVioMUkhpZkshJzjDY62ocHVhcbw89M=
-github.com/rancher/qase-go/client v0.0.0-20231114201952-65195ec001fa h1:/qeYlQVfyvsO5yY0dZmm7mRTAsDm54jACiRDx3LAwsA=
-github.com/rancher/qase-go/client v0.0.0-20231114201952-65195ec001fa/go.mod h1:NP3xboG+t2p+XMnrcrJ/L384Ki0Cp3Pww/X+vm5Jcy0=
 github.com/rancher/remotedialer v0.3.0 h1:y1EO8JCsgZo0RcqTUp6U8FXcBAv27R+TLnWRcpvX1sM=
 github.com/rancher/remotedialer v0.3.0/go.mod h1:BwwztuvViX2JrLLUwDlsYt5DiyUwHLlzynRwkZLAY0Q=
 github.com/rancher/wharfie v0.6.4 h1:JwYB+q661n8ut/ysgsjKe0P0z6bHCCFoC+29995ME90=

@@ -103,7 +103,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.16.1-0.20240502205943-2f32059d43e6
+	github.com/k3s-io/helm-controller v0.16.1
 	github.com/k3s-io/kine v0.11.9
 	github.com/klauspost/compress v1.17.7
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
@@ -121,7 +121,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.49.0
-	github.com/rancher-sandbox/qase-ginkgo v1.0.1
 	github.com/rancher/dynamiclistener v0.6.0-rc1
 	github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5
 	github.com/rancher/remotedialer v0.3.0
@@ -180,7 +179,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.1.0 // indirect
-	github.com/antihax/optional v1.0.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
 	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
@@ -432,7 +430,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
-	go.qase.io/client v0.0.0-20231114201952-65195ec001fa // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	go.uber.org/dig v1.17.1 // indirect
 	go.uber.org/fx v1.20.1 // indirect

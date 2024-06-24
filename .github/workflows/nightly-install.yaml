@@ -1,9 +1,8 @@
 name: Nightly Install
 on:
-  push: {}
-#  schedule:
-#    - cron: "0 0 * * 1-5"
-#  workflow_dispatch: {}
+  schedule:
+    - cron: "0 0 * * 1-5"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -19,122 +18,200 @@ jobs:
         channel: [stable, latest]
         vm: [rocky-8, fedora, opensuse-leap, ubuntu-2204]
       max-parallel: 4
-#    defaults:
-#      run:
-#        working-directory: tests/install/${{ matrix.vm }}
+    defaults:
+      run:
+        working-directory: tests/install/${{ matrix.vm }}
     env:
       INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
+      LOG_FILE: /tmp/k3s-install-test-results.log
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
-#      - name: Set up vagrant and libvirt
-#        uses: ./.github/actions/vagrant-setup
-#      - name: "Vagrant Cache"
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#             ~/.vagrant.d/boxes
-#          key: vagrant-box-${{ matrix.vm }}
-#        id: vagrant-cache
-#      - name: "Vagrant Plugin(s)"
-#        run: vagrant plugin install vagrant-k3s vagrant-reload
-#      - name: "Vagrant Up ⏩ Install K3s"
-#        run: vagrant up
-#      - name: "⏳ Node"
-#        run: vagrant provision --provision-with=k3s-wait-for-node
-#      - name: "⏳ CoreDNS"
-#        run: vagrant provision --provision-with=k3s-wait-for-coredns
-#      - name: "⏳ Local Storage"
-#        run: vagrant provision --provision-with=k3s-wait-for-local-storage
-#        continue-on-error: true
-#      - name: "⏳ Metrics Server"
-#        run: vagrant provision --provision-with=k3s-wait-for-metrics-server
-#        continue-on-error: true
-#      - name: "⏳ Traefik"
-#        run: vagrant provision --provision-with=k3s-wait-for-traefik
-#        continue-on-error: true
-#      - name: "k3s-status"
-#        run: vagrant provision --provision-with=k3s-status
-#      - name: "k3s-procps"
-#        run: vagrant provision --provision-with=k3s-procps
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      - name: "Vagrant Cache"
+        uses: actions/cache@v4
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: vagrant-box-${{ matrix.vm }}
+        id: vagrant-cache
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s vagrant-reload
+      - name: "Vagrant Up ⏩ Install K3s"
+        run: |
+          if vagrant up; then
+            echo "Vagrant Up ⏩ Install K3s: success" | tee -a ${{ env.LOG_FILE }}
+          else
+            echo "Vagrant Up ⏩ Install K3s: failure" | tee -a ${{ env.LOG_FILE }}
+            exit 1
+          fi
+      - name: "⏳ Node"
+        run: |
+          if vagrant provision --provision-with=k3s-wait-for-node; then
+            echo "Node provision: success" | tee -a ${{ env.LOG_FILE }} 
+          else
+            echo "Node provision: failure" | tee -a ${{ env.LOG_FILE }}
+            exit 1
+          fi
+      - name: "⏳ CoreDNS"
+        run: |
+          if vagrant provision --provision-with=k3s-wait-for-coredns; then
+            echo "CoreDNS provision: success" | tee -a ${{ env.LOG_FILE }}  
+          else
+            echo "CoreDNS provision: failure" | tee -a ${{ env.LOG_FILE }}
+            exit 1
+          fi
+      - name: "⏳ Local Storage"
+        run: |
+          vagrant provision --provision-with=k3s-wait-for-local-storage && \
+          echo "Local Storage provision: success" | tee -a ${{ env.LOG_FILE }} || \
+          echo "Local Storage provision: failure" | tee -a ${{ env.LOG_FILE }}
+        continue-on-error: true
+      - name: "⏳ Metrics Server"
+        run: |
+          vagrant provision --provision-with=k3s-wait-for-metrics-server && \
+          echo "Metrics Server provision: success" | tee -a ${{ env.LOG_FILE }} || \
+          echo "Metrics Server provision: failure" | tee -a ${{ env.LOG_FILE }}
+        continue-on-error: true
+      - name: "⏳ Traefik"
+        run: |
+          vagrant provision --provision-with=k3s-wait-for-traefik && \
+          echo "Traefik provision: success" | tee -a ${{ env.LOG_FILE }} || \
+          echo "Traefik provision: failure" | tee -a ${{ env.LOG_FILE }}
+        continue-on-error: true
+      - name: "k3s-status"
+        run: |
+          if vagrant provision --provision-with=k3s-status; then
+            echo "k3s-status: success" | tee -a ${{ env.LOG_FILE }}  
+          else
+            echo "k3s-status: failure" | tee -a ${{ env.LOG_FILE }}
+            exit 1
+          fi
+      - name: "k3s-procps"
+        run: |
+          if vagrant provision --provision-with=k3s-procps; then
+            echo "k3s-procps: success" | tee -a ${{ env.LOG_FILE }}
+          else
+            echo "k3s-procps: failure" | tee -a ${{ env.LOG_FILE }}
+            exit 1
+          fi
 
-      - name: Create Qase Run
-        id: qase
+      - name: "Qase Results environment setup"
+        if: always()
         env:
+          QASE_RUN_NAME: "K3s Nightly Install-${{ matrix.vm }}(${{ matrix.channel }})"
+          QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
+          PROJECT_CODE: "K3SRKE2"
+          CASE_ID_LIST: "108,109,110,111,112,113,114,115"
+        run: |
+          echo "QASE_RUN_NAME=${{ env.QASE_RUN_NAME }}" >> $GITHUB_ENV
+          echo "PROJECT_CODE=${{ env.PROJECT_CODE }}" >> $GITHUB_ENV
+          echo "CASE_ID_LIST=${{ env.CASE_ID_LIST }}" >> $GITHUB_ENV
+
+      - name: "Create Qase Run"
+        if: always()
+        id: create-qase-run
+        env:
+          QASE_RUN_NAME:  ${{ env.QASE_RUN_NAME }}
+          CASE_ID_LIST:  ${{ env.CASE_ID_LIST }}
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
         run: |
-          sudo apt-get install jq
-          # create a QASE_RUN_NAME DINAMICALLY
-          QASE_RUN_NAME="Install K3s on ${{ matrix.vm }}"
+          # Create a run ID
+          RUN_ID_RESPONSE=$(curl --request POST \
+            --url "https://api.qase.io/v1/run/$PROJECT_CODE" \
+            --header "Token: $QASE_API_TOKEN" \
+            --header "accept: application/json" \
+            --header "content-type: application/json" \
+            --data '{
+            "cases": ['"$CASE_ID_LIST"'],
+            "title": "'"$QASE_RUN_NAME"'"
+          }')
+          echo "Run ID response: $RUN_ID_RESPONSE"
           
-          # create a run ID
+          # set the run ID as an output variable
+          RUN_ID=$(echo $RUN_ID_RESPONSE | jq -r '.result.id')
+          
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
+            echo "Failed to create Qase run"
+          fi
+          
+          # Set the run ID as an output variable using the environment file
+          echo "QASE_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: Process Test Results
+        if: always()
+        id: process-test-results
+        env:
+          CASE_ID_LIST:  ${{ env.CASE_ID_LIST }}
+        run: |
+          GITHUB_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMENT_LINK="In case of failure in GitHub Actions run. See details here: $GITHUB_RUN_URL"
+
+          IFS=',' read -r -a CASE_IDS <<< "$CASE_ID_LIST"
+          COUNTER=0
+          results='[]'
+
+          while IFS= read -r line; do
+            TEST_NAME=$(echo "$line" | awk -F': ' '{print $1}')
+            TEST_STATUS=$(echo "$line" | awk -F': ' '{print $2}')
+            TEST_CASE_ID=${CASE_IDS[$COUNTER]}
+
+            COUNTER=$((COUNTER + 1))
+            if [ $COUNTER -ge ${#CASE_IDS[@]} ]; then
+              COUNTER=0
+            fi
+
+            if [ "$TEST_STATUS" == "success" ]; then
+              STATUS="passed"
+            else
+              STATUS="failed"
+            fi
+
+            results=$(echo "$results" | jq --arg case_id "$TEST_CASE_ID" --arg status "$STATUS" --arg comment "$COMMENT_LINK" \
+            '. + [{ "case_id": ($case_id|tonumber), "status": $status, "comment": $comment }]')
+          done < /tmp/k3s-install-test-results.log
+
+          echo "$results" > results.json
+        continue-on-error: true
+
+      - name: Publish Test Results
+        if: always()
+        env:
+          RUN_ID: ${{ env.QASE_RUN_ID }}
+          PROJECT_CODE: ${{ env.PROJECT_CODE }}
+          QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
+        run: |
+          results=$(cat results.json)
           RESPONSE=$(curl --request POST \
-          --url https://api.qase.io/v1/run/DEMO \
-          --header 'Token: $QASE_API_TOKEN' \
-          --header 'accept: application/json' \
-          --header 'content-type: application/json' \
-          --data '
-            {
-              "cases": [
-                          0,
-                          1
-                       ],
-              "is_autotest": true,
-              "title": "'"$QASE_RUN_NAME"'",
-            }'
-            )
-          
-            # set the run ID as an output variable
-            RUN_ID=$(echo $RESPONSE | jq -r '.result.id')
-          
-            # Print the RUN_ID to verify
-            echo "The RUN_ID is: $RUN_ID"
-            
-            # Set the run ID as an output variable using the environment file
-              echo "QASE_RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          
-          ## step
-          
-          
-          # complete the run
-          COMPLETE_RUN=$(curl --request POST \
-            --url https://api.qase.io/v1/run/K3SRKE2/$RUN_ID/complete \
-            --header 'Token: $QASE_API_TOKEN' \
-            --header 'accept: application/json'
-            )
+            --url "https://api.qase.io/v1/result/${PROJECT_CODE}/${RUN_ID}/bulk" \
+            --header "Token: $QASE_API_TOKEN" \
+            --header 'accept: application/json' \
+            --header "Content-Type: application/json" \
+            --data "{\"results\": $results}")
 
-            RUN_STATUS=$(echo $COMPLETE_RUN | jq -r '.status')
-              if [[ $RUN_STATUS != true ]]; then
-                echo "Failed to complete the run"
-              fi
+          echo "Publish test results response: $RESPONSE"
+        continue-on-error: true
 
-#          # make run public
-#            PUBLISH_RUN=$(curl --request PATCH \
-#            --url https://api.qase.io/v1/run/K3SRKE2/$RUN_ID/public \
-#            --header 'Token: $QASE_API_TOKEN' \
-#            --header 'accept: application/json' \
-#            --header 'content-type: application/json' \
-#            --data '{"status":true}'
-#            )
-#
-#          REPORT_URL=$(echo $PUBLISH_RUN | jq -r '.result.url')
-#          if [[ -n "${REPORT_URL}" ]]; then
-#            echo report url: ${REPORT_URL}
-#            echo "## QASE Reporting" >> ${GITHUB_STEP_SUMMARY}
-#            echo "Public Qase report: ${REPORT_URL}" >> ${GITHUB_STEP_SUMMARY}
-#          fi
-
-      - name: Run Tests and Upload Results to Qase
+      - name: Complete Qase Run
+        if: always()
         env:
+          RUN_ID: ${{ env.QASE_RUN_ID }}
+          PROJECT_CODE: ${{ env.PROJECT_CODE }}
           QASE_API_TOKEN: ${{ secrets.QASE_API_TOKEN }}
-          QASE_RUN_ID: ${{ env.QASE_RUN_ID }}
         run: |
-          echo "Run K3s Smoke Test"
-           #Example: ./run-tests.sh and capture results in a file, e.g., test-results.json
-          ./run-tests.sh > test-results.json
-
- 
+          COMPLETE_RUN=$(curl --request POST \
+          --url "https://api.qase.io/v1/run/${PROJECT_CODE}/${RUN_ID}/complete" \
+          --header "Token: $QASE_API_TOKEN" \
+          --header 'accept: application/json')
           
-  
+          RUN_STATUS=$(echo $COMPLETE_RUN | jq -r '.status')
+            if [[ $RUN_STATUS != true ]]; then
+              echo "Failed to complete the run"
+            else
+              echo "Run completed successfully"
+            fi
+        continue-on-error: true
 

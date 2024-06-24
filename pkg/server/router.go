@@ -200,11 +200,6 @@ func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Cer
 
 func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBootstrapper) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-
 		nodeName, errCode, err := auth(req)
 		if err != nil {
 			util.SendError(err, resp, req, errCode)
@@ -256,11 +251,6 @@ func servingKubeletCert(server *config.Control, keyFile string, auth nodePassBoo
 
 func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBootstrapper) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
-
 		nodeName, errCode, err := auth(req)
 		if err != nil {
 			util.SendError(err, resp, req, errCode)
@@ -296,10 +286,6 @@ func clientKubeletCert(server *config.Control, keyFile string, auth nodePassBoot
 
 func fileHandler(fileName ...string) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
 		resp.Header().Set("Content-Type", "text/plain")
 
 		if len(fileName) == 1 {
@@ -310,8 +296,7 @@ func fileHandler(fileName ...string) http.Handler {
 		for _, f := range fileName {
 			bytes, err := os.ReadFile(f)
 			if err != nil {
-				logrus.Errorf("Failed to read %s: %v", f, err)
-				resp.WriteHeader(http.StatusInternalServerError)
+				util.SendError(errors.Wrapf(err, "failed to read %s", f), resp, req, http.StatusInternalServerError)
 				return
 			}
 			resp.Write(bytes)
@@ -336,18 +321,13 @@ func apiserversHandler(server *config.Control) http.Handler {
 
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(endpoints); err != nil {
-			logrus.Errorf("Failed to encode apiserver endpoints: %v", err)
-			resp.WriteHeader(http.StatusInternalServerError)
+			util.SendError(errors.Wrap(err, "failed to encode apiserver endpoints"), resp, req, http.StatusInternalServerError)
 		}
 	})
 }
 
 func configHandler(server *config.Control, cfg *cmds.Server) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.TLS == nil {
-			resp.WriteHeader(http.StatusNotFound)
-			return
-		}
 		// Startup hooks may read and modify cmds.Server in a goroutine, but as these are copied into
 		// config.Control before the startup hooks are called, any modifications need to be sync'd back
 		// into the struct before it is sent to agents.
@@ -355,23 +335,21 @@ func configHandler(server *config.Control, cfg *cmds.Server) http.Handler {
 		server.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(server); err != nil {
-			logrus.Errorf("Failed to encode agent config: %v", err)
-			resp.WriteHeader(http.StatusInternalServerError)
+			util.SendError(errors.Wrap(err, "failed to encode agent config"), resp, req, http.StatusInternalServerError)
 		}
 	})
 }
 
 func readyzHandler(server *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		code := http.StatusOK
-		data := []byte("ok")
 		if server.Runtime.Core == nil {
-			code = http.StatusInternalServerError
-			data = []byte("runtime core not ready")
+			util.SendError(util.ErrCoreNotReady, resp, req, http.StatusServiceUnavailable)
+			return
 		}
-		resp.WriteHeader(code)
+		data := []byte("ok")
+		resp.WriteHeader(http.StatusOK)
 		resp.Header().Set("Content-Type", "text/plain")
-		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+		resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		resp.Write(data)
 	})
 }
@@ -379,6 +357,7 @@ func readyzHandler(server *config.Control) http.Handler {
 func ping() http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		data := []byte("pong")
+		resp.WriteHeader(http.StatusOK)
 		resp.Header().Set("Content-Type", "text/plain")
 		resp.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		resp.Write(data)
@@ -432,7 +411,7 @@ func passwordBootstrap(ctx context.Context, config *Config) nodePassBootstrapper
 				return verifyRemotePassword(ctx, config, &mu, deferredNodes, node)
 			} else {
 				// Otherwise, reject the request until the core is ready.
-				return "", http.StatusServiceUnavailable, errors.New("runtime core not ready")
+				return "", http.StatusServiceUnavailable, util.ErrCoreNotReady
 			}
 		}
 
