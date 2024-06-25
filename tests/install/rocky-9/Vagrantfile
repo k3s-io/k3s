@@ -45,6 +45,14 @@ Vagrant.configure("2") do |config|
     checkK3sProcesses(test.vm)
 
     checkCGroupV2(test.vm)
+
+    mountDirs(test.vm)
+
+    runUninstall(test.vm)
+
+    checkMountPoint(test.vm)
+
+    unmountDir(test.vm)
   end
 
   config.vm.provision 'selinux-status', type: 'shell', run: 'once', inline: 'sestatus'
