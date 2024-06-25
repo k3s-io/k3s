@@ -89,6 +89,14 @@ jobs:
         run: vagrant provision --provision-with=k3s-status
       - name: "k3s-procps"
         run: vagrant provision --provision-with=k3s-procps
+      - name: "k3s-mount-directory"
+        run: vagrant provision --provision-with=k3s-mount-directory
+      - name: "k3s-uninstall"
+        run: vagrant provision --provision-with=k3s-uninstall
+      - name: "k3s-check-mount"
+        run: vagrant provision --provision-with=k3s-check-mount
+      - name: "k3s-unmount-dir"
+        run: vagrant provision --provision-with=k3s-unmount-dir
       - name: Cleanup VM
         run: vagrant destroy -f
       - name: On Failure, launch debug session

@@ -843,7 +843,6 @@ do_unmount_and_remove() {
 }
 
 do_unmount_and_remove '/run/k3s'
-do_unmount_and_remove "${K3S_DATA_DIR}"
 do_unmount_and_remove '/var/lib/kubelet/pods'
 do_unmount_and_remove '/var/lib/kubelet/plugins'
 do_unmount_and_remove '/run/netns/cni-'
@@ -902,10 +901,29 @@ for cmd in kubectl crictl ctr; do
     fi
 done
 
+clean_mounted_directory() {
+    if ! grep -q " \$1" /proc/mounts; then
+        rm -rf "\$1"
+	return 0
+    fi
+
+    for path in "\$1"/*; do
+        if [ -d "\$path" ]; then
+            if grep -q " \$path" /proc/mounts; then
+                clean_mounted_directory "\$path"
+            else
+                rm -rf "\$path"
+            fi
+        else
+            rm "\$path"
+        fi
+     done
+}
+
 rm -rf /etc/rancher/k3s
 rm -rf /run/k3s
 rm -rf /run/flannel
-rm -rf \${K3S_DATA_DIR}
+clean_mounted_directory \${K3S_DATA_DIR}
 rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
