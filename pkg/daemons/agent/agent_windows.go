@@ -49,8 +49,6 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 		"read-only-port":               "0",
 		"cluster-domain":               cfg.ClusterDomain,
 		"kubeconfig":                   cfg.KubeConfigKubelet,
-		"eviction-hard":                "imagefs.available<5%,nodefs.available<5%",
-		"eviction-minimum-reclaim":     "imagefs.available=10%,nodefs.available=10%",
 		"fail-swap-on":                 "false",
 		"authentication-token-webhook": "true",
 		"anonymous-auth":               "false",
