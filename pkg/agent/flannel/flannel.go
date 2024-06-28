@@ -16,9 +16,11 @@ package flannel
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/flannel-io/flannel/pkg/backend"
@@ -228,34 +230,73 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 
 // ReadCIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv4 network CIDRKey
 func ReadCIDRFromSubnetFile(path string, CIDRKey string) ip.IP4Net {
-	var prevCIDR ip.IP4Net
+	prevCIDRs := ReadCIDRsFromSubnetFile(path, CIDRKey)
+	if len(prevCIDRs) == 0 {
+		logrus.Warningf("no subnet found for key: %s in file: %s", CIDRKey, path)
+		return ip.IP4Net{IP: 0, PrefixLen: 0}
+	} else if len(prevCIDRs) > 1 {
+		logrus.Errorf("error reading subnet: more than 1 entry found for key: %s in file %s: ", CIDRKey, path)
+		return ip.IP4Net{IP: 0, PrefixLen: 0}
+	} else {
+		return prevCIDRs[0]
+	}
+}
+
+func ReadCIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP4Net {
+	prevCIDRs := make([]ip.IP4Net, 0)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		prevSubnetVals, err := godotenv.Read(path)
 		if err != nil {
 			logrus.Errorf("Couldn't fetch previous %s from subnet file at %s: %v", CIDRKey, path, err)
 		} else if prevCIDRString, ok := prevSubnetVals[CIDRKey]; ok {
-			err = prevCIDR.UnmarshalJSON([]byte(prevCIDRString))
-			if err != nil {
-				logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+			cidrs := strings.Split(prevCIDRString, ",")
+			prevCIDRs = make([]ip.IP4Net, 0)
+			for i := range cidrs {
+				_, cidr, err := net.ParseCIDR(cidrs[i])
+				if err != nil {
+					logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+				}
+				prevCIDRs = append(prevCIDRs, ip.FromIPNet(cidr))
 			}
+
 		}
 	}
-	return prevCIDR
+	return prevCIDRs
 }
+
 
 // ReadIP6CIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv6 network CIDRKey
 func ReadIP6CIDRFromSubnetFile(path string, CIDRKey string) ip.IP6Net {
-	var prevCIDR ip.IP6Net
+	prevCIDRs := ReadIP6CIDRsFromSubnetFile(path, CIDRKey)
+	if len(prevCIDRs) == 0 {
+		logrus.Warningf("no subnet found for key: %s in file: %s", CIDRKey, path)
+		return ip.IP6Net{IP: (*ip.IP6)(big.NewInt(0)), PrefixLen: 0}
+	} else if len(prevCIDRs) > 1 {
+		logrus.Errorf("error reading subnet: more than 1 entry found for key: %s in file %s: ", CIDRKey, path)
+		return ip.IP6Net{IP: (*ip.IP6)(big.NewInt(0)), PrefixLen: 0}
+	} else {
+		return prevCIDRs[0]
+	}
+}
+
+func ReadIP6CIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP6Net {
+	prevCIDRs := make([]ip.IP6Net, 0)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		prevSubnetVals, err := godotenv.Read(path)
 		if err != nil {
 			logrus.Errorf("Couldn't fetch previous %s from subnet file at %s: %v", CIDRKey, path, err)
 		} else if prevCIDRString, ok := prevSubnetVals[CIDRKey]; ok {
-			err = prevCIDR.UnmarshalJSON([]byte(prevCIDRString))
-			if err != nil {
-				logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+			cidrs := strings.Split(prevCIDRString, ",")
+			prevCIDRs = make([]ip.IP6Net, 0)
+			for i := range cidrs {
+				_, cidr, err := net.ParseCIDR(cidrs[i])
+				if err != nil {
+					logrus.Errorf("Couldn't parse previous %s from subnet file at %s: %v", CIDRKey, path, err)
+				}
+				prevCIDRs = append(prevCIDRs, ip.FromIP6Net(cidr))
 			}
+
 		}
 	}
-	return prevCIDR
+	return prevCIDRs
 }
