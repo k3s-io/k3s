@@ -1,7 +1,7 @@
 # Example channels config
 channels:
 - name: stable
-  latest: v1.29.5+k3s1
+  latest: v1.29.6+k3s1
 - name: latest
   latestRegexp: .*
   excludeRegexp: (^[^+]+-|v1\.25\.5\+k3s1|v1\.26\.0\+k3s1)
