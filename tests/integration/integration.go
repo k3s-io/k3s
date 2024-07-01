@@ -130,33 +130,24 @@ func K3sServerArgs() []string {
 
 // K3sDefaultDeployments checks if the default deployments for K3s are ready, otherwise returns an error
 func K3sDefaultDeployments() error {
-	return CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
+	return CheckDeployments(metav1.NamespaceSystem, []string{"coredns", "local-path-provisioner", "metrics-server", "traefik"})
 }
 
 // CheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
-func CheckDeployments(deployments []string) error {
-
-	deploymentSet := make(map[string]bool)
-	for _, d := range deployments {
-		deploymentSet[d] = false
-	}
-
+func CheckDeployments(namespace string, deployments []string) error {
 	client, err := k8sClient()
 	if err != nil {
 		return err
 	}
-	deploymentList, err := client.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, deployment := range deploymentList.Items {
-		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == deployment.Status.Replicas {
-			deploymentSet[deployment.Name] = true
+
+	for _, deploymentName := range deployments {
+		deployment, err := client.AppsV1().Deployments(namespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return err
 		}
-	}
-	for d, found := range deploymentSet {
-		if !found {
-			return fmt.Errorf("failed to deploy %s", d)
+		if deployment.Status.ReadyReplicas != deployment.Status.Replicas || deployment.Status.AvailableReplicas != deployment.Status.Replicas {
+			return fmt.Errorf("deployment %s not ready: replicas=%d readyReplicas=%d availableReplicas=%d",
+				deploymentName, deployment.Status.Replicas, deployment.Status.ReadyReplicas, deployment.Status.AvailableReplicas)
 		}
 	}
 
