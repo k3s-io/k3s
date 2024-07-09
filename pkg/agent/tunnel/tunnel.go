@@ -38,6 +38,7 @@ import (
 
 var (
 	endpointDebounceDelay = time.Second
+	defaultDialer         = net.Dialer{}
 )
 
 type agentTunnel struct {
@@ -45,6 +46,7 @@ type agentTunnel struct {
 	cidrs       cidranger.Ranger
 	ports       map[string]bool
 	mode        string
+	kubeletAddr string
 	kubeletPort string
 	startTime   time.Time
 }
@@ -82,6 +84,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		cidrs:       cidranger.NewPCTrieRanger(),
 		ports:       map[string]bool{},
 		mode:        config.EgressSelectorMode,
+		kubeletAddr: config.AgentConfig.ListenAddress,
 		kubeletPort: fmt.Sprint(ports.KubeletPort),
 		startTime:   time.Now().Truncate(time.Second),
 	}
@@ -186,7 +189,7 @@ func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan 
 			return false, nil
 		}
 		a.kubeletPort = kubeletPort
-		logrus.Infof("Tunnel authorizer set Kubelet Port %s", a.kubeletPort)
+		logrus.Infof("Tunnel authorizer set Kubelet Port %s", net.JoinHostPort(a.kubeletAddr, a.kubeletPort))
 		return true, nil
 	})
 }
@@ -390,7 +393,7 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 	logrus.Debugf("Tunnel authorizer checking dial request for %s", address)
 	host, port, err := net.SplitHostPort(address)
 	if err == nil {
-		if a.isKubeletPort(proto, host, port) {
+		if a.isKubeletOrStreamPort(proto, host, port) {
 			return true
 		}
 		if ip := net.ParseIP(host); ip != nil {
@@ -448,7 +451,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	go func() {
 		for {
 			// ConnectToProxy blocks until error or context cancellation
-			err := remotedialer.ConnectToProxy(ctx, wsURL, nil, auth, ws, onConnect)
+			err := remotedialer.ConnectToProxyWithDialer(ctx, wsURL, nil, auth, ws, a.dialContext, onConnect)
 			connected = false
 			if err != nil && !errors.Is(err, context.Canceled) {
 				logrus.WithField("url", wsURL).WithError(err).Error("Remotedialer proxy error; reconnecting...")
@@ -471,7 +474,21 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}
 }
 
-// isKubeletPort returns true if the connection is to a reserved TCP port on a loopback address.
-func (a *agentTunnel) isKubeletPort(proto, host, port string) bool {
+// isKubeletOrStreamPort returns true if the connection is to a reserved TCP port on a loopback address.
+func (a *agentTunnel) isKubeletOrStreamPort(proto, host, port string) bool {
 	return proto == "tcp" && (host == "127.0.0.1" || host == "::1") && (port == a.kubeletPort || port == daemonconfig.StreamServerPort)
+}
+
+// dialContext dials a local connection on behalf of the remote server.  If the
+// connection is to the kubelet port on the loopback address, the kubelet is dialed
+// at its configured bind address.  Otherwise, the connection is dialed normally.
+func (a *agentTunnel) dialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	if a.isKubeletOrStreamPort(network, host, port) && port == a.kubeletPort {
+		address = net.JoinHostPort(a.kubeletAddr, port)
+	}
+	return defaultDialer.DialContext(ctx, network, address)
 }
