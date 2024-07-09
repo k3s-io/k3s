@@ -3,7 +3,6 @@ package control
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -197,7 +196,6 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 	if err != nil {
 		return nil, err
 	}
-	loopback := t.config.Loopback(true)
 
 	var nodeName string
 	var toKubelet, useTunnel bool
@@ -224,14 +222,17 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 		useTunnel = true
 	}
 
-	// Always dial kubelet via the loopback address.
-	if toKubelet {
-		addr = fmt.Sprintf("%s:%s", loopback, port)
-	}
-
 	// If connecting to something hosted by the local node, don't tunnel
 	if nodeName == t.config.ServerNodeName {
 		useTunnel = false
+		if toKubelet {
+			// Dial local kubelet at the configured bind address
+			addr = net.JoinHostPort(t.config.BindAddress, port)
+		}
+	} else if toKubelet {
+		// Dial remote kubelet via the loopback address, the remotedialer client
+		// will ensure that it hits the right local address.
+		addr = net.JoinHostPort(t.config.Loopback(false), port)
 	}
 
 	if useTunnel {
