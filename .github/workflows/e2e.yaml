@@ -7,6 +7,7 @@ on:
       - "install.sh"
       - "tests/**"
       - "!tests/e2e**"
+      - "!tests/docker**"
       - ".github/**"
       - "!.github/workflows/e2e.yaml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "install.sh"
       - "tests/**"
       - "!tests/e2e**"
+      - "!tests/docker**"
       - ".github/**"
       - "!.github/workflows/e2e.yaml"
   workflow_dispatch: {}
@@ -97,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, lazypull, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, compat, lazypull, upgrade]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -113,6 +115,7 @@ jobs:
     - name: Run ${{ matrix.dtest }} Test
       run: | 
         chmod +x ./dist/artifacts/k3s
+        . ./scripts/version.sh
         . ./tests/docker/test-helpers
         . ./tests/docker/test-run-${{ matrix.dtest }}
         echo "Did test-run-${{ matrix.dtest }} pass $?"
