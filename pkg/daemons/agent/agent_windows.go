@@ -81,8 +81,9 @@ func kubeletArgs(cfg *config.Agent) map[string]string {
 			argsMap["container-runtime-endpoint"] = socketPrefix + cfg.RuntimeSocket
 		}
 	}
-	if cfg.ListenAddress != "" {
-		argsMap["address"] = cfg.ListenAddress
+	listenAddress, _, _, _ := util.GetDefaultAddresses(cfg.NodeIPs[0])
+	if listenAddress != "" {
+		argsMap["address"] = listenAddress
 	}
 	if cfg.ClientCA != "" {
 		argsMap["anonymous-auth"] = "false"
