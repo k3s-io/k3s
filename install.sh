@@ -767,7 +767,9 @@ create_killall() {
 #!/bin/sh
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
-for bin in /var/lib/rancher/k3s/data/**/bin/; do
+K3S_DATA_DIR=${K3S_DATA_DIR:-/var/lib/rancher/k3s}
+
+for bin in ${K3S_DATA_DIR}/data/**/bin/; do
     [ -d $bin ] && export PATH=$PATH:$bin:$bin/aux
 done
 
@@ -841,7 +843,7 @@ do_unmount_and_remove() {
 }
 
 do_unmount_and_remove '/run/k3s'
-do_unmount_and_remove '/var/lib/rancher/k3s'
+do_unmount_and_remove "${K3S_DATA_DIR}"
 do_unmount_and_remove '/var/lib/kubelet/pods'
 do_unmount_and_remove '/var/lib/kubelet/plugins'
 do_unmount_and_remove '/run/netns/cni-'
@@ -867,6 +869,8 @@ create_uninstall() {
 #!/bin/sh
 set -x
 [ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
+
+K3S_DATA_DIR=\${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
 ${KILLALL_K3S_SH}
 
@@ -901,7 +905,7 @@ done
 rm -rf /etc/rancher/k3s
 rm -rf /run/k3s
 rm -rf /run/flannel
-rm -rf /var/lib/rancher/k3s
+rm -rf \${K3S_DATA_DIR}
 rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
