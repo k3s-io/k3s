@@ -26,13 +26,12 @@ case ${OS} in
   linux)
     git clone --single-branch --branch=${VERSION_RUNC} --depth=1 https://github.com/k3s-io/runc ${RUNC_DIR}
     curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/k3s-root-${ARCH}.tar | tar xf -
-    cp scripts/wg-add.sh bin/aux
     ;;
   windows)
     git clone --single-branch --branch=${VERSION_HCSSHIM} --depth=1 https://github.com/microsoft/hcsshim ${HCSSHIM_DIR}
     ;;
   *)
-    echo "[ERROR] unrecognized opertaing system: ${OS}"
+    echo "[ERROR] unrecognized operating system: ${OS}"
     exit 1
     ;;
 esac
