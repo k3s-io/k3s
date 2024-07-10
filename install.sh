@@ -865,7 +865,7 @@ ${KILLALL_K3S_SH}
 
 if command -v systemctl; then
     systemctl disable ${SYSTEM_NAME}
-    systemctl reset-failed ${SYSTEM_NAME}
+    systemctl reset-failed ${SYSTEM_NAME} 2>/dev/null
     systemctl daemon-reload
 fi
 if command -v rc-update; then
@@ -1119,4 +1119,3 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     create_service_file
     service_enable_and_start
 }
-
