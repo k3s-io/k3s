@@ -865,7 +865,7 @@ ${KILLALL_K3S_SH}
 
 if command -v systemctl; then
     systemctl disable ${SYSTEM_NAME}
-    systemctl reset-failed
+    systemctl reset-failed ${SYSTEM_NAME} || true
     systemctl daemon-reload
 fi
 if command -v rc-update; then
