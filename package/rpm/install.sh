@@ -603,7 +603,7 @@ ${KILLALL_K3S_SH}
 if which systemctl; then
     for service in ${SERVICE_DIR}/k3s*.service; do
         systemctl disable \$service
-        systemctl reset-failed
+        systemctl reset-failed \$service || true
         rm -f \$service
     done
     systemctl daemon-reload
