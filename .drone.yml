@@ -639,9 +639,9 @@ steps:
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
       vagrant destroy -f
-      # Convert relaase-1.XX branch to v1.XX channel
+      # Convert release-1.XX branch to v1.XX channel
       if [ "$DRONE_BRANCH" = "master" ]; then
-        UPGRADE_CHANNEL="latest "
+        UPGRADE_CHANNEL="latest"
       else
         UPGRADE_CHANNEL=$(echo $DRONE_BRANCH | sed 's/release-/v/')
       fi
