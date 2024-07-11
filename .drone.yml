@@ -639,7 +639,13 @@ steps:
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
       vagrant destroy -f
-      E2E_RELEASE_CHANNEL="latest" go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
+      # Convert release-1.XX branch to v1.XX channel
+      if [ "$DRONE_BRANCH" = "master" ]; then
+        UPGRADE_CHANNEL="latest"
+      else
+        UPGRADE_CHANNEL=$(echo $DRONE_BRANCH | sed 's/release-/v/')
+      fi
+      E2E_RELEASE_CHANNEL=$UPGRADE_CHANNEL go test -v -timeout=45m ./upgradecluster_test.go  -ci -local
       cp ./coverage.out /tmp/artifacts/upgrade-coverage.out
     fi
   - docker stop registry && docker rm registry
