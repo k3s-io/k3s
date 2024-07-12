@@ -103,7 +103,7 @@ func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []str
 			return false, err
 		}
 		if len(addresses) == 0 {
-			logrus.Infof("Waiting for apiserver addresses")
+			logrus.Infof("Waiting for supervisor to provide apiserver addresses")
 			return false, nil
 		}
 		return true, nil
