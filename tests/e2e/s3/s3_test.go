@@ -87,7 +87,31 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
-		It("save s3 snapshot", func() {
+		It("save s3 snapshot using CLI", func() {
+			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save "+
+				"--etcd-s3-insecure=true "+
+				"--etcd-s3-bucket=test-bucket "+
+				"--etcd-s3-folder=test-folder "+
+				"--etcd-s3-endpoint=localhost:9090 "+
+				"--etcd-s3-skip-ssl-verify=true "+
+				"--etcd-s3-access-key=test ",
+				serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("Snapshot on-demand-server-0"))
+		})
+		It("creates s3 config secret", func() {
+			res, err := e2e.RunCmdOnNode("k3s kubectl create secret generic k3s-etcd-s3-config --namespace=kube-system "+
+				"--from-literal=etcd-s3-insecure=true "+
+				"--from-literal=etcd-s3-bucket=test-bucket "+
+				"--from-literal=etcd-s3-folder=test-folder "+
+				"--from-literal=etcd-s3-endpoint=localhost:9090 "+
+				"--from-literal=etcd-s3-skip-ssl-verify=true "+
+				"--from-literal=etcd-s3-access-key=test ",
+				serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring("secret/k3s-etcd-s3-config created"))
+		})
+		It("save s3 snapshot using secret", func() {
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(ContainSubstring("Snapshot on-demand-server-0"))

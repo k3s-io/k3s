@@ -32,6 +32,7 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
@@ -186,17 +187,22 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 		serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 		serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
-		serverConfig.ControlConfig.EtcdS3 = cfg.EtcdS3
-		serverConfig.ControlConfig.EtcdS3Endpoint = cfg.EtcdS3Endpoint
-		serverConfig.ControlConfig.EtcdS3EndpointCA = cfg.EtcdS3EndpointCA
-		serverConfig.ControlConfig.EtcdS3SkipSSLVerify = cfg.EtcdS3SkipSSLVerify
-		serverConfig.ControlConfig.EtcdS3AccessKey = cfg.EtcdS3AccessKey
-		serverConfig.ControlConfig.EtcdS3SecretKey = cfg.EtcdS3SecretKey
-		serverConfig.ControlConfig.EtcdS3BucketName = cfg.EtcdS3BucketName
-		serverConfig.ControlConfig.EtcdS3Region = cfg.EtcdS3Region
-		serverConfig.ControlConfig.EtcdS3Folder = cfg.EtcdS3Folder
-		serverConfig.ControlConfig.EtcdS3Insecure = cfg.EtcdS3Insecure
-		serverConfig.ControlConfig.EtcdS3Timeout = cfg.EtcdS3Timeout
+		if cfg.EtcdS3 {
+			serverConfig.ControlConfig.EtcdS3 = &config.EtcdS3{
+				AccessKey:     cfg.EtcdS3AccessKey,
+				Bucket:        cfg.EtcdS3BucketName,
+				ConfigSecret:  cfg.EtcdS3ConfigSecret,
+				Endpoint:      cfg.EtcdS3Endpoint,
+				EndpointCA:    cfg.EtcdS3EndpointCA,
+				Folder:        cfg.EtcdS3Folder,
+				Insecure:      cfg.EtcdS3Insecure,
+				Proxy:         cfg.EtcdS3Proxy,
+				Region:        cfg.EtcdS3Region,
+				SecretKey:     cfg.EtcdS3SecretKey,
+				SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
+				Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
+			}
+		}
 	} else {
 		logrus.Info("ETCD snapshots are disabled")
 	}

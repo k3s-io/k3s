@@ -46,13 +46,8 @@ def provision(vm, role, role_num, node_num)
         cluster-init: true
         etcd-snapshot-schedule-cron: '*/1 * * * *'
         etcd-snapshot-retention: 2
-        etcd-s3-insecure: true
-        etcd-s3-bucket: test-bucket
-        etcd-s3-folder: test-folder
         etcd-s3: true
-        etcd-s3-endpoint: localhost:9090
-        etcd-s3-skip-ssl-verify: true
-        etcd-s3-access-key: test
+        etcd-s3-config-secret: k3s-etcd-s3-config
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
