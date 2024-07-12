@@ -124,18 +124,33 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 	// The loadbalancer is only disabled when there is a local apiserver.  Servers without a local
 	// apiserver load-balance to themselves initially, then switch over to an apiserver node as soon
 	// as we get some addresses from the code below.
+	var localSupervisorDefault bool
+	if addresses := proxy.SupervisorAddresses(); len(addresses) > 0 {
+		host, _, _ := net.SplitHostPort(addresses[0])
+		if host == "127.0.0.1" || host == "::1" {
+			localSupervisorDefault = true
+		}
+	}
+
 	if proxy.IsSupervisorLBEnabled() && proxy.SupervisorURL() != "" {
 		logrus.Info("Getting list of apiserver endpoints from server")
 		// If not running an apiserver locally, try to get a list of apiservers from the server we're
 		// connecting to. If that fails, fall back to querying the endpoints list from Kubernetes. This
 		// fallback requires that the server we're joining be running an apiserver, but is the only safe
 		// thing to do if its supervisor is down-level and can't provide us with an endpoint list.
-		if addresses := agentconfig.APIServers(ctx, config, proxy); len(addresses) > 0 {
-			proxy.SetSupervisorDefault(addresses[0])
+		addresses := agentconfig.APIServers(ctx, config, proxy)
+		logrus.Infof("Got apiserver addresses from supervisor: %v", addresses)
+
+		if len(addresses) > 0 {
+			if localSupervisorDefault {
+				proxy.SetSupervisorDefault(addresses[0])
+			}
 			proxy.Update(addresses)
 		} else {
 			if endpoint, _ := client.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
-				if addresses := util.GetAddresses(endpoint); len(addresses) > 0 {
+				addresses = util.GetAddresses(endpoint)
+				logrus.Infof("Got apiserver addresses from kubernetes endpoints: %v", addresses)
+				if len(addresses) > 0 {
 					proxy.Update(addresses)
 				}
 			}
