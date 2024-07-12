@@ -111,10 +111,12 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 	return true
 }
 
+// nextServer attempts to get the next server in the loadbalancer server list.
+// If another goroutine has already updated the current server address to point at
+// a different address than just failed, nothing is changed. Otherwise, a new server address
+// is stored to the currentServerAddress field, and returned for use.
+// This function must always be called by a goroutine that holds a read lock on the loadbalancer mutex.
 func (lb *LoadBalancer) nextServer(failedServer string) (string, error) {
-	lb.mutex.RLock()
-	defer lb.mutex.RUnlock()
-
 	// note: these fields are not protected by the mutex, so we clamp the index value and update
 	// the index/current address using local variables, to avoid time-of-check vs time-of-use
 	// race conditions caused by goroutine A incrementing it in between the time goroutine B
