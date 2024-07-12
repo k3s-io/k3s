@@ -530,19 +530,30 @@ func setupTunnelAndRunAgent(ctx context.Context, nodeConfig *daemonconfig.Node, 
 }
 
 func waitForAPIServerAddresses(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent, proxy proxy.Proxy) error {
+	var localSupervisorDefault bool
+	if addresses := proxy.SupervisorAddresses(); len(addresses) > 0 {
+		host, _, _ := net.SplitHostPort(addresses[0])
+		if host == "127.0.0.1" || host == "::1" {
+			localSupervisorDefault = true
+		}
+	}
+
 	for {
 		select {
 		case <-time.After(5 * time.Second):
-			logrus.Info("Waiting for apiserver addresses")
+			logrus.Info("Waiting for control-plane node to register apiserver addresses in etcd")
 		case addresses := <-cfg.APIAddressCh:
 			for i, a := range addresses {
 				host, _, err := net.SplitHostPort(a)
 				if err == nil {
 					addresses[i] = net.JoinHostPort(host, strconv.Itoa(nodeConfig.ServerHTTPSPort))
-					if i == 0 {
-						proxy.SetSupervisorDefault(addresses[i])
-					}
 				}
+			}
+			// If this is an etcd-only node that started up using its local supervisor,
+			// switch to using a control-plane node as the supervisor. Otherwise, leave the
+			// configured server address as the default.
+			if localSupervisorDefault && len(addresses) > 0 {
+				proxy.SetSupervisorDefault(addresses[0])
 			}
 			proxy.Update(addresses)
 			return nil
