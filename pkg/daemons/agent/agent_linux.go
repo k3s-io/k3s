@@ -33,8 +33,7 @@ func createRootlessConfig(argsMap map[string]string, controllers map[string]bool
 
 func kubeProxyArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
-	if isIPv6 {
+	if utilsnet.IsIPv6(net.ParseIP(cfg.NodeIP)) {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
@@ -54,8 +53,7 @@ func kubeProxyArgs(cfg *config.Agent) map[string]string {
 
 func kubeletArgs(cfg *config.Agent) map[string]string {
 	bindAddress := "127.0.0.1"
-	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
-	if isIPv6 {
+	if utilsnet.IsIPv6(net.ParseIP(cfg.NodeIP)) {
 		bindAddress = "::1"
 	}
 	argsMap := map[string]string{
