@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
@@ -167,11 +168,12 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 		if server == nil || targetServer == "" {
 			logrus.Debugf("Nil server for load balancer %s: %s", lb.serviceName, targetServer)
 		} else if allChecksFailed || server.healthCheck() {
+			dialTime := time.Now()
 			conn, err := server.dialContext(ctx, network, targetServer)
 			if err == nil {
 				return conn, nil
 			}
-			logrus.Debugf("Dial error from load balancer %s: %s", lb.serviceName, err)
+			logrus.Debugf("Dial error from load balancer %s after %s: %s", lb.serviceName, time.Now().Sub(dialTime), err)
 			// Don't close connections to the failed server if we're retrying with health checks ignored.
 			// We don't want to disrupt active connections if it is unlikely they will have anywhere to go.
 			if !allChecksFailed {
