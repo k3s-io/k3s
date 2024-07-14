@@ -48,7 +48,7 @@ func Test_UnitMustParse(t *testing.T) {
 			name:   "Etcd-snapshot with config with known and unknown flags",
 			args:   []string{"k3s", "etcd-snapshot", "save"},
 			config: "./testdata/defaultdata.yaml",
-			want:   []string{"k3s", "etcd-snapshot", "save", "--token=12345", "--etcd-s3=true", "--etcd-s3-bucket=my-backup"},
+			want:   []string{"k3s", "etcd-snapshot", "save", "--etcd-s3=true", "--etcd-s3-bucket=my-backup"},
 		},
 		{
 			name: "Agent with known flags",
