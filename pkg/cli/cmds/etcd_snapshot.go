@@ -21,11 +21,14 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
-	ServerToken,
 	&cli.StringFlag{
-		Name:        "server, s",
-		Usage:       "(cluster) Server to connect to",
-		EnvVar:      version.ProgramUpper + "_URL",
+		Name:        "etcd-token,t",
+		Usage:       "(cluster) Shared secret used to authenticate to etcd server",
+		Destination: &ServerConfig.Token,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-server, s",
+		Usage:       "(cluster) Server with etcd role to connect to for snapshot management operations",
 		Value:       "https://127.0.0.1:6443",
 		Destination: &ServerConfig.ServerURL,
 	},
