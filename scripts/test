@@ -29,6 +29,9 @@ if [ "$ARCH" != 'amd64' ]; then
   . ./tests/docker/test-run-cacerts
   echo "Did test-run-cacerts $?"
 
+  . ./tests/docker/test-run-compat
+  echo "Did test-run-compat $?"
+
   . ./tests/docker/test-run-bootstraptoken
   echo "Did test-run-bootstraptoken $?"
 
@@ -39,8 +42,7 @@ if [ "$ARCH" != 'amd64' ]; then
   echo "Did test-run-lazypull $?"
 fi
 
-. ./tests/docker/test-run-compat
-echo "Did test-run-compat $?"
+
 
 . ./tests/docker/test-run-hardened
 echo "Did test-run-hardened $?"
