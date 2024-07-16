@@ -66,7 +66,6 @@ def getHardenedArg(vm, hardened, scripts_location)
       - 'audit-log-maxage=30'
       - 'audit-log-maxbackup=10'
       - 'audit-log-maxsize=100'
-      - 'service-account-lookup=true'
   HARD
   if hardened == "psp"
     vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
