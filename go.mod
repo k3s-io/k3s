@@ -1,6 +1,8 @@
 module github.com/k3s-io/k3s
 
-go 1.21.11
+go 1.22.0
+
+toolchain go1.22.2
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.0
@@ -135,7 +137,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rancher/dynamiclistener v0.3.6
-	github.com/rancher/lasso v0.0.0-20230830164424-d684fdeb6f29
+	github.com/rancher/lasso v0.0.0-20240724174736-24ab3dbf26f0
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.4.1
 	github.com/rancher/wharfie v0.6.4
@@ -160,8 +162,8 @@ require (
 	google.golang.org/grpc v1.63.2
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
-	k8s.io/api v0.29.3
-	k8s.io/apimachinery v0.29.3
+	k8s.io/api v0.30.0
+	k8s.io/apimachinery v0.30.0
 	k8s.io/apiserver v0.28.12
 	k8s.io/cli-runtime v0.22.2
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
@@ -176,7 +178,6 @@ require (
 	k8s.io/kubernetes v1.28.11
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/yaml v1.4.0
-
 )
 
 require (
@@ -304,7 +305,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.5 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -466,12 +467,12 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
@@ -494,7 +495,7 @@ require (
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
 	k8s.io/endpointslice v0.0.0 // indirect
-	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
+	k8s.io/gengo v0.0.0-20240228010128-51d4e06bde70 // indirect
 	k8s.io/kms v0.0.0 // indirect
 	k8s.io/kube-aggregator v0.28.12 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect

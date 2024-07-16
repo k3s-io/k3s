@@ -8,6 +8,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	lassometrics "github.com/rancher/lasso/pkg/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
 )
 
@@ -26,6 +27,11 @@ var DefaultMetrics = &Config{
 	Router: func(context.Context, *config.Node) (*mux.Router, error) {
 		return nil, errors.New("not implemented")
 	},
+}
+
+func init() {
+	// ensure that lasso exposes metrics through the same registry used by Kubernetes components
+	lassometrics.MustRegister(DefaultRegisterer)
 }
 
 // Config holds fields for the metrics listener
