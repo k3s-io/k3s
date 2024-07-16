@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	ccmapp "k8s.io/cloud-provider/app"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
 	utilsnet "k8s.io/utils/net"
 	utilsptr "k8s.io/utils/ptr"
@@ -40,7 +39,7 @@ var (
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
 	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
-	controllerName         = ccmapp.DefaultInitFuncConstructors["service"].InitContext.ClientName
+	controllerName         = "service-lb-controller"
 )
 
 const (
