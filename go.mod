@@ -161,13 +161,13 @@ require (
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
-	k8s.io/apiserver v0.27.15
+	k8s.io/apiserver v0.27.16
 	k8s.io/cli-runtime v0.22.2
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/cloud-provider v0.27.15
+	k8s.io/cloud-provider v0.27.16
 	k8s.io/cluster-bootstrap v0.0.0
-	k8s.io/component-base v0.27.15
-	k8s.io/component-helpers v0.27.15
+	k8s.io/component-base v0.27.16
+	k8s.io/component-helpers v0.27.16
 	k8s.io/cri-api v0.29.3
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/kube-proxy v0.0.0
@@ -499,7 +499,7 @@ require (
 	k8s.io/kubelet v0.0.0 // indirect
 	k8s.io/legacy-cloud-providers v0.0.0 // indirect
 	k8s.io/metrics v0.0.0 // indirect
-	k8s.io/mount-utils v0.27.15 // indirect
+	k8s.io/mount-utils v0.27.16 // indirect
 	k8s.io/pod-security-admission v0.0.0 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect
