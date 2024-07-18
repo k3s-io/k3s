@@ -123,7 +123,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 					}
 
 					if !c.config.EtcdDisableSnapshots {
-						wait.PollImmediateUntilWithContext(ctx, time.Second, func(ctx context.Context) (bool, error) {
+						_ = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 							err := c.managedDB.ReconcileSnapshotData(ctx)
 							if err != nil {
 								logrus.Errorf("Failed to record snapshots for cluster: %v", err)
