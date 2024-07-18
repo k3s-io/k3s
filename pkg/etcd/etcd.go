@@ -482,7 +482,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 			case <-time.After(30 * time.Second):
 				logrus.Infof("Waiting for container runtime to become ready before joining etcd cluster")
 			case <-e.config.Runtime.ContainerRuntimeReady:
-				if err := wait.PollImmediateUntilWithContext(ctx, time.Second, func(ctx context.Context) (bool, error) {
+				if err := wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 					if err := e.join(ctx, clientAccessInfo); err != nil {
 						// Retry the join if waiting for another member to be promoted, or waiting for peers to connect after promotion
 						if errors.Is(err, rpctypes.ErrTooManyLearners) || errors.Is(err, rpctypes.ErrUnhealthy) {
