@@ -236,7 +236,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
-	wait.PollImmediateWithContext(ctx, time.Second, resolveTimeout, func(_ context.Context) (bool, error) {
+	_ = wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(_ context.Context) (bool, error) {
 		return router.Ready()
 	})
 
