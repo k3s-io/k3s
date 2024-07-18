@@ -59,6 +59,8 @@ func Get(ctx context.Context, agent cmds.Agent, proxy proxy.Proxy) (*config.Node
 	// does not support jittering, so we instead use wait.JitterUntilWithContext, and cancel
 	// the context on success.
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
 		agentConfig, err = get(ctx, &agent, proxy)
 		if err != nil {
@@ -78,7 +80,7 @@ func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy
 	var disabled bool
 	var err error
 
-	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+	_ = wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		disabled, err = getKubeProxyDisabled(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Waiting to retrieve kube-proxy configuration; server is not ready: %v", err)
@@ -96,7 +98,7 @@ func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []str
 	var addresses []string
 	var err error
 
-	wait.PollImmediateUntilWithContext(ctx, 5*time.Second, func(ctx context.Context) (bool, error) {
+	_ = wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		addresses, err = getAPIServers(ctx, node, proxy)
 		if err != nil {
 			logrus.Infof("Failed to retrieve list of apiservers from server: %v", err)
