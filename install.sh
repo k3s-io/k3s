@@ -445,7 +445,7 @@ download() {
 download_hash() {
     if [ -n "${INSTALL_K3S_PR}" ]; then
         info "Downloading hash ${GITHUB_PR_URL}"
-        curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+        curl -s -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
         unzip -p ${TMP_ZIP} k3s.sha256sum > ${TMP_HASH}
     else
         if [ -n "${INSTALL_K3S_COMMIT}" ]; then
@@ -481,24 +481,35 @@ get_pr_artifact_url() {
         fatal "Installing PR builds requires jq"
     fi
 
+    # Check if unzip is installed
+    if ! [ -x "$(command -v unzip)" ]; then
+        fatal "Installing PR builds requires unzip"
+    fi
+
     if [ -z "${GITHUB_TOKEN}" ]; then
-        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo authorization"
+        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
 
     # GET request to the GitHub API to retrieve the latest commit SHA from the pull request
-    commit_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/pulls/$INSTALL_K3S_PR" | jq -r '.head.sha')
+    set +e
+    commit_id=$(curl -f -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/pulls/${INSTALL_K3S_PR}" | jq -r '.head.sha')
+    set -e
+
+    if [ -z "${commit_id}" ]; then
+        fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
+    fi
     
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
-    wf_raw=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/commits/$commit_id/check-runs")
-    build_workflow=$(printf "%s" "$wf_raw" | jq -r '.check_runs[] |  select(.name == "build / Build")')
+    wf_raw=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs")
+    build_workflow=$(printf "%s" "${wf_raw}" | jq -r '.check_runs[] |  select(.name == "build / Build")')
     
     # Extract the Run ID from the build workflow and lookup artifacts associated with the run
-    run_id=$(echo "$build_workflow" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}' | sort -rn | head -1)
+    run_id=$(echo "${build_workflow}" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}' | sort -rn | head -1)
 
     # Extract the artifact ID for the "k3s" artifact    
-    artifacts=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "$github_api_url/actions/runs/$run_id/artifacts")
-    artifacts_url=$(echo "$artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
-    GITHUB_PR_URL=$artifacts_url
+    artifacts=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts")
+    artifacts_url=$(echo "${artifacts}" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
+    GITHUB_PR_URL="${artifacts_url}"
 }
 
 # --- download binary from github url ---
@@ -507,7 +518,7 @@ download_binary() {
         # Since Binary and Hash are zipped together, check if TMP_ZIP already exists
         if ! [ -f ${TMP_ZIP} ]; then
             info "Downloading K3s artifact ${GITHUB_PR_URL}"
-            curl -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
+            curl -s -f -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
         fi
         # extract k3s binary from zip
         unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
@@ -756,7 +767,9 @@ create_killall() {
 #!/bin/sh
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
-for bin in /var/lib/rancher/k3s/data/**/bin/; do
+K3S_DATA_DIR=${K3S_DATA_DIR:-/var/lib/rancher/k3s}
+
+for bin in ${K3S_DATA_DIR}/data/**/bin/; do
     [ -d $bin ] && export PATH=$PATH:$bin:$bin/aux
 done
 
@@ -830,7 +843,7 @@ do_unmount_and_remove() {
 }
 
 do_unmount_and_remove '/run/k3s'
-do_unmount_and_remove '/var/lib/rancher/k3s'
+do_unmount_and_remove "${K3S_DATA_DIR}"
 do_unmount_and_remove '/var/lib/kubelet/pods'
 do_unmount_and_remove '/var/lib/kubelet/plugins'
 do_unmount_and_remove '/run/netns/cni-'
@@ -856,6 +869,8 @@ create_uninstall() {
 #!/bin/sh
 set -x
 [ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
+
+K3S_DATA_DIR=\${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
 ${KILLALL_K3S_SH}
 
@@ -890,7 +905,7 @@ done
 rm -rf /etc/rancher/k3s
 rm -rf /run/k3s
 rm -rf /run/flannel
-rm -rf /var/lib/rancher/k3s
+rm -rf \${K3S_DATA_DIR}
 rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}

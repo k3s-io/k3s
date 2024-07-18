@@ -12,10 +12,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +25,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/etcd/s3"
+	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -39,11 +41,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdutl/v3/snapshot"
-	"go.uber.org/zap"
-	"golang.org/x/sync/semaphore"
+	snapshotv3 "go.etcd.io/etcd/etcdutl/v3/snapshot"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -93,8 +92,6 @@ var (
 	ErrAddressNotSet    = errors.New("apiserver addresses not yet set")
 	ErrNotMember        = errNotMember()
 	ErrMemberListFailed = errMemberListFailed()
-
-	invalidKeyChars = regexp.MustCompile(`[^-._a-zA-Z0-9]`)
 )
 
 type NodeControllerGetter func() controllerv1.NodeController
@@ -105,14 +102,14 @@ var _ managed.Driver = &ETCD{}
 type MemberStatus string
 
 type ETCD struct {
-	client      *clientv3.Client
-	config      *config.Control
-	name        string
-	address     string
-	cron        *cron.Cron
-	s3          *S3
-	cancel      context.CancelFunc
-	snapshotSem *semaphore.Weighted
+	client     *clientv3.Client
+	config     *config.Control
+	name       string
+	address    string
+	cron       *cron.Cron
+	cancel     context.CancelFunc
+	s3         *s3.Controller
+	snapshotMu *sync.Mutex
 }
 
 type learnerProgress struct {
@@ -128,16 +125,16 @@ type Members struct {
 	Members []*etcdserverpb.Member `json:"members"`
 }
 
-type MembershipError struct {
-	Self    string
-	Members []string
+type membershipError struct {
+	self    string
+	members []string
 }
 
-func (e *MembershipError) Error() string {
-	return fmt.Sprintf("this server is a not a member of the etcd cluster. Found %v, expect: %s", e.Members, e.Self)
+func (e *membershipError) Error() string {
+	return fmt.Sprintf("this server is a not a member of the etcd cluster. Found %v, expect: %s", e.members, e.self)
 }
 
-func (e *MembershipError) Is(target error) bool {
+func (e *membershipError) Is(target error) bool {
 	switch target {
 	case ErrNotMember:
 		return true
@@ -145,17 +142,17 @@ func (e *MembershipError) Is(target error) bool {
 	return false
 }
 
-func errNotMember() error { return &MembershipError{} }
+func errNotMember() error { return &membershipError{} }
 
-type MemberListError struct {
-	Err error
+type memberListError struct {
+	err error
 }
 
-func (e *MemberListError) Error() string {
-	return fmt.Sprintf("failed to get MemberList from server: %v", e.Err)
+func (e *memberListError) Error() string {
+	return fmt.Sprintf("failed to get MemberList from server: %v", e.err)
 }
 
-func (e *MemberListError) Is(target error) bool {
+func (e *memberListError) Is(target error) bool {
 	switch target {
 	case ErrMemberListFailed:
 		return true
@@ -163,13 +160,14 @@ func (e *MemberListError) Is(target error) bool {
 	return false
 }
 
-func errMemberListFailed() error { return &MemberListError{} }
+func errMemberListFailed() error { return &memberListError{} }
 
 // NewETCD creates a new value of type
-// ETCD with an initialized cron value.
+// ETCD with initialized cron and snapshot mutex values.
 func NewETCD() *ETCD {
 	return &ETCD{
-		cron: cron.New(cron.WithLogger(cronLogger)),
+		cron:       cron.New(cron.WithLogger(cronLogger)),
+		snapshotMu: &sync.Mutex{},
 	}
 }
 
@@ -255,7 +253,7 @@ func (e *ETCD) Test(ctx context.Context) error {
 			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
-	return &MembershipError{Members: memberNameUrls, Self: e.name + "=" + e.peerURL()}
+	return &membershipError{members: memberNameUrls, self: e.name + "=" + e.peerURL()}
 }
 
 // dbDir returns the path to dataDir/db/etcd
@@ -390,14 +388,25 @@ func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 
 	// If asked to restore from a snapshot, do so
 	if e.config.ClusterResetRestorePath != "" {
-		if e.config.EtcdS3 {
+		if e.config.EtcdS3 != nil {
 			logrus.Infof("Retrieving etcd snapshot %s from S3", e.config.ClusterResetRestorePath)
-			if err := e.initS3IfNil(ctx); err != nil {
-				return err
+			s3client, err := e.getS3Client(ctx)
+			if err != nil {
+				if errors.Is(err, s3.ErrNoConfigSecret) {
+					return errors.New("cannot use S3 config secret when restoring snapshot; configuration must be set in CLI or config file")
+				} else {
+					return errors.Wrap(err, "failed to initialize S3 client")
+				}
 			}
-			if err := e.s3.Download(ctx); err != nil {
-				return err
+			dir, err := snapshotDir(e.config, true)
+			if err != nil {
+				return errors.Wrap(err, "failed to get the snapshot dir")
 			}
+			path, err := s3client.Download(ctx, e.config.ClusterResetRestorePath, dir)
+			if err != nil {
+				return errors.Wrap(err, "failed to download snapshot from S3")
+			}
+			e.config.ClusterResetRestorePath = path
 			logrus.Infof("S3 download complete for %s", e.config.ClusterResetRestorePath)
 		}
 
@@ -441,6 +450,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 	}
 
 	go e.manageLearners(ctx)
+	go e.getS3Client(ctx)
 
 	if isInitialized {
 		// check etcd dir permission
@@ -1415,7 +1425,7 @@ func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP
 	// get the full list from the server we're joining
 	resp, err := clientAccessInfo.Get("/db/info")
 	if err != nil {
-		return nil, memberList, &MemberListError{Err: err}
+		return nil, memberList, &memberListError{err: err}
 	}
 	if err := json.Unmarshal(resp, &memberList); err != nil {
 		return nil, memberList, err
@@ -1462,13 +1472,13 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	}
 
 	var restorePath string
-	if strings.HasSuffix(e.config.ClusterResetRestorePath, compressedExtension) {
-		snapshotDir, err := snapshotDir(e.config, true)
+	if strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
+		dir, err := snapshotDir(e.config, true)
 		if err != nil {
 			return errors.Wrap(err, "failed to get the snapshot dir")
 		}
 
-		decompressSnapshot, err := e.decompressSnapshot(snapshotDir, e.config.ClusterResetRestorePath)
+		decompressSnapshot, err := e.decompressSnapshot(dir, e.config.ClusterResetRestorePath)
 		if err != nil {
 			return err
 		}
@@ -1484,13 +1494,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	}
 
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
-
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
-	if err != nil {
-		return err
-	}
-
-	return snapshot.NewV3(lg).Restore(snapshot.RestoreConfig{
+	return snapshotv3.NewV3(e.client.GetLogger()).Restore(snapshotv3.RestoreConfig{
 		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  dbDir(e.config),

@@ -21,11 +21,14 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
-	ServerToken,
 	&cli.StringFlag{
-		Name:        "server, s",
-		Usage:       "(cluster) Server to connect to",
-		EnvVar:      version.ProgramUpper + "_URL",
+		Name:        "etcd-token,t",
+		Usage:       "(cluster) Shared secret used to authenticate to etcd server",
+		Destination: &ServerConfig.Token,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-server, s",
+		Usage:       "(cluster) Server with etcd role to connect to for snapshot management operations",
 		Value:       "https://127.0.0.1:6443",
 		Destination: &ServerConfig.ServerURL,
 	},
@@ -99,6 +102,16 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Name:        "s3-folder,etcd-s3-folder",
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
+	},
+	&cli.StringFlag{
+		Name:        "s3-proxy,etcd-s3-proxy",
+		Usage:       "(db) Proxy server to use when connecting to S3, overriding any proxy-releated environment variables",
+		Destination: &ServerConfig.EtcdS3Proxy,
+	},
+	&cli.StringFlag{
+		Name:        "s3-config-secret,etcd-s3-config-secret",
+		Usage:       "(db) Name of secret in the kube-system namespace used to configure S3, if etcd-s3 is enabled and no other etcd-s3 options are set",
+		Destination: &ServerConfig.EtcdS3ConfigSecret,
 	},
 	&cli.BoolFlag{
 		Name:        "s3-insecure,etcd-s3-insecure",
