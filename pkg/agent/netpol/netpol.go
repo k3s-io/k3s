@@ -70,7 +70,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	// kube-router netpol requires addresses to be available in the node object.
 	// Wait until the uninitialized taint has been removed, at which point the addresses should be set.
 	// TODO: Replace with non-deprecated PollUntilContextTimeout when our and Kubernetes code migrate to it
-	if err := wait.PollImmediateInfiniteWithContext(ctx, 2*time.Second, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		// Get the node object
 		node, err := client.CoreV1().Nodes().Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
 		if err != nil {
