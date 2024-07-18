@@ -198,8 +198,9 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 // WaitForEncryptionConfigReload watches the metrics API, polling the latest time the encryption config was reloaded.
 func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccesses, reloadTime int64) error {
 	var lastFailure string
-	err := wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
 
+	ctx := context.Background()
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
 		newReloadTime, newReloadSuccess, err := GetEncryptionConfigMetrics(runtime, false)
 		if err != nil {
 			return true, err
@@ -238,7 +239,8 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 
 	// This is wrapped in a poller because on startup no metrics exist. Its only after the encryption config
 	// is modified and the first reload occurs that the metrics are available.
-	err = wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
+	ctx := context.Background()
+	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
 		data, err := restClient.Get().AbsPath("/metrics").DoRaw(context.TODO())
 		if err != nil {
 			return true, err
