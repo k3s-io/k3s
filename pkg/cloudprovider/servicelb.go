@@ -699,7 +699,17 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 
 // generateName generates a distinct name for the DaemonSet based on the service name and UID
 func generateName(svc *core.Service) string {
-	return fmt.Sprintf("svclb-%s-%s", svc.Name, svc.UID[:8])
+	name := svc.Name
+	// ensure that the service name plus prefix and uuid aren't overly long, but
+	// don't cut the service name at a trailing hyphen.
+	if len(name) > 48 {
+		trimlen := 48
+		for name[trimlen-1] == '-' {
+			trimlen--
+		}
+		name = name[0:trimlen]
+	}
+	return fmt.Sprintf("svclb-%s-%s", name, svc.UID[:8])
 }
 
 // ingressToString converts a list of LoadBalancerIngress entries to strings
