@@ -50,7 +50,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.7"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.9"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -435,12 +435,19 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		return nil, err
 	}
 	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
+	securityContext := &core.PodSecurityContext{}
 
 	for _, ipFamily := range svc.Spec.IPFamilies {
-		if ipFamily == core.IPv6Protocol && sourceRanges == "0.0.0.0/0" {
-			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
-			// If using the default range, and IPv6 is enabled, also allow IPv6.
-			sourceRanges += ",::/0"
+		switch ipFamily {
+		case core.IPv4Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
+		case core.IPv6Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			if sourceRanges == "0.0.0.0/0" {
+				// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+				// If using the default range, and IPv6 is enabled, also allow IPv6.
+				sourceRanges += ",::/0"
+			}
 		}
 	}
 
@@ -476,12 +483,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					PriorityClassName:            priorityClassName,
 					ServiceAccountName:           "svclb",
 					AutomountServiceAccountToken: utilsptr.To(false),
-					SecurityContext: &core.PodSecurityContext{
-						Sysctls: []core.Sysctl{
-							{Name: "net.ipv4.ip_forward", Value: "1"},
-							{Name: "net.ipv6.conf.all.forwarding", Value: "1"},
-						},
-					},
+					SecurityContext:              securityContext,
 					Tolerations: []core.Toleration{
 						{
 							Key:      util.MasterRoleLabelKey,
