@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	core "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -109,5 +111,52 @@ func Test_UnitFilterByIPFamily_Ordering(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("filterByIPFamily() = %+v\nWant = %+v", got, want)
+	}
+}
+
+func Test_UnitGenerateName(t *testing.T) {
+	uid := types.UID("35a5ccb3-4a82-40b7-8d83-cda9582e4251")
+	tests := []struct {
+		name string
+		svc  *core.Service
+		want string
+	}{
+		{
+			name: "Short name",
+			svc: &core.Service{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "a-service",
+					UID:  uid,
+				},
+			},
+			want: "svclb-a-service-35a5ccb3",
+		},
+		{
+			name: "Long name",
+			svc: &core.Service{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "a-service-with-a-very-veeeeeery-long-yet-valid-name",
+					UID:  uid,
+				},
+			},
+			want: "svclb-a-service-with-a-very-veeeeeery-long-yet-valid-n-35a5ccb3",
+		},
+		{
+			name: "Long hypenated name",
+			svc: &core.Service{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "a-service-with-a-name-with-inconvenient------------hypens",
+					UID:  uid,
+				},
+			},
+			want: "svclb-a-service-with-a-name-with-inconvenient-35a5ccb3",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := generateName(tt.svc); got != tt.want {
+				t.Errorf("generateName() = %+v\nWant = %+v", got, tt.want)
+			}
+		})
 	}
 }
