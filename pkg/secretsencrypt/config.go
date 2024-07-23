@@ -241,7 +241,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 	// is modified and the first reload occurs that the metrics are available.
 	ctx := context.Background()
 	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
-		data, err := restClient.Get().AbsPath("/metrics").DoRaw(context.TODO())
+		data, err := restClient.Get().AbsPath("/metrics").DoRaw(ctx)
 		if err != nil {
 			return true, err
 		}
