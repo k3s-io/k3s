@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	typev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
@@ -39,7 +38,7 @@ type handler struct {
 	ctx           context.Context
 	controlConfig *config.Control
 	nodes         coreclient.NodeController
-	cclient       typev1.CoreV1Interface
+	k8s           *kubernetes.Clientset
 	recorder      record.EventRecorder
 }
 
@@ -65,7 +64,7 @@ func Register(
 		ctx:           ctx,
 		controlConfig: controlConfig,
 		nodes:         nodes,
-		cclient:       k8s.CoreV1(),
+		k8s:           k8s,
 		recorder:      util.BuildControllerEventRecorder(k8s, controllerAgentName, metav1.NamespaceDefault),
 	}
 
@@ -220,7 +219,7 @@ func (h *handler) validateReencryptStage(node *corev1.Node, annotation string) (
 
 func (h *handler) updateSecrets(nodeRef *corev1.ObjectReference) error {
 	secretPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
-		return h.cclient.Secrets(metav1.NamespaceAll).List(h.ctx, metav1.ListOptions{})
+		return h.k8s.CoreV1().Secrets(metav1.NamespaceAll).List(h.ctx, opts)
 	}))
 	secretPager.PageSize = secretListPageSize
 
@@ -230,7 +229,7 @@ func (h *handler) updateSecrets(nodeRef *corev1.ObjectReference) error {
 		if !ok {
 			return errors.New("failed to convert object to Secret")
 		}
-		if _, err := h.cclient.Secrets(secret.Namespace).Update(h.ctx, secret, metav1.UpdateOptions{}); err != nil && !apierrors.IsConflict(err) {
+		if _, err := h.k8s.CoreV1().Secrets(secret.Namespace).Update(h.ctx, secret, metav1.UpdateOptions{}); err != nil && !apierrors.IsConflict(err) {
 			return fmt.Errorf("failed to update secret: %v", err)
 		}
 		if i != 0 && i%50 == 0 {
