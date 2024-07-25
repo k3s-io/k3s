@@ -53,28 +53,35 @@ def getHardenedArg(vm, hardened, scripts_location)
     secrets-encryption: true
     kube-controller-manager-arg:
       - 'terminated-pod-gc-threshold=10'
-      - 'use-service-account-credentials=true'
     kubelet-arg:
       - 'streaming-connection-idle-timeout=5m'
       - 'make-iptables-util-chains=true'
       - 'event-qps=0'
+      - "tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
     kube-apiserver-arg:
       - 'audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log'
       - 'audit-policy-file=/var/lib/rancher/k3s/server/audit.yaml'
       - 'audit-log-maxage=30'
       - 'audit-log-maxbackup=10'
       - 'audit-log-maxsize=100'
-      - 'service-account-lookup=true'
   HARD
-  if hardened == "psp"
-    vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
-    hardened_arg += "  - 'enable-admission-plugins=NodeRestriction,NamespaceLifecycle,ServiceAccount,PodSecurityPolicy'"
-  elsif hardened == "psa"
+ 
+  if hardened == "psa" || hardened == "true"
     vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh", args: [ "psa" ]
     hardened_arg += "  - 'admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml'"
+  elsif hardened == "psp"
+      vm.provision "Set kernel parameters", type: "shell", path: scripts_location + "/harden.sh"
+      hardened_arg += "  - 'enable-admission-plugins=NodeRestriction,NamespaceLifecycle,ServiceAccount,PodSecurityPolicy'"
   else 
     puts "Invalid E2E_HARDENED option"
     exit 1
+  end
+  if vm.box.to_s.include?("generic/ubuntu")
+    vm.provision "Install kube-bench", type: "shell", inline: <<-SHELL
+    export KBV=0.8.0
+    curl -L "https://github.com/aquasecurity/kube-bench/releases/download/v${KBV}/kube-bench_${KBV}_linux_amd64.deb" -o "kube-bench_${KBV}_linux_amd64.deb"
+    dpkg -i "./kube-bench_${KBV}_linux_amd64.deb"
+    SHELL
   end
   return hardened_arg
 end
