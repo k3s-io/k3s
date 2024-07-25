@@ -23,8 +23,6 @@ export SERVER_ARGS="--selinux=true \
 --kube-apiserver-arg=audit-log-maxage=30 \
 --kube-apiserver-arg=audit-log-maxbackup=10 \
 --kube-apiserver-arg=audit-log-maxsize=100 \
---kube-apiserver-arg=request-timeout=300s \
---kube-apiserver-arg=service-account-lookup=true \
 --kube-apiserver-arg=enable-admission-plugins=NodeRestriction,NamespaceLifecycle,ServiceAccount \
 --kube-apiserver-arg=admission-control-config-file=/opt/rancher/k3s/cluster-level-pss.yaml \
 --kube-controller-manager-arg=terminated-pod-gc-threshold=10 \
