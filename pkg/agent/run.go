@@ -284,6 +284,12 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
+	if nodeConfig.EnablePProf {
+		if err := profile.DefaultProfiler.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to serve pprof")
+		}
+	}
+
 	<-ctx.Done()
 	return ctx.Err()
 }
