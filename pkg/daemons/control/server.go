@@ -68,8 +68,7 @@ func Server(ctx context.Context, cfg *config.Control) error {
 				if err := secretsencrypt.Register(ctx,
 					controllerName,
 					cfg,
-					cfg.Runtime.Core.Core().V1().Node(),
-					cfg.Runtime.Core.Core().V1().Secret()); err != nil {
+					cfg.Runtime.Core.Core().V1().Node()); err != nil {
 					logrus.Errorf("Failed to register %s controller: %v", controllerName, err)
 				}
 			}
