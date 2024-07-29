@@ -42,12 +42,12 @@ func (p *Parser) Parse(args []string) ([]string, error) {
 		return args, nil
 	}
 
-	configFile, isSet := p.findConfigFileFlag(args)
-	if configFile != "" {
+	if configFile := p.findConfigFileFlag(args); configFile != "" {
 		values, err := readConfigFile(configFile)
-		if !isSet && os.IsNotExist(err) {
-			return args, nil
-		} else if err != nil {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return args, nil
+			}
 			return nil, err
 		}
 		if len(args) > 1 {
@@ -99,49 +99,50 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 	return result, nil
 }
 
+// FindString returns the string value of a flag, checking the CLI args,
+// config file, and config file dropins. If the value is not found,
+// an empty string is returned. It is not an error if no args,
+// configfile, or dropins are present.
 func (p *Parser) FindString(args []string, target string) (string, error) {
-
 	// Check for --help or --version flags, which override any other flags
 	if val, found := p.findOverrideFlag(args); found {
 		return val, nil
 	}
 
-	configFile, isSet := p.findConfigFileFlag(args)
+	var files []string
 	var lastVal string
-	if configFile != "" {
 
-		_, err := os.Stat(configFile)
-		if !isSet && os.IsNotExist(err) {
-			return "", nil
-		} else if err != nil {
-			return "", err
+	if configFile := p.findConfigFileFlag(args); configFile != "" {
+		if _, err := os.Stat(configFile); err == nil {
+			files = append(files, configFile)
 		}
 
-		files, err := dotDFiles(configFile)
+		dropinFiles, err := dotDFiles(configFile)
 		if err != nil {
 			return "", err
 		}
-		files = append([]string{configFile}, files...)
-		for _, file := range files {
-			bytes, err := readConfigFileData(file)
-			if err != nil {
-				return "", err
-			}
+		files = append(files, dropinFiles...)
+	}
 
-			data := yaml.MapSlice{}
-			if err := yaml.Unmarshal(bytes, &data); err != nil {
-				return "", err
-			}
-			for _, i := range data {
-				k, v := convert.ToString(i.Key), convert.ToString(i.Value)
-				isAppend := strings.HasSuffix(k, "+")
-				k = strings.TrimSuffix(k, "+")
-				if k == target {
-					if isAppend {
-						lastVal = lastVal + "," + v
-					} else {
-						lastVal = v
-					}
+	for _, file := range files {
+		bytes, err := readConfigFileData(file)
+		if err != nil {
+			return "", err
+		}
+
+		data := yaml.MapSlice{}
+		if err := yaml.Unmarshal(bytes, &data); err != nil {
+			return "", err
+		}
+		for _, i := range data {
+			k, v := convert.ToString(i.Key), convert.ToString(i.Value)
+			isAppend := strings.HasSuffix(k, "+")
+			k = strings.TrimSuffix(k, "+")
+			if k == target {
+				if isAppend {
+					lastVal = lastVal + "," + v
+				} else {
+					lastVal = v
 				}
 			}
 		}
@@ -161,26 +162,28 @@ func (p *Parser) findOverrideFlag(args []string) (string, bool) {
 	return "", false
 }
 
-func (p *Parser) findConfigFileFlag(args []string) (string, bool) {
+// findConfigFileFlag returns the value of the config file env var or CLI flag.
+// If neither are set, it returns the default value.
+func (p *Parser) findConfigFileFlag(args []string) string {
 	if envVal := os.Getenv(p.EnvName); p.EnvName != "" && envVal != "" {
-		return envVal, true
+		return envVal
 	}
 
 	for i, arg := range args {
 		for _, flagName := range p.ConfigFlags {
 			if flagName == arg {
 				if len(args) > i+1 {
-					return args[i+1], true
+					return args[i+1]
 				}
 				// This is actually invalid, so we rely on the CLI parser after the fact flagging it as bad
-				return "", false
+				return ""
 			} else if strings.HasPrefix(arg, flagName+"=") {
-				return arg[len(flagName)+1:], true
+				return arg[len(flagName)+1:]
 			}
 		}
 	}
 
-	return p.DefaultConfig, false
+	return p.DefaultConfig
 }
 
 func (p *Parser) findStart(args []string) ([]string, []string, bool) {
@@ -237,17 +240,23 @@ func dotDFiles(basefile string) (result []string, _ error) {
 	return
 }
 
+// readConfigFile returns a flattened arg list generated from the specified config
+// file, and any config file dropins in the dropin directory that corresponds to that
+// config file.  The config file or at least one dropin must exist.
 func readConfigFile(file string) (result []string, _ error) {
 	files, err := dotDFiles(file)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = os.Stat(file)
-	if os.IsNotExist(err) && len(files) > 0 {
-	} else if err != nil {
-		return nil, err
+	if _, err = os.Stat(file); err != nil {
+		// If the config file doesn't exist and we have dropins that's fine.
+		// Other errors are bubbled up regardless of how many dropins we have.
+		if !(os.IsNotExist(err) && len(files) > 0) {
+			return nil, err
+		}
 	} else {
+		// The config file exists, load it first.
 		files = append([]string{file}, files...)
 	}
 
@@ -321,6 +330,7 @@ func toSlice(v interface{}) []interface{} {
 	}
 }
 
+// readConfigFileData returns the contents of a local or remote file
 func readConfigFileData(file string) ([]byte, error) {
 	u, err := url.Parse(file)
 	if err != nil {
