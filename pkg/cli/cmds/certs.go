@@ -28,17 +28,13 @@ var (
 		},
 	}
 	CertRotateCACommandFlags = []cli.Flag{
+		DataDirFlag,
 		cli.StringFlag{
 			Name:        "server,s",
 			Usage:       "(cluster) Server to connect to",
 			EnvVar:      version.ProgramUpper + "_URL",
 			Value:       "https://127.0.0.1:6443",
 			Destination: &ServerConfig.ServerURL,
-		},
-		cli.StringFlag{
-			Name:        "data-dir,d",
-			Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
-			Destination: &ServerConfig.DataDir,
 		},
 		cli.StringFlag{
 			Name:        "path",
