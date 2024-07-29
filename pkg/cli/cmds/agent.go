@@ -266,11 +266,14 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 				EnvVar:      version.ProgramUpper + "_URL",
 				Destination: &AgentConfig.ServerURL,
 			},
+			// Note that this is different from DataDirFlag used elswhere in the CLI,
+			// as this is bound to AgentConfig instead of ServerConfig.
 			&cli.StringFlag{
 				Name:        "data-dir,d",
 				Usage:       "(agent/data) Folder to hold state",
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/" + version.Program + "",
+				EnvVar:      version.ProgramUpper + "_DATA_DIR",
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,
