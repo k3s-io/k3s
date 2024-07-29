@@ -120,61 +120,52 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 		fields fields
 		arg    []string
 		want   string
-		found  bool
 	}{
 		{
-			name:  "default case",
-			arg:   nil,
-			found: false,
+			name: "default case",
+			arg:  nil,
 		},
 		{
-			name:  "simple case",
-			arg:   []string{"asdf", "-c", "value"},
-			want:  "value",
-			found: true,
+			name: "simple case",
+			arg:  []string{"asdf", "-c", "value"},
+			want: "value",
 		},
 		{
-			name:  "invalid args string",
-			arg:   []string{"-c"},
-			found: false,
+			name: "invalid args string",
+			arg:  []string{"-c"},
 		},
 		{
-			name:  "empty arg value",
-			arg:   []string{"-c="},
-			found: true,
+			name: "empty arg value",
+			arg:  []string{"-c="},
 		},
 		{
 			name: "empty arg value override default",
 			fields: fields{
 				DefaultConfig: "def",
 			},
-			arg:   []string{"-c="},
-			found: true,
+			arg: []string{"-c="},
 		},
 		{
 			fields: fields{
 				DefaultConfig: "def",
 			},
-			arg:   []string{"-c"},
-			found: false,
-			name:  "invalid args always return no value",
+			arg:  []string{"-c"},
+			name: "invalid args always return no value",
 		},
 		{
 			fields: fields{
 				DefaultConfig: "def",
 			},
-			arg:   []string{"-c", "value"},
-			want:  "value",
-			found: true,
-			name:  "value override default",
+			arg:  []string{"-c", "value"},
+			want: "value",
+			name: "value override default",
 		},
 		{
 			fields: fields{
 				DefaultConfig: "def",
 			},
-			want:  "def",
-			found: false,
-			name:  "default gets used when nothing is passed",
+			want: "def",
+			name: "default gets used when nothing is passed",
 		},
 		{
 			name: "env override args",
@@ -182,18 +173,16 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 				DefaultConfig: "def",
 				env:           "env",
 			},
-			arg:   []string{"-c", "value"},
-			want:  "env",
-			found: true,
+			arg:  []string{"-c", "value"},
+			want: "env",
 		},
 		{
 			name: "garbage in start and end",
 			fields: fields{
 				DefaultConfig: "def",
 			},
-			arg:   []string{"before", "-c", "value", "after"},
-			want:  "value",
-			found: true,
+			arg:  []string{"before", "-c", "value", "after"},
+			want: "value",
 		},
 	}
 	for _, tt := range tests {
@@ -207,12 +196,9 @@ func Test_UnitParser_findConfigFileFlag(t *testing.T) {
 			defer os.Unsetenv(tt.fields.env)
 			os.Setenv(p.EnvName, tt.fields.env)
 
-			got, found := p.findConfigFileFlag(tt.arg)
+			got := p.findConfigFileFlag(tt.arg)
 			if got != tt.want {
 				t.Errorf("Parser.findConfigFileFlag() got = %+v\nWant = %+v", got, tt.want)
-			}
-			if found != tt.found {
-				t.Errorf("Parser.findConfigFileFlag() found = %+v\nWant = %+v", found, tt.found)
 			}
 		})
 	}
@@ -286,13 +272,33 @@ func Test_UnitParser_Parse(t *testing.T) {
 			want: []string{"server"},
 		},
 		{
-			name: "fail when missing config",
+			name: "ignore missing config when set",
 			fields: fields{
 				After:         []string{"server", "agent"},
 				FlagNames:     []string{"-c", "--config"},
 				DefaultConfig: "missing",
 			},
-			arg:     []string{"server", "-c=missing"},
+			arg:  []string{"server", "-c=missing"},
+			want: []string{"server", "-c=missing"},
+		},
+		{
+			name: "fail when config cannot be parsed",
+			fields: fields{
+				After:         []string{"server", "agent"},
+				FlagNames:     []string{"-c", "--config"},
+				DefaultConfig: "./testdata/invalid.yaml",
+			},
+			arg:     []string{"server"},
+			wantErr: true,
+		},
+		{
+			name: "fail when dropin cannot be parsed",
+			fields: fields{
+				After:         []string{"server", "agent"},
+				FlagNames:     []string{"-c", "--config"},
+				DefaultConfig: "./testdata/invalid-dropin.yaml",
+			},
+			arg:     []string{"server"},
 			wantErr: true,
 		},
 		{
@@ -404,7 +410,59 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "",
 		},
 		{
-			name: "Multiple custom configs exist, target exists in a secondary config",
+			name: "Default config file does not exist but dropin exists, target does not exist",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/dropin-only.yaml",
+			},
+			args: args{
+				osArgs: []string{},
+				target: "tls",
+			},
+			want: "",
+		},
+		{
+			name: "Default config file does not exist but dropin exists, target exists",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/dropin-only.yaml",
+			},
+			args: args{
+				osArgs: []string{},
+				target: "foo-bar",
+			},
+			want: "bar-foo",
+		},
+		{
+			name: "Custom config file does not exist but dropin exists, target does not exist",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/defaultdata.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/dropin-only.yaml"},
+				target: "tls",
+			},
+			want: "",
+		},
+		{
+			name: "Custom config file does not exist but dropin exists, target exists",
+			fields: fields{
+				FlagNames:     []string{"-c", "--config"},
+				EnvName:       "_TEST_ENV",
+				DefaultConfig: "./testdata/defaultdata.yaml",
+			},
+			args: args{
+				osArgs: []string{"-c", "./testdata/dropin-only.yaml"},
+				target: "foo-bar",
+			},
+			want: "bar-foo",
+		},
+		{
+			name: "Multiple custom configs exist, target exists in a dropin config",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -417,7 +475,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "beta",
 		},
 		{
-			name: "Multiple custom configs exist, multiple targets exist in multiple secondary config, replacement",
+			name: "Multiple custom configs exist, multiple targets exist in multiple dropin config, replacement",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
@@ -430,7 +488,7 @@ func Test_UnitParser_FindString(t *testing.T) {
 			want: "bar-foo",
 		},
 		{
-			name: "Multiple custom configs exist, multiple targets exist in multiple secondary config, appending",
+			name: "Multiple custom configs exist, multiple targets exist in multiple dropin config, appending",
 			fields: fields{
 				FlagNames:     []string{"-c", "--config"},
 				EnvName:       "_TEST_ENV",
