@@ -1,0 +1,10 @@
+foo-bar: bar-foo
+b-string+: two
+c-slice+:
+- three
+d-slice:
+- three
+- four
+e-slice+:
+- one
+- two

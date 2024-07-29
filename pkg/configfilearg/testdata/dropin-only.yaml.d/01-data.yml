@@ -1,0 +1,15 @@
+foo-bar: get-overriden
+a-slice:
+- 1
+- "1.5"
+- "2"
+- ""
+- three
+b-string: one
+c-slice:
+- one
+- two
+d-slice:
+- one
+- two
+f-string: beta
