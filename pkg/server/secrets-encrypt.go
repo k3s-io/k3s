@@ -12,16 +12,24 @@ import (
 	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/blang/semver/v4"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 )
@@ -150,8 +158,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	if err := cluster.Save(ctx, server, true); err != nil {
 		return err
 	}
-	server.EncryptSkip = true
-	return setReencryptAnnotation(server)
+	return reencryptAndRemoveKey(ctx, server, true, os.Getenv("NODE_NAME"))
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
@@ -219,7 +226,7 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare)
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionPrepare)
 	})
 	if err != nil {
 		return err
@@ -250,7 +257,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate)
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionRotate)
 	})
 	if err != nil {
 		return err
@@ -262,25 +269,20 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
 	}
-	server.EncryptForce = force
-	server.EncryptSkip = skip
+	// Set the reencrypt-active annotation so other nodes know we are in the process of reencrypting.
+	// As this stage is not persisted, we do not write the annotation to file
 	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
-	if err != nil {
+	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
+	}); err != nil {
 		return err
 	}
 
-	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
-	if err != nil {
-		return err
-	}
-	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
-	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
-	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
-		return err
-	}
-	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
-	return nil
+	return reencryptAndRemoveKey(ctx, server, skip, nodeName)
 }
 
 func addAndRotateKeys(server *config.Control) error {
@@ -321,6 +323,19 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
+	// Set the reencrypt-active annotation so other nodes know we are in the process of reencrypting.
+	// As this stage is not persisted, we do not write the annotation to file
+	nodeName := os.Getenv("NODE_NAME")
+	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
+	}); err != nil {
+		return err
+	}
+
 	if err := addAndRotateKeys(server); err != nil {
 		return err
 	}
@@ -329,7 +344,93 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 		return err
 	}
 
-	return setReencryptAnnotation(server)
+	return reencryptAndRemoveKey(ctx, server, false, nodeName)
+}
+
+func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip bool, nodeName string) error {
+
+	if err := updateSecrets(ctx, server); err != nil {
+		return err
+	}
+
+	// If skipping, revert back to the previous stage and do not remove the key
+	if skip {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			secretsencrypt.BootstrapEncryptionHashAnnotation(node, server.Runtime)
+			_, err = server.Runtime.Core.Core().V1().Node().Update(node)
+			return err
+		})
+		return err
+	}
+
+	// Remove last key
+	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
+	curKeys = curKeys[:len(curKeys)-1]
+	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+		return err
+	}
+
+	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionReencryptFinished)
+	}); err != nil {
+		return err
+	}
+
+	return cluster.Save(ctx, server, true)
+}
+
+func updateSecrets(ctx context.Context, server *config.Control) error {
+
+	restConfig, err := clientcmd.BuildConfigFromFlags("", server.Runtime.KubeConfigSupervisor)
+	if err != nil {
+		return err
+	}
+	// For secrets we need a much higher QPS than default
+	restConfig.QPS = 200
+	restConfig.Burst = 200
+	k8s, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+
+	secretPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
+		return k8s.CoreV1().Secrets(metav1.NamespaceAll).List(ctx, opts)
+	}))
+	secretPager.PageSize = secretsencrypt.SecretListPageSize
+
+	i := 0
+	if err := secretPager.EachListItem(ctx, metav1.ListOptions{}, func(obj runtime.Object) error {
+		secret, ok := obj.(*corev1.Secret)
+		if !ok {
+			return errors.New("failed to convert object to Secret")
+		}
+		if _, err := k8s.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil && !apierrors.IsConflict(err) {
+			return fmt.Errorf("failed to update secret: %v", err)
+		}
+		if i != 0 && i%50 == 0 {
+			logrus.Info("reencrypted %d secrets", i)
+		}
+		i++
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	logrus.Infof("completed reencrypt of %d secrets", i)
+	return nil
 }
 
 func setReencryptAnnotation(server *config.Control) error {
