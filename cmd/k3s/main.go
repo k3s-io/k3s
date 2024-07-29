@@ -193,9 +193,6 @@ func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) erro
 	if err := os.Setenv("PATH", pathEnv); err != nil {
 		return err
 	}
-	if err := os.Setenv(version.ProgramUpper+"_DATA_DIR", dir); err != nil {
-		return err
-	}
 
 	cmd, err = exec.LookPath(cmd)
 	if err != nil {
