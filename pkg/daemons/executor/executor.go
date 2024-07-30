@@ -103,7 +103,7 @@ func (e ETCDConfig) ToConfigFile(extraArgs []string) (string, error) {
 				} else if time, err := time.ParseDuration(extraArg[1]); err == nil && (strings.Contains(lowerKey, "time") || strings.Contains(lowerKey, "duration") || strings.Contains(lowerKey, "interval") || strings.Contains(lowerKey, "retention")) {
 					// auto-compaction-retention is either a time.Duration or int, depending on version. If it is an int, it will be caught above.
 					s[key] = time
-				} else if err := yaml.Unmarshal([]byte(extraArg[1]), &stringArr); err == nil {
+				} else if err := yaml.Unmarshal([]byte(extraArg[1]), &stringArr); err == nil && (len(extraArg[1]) > 0) {
 					s[key] = stringArr
 				} else {
 					switch strings.ToLower(extraArg[1]) {
