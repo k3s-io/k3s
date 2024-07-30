@@ -421,7 +421,7 @@ func updateSecrets(ctx context.Context, server *config.Control) error {
 			return fmt.Errorf("failed to update secret: %v", err)
 		}
 		if i != 0 && i%50 == 0 {
-			logrus.Info("reencrypted %d secrets", i)
+			logrus.Infof("reencrypted %d secrets", i)
 		}
 		i++
 		return nil
