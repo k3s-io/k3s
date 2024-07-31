@@ -27,14 +27,16 @@ import (
 )
 
 const (
-	EncryptionStart             string = "start"
-	EncryptionPrepare           string = "prepare"
-	EncryptionRotate            string = "rotate"
-	EncryptionRotateKeys        string = "rotate_keys"
-	EncryptionReencryptRequest  string = "reencrypt_request"
-	EncryptionReencryptActive   string = "reencrypt_active"
-	EncryptionReencryptFinished string = "reencrypt_finished"
-	SecretListPageSize          int64  = 20
+	EncryptionStart             string  = "start"
+	EncryptionPrepare           string  = "prepare"
+	EncryptionRotate            string  = "rotate"
+	EncryptionRotateKeys        string  = "rotate_keys"
+	EncryptionReencryptRequest  string  = "reencrypt_request"
+	EncryptionReencryptActive   string  = "reencrypt_active"
+	EncryptionReencryptFinished string  = "reencrypt_finished"
+	SecretListPageSize          int64   = 20
+	SecretQPS                   float32 = 200
+	SecretBurst                 int     = 200
 )
 
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"

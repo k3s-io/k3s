@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/blang/semver/v4"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -23,6 +21,7 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -348,7 +347,6 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 }
 
 func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip bool, nodeName string) error {
-
 	if err := updateSecrets(ctx, server); err != nil {
 		return err
 	}
@@ -393,14 +391,13 @@ func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip boo
 }
 
 func updateSecrets(ctx context.Context, server *config.Control) error {
-
 	restConfig, err := clientcmd.BuildConfigFromFlags("", server.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return err
 	}
 	// For secrets we need a much higher QPS than default
-	restConfig.QPS = 200
-	restConfig.Burst = 200
+	restConfig.QPS = secretsencrypt.SecretQPS
+	restConfig.Burst = secretsencrypt.SecretBurst
 	k8s, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
