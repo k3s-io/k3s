@@ -8,7 +8,7 @@ replace (
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.1.2
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.17-k3s2.27
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker => github.com/docker/docker v24.0.8+incompatible
+	github.com/docker/docker => github.com/docker/docker v24.0.10-0.20240723193628-852759a7df45+incompatible
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.1.1
