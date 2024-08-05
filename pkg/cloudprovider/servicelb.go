@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/retry"
-	ccmapp "k8s.io/cloud-provider/app"
+	"k8s.io/cloud-provider/names"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
@@ -42,7 +42,7 @@ var (
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
 	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
-	controllerName         = ccmapp.DefaultInitFuncConstructors["service"].InitContext.ClientName
+	controllerName         = names.ServiceLBController
 )
 
 const (
@@ -52,7 +52,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.7"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.9"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -437,12 +437,19 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		return nil, err
 	}
 	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
+	securityContext := &core.PodSecurityContext{}
 
 	for _, ipFamily := range svc.Spec.IPFamilies {
-		if ipFamily == core.IPv6Protocol && sourceRanges == "0.0.0.0/0" {
-			// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
-			// If using the default range, and IPv6 is enabled, also allow IPv6.
-			sourceRanges += ",::/0"
+		switch ipFamily {
+		case core.IPv4Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
+		case core.IPv6Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			if sourceRanges == "0.0.0.0/0" {
+				// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+				// If using the default range, and IPv6 is enabled, also allow IPv6.
+				sourceRanges += ",::/0"
+			}
 		}
 	}
 
@@ -478,12 +485,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					PriorityClassName:            priorityClassName,
 					ServiceAccountName:           "svclb",
 					AutomountServiceAccountToken: utilsptr.To(false),
-					SecurityContext: &core.PodSecurityContext{
-						Sysctls: []core.Sysctl{
-							{Name: "net.ipv4.ip_forward", Value: "1"},
-							{Name: "net.ipv6.conf.all.forwarding", Value: "1"},
-						},
-					},
+					SecurityContext:              securityContext,
 					Tolerations: []core.Toleration{
 						{
 							Key:      util.MasterRoleLabelKey,
@@ -699,7 +701,17 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 
 // generateName generates a distinct name for the DaemonSet based on the service name and UID
 func generateName(svc *core.Service) string {
-	return fmt.Sprintf("svclb-%s-%s", svc.Name, svc.UID[:8])
+	name := svc.Name
+	// ensure that the service name plus prefix and uuid aren't overly long, but
+	// don't cut the service name at a trailing hyphen.
+	if len(name) > 48 {
+		trimlen := 48
+		for name[trimlen-1] == '-' {
+			trimlen--
+		}
+		name = name[0:trimlen]
+	}
+	return fmt.Sprintf("svclb-%s-%s", name, svc.UID[:8])
 }
 
 // ingressToString converts a list of LoadBalancerIngress entries to strings
