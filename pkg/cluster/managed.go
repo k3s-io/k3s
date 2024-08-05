@@ -136,7 +136,7 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 		return
 	}
 	// We use Poll here instead of Until because we want to wait the interval before running the function.
-	go wait.PollUntilWithContext(ctx, 30*time.Second, func(ctx context.Context) (bool, error) {
+	go wait.PollUntilContextCancel(ctx, 30*time.Second, false, func(ctx context.Context) (bool, error) {
 		clientURLs, err := c.managedDB.GetMembersClientURLs(ctx)
 		if err != nil {
 			logrus.Warnf("Failed to get etcd ClientURLs: %v", err)

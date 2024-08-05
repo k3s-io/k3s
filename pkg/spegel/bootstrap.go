@@ -103,7 +103,7 @@ func NewServerBootstrapper(controlConfig *config.Control) routing.Bootstrapper {
 func (s *serverBootstrapper) Run(_ context.Context, id string) error {
 	s.controlConfig.Runtime.ClusterControllerStarts["spegel-p2p"] = func(ctx context.Context) {
 		nodes := s.controlConfig.Runtime.Core.Core().V1().Node()
-		wait.PollImmediateUntilWithContext(ctx, 1*time.Second, func(ctx context.Context) (bool, error) {
+		_ = wait.PollUntilContextCancel(ctx, 1*time.Second, true, func(ctx context.Context) (bool, error) {
 			nodeName := os.Getenv("NODE_NAME")
 			if nodeName == "" {
 				return false, nil
