@@ -92,7 +92,7 @@ jobs:
       - name: Cleanup VM
         run: vagrant destroy -f
       - name: On Failure, launch debug session
-        uses: lhotari/action-upterm@v1
+        uses: dereknola/action-upterm@v1.1
         if: ${{ failure() }}
         with:
           ## If no one connects after 5 minutes, shut down server.
