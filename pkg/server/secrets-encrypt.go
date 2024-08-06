@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -347,7 +348,7 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 }
 
 func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip bool, nodeName string) error {
-	if err := updateSecrets(ctx, server); err != nil {
+	if err := updateSecrets(ctx, server, nodeName); err != nil {
 		return err
 	}
 
@@ -390,7 +391,7 @@ func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip boo
 	return cluster.Save(ctx, server, true)
 }
 
-func updateSecrets(ctx context.Context, server *config.Control) error {
+func updateSecrets(ctx context.Context, server *config.Control, nodeName string) error {
 	restConfig, err := clientcmd.BuildConfigFromFlags("", server.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return err
@@ -402,6 +403,16 @@ func updateSecrets(ctx context.Context, server *config.Control) error {
 	if err != nil {
 		return err
 	}
+
+	nodeRef := &corev1.ObjectReference{
+		Kind:      "Node",
+		Name:      nodeName,
+		UID:       types.UID(nodeName),
+		Namespace: "",
+	}
+
+	// For backwards compatibility with the old controller, we use an event recorder instead of logrus
+	recorder := util.BuildControllerEventRecorder(k8s, "secrets-reencrypt", metav1.NamespaceDefault)
 
 	secretPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
 		return k8s.CoreV1().Secrets(metav1.NamespaceAll).List(ctx, opts)
@@ -415,38 +426,18 @@ func updateSecrets(ctx context.Context, server *config.Control) error {
 			return errors.New("failed to convert object to Secret")
 		}
 		if _, err := k8s.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil && !apierrors.IsConflict(err) {
+			recorder.Eventf(secret, corev1.EventTypeNormal, secretsencrypt.SecretsUpdateErrorEvent, "failed to update secret: %v", err)
 			return fmt.Errorf("failed to update secret: %v", err)
 		}
 		if i != 0 && i%50 == 0 {
-			logrus.Infof("reencrypted %d secrets", i)
+			recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsencrypt.SecretsProgressEvent, "reencrypted %d secrets", i)
 		}
 		i++
 		return nil
 	}); err != nil {
 		return err
 	}
-
-	logrus.Infof("completed reencrypt of %d secrets", i)
-	return nil
-}
-
-func setReencryptAnnotation(server *config.Control) error {
-	nodeName := os.Getenv("NODE_NAME")
-	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	reencryptHash, err := secretsencrypt.GenReencryptHash(server.Runtime, secretsencrypt.EncryptionReencryptRequest)
-	if err != nil {
-		return err
-	}
-	ann := secretsencrypt.EncryptionReencryptRequest + "-" + reencryptHash
-	node.Annotations[secretsencrypt.EncryptionHashAnnotation] = ann
-	if _, err = server.Runtime.Core.Core().V1().Node().Update(node); err != nil {
-		return err
-	}
-	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	recorder.Eventf(nodeRef, corev1.EventTypeNormal, secretsencrypt.SecretsUpdateCompleteEvent, "reencrypted %d secrets", i)
 	return nil
 }
 

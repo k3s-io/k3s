@@ -37,6 +37,9 @@ const (
 	SecretListPageSize          int64   = 20
 	SecretQPS                   float32 = 200
 	SecretBurst                 int     = 200
+	SecretsUpdateErrorEvent     string  = "SecretsUpdateError"
+	SecretsProgressEvent        string  = "SecretsProgress"
+	SecretsUpdateCompleteEvent  string  = "SecretsUpdateComplete"
 )
 
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
