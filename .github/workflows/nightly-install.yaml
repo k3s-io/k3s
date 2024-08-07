@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         channel: [stable, latest]
-        vm: [rocky-8, fedora, opensuse-leap, ubuntu-2204]
+        vm: [rocky-9, fedora, opensuse-leap, ubuntu-2404]
       max-parallel: 4
     defaults:
       run:

@@ -13,9 +13,9 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2310, generic/centos7, generic/rocky8
-// opensuse/Leap-15.3.x86_64
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
+// bento/ubuntu-24.04, eurolinux-vagrant/rocky-8, eurolinux-vagrant/rocky-9
+// opensuse/Leap-15.6.x86_64
+var nodeOS = flag.String("nodeOS", "bento/ubuntu-24.04", "VM operating system")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 2, "number of agent nodes")
 var hardened = flag.Bool("hardened", false, "true or false")

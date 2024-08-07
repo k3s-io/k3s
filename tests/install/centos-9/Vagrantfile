@@ -6,14 +6,14 @@ ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s"]
-  config.vm.box = "generic/centos7"
+  config.vm.box = "eurolinux-vagrant/centos-stream-9"
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   # Load in helper functions
   load "../install_util.rb"
 
-  config.vm.define 'install-centos-7', primary: true do |test|
+  config.vm.define 'install-centos-9', primary: true do |test|
     test.vm.hostname = 'smoke'
     test.vm.provision "add-bin-path", type: "shell", inline: "echo \"export PATH=/usr/local/bin:\$PATH\" >> ~/.bashrc"
     test.vm.provision 'k3s-upload', type: 'file', run: 'always', source: ENV['TEST_INSTALL_SH'], destination: 'install.sh'

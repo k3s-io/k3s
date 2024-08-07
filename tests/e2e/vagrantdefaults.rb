@@ -1,12 +1,10 @@
 def defaultOSConfigure(vm)
   box = vm.box.to_s
-  if box.include?("generic/ubuntu")
+  if box.include?("ubuntu")
     vm.provision "Set DNS", type: "shell", inline: "netplan set ethernets.eth0.nameservers.addresses=[8.8.8.8,1.1.1.1]; netplan apply", run: 'once'
   elsif box.include?("Leap") || box.include?("Tumbleweed")
     vm.provision "Install apparmor-parser", type: "shell", inline: "zypper install -y apparmor-parser"
-  elsif box.include?("rocky8") || box.include?("rocky9")
-    vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
-  elsif box.include?("centos7")
+  elsif box.include?("rocky") || box.include?("centos")
     vm.provision "Disable firewall", type: "shell", inline: "systemctl stop firewalld"
   elsif box.include?("alpine")
     vm.provision "Install tools", type: "shell", inline: "apk add coreutils"
@@ -78,7 +76,7 @@ def getHardenedArg(vm, hardened, scripts_location)
     puts "Invalid E2E_HARDENED option"
     exit 1
   end
-  if vm.box.to_s.include?("generic/ubuntu")
+  if vm.box.to_s.include?("ubuntu")
     vm.provision "Install kube-bench", type: "shell", inline: <<-SHELL
     export KBV=0.8.0
     curl -L "https://github.com/aquasecurity/kube-bench/releases/download/v${KBV}/kube-bench_${KBV}_linux_amd64.deb" -o "kube-bench_${KBV}_linux_amd64.deb"
@@ -90,13 +88,13 @@ end
 
 def jqInstall(vm)
   box = vm.box.to_s
-  if box.include?("generic/ubuntu")
+  if box.include?("ubuntu")
     vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
   elsif box.include?("Leap") || box.include?("Tumbleweed")
     vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
-  elsif box.include?("rocky8") || box.include?("rocky9")
+  elsif box.include?("rocky")
     vm.provision "Install jq", type: "shell", inline: "dnf install -y jq"
-  elsif box.include?("centos7")
+  elsif box.include?("centos")
     vm.provision "Install jq", type: "shell", inline: "yum install -y jq"
   elsif box.include?("alpine")
     vm.provision "Install jq", type: "shell", inline: "apk add coreutils"
@@ -122,7 +120,7 @@ def dockerInstall(vm)
     vm.provision "shell", inline: "transactional-update pkg install -y docker apparmor-parser"
     vm.provision 'docker-reload', type: 'reload', run: 'once'
     vm.provision "shell", inline: "systemctl enable --now docker"
-  elsif box.include?("rocky8") || box.include?("rocky9")
+  elsif box.include?("rocky")
     vm.provision "shell", inline: "dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
     vm.provision "shell", inline: "dnf install -y docker-ce"
   end
