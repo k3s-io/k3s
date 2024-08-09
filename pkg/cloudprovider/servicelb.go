@@ -2,11 +2,14 @@ package cloudprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/yaml"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -39,6 +42,7 @@ var (
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
 	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
+	tolerationsAnnotation  = "svccontroller." + version.Program + ".cattle.io/tolerations"
 	controllerName         = "service-lb-controller"
 )
 
@@ -594,6 +598,14 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		ds.Labels[nodeSelectorLabel] = "true"
 	}
 
+	// Fetch tolerations from the "svccontroller.k3s.cattle.io/tolerations" annotation on the service
+	// and append them to the DaemonSet's pod tolerations.
+	tolerations, err := k.getTolerations(svc)
+	if err != nil {
+		return nil, err
+	}
+	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, tolerations...)
+
 	return ds, nil
 }
 
@@ -694,6 +706,47 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 		}
 	}
 	return k.LBDefaultPriorityClassName
+}
+
+// getTolerations retrieves the tolerations from a service's annotations.
+// It parses the tolerations from a JSON or YAML string stored in the annotations.
+func (k *k3s) getTolerations(svc *core.Service) ([]core.Toleration, error) {
+	tolerationsStr, ok := svc.Annotations[tolerationsAnnotation]
+	if !ok {
+		return []core.Toleration{}, nil
+	}
+
+	var tolerations []core.Toleration
+	if err := json.Unmarshal([]byte(tolerationsStr), &tolerations); err != nil {
+		if err := yaml.Unmarshal([]byte(tolerationsStr), &tolerations); err != nil {
+			return nil, fmt.Errorf("failed to parse tolerations from annotation %s: %v", tolerationsAnnotation, err)
+		}
+	}
+
+	for i := range tolerations {
+		if err := validateToleration(&tolerations[i]); err != nil {
+			return nil, fmt.Errorf("validation failed for toleration %d: %v", i, err)
+		}
+	}
+
+	return tolerations, nil
+}
+
+// validateToleration ensures a toleration has valid fields according to its operator.
+func validateToleration(toleration *core.Toleration) error {
+	if toleration.Operator == "" {
+		toleration.Operator = core.TolerationOpEqual
+	}
+
+	if toleration.Key == "" && toleration.Operator != core.TolerationOpExists {
+		return fmt.Errorf("toleration with empty key must have operator 'Exists'")
+	}
+
+	if toleration.Operator == core.TolerationOpExists && toleration.Value != "" {
+		return fmt.Errorf("toleration with operator 'Exists' must have an empty value")
+	}
+
+	return nil
 }
 
 // generateName generates a distinct name for the DaemonSet based on the service name and UID
