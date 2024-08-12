@@ -669,7 +669,7 @@ EOF
                 : "${INSTALL_K3S_SKIP_START:=true}"
             fi
             # create the /var/lib/rpm-state in SLE systems to fix the prein selinux macro
-            ${transactional_update_run} mkdir -p /var/lib/rpm-state
+            $SUDO ${transactional_update_run} mkdir -p /var/lib/rpm-state
             ;;
         coreos)
             rpm_installer="rpm-ostree --idempotent"
@@ -941,7 +941,7 @@ elif type zypper >/dev/null 2>&1; then
     if [ "\${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
         uninstall_cmd="transactional-update --no-selfupdate -d run \$uninstall_cmd"
     fi
-    \$uninstall_cmd
+    $SUDO \$uninstall_cmd
     rm -f /etc/zypp/repos.d/rancher-k3s-common*.repo
 fi
 EOF
