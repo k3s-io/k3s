@@ -49,7 +49,7 @@ func caCertReplaceHandler(server *config.Control) http.HandlerFunc {
 // the datastore.  If the functions succeeds, servers should be restarted immediately to load the new certs
 // from the bootstrap data.
 func caCertReplace(server *config.Control, buf io.ReadCloser, force bool) error {
-	tmpdir, err := os.MkdirTemp("", "cacerts")
+	tmpdir, err := os.MkdirTemp(server.DataDir, ".rotate-ca-tmp-")
 	if err != nil {
 		return err
 	}
@@ -94,10 +94,19 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 	// Use reflection to iterate over all of the bootstrap fields, checking files at each of the new paths.
 	oldMeta := reflect.ValueOf(&oldServer.Runtime.ControlRuntimeBootstrap).Elem()
 	newMeta := reflect.ValueOf(&newServer.Runtime.ControlRuntimeBootstrap).Elem()
-	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
-		oldVal := oldMeta.FieldByName(field.Name)
-		newVal := newMeta.FieldByName(field.Name)
+	fields := []reflect.StructField{}
 
+	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
+		// Only handle bootstrap fields tagged for rotation
+		if field.Tag.Get("rotate") != "true" {
+			continue
+		}
+		fields = append(fields, field)
+	}
+
+	// first pass: use the existing file if the new file does not exist or is empty
+	for _, field := range fields {
+		newVal := newMeta.FieldByName(field.Name)
 		info, err := os.Stat(newVal.String())
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			errs = append(errs, errors.Wrap(err, field.Name))
@@ -106,12 +115,20 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 
 		if info == nil || info.Size() == 0 {
 			if newVal.CanSet() {
-				logrus.Infof("certificate: %s not provided; using current value", field.Name)
+				oldVal := oldMeta.FieldByName(field.Name)
+				logrus.Infof("certificate: %s not provided; using current value %s", field.Name, oldVal)
 				newVal.Set(oldVal)
 			} else {
 				errs = append(errs, fmt.Errorf("cannot use current data for %s; field is not settable", field.Name))
 			}
 		}
+
+	}
+
+	// second pass: validate file contents
+	for _, field := range fields {
+		oldVal := oldMeta.FieldByName(field.Name)
+		newVal := newMeta.FieldByName(field.Name)
 
 		// Check CA chain consistency and cert/key agreement
 		if strings.HasSuffix(field.Name, "CA") {
@@ -119,7 +136,8 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 				errs = append(errs, errors.Wrap(err, field.Name))
 			}
 			newKeyVal := newMeta.FieldByName(field.Name + "Key")
-			if err := validateCAKey(newVal.String(), newKeyVal.String()); err != nil {
+			oldKeyVal := oldMeta.FieldByName(field.Name + "Key")
+			if err := validateCAKey(oldVal.String(), oldKeyVal.String(), newVal.String(), newKeyVal.String()); err != nil {
 				errs = append(errs, errors.Wrap(err, field.Name+"Key"))
 			}
 		}
@@ -139,6 +157,11 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 }
 
 func validateCA(oldCAPath, newCAPath string) error {
+	// Skip validation if old values are being reused
+	if oldCAPath == newCAPath {
+		return nil
+	}
+
 	oldCerts, err := certutil.CertsFromFile(oldCAPath)
 	if err != nil {
 		return err
@@ -150,7 +173,7 @@ func validateCA(oldCAPath, newCAPath string) error {
 	}
 
 	if len(newCerts) == 1 {
-		return errors.New("new CA is self-signed")
+		return errors.New("new CA bundle contains only a single certificate but should include root or intermediate CA certificates")
 	}
 
 	roots := x509.NewCertPool()
@@ -183,7 +206,12 @@ func validateCA(oldCAPath, newCAPath string) error {
 }
 
 // validateCAKey confirms that the private key is valid for the certificate
-func validateCAKey(newCAPath, newCAKeyPath string) error {
+func validateCAKey(oldCAPath, oldCAKeyPath, newCAPath, newCAKeyPath string) error {
+	// Skip validation if old values are being reused
+	if oldCAPath == newCAPath && oldCAKeyPath == newCAKeyPath {
+		return nil
+	}
+
 	_, err := tls.LoadX509KeyPair(newCAPath, newCAKeyPath)
 	if err != nil {
 		err = errors.Wrap(err, "new CA cert and key cannot be loaded as X590KeyPair")
