@@ -284,18 +284,18 @@ func (c *Control) Loopback(urlSafe bool) string {
 }
 
 type ControlRuntimeBootstrap struct {
-	ETCDServerCA       string
-	ETCDServerCAKey    string
-	ETCDPeerCA         string
-	ETCDPeerCAKey      string
-	ServerCA           string
-	ServerCAKey        string
-	ClientCA           string
-	ClientCAKey        string
-	ServiceKey         string
+	ETCDServerCA       string `rotate:"true"`
+	ETCDServerCAKey    string `rotate:"true"`
+	ETCDPeerCA         string `rotate:"true"`
+	ETCDPeerCAKey      string `rotate:"true"`
+	ServerCA           string `rotate:"true"`
+	ServerCAKey        string `rotate:"true"`
+	ClientCA           string `rotate:"true"`
+	ClientCAKey        string `rotate:"true"`
+	ServiceKey         string `rotate:"true"`
 	PasswdFile         string
-	RequestHeaderCA    string
-	RequestHeaderCAKey string
+	RequestHeaderCA    string `rotate:"true"`
+	RequestHeaderCAKey string `rotate:"true"`
 	IPSECKey           string
 	EncryptionConfig   string
 	EncryptionHash     string

@@ -30,7 +30,7 @@ import (
 
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
 // It then checks to see if the cluster needs to load bootstrap data, and if so, loads data into the
-// ControlRuntimeBoostrap struct, either via HTTP or from the datastore.
+// ControlRuntimeBootstrap struct, either via HTTP or from the datastore.
 func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
 		return err
