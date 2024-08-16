@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
-	"k8s.io/kubernetes/pkg/kubelet/util"
+	"k8s.io/cri-client/pkg/util"
 )
 
 // Connection connects to a CRI socket at the given path.
