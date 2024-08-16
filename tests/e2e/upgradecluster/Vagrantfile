@@ -91,7 +91,7 @@ end
 
 def getDBType(role, role_num, vm)
 
-  if EXTERNAL_DB == "mysql"
+  if EXTERNAL_DB == "mariadb"
     if role.include?("server") && role_num == 0
       dockerInstall(vm)
       vm.provision "Start mysql", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
@@ -100,8 +100,8 @@ def getDBType(role, role_num, vm)
     elsif role.include?("server") && role_num != 0
       return "datastore-endpoint: 'mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
     end
-    
-  elsif EXTERNAL_DB == "mariadb"
+
+  elsif EXTERNAL_DB == "mysql"
     if role.include?("server") && role_num == 0
       dockerInstall(vm)
       vm.provision "Start mysql", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"
