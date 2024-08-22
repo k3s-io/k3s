@@ -426,7 +426,7 @@ func updateSecrets(ctx context.Context, server *config.Control, nodeName string)
 			return errors.New("failed to convert object to Secret")
 		}
 		if _, err := k8s.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil && !apierrors.IsConflict(err) {
-			recorder.Eventf(secret, corev1.EventTypeNormal, secretsencrypt.SecretsUpdateErrorEvent, "failed to update secret: %v", err)
+			recorder.Eventf(nodeRef, corev1.EventTypeWarning, secretsencrypt.SecretsUpdateErrorEvent, "failed to update secret: %v", err)
 			return fmt.Errorf("failed to update secret: %v", err)
 		}
 		if i != 0 && i%50 == 0 {
