@@ -227,8 +227,6 @@ type Control struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptForce             bool
-	EncryptSkip              bool
 	MinTLSVersion            string
 	CipherSuites             []string
 	TLSMinVersion            uint16   `json:"-"`
