@@ -19,7 +19,7 @@ def getInstallType(vm, release_version, branch, release_channel='')
     install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
   elsif !release_version.empty?
     return "INSTALL_K3S_VERSION=#{release_version}"
-  elsif release_channel != "commit"
+  elsif !release_channel.empty? && release_channel != "commit"
     return "INSTALL_K3S_CHANNEL=#{release_channel}"
   else
     jqInstall(vm)
