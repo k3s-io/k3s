@@ -27,13 +27,19 @@ import (
 )
 
 const (
-	EncryptionStart             string = "start"
-	EncryptionPrepare           string = "prepare"
-	EncryptionRotate            string = "rotate"
-	EncryptionRotateKeys        string = "rotate_keys"
-	EncryptionReencryptRequest  string = "reencrypt_request"
-	EncryptionReencryptActive   string = "reencrypt_active"
-	EncryptionReencryptFinished string = "reencrypt_finished"
+	EncryptionStart             string  = "start"
+	EncryptionPrepare           string  = "prepare"
+	EncryptionRotate            string  = "rotate"
+	EncryptionRotateKeys        string  = "rotate_keys"
+	EncryptionReencryptRequest  string  = "reencrypt_request"
+	EncryptionReencryptActive   string  = "reencrypt_active"
+	EncryptionReencryptFinished string  = "reencrypt_finished"
+	SecretListPageSize          int64   = 20
+	SecretQPS                   float32 = 200
+	SecretBurst                 int     = 200
+	SecretsUpdateErrorEvent     string  = "SecretsUpdateError"
+	SecretsProgressEvent        string  = "SecretsProgress"
+	SecretsUpdateCompleteEvent  string  = "SecretsUpdateComplete"
 )
 
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
@@ -178,7 +184,9 @@ func BootstrapEncryptionHashAnnotation(node *corev1.Node, runtime *config.Contro
 	return nil
 }
 
-func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.Node, stage string) error {
+// WriteEncryptionHashAnnotation writes the encryption hash to the node annotation and optionally to a file.
+// The file is used to track the last stage of the reencryption process.
+func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.Node, skipFile bool, stage string) error {
 	encryptionConfigHash, err := GenEncryptionConfigHash(runtime)
 	if err != nil {
 		return err
@@ -192,6 +200,9 @@ func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.
 		return err
 	}
 	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	if skipFile {
+		return nil
+	}
 	return os.WriteFile(runtime.EncryptionHash, []byte(ann), 0600)
 }
 
