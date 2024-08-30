@@ -42,7 +42,7 @@ cluster-pre-hook() {
         -d --name $name \
         --hostname $name \
         ${SERVER_DOCKER_ARGS} \
-        rancher/mirrored-pause:3.6 \
+        rancher/mirrored-pause:3.10 \
         >/dev/null
 
     docker cp scripts/hardened/cluster-level-pss.yaml $name:/opt/rancher/k3s/cluster-level-pss.yaml

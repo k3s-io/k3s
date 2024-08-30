@@ -25,7 +25,7 @@ cluster-pre-hook() {
         -d --name $name \
         --hostname $name \
         ${SERVER_DOCKER_ARGS} \
-        rancher/mirrored-pause:3.6 \
+        rancher/mirrored-pause:3.10 \
         >/dev/null
 
     DATA_DIR="$TEST_DIR/pause/0/k3s" ./contrib/util/generate-custom-ca-certs.sh
