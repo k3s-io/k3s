@@ -84,7 +84,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create new private registry", func() {
-			registry, err := e2e.RunCmdOnNode("docker run -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
+			registry, err := e2e.RunCmdOnNode("docker run --init -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
 			fmt.Println(registry)
 			Expect(err).NotTo(HaveOccurred())
 
