@@ -18,7 +18,7 @@ RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl
 
 RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
 
-ENV SONOBUOY_VERSION 0.57.1
+ENV SONOBUOY_VERSION 0.57.2
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \
