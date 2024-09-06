@@ -491,15 +491,6 @@ func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map
 		}
 	}
 
-	if agentConfig.NodeExternalDNS != "" {
-		result[cp.ExternalDNSKey] = strings.Join(agentConfig.NodeExternalDNSs, ",")
-		if nodeConfig.FlannelExternalIP {
-			for _, dns := range agentConfig.NodeExternalDNSs {
-				result[flannel.FlannelExternalDNSAnnotation] = dns
-			}
-		}
-	}
-
 	result = labels.Merge(nodeAnnotations, result)
 	return result, !equality.Semantic.DeepEqual(nodeAnnotations, result)
 }
