@@ -453,9 +453,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 			if len(envInfo.NodeExternalIP) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
-			if len(envInfo.NodeExternalDNS) != 0 {
-				logrus.Warn("VPN provider overrides node-external-dns parameter")
-			}
 			nodeIPs = vpnIPs
 			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
 			if err != nil {
