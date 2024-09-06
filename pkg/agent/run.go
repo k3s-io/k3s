@@ -491,6 +491,13 @@ func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map
 		}
 	}
 
+	if agentConfig.NodeInternalDNS != "" {
+		result[cp.InternalDNSKey] = strings.Join(agentConfig.NodeInternalDNSs, ",")
+	}
+	if agentConfig.NodeExternalDNS != "" {
+		result[cp.ExternalDNSKey] = strings.Join(agentConfig.NodeExternalDNSs, ",")
+	}
+
 	result = labels.Merge(nodeAnnotations, result)
 	return result, !equality.Semantic.DeepEqual(nodeAnnotations, result)
 }

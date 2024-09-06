@@ -23,6 +23,7 @@ type Agent struct {
 	BindAddress              string
 	NodeIP                   cli.StringSlice
 	NodeExternalIP           cli.StringSlice
+	NodeInternalDNS          cli.StringSlice
 	NodeExternalDNS          cli.StringSlice
 	NodeName                 string
 	PauseImage               string
@@ -80,6 +81,11 @@ var (
 		Name:  "node-external-ip",
 		Usage: "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
 		Value: &AgentConfig.NodeExternalIP,
+	}
+	NodeInternalDNSFlag = &cli.StringSliceFlag{
+		Name:  "node-internal-dns",
+		Usage: "(agent/networking) internal DNS addresses to advertise for node",
+		Value: &AgentConfig.NodeInternalDNS,
 	}
 	NodeExternalDNSFlag = &cli.StringSliceFlag{
 		Name:  "node-external-dns",
@@ -301,6 +307,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			NodeIPFlag,
 			BindAddressFlag,
 			NodeExternalIPFlag,
+			NodeInternalDNSFlag,
 			NodeExternalDNSFlag,
 			ResolvConfFlag,
 			FlannelIfaceFlag,
