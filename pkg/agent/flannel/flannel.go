@@ -48,7 +48,6 @@ var (
 	FlannelBaseAnnotation         = "flannel.alpha.coreos.com"
 	FlannelExternalIPv4Annotation = FlannelBaseAnnotation + "/public-ip-overwrite"
 	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
-	FlannelExternalDNSAnnotation = FlannelBaseAnnotation + "/public-dns-overwrite"
 )
 
 func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
