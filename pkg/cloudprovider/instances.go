@@ -15,6 +15,7 @@ import (
 var (
 	InternalIPKey = version.Program + ".io/internal-ip"
 	ExternalIPKey = version.Program + ".io/external-ip"
+	InternalDNSKey = version.Program + ".io/internal-dns"
 	ExternalDNSKey = version.Program + ".io/external-dns"
 	HostnameKey   = version.Program + ".io/hostname"
 )
