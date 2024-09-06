@@ -640,6 +640,18 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.NodeExternalIP = nodeConfig.AgentConfig.NodeExternalIPs[0].String()
 	}
 
+	var nodeExternalDNSs []string
+	for _, dnsString := range envInfo.NodeExternalDNS.Value() {
+		nodeExternalDNSs = append(nodeExternalDNSs, strings.Split(dnsString, ",")...)
+	}
+	nodeConfig.AgentConfig.NodeExternalDNSs = nodeExternalDNSs
+
+	var nodeInternalDNSs []string
+	for _, dnsString := range envInfo.NodeInternalDNS.Value() {
+		nodeInternalDNSs = append(nodeInternalDNSs, strings.Split(dnsString, ",")...)
+	}
+	nodeConfig.AgentConfig.NodeInternalDNSs = nodeInternalDNSs
+
 	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
 	if !nodeConfig.NoFlannel {
 		hostLocal, err := exec.LookPath("host-local")
