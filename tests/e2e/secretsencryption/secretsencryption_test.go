@@ -101,7 +101,12 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 		It("Rotates the Secrets-Encryption Keys", func() {
 			cmd := "k3s secrets-encrypt rotate-keys"
 			res, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
-			Expect(err).NotTo(HaveOccurred(), res)
+			// Before we fail on error, get the server logs which actually contain the error
+			var slogs string
+			if err != nil {
+				slogs, _ = e2e.RunCmdOnNode("journalctl -u k3s -n 10", serverNodeNames[0])
+			}
+			Expect(err).NotTo(HaveOccurred(), res+slogs)
 			for i, nodeName := range serverNodeNames {
 				Eventually(func(g Gomega) {
 					cmd := "k3s secrets-encrypt status"
