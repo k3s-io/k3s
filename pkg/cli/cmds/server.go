@@ -539,6 +539,7 @@ var ServerFlags = []cli.Flag{
 	AirgapExtraRegistryFlag,
 	NodeIPFlag,
 	NodeExternalIPFlag,
+	NodeExternalDNSFlag,
 	ResolvConfFlag,
 	FlannelIfaceFlag,
 	FlannelConfFlag,

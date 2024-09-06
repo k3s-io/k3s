@@ -123,6 +123,8 @@ type Agent struct {
 	NodeIPs                 []net.IP
 	NodeExternalIP          string
 	NodeExternalIPs         []net.IP
+	NodeExternalDNS         string
+	NodeExternalDNSs        []string
 	RuntimeSocket           string
 	ImageServiceSocket      string
 	ListenAddress           string

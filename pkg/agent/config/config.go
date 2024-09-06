@@ -453,6 +453,9 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 			if len(envInfo.NodeExternalIP) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
+			if len(envInfo.NodeExternalDNS) != 0 {
+				logrus.Warn("VPN provider overrides node-external-dns parameter")
+			}
 			nodeIPs = vpnIPs
 			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
 			if err != nil {
@@ -628,6 +631,15 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	// unless only IPv6 address given
 	if len(nodeConfig.AgentConfig.NodeExternalIPs) > 0 {
 		nodeConfig.AgentConfig.NodeExternalIP = nodeConfig.AgentConfig.NodeExternalIPs[0].String()
+	}
+
+	var nodeExternalDNSs []string
+	for _, dnsString := range envInfo.NodeExternalDNS.Value() {
+		nodeExternalDNSs = append(nodeExternalDNSs, strings.Split(dnsString, ",")...)
+	}
+	nodeConfig.AgentConfig.NodeExternalDNSs = nodeExternalDNSs
+	if len(nodeConfig.AgentConfig.NodeExternalDNSs) > 0 {
+		nodeConfig.AgentConfig.NodeExternalDNS = nodeConfig.AgentConfig.NodeExternalDNSs[0]
 	}
 
 	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
