@@ -39,9 +39,15 @@ jobs:
     
     - name: Add Trivy Report to PR
       run: |
-        echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
-        echo '```' >> trivy-report.txt
-        gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
+        sudo chown runner:runner trivy-report.txt
+        if [ -s trivy-report.txt ] && [ -n "$(grep -v '^\s*$' trivy-report.txt)" ]; then
+          echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
+          echo '```' >> trivy-report.txt
+          gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
+        else
+          echo ':star2: No High or Critical CVEs Found :star2:' > trivy-report.txt
+          gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
+        fi
     
     - name: Report Failure
       if: ${{ failure() }}
