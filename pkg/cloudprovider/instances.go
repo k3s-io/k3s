@@ -93,8 +93,6 @@ func (k *k3s) InstanceMetadata(ctx context.Context, node *corev1.Node) (*cloudpr
 		for _, v := range strings.Split(address, ",") {
 			metadata.NodeAddresses = append(metadata.NodeAddresses, corev1.NodeAddress{Type: corev1.NodeExternalDNS, Address: v})
 		}
-	} else if address = node.Labels[ExternalDNSKey]; address != "" {
-		metadata.NodeAddresses = append(metadata.NodeAddresses, corev1.NodeAddress{Type: corev1.NodeExternalDNS, Address: address})
 	}
 
 	// check hostname
