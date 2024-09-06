@@ -635,18 +635,12 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeExternalDNSs = append(nodeExternalDNSs, strings.Split(dnsString, ",")...)
 	}
 	nodeConfig.AgentConfig.NodeExternalDNSs = nodeExternalDNSs
-	if len(nodeConfig.AgentConfig.NodeExternalDNSs) > 0 {
-		nodeConfig.AgentConfig.NodeExternalDNS = nodeConfig.AgentConfig.NodeExternalDNSs[0]
-	}
 
 	var nodeInternalDNSs []string
 	for _, dnsString := range envInfo.NodeInternalDNS.Value() {
 		nodeInternalDNSs = append(nodeInternalDNSs, strings.Split(dnsString, ",")...)
 	}
 	nodeConfig.AgentConfig.NodeInternalDNSs = nodeInternalDNSs
-	if len(nodeConfig.AgentConfig.NodeInternalDNSs) > 0 {
-		nodeConfig.AgentConfig.NodeInternalDNS = nodeConfig.AgentConfig.NodeInternalDNSs[0]
-	}
 
 	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
 	if !nodeConfig.NoFlannel {
