@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -187,13 +188,24 @@ func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) erro
 	}
 	logrus.Debugf("Asset dir %s", dir)
 
-	var pathEnv string
-	if findPreferBundledBin(args) {
-		pathEnv = filepath.Join(dir, "bin") + string(os.PathListSeparator) + filepath.Join(dir, "bin/aux") + string(os.PathListSeparator) + os.Getenv("PATH")
-	} else {
-		pathEnv = filepath.Join(dir, "bin") + string(os.PathListSeparator) + os.Getenv("PATH") + string(os.PathListSeparator) + filepath.Join(dir, "bin/aux")
+	pathList := []string{
+		filepath.Clean(filepath.Join(dir, "..", "cni")),
+		filepath.Join(dir, "bin"),
 	}
-	if err := os.Setenv("PATH", pathEnv); err != nil {
+	if findPreferBundledBin(args) {
+		pathList = append(
+			pathList,
+			filepath.Join(dir, "bin", "aux"),
+			os.Getenv("PATH"),
+		)
+	} else {
+		pathList = append(
+			pathList,
+			os.Getenv("PATH"),
+			filepath.Join(dir, "bin", "aux"),
+		)
+	}
+	if err := os.Setenv("PATH", strings.Join(pathList, string(os.PathListSeparator))); err != nil {
 		return err
 	}
 
@@ -268,6 +280,39 @@ func extract(dataDir string) (string, error) {
 		return "", err
 	}
 
+	// Rename the new directory into place, before updating symlinks
+	if err := os.Rename(tempDest, dir); err != nil {
+		return "", err
+	}
+
+	// Create a stable CNI bin dir and place it first in the path so that users have a
+	// consistent location to drop their own CNI plugin binaries.
+	cniPath := filepath.Join(dataDir, "data", "cni")
+	cniBin := filepath.Join(dir, "bin", "cni")
+	if err := os.MkdirAll(cniPath, 0755); err != nil {
+		return "", err
+	}
+	if err := os.Symlink(cniBin, filepath.Join(cniPath, "cni")); err != nil {
+		return "", err
+	}
+
+	// Find symlinks that point to the cni multicall binary, and clone them in the stable CNI bin dir.
+	ents, err := os.ReadDir(filepath.Join(dir, "bin"))
+	if err != nil {
+		return "", err
+	}
+	for _, ent := range ents {
+		if info, err := ent.Info(); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+			if target, err := os.Readlink(filepath.Join(dir, "bin", ent.Name())); err == nil && target == "cni" {
+				if err := os.Symlink(cniBin, filepath.Join(cniPath, ent.Name())); err != nil {
+					return "", err
+				}
+			}
+		}
+	}
+
+	// Rotate 'current' symlink into 'previous', and create a new 'current' that points
+	// at the new directory.
 	currentSymLink := filepath.Join(dataDir, "data", "current")
 	previousSymLink := filepath.Join(dataDir, "data", "previous")
 	if _, err := os.Lstat(currentSymLink); err == nil {
@@ -278,7 +323,8 @@ func extract(dataDir string) (string, error) {
 	if err := os.Symlink(dir, currentSymLink); err != nil {
 		return "", err
 	}
-	return dir, os.Rename(tempDest, dir)
+
+	return dir, nil
 }
 
 // findCriConfig returns the path to crictl.yaml
