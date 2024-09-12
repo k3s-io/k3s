@@ -161,7 +161,7 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-proxy v0.0.0
 	k8s.io/kubectl v0.31.0-rc.1
-	k8s.io/kubernetes v1.31.0
+	k8s.io/kubernetes v1.31.1
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
 	sigs.k8s.io/cri-tools v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.4.0
