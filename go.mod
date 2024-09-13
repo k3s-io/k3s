@@ -1,4 +1,4 @@
-odule github.com/k3s-io/k3s
+module github.com/k3s-io/k3s
 
 go 1.22.6
 
