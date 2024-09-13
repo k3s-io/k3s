@@ -961,8 +961,8 @@ github.com/k3s-io/containerd v1.7.21-k3s2 h1:QnveYvdMinAgN2vDlkulVMrpnde0irZv2q6
 github.com/k3s-io/containerd v1.7.21-k3s2/go.mod h1:T9perze1nIMl5JzddImIgsCEDaM0i8nAfnm+U48DmJw=
 github.com/k3s-io/cri-dockerd v0.3.15-k3s1.31-3 h1:TH3zSbIM9zSZMeWKcWjQqeja3FsmJYwLUHglD7nuUEc=
 github.com/k3s-io/cri-dockerd v0.3.15-k3s1.31-3/go.mod h1:ny6wyM7fqfew5FABQ+MtKaU07rhsHhlXr/jtFsA2m8Y=
-github.com/k3s-io/cri-tools v1.31.0-k3s1 h1:86iVvNaD/k2WpS1BA9ZZa77xgh1losWpQTRRXfIRG6M=
-github.com/k3s-io/cri-tools v1.31.0-k3s1/go.mod h1:PvPf/fN5FiNdK1v43jCydRNRw6631qGTSEOhv/OsjYU=
+github.com/k3s-io/cri-tools v1.31.0-k3s2 h1:nekOdJe5Hecm+C5eswg688uXTI0enUZOJYadmyU9pYw=
+github.com/k3s-io/cri-tools v1.31.0-k3s2/go.mod h1:PvPf/fN5FiNdK1v43jCydRNRw6631qGTSEOhv/OsjYU=
 github.com/k3s-io/etcd/api/v3 v3.5.13-k3s1 h1:aq6fxlEKdwCooLE3HOR6227U51DEvOw3DEbriJxD2QM=
 github.com/k3s-io/etcd/api/v3 v3.5.13-k3s1/go.mod h1:gBqlqkcMMZMVTMm4NDZloEVJzxQOQIls8splbqBDa0c=
 github.com/k3s-io/etcd/client/pkg/v3 v3.5.13-k3s1 h1:t2I25UtBvohVAhlyXpYjd/Lznm+ybxNhvs3cnEGsF4Y=
