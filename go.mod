@@ -148,21 +148,21 @@ require (
 	google.golang.org/grpc v1.66.0
 	gopkg.in/yaml.v2 v2.4.0
 	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
-	k8s.io/api v0.31.0
-	k8s.io/apimachinery v0.31.0
-	k8s.io/apiserver v0.31.0
-	k8s.io/cli-runtime v0.31.0-rc.1
+	k8s.io/api v0.31.1
+	k8s.io/apimachinery v0.31.1
+	k8s.io/apiserver v0.31.1
+	k8s.io/cli-runtime v0.31.1-rc.1
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/cloud-provider v0.31.0
+	k8s.io/cloud-provider v0.31.1
 	k8s.io/cluster-bootstrap v0.0.0
-	k8s.io/component-base v0.31.0
-	k8s.io/component-helpers v0.31.0
+	k8s.io/component-base v0.31.1
+	k8s.io/component-helpers v0.31.1
 	k8s.io/cri-api v0.32.0-alpha.0
-	k8s.io/cri-client v0.31.0
+	k8s.io/cri-client v0.31.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-proxy v0.0.0
-	k8s.io/kubectl v0.31.0-rc.1
-	k8s.io/kubernetes v1.31.0
+	k8s.io/kubectl v0.31.1-rc.1
+	k8s.io/kubernetes v1.31.1
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
 	sigs.k8s.io/cri-tools v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.4.0
@@ -466,8 +466,8 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.31.0 // indirect
-	k8s.io/code-generator v0.31.0 // indirect
+	k8s.io/apiextensions-apiserver v0.31.1 // indirect
+	k8s.io/code-generator v0.31.1 // indirect
 	k8s.io/controller-manager v0.25.4 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
@@ -475,13 +475,13 @@ require (
 	k8s.io/gengo v0.0.0-20240228010128-51d4e06bde70 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 	k8s.io/kms v0.0.0 // indirect
-	k8s.io/kube-aggregator v0.31.0 // indirect
+	k8s.io/kube-aggregator v0.31.1 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20240730131305-7a9a4e85957e // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
-	k8s.io/kubelet v0.31.0 // indirect
+	k8s.io/kubelet v0.31.1 // indirect
 	k8s.io/metrics v0.0.0 // indirect
-	k8s.io/mount-utils v0.31.0 // indirect
+	k8s.io/mount-utils v0.31.1 // indirect
 	k8s.io/pod-security-admission v0.0.0 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.30.3 // indirect
