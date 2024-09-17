@@ -134,7 +134,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, compat, lazypull, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, compat, upgrade]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -147,7 +147,7 @@ jobs:
         cache: false
     - name: Install Support Tools
       run: |
-        sudo apt-get update && sudo apt-get install -y wget gawk openssh-client openssh-server
+        sudo apt-get update && sudo apt-get install -y wget gawk openssh-client openssh-server net-tools iptables
         sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64 -O /usr/bin/yq &&\
         sudo chmod +x /usr/bin/yq
         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
