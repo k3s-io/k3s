@@ -167,3 +167,9 @@ jobs:
         . ./tests/docker/test-helpers
         . ./tests/docker/test-run-${{ matrix.dtest }}
         echo "Did test-run-${{ matrix.dtest }} pass $?"
+    - name: On Failure, Launch Debug Session
+      uses: dereknola/action-upterm@v1.1
+      if: ${{ failure() }}
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
