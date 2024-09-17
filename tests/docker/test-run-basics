@@ -10,6 +10,8 @@ all_services=(
 export NUM_SERVERS=1
 export NUM_AGENTS=1
 export WAIT_SERVICES="${all_services[@]}"
+export SERVER_ARGS="--snapshotter=native"
+export AGENT_ARGS="--snapshotter=native"
 
 start-test() {
     use-local-storage-volume
