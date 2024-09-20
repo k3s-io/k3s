@@ -152,6 +152,13 @@ sudo k3s kubectl get nodes
 sudo k3s agent --server https://myserver:6443 --token ${NODE_TOKEN}
 ```
 
+One-click Deploy
+---------------
+
+You can deploy K3s on Elestio using one-click deployment. Elestio supports K3s by providing revenue share so go ahead and click below to deploy and use K3s.
+
+[![Deploy on Elestio](https://elest.io/images/logos/deploy-to-elestio-btn.png)](https://elest.io/open-source/k3s)
+
 Contributing
 ------------
 
