@@ -180,6 +180,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.SupervisorMetrics = cfg.SupervisorMetrics
 	serverConfig.ControlConfig.VLevel = cmds.LogConfig.VLevel
 	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
+	serverConfig.ControlConfig.DenyPSALabel = cfg.DenyPSALabel
 
 	if !cfg.EtcdDisableSnapshots || cfg.ClusterReset {
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress

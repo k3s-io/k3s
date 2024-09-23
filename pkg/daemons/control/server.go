@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/admission/denypsalabel"
 	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -20,8 +21,10 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apiserver/pkg/admission"
 	logsapi "k8s.io/component-base/logs/api/v1"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
+	"k8s.io/kubernetes/pkg/kubeapiserver/options"
 	"k8s.io/kubernetes/pkg/registry/core/node"
 
 	// for client metric registration
@@ -227,6 +230,13 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	}
 
 	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
+
+	// Add extra admission plugins
+	if cfg.DenyPSALabel {
+		extraPlugins := make(map[string]func(*admission.Plugins))
+		extraPlugins[denypsalabel.PluginName] = denypsalabel.Register
+		options.AdmissionPlugins = extraPlugins
+	}
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
 
