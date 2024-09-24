@@ -68,11 +68,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: trivy-report
-          path: trivy-report.txt
       
       - name: Add Trivy Report to PR
         run: |
-          sudo chown runner:runner trivy-report.txt
           if [ -s trivy-report.txt ] && [ -n "$(grep -v '^\s*$' trivy-report.txt)" ]; then
             echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
             echo '```' >> trivy-report.txt
