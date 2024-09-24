@@ -8,6 +8,8 @@ jobs:
   trivy_scan:
     if: github.event.issue.pull_request && github.event.comment.body == '/trivy'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
     - name: Check if comment author is a member of k3s-dev team
       uses: actions/github-script@v7
@@ -44,12 +46,15 @@ jobs:
         format: 'table'
         severity: "HIGH,CRITICAL"
         output: "trivy-report.txt"
+    
     - name: Upload Trivy Report
       uses: actions/upload-artifact@v4
       with:
         name: trivy-report
         path: trivy-report.txt  
-  
+        retention-days: 2
+        if-no-files-found: error
+
   trivy_report:
     needs: trivy_scan
     runs-on: ubuntu-latest
