@@ -13,6 +13,23 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+    - name: Check if comment author is a member of k3s-dev team
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const org = context.repo.owner;
+          const team_slug = 'k3s-dev';
+          const username = context.payload.comment.user.login;
+
+          const { data: membership } = await github.teams.getMembershipForUserInOrg({
+            org,
+            team_slug,
+            username
+          });
+
+          if (membership.state !== 'active') {
+            core.setFailed(`User ${username} is not an active member of the ${team_slug} team`);
+          }
     - name: Checkout PR code
       uses: actions/checkout@v4
       with:
