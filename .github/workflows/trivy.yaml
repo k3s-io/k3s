@@ -9,19 +9,29 @@ jobs:
     if: github.event.issue.pull_request && github.event.comment.body == '/trivy'
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
-    env:
-      GH_TOKEN: ${{ github.token }}
+      pull-requests: read
     steps:
+    - name: Check if comment author is a member of k3s-dev team
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const org = context.repo.owner;
+          const team_slug = 'k3s-dev';
+          const username = context.payload.comment.user.login;
+
+          const { data: membership } = await github.teams.getMembershipForUserInOrg({
+            org,
+            team_slug,
+            username
+          });
+
+          if (membership.state !== 'active') {
+            core.setFailed(`User ${username} is not an active member of the ${team_slug} team`);
+          }
     - name: Checkout PR code
       uses: actions/checkout@v4
       with:
         ref: refs/pull/${{ github.event.issue.number }}/head
-    
-    - name: Comment Status on PR
-      run: |
-        gh repo set-default ${{ github.repository }}
-        gh pr comment ${{ github.event.issue.number }} -b ":construction: Running Trivy scan on PR :construction: "
 
     - name: Build K3s Image
       run: |
@@ -37,19 +47,47 @@ jobs:
         severity: "HIGH,CRITICAL"
         output: "trivy-report.txt"
     
-    - name: Add Trivy Report to PR
-      run: |
-        sudo chown runner:runner trivy-report.txt
-        if [ -s trivy-report.txt ] && [ -n "$(grep -v '^\s*$' trivy-report.txt)" ]; then
-          echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
-          echo '```' >> trivy-report.txt
-          gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
-        else
-          echo ':star2: No High or Critical CVEs Found :star2:' > trivy-report.txt
-          gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
-        fi
-    
-    - name: Report Failure
-      if: ${{ failure() }}
-      run: |
-        gh issue comment ${{ github.event.issue.number }} --edit-last -b ":x: Trivy scan action failed, check logs :x:"
+    - name: Upload Trivy Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-report
+        path: trivy-report.txt  
+        retention-days: 2
+        if-no-files-found: error
+
+  trivy_report:
+    needs: trivy_scan
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download Trivy Report
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
+      
+      - name: Add Trivy Report to PR
+        run: |
+          sudo chown runner:runner trivy-report.txt
+          if [ -s trivy-report.txt ] && [ -n "$(grep -v '^\s*$' trivy-report.txt)" ]; then
+            echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
+            echo '```' >> trivy-report.txt
+            gh issue comment ${{ github.event.issue.number }} -F trivy-report.txt
+          else
+            echo ':star2: No High or Critical CVEs Found :star2:' > trivy-report.txt
+            gh issue comment ${{ github.event.issue.number }} -F trivy-report.txt
+          fi
+  
+  trivy_failure:
+    needs: trivy_scan
+    runs-on: ubuntu-latest
+    if: always() && needs.trivy_scan.result == 'failure'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Report Failure
+        run: |
+          gh issue comment ${{ github.event.issue.number }} -b ":x: Trivy scan action failed, check logs :x:"
