@@ -19,7 +19,7 @@ jobs:
           const team_slug = 'k3s-dev';
           const username = context.payload.comment.user.login;
 
-          const { data: membership } = await github.teams.getMembershipForUserInOrg({
+          const { data: membership } = await github.rest.teams.getMembershipForUserInOrg({
             org,
             team_slug,
             username
