@@ -14,19 +14,20 @@ jobs:
     - name: Check if comment author is a member of k3s-dev team
       uses: actions/github-script@v7
       with:
+        # Catch 404 errors if user is not a member of the organization
+        # 302 is expected as the GHA is not a member of the organization
+        # Users must be set their membership to public for this to work
+        # https://github.com/orgs/k3s-io/people
         script: |
           const org = context.repo.owner;
-          const team_slug = 'k3s-dev';
           const username = context.payload.comment.user.login;
-
-          const { data: membership } = await github.rest.teams.getMembershipForUserInOrg({
-            org,
-            team_slug,
-            username
-          });
-
-          if (membership.state !== 'active') {
-            core.setFailed(`User ${username} is not an active member of the ${team_slug} team`);
+          try {
+            const result = await github.rest.orgs.checkMembershipForUser({
+              org,
+              username,
+            });
+          } catch (error) {
+            core.setFailed(`User ${username} is not an public member of the ${org} organization`);
           }
     - name: Checkout PR code
       uses: actions/checkout@v4
@@ -87,6 +88,8 @@ jobs:
     if: always() && needs.trivy_scan.result == 'failure'
     permissions:
       pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Report Failure
         run: |
