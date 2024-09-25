@@ -42,7 +42,7 @@ func Register(plugins *admission.Plugins) {
 	})
 }
 
-// externalIPsDenierPlugin holds state for and implements the admission plugin.
+// psaLabelDenialPlugin holds state for and implements the admission plugin.
 type psaLabelDenialPlugin struct {
 	*admission.Handler
 }
@@ -57,8 +57,7 @@ func newPlugin() *psaLabelDenialPlugin {
 	}
 }
 
-// Admit ensures that modifications of the Service.Spec.ExternalIPs field are
-// denied
+// Validate ensures that applying PSA label to namespaces is denied
 func (plug *psaLabelDenialPlugin) Validate(ctx context.Context, attr admission.Attributes, o admission.ObjectInterfaces) error {
 	if attr.GetResource().GroupResource() != core.Resource("namespaces") {
 		return nil
@@ -71,8 +70,8 @@ func (plug *psaLabelDenialPlugin) Validate(ctx context.Context, attr admission.A
 	// if we can't convert then we don't handle this object so just return
 	newNS, ok := attr.GetObject().(*core.Namespace)
 	if !ok {
-		klog.V(3).Infof("Expected Namespace resource, got: %v", attr.GetKind())
-		return errors.NewInternalError(fmt.Errorf("Expected Namespace resource, got: %v", attr.GetKind()))
+		klog.V(3).Infof("Expected namespace resource, got: %v", attr.GetKind())
+		return errors.NewInternalError(fmt.Errorf("expected namespace resource, got: %v", attr.GetKind()))
 	}
 
 	if !isPSALabel(newNS) {
@@ -80,7 +79,7 @@ func (plug *psaLabelDenialPlugin) Validate(ctx context.Context, attr admission.A
 	}
 
 	klog.V(4).Infof("Denying use of PSA label on namespace %s", newNS.Name)
-	return admission.NewForbidden(attr, fmt.Errorf("Denying use of PSA label on Namespace"))
+	return admission.NewForbidden(attr, fmt.Errorf("denying use of PSA label on namespace"))
 }
 
 func isPSALabel(newNS *core.Namespace) bool {
