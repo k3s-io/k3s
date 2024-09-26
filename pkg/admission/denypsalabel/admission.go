@@ -30,8 +30,8 @@ import (
 
 const (
 	// PluginName is the name of this admission controller plugin
-	PluginName     = "DenyPSALabel"
-	PSALabelPrefix = "pod-security.kubernetes.io"
+	PluginName  = "DenyPSALabel"
+	labelPrefix = "pod-security.kubernetes.io/"
 )
 
 // Register registers a plugin
@@ -71,20 +71,20 @@ func (plug *psaLabelDenialPlugin) Validate(ctx context.Context, attr admission.A
 	newNS, ok := attr.GetObject().(*core.Namespace)
 	if !ok {
 		klog.V(3).Infof("Expected namespace resource, got: %v", attr.GetKind())
-		return errors.NewInternalError(fmt.Errorf("expected namespace resource, got: %v", attr.GetKind()))
+		return errors.NewInternalError(fmt.Errorf("Expected Namespace resource, got: %v", attr.GetKind()))
 	}
 
 	if !isPSALabel(newNS) {
 		return nil
 	}
 
-	klog.V(4).Infof("Denying use of PSA label on namespace %s", newNS.Name)
-	return admission.NewForbidden(attr, fmt.Errorf("denying use of PSA label on namespace"))
+	klog.V(4).Infof("Denying use of label with %s prefix on Namespace %s", labelPrefix, newNS.Name)
+	return admission.NewForbidden(attr, fmt.Errorf("Use of label with %s prefix on Namespace is denied by admission control", labelPrefix))
 }
 
 func isPSALabel(newNS *core.Namespace) bool {
 	for labelName := range newNS.Labels {
-		if strings.HasPrefix(labelName, PSALabelPrefix) {
+		if strings.HasPrefix(labelName, labelPrefix) {
 			return true
 		}
 	}

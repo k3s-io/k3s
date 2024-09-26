@@ -589,7 +589,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "deny-psa-label",
-		Usage:       "(experimental) Deny modifying namespaces with PSA security label",
+		Usage:       "(experimental) Deny use of pod-security.kubernetes.io labels on Namespaces",
 		Hidden:      true,
 		Destination: &ServerConfig.DenyPSALabel,
 	},
