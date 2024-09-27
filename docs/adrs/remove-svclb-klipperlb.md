@@ -1,4 +1,4 @@
-# Remove svclb daemonset
+# Remove svclb klipper-lb
 
 Date: 2024-09-26
 
@@ -77,10 +77,22 @@ KUBE-SVC-CVG3OEGEH7H5P3HQ  all  --  0.0.0.0/0            0.0.0.0/0
 
 As a consequence, the traffic never gets into the svclb daemonset pod. This can be additionally demonstrated by running a tcpdump on the svclb daemonset pod and no traffic will appear. This can also be demonstrated by tracing the iptables flow, where we will see how traffic is following the described path.
 
-Therefore, if we replace the logic to find the node IPs of the serviceLB controller by something which does not require the svclb daemonset, we could get rid of that daemonset since traffic is never reaching it. That replacement should be easy because in the end a daemonset means all nodes, so we could basically query kube-api to provide the IPs of all nodes.
+In Kubernetes 1.29, a [new related kube-proxy feature](https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-ip-mode) was added and it became beta in 1.30. This feature allows the load-balancer controller to specify if kube-proxy should include that `KUBE-EXT` rule or not. The selection is controlled by a new field called ipMode that has two values: * VIP (default): Keeps the current behaviour
+* Proxy: Removes the `KUBE-EXT` rule and hence Kube-proxy does not react to changes in the external-ip field
 
-*/ ON-GOING IMPLEMENTATION */
 
+Therefore, if our k3s load-balancer controller sets ipMode=Proxy, the traffic would finally get into the svclb daemon
+
+
+## Solutions
+
+One quick solution would be to use ipMode=Proxy when setting the status of the LoadBalancer services. However, it must be noted that klipper-lb is using iptables to do exactly what kube-proxy is doing, so there is no real benefit. We could include some extra features such as `X-Forwarded-For` to preserve the source IP, which would give a good reason to forward traffic to the svclb daemonset. Nonetheless, to achive that, we would need to replace klipper-lb with a proper load-balancer, which is out of the scope of this ADR. Note as well, that svclb is not working as expected when using `externalTrafficPolicy: Local`: it allows access to the service via a node IP even if there is no instance of a service pod running on that node
+
+Another solution is to get rid of the daemonset completely. However, that solution will not detect if there is a process already using the port in a node (by another k8s service or by a node server) because kube-proxy does not check this. Unfortunately, this solution will obscure the error to the user and make debugging more difficult.
+
+One simpler solution would be to replace klipper-lb with a tiny image that includes the binary `sleep`. Additionally, we would remove all the extra permissions required to run klipper-lb (e.g. NET_ADMIN). In this case, we would use the daemonset to reserve the port by HostPort and if a node is already using that port, that node's IP will not be included as external-IP. In such a case, the daemonset pod running on that node will clearly warn the user that it can't run because the port is already reserved, hence making it easy to debug.
+
+This commit includes the last solution by setting busybox as the new image for the daemonset instead of klipper-lb.
 
 ## Decision
 
@@ -89,10 +101,8 @@ Therefore, if we replace the logic to find the node IPs of the serviceLB control
 ## Consequences
 
 ### Positives
-* Less resource consumption as we won't need one daemonset per LoadBalancer type of service
 * One fewer repo to maintain (klipper-lb)
 * Easier to understand flow of traffic
 
 ### Negatives
-* Possible confusion for users that have been using this feature for a long time ("Where is the daemonset?") or users relying on that daemonset for their automation
-* In today's solution, if two LoadBalancer type services are using the same port, it is rather easy to notice that things don't work because the second daemonset will not deploy, as the port is already being used by the first daemonset. Kube-proxy does not check if two services are using the same port and it will create both rules without any error. The service that gets its rules higher in the chain is the one that will be reached when querying $nodeIP:$port. Perhaps we could add some logic in the controller that warns users about a duplication of the pair ip&port
+* None that I can think of
