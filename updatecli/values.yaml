@@ -11,10 +11,6 @@ klipper_helm:
   org: "k3s-io"
   repo: "klipper-helm"
   branch: "master"
-klipper_lb:
-  org: "k3s-io"
-  repo: "klipper-lb"
-  branch: "master"
 local_path_provisioner:
   org: "rancher"
   repo: "local-path-provisioner"
