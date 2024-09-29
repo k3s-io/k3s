@@ -104,7 +104,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/helm-controller v0.16.4
+	github.com/k3s-io/helm-controller v0.15.13
 	github.com/k3s-io/kine v0.13.0
 	github.com/klauspost/compress v1.17.9
 	github.com/lib/pq v1.10.2
@@ -399,6 +399,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
+	github.com/rancher/wrangler v1.1.1-0.20230425173236-39a4707f0689 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
