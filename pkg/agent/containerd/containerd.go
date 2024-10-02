@@ -34,8 +34,9 @@ var (
 	// In addition to using the CRI pinned label, we add our own label to indicate that
 	// the image was pinned by the import process, so that we can clear the pin on subsequent startups.
 	// ref: https://github.com/containerd/containerd/blob/release/1.7/pkg/cri/labels/labels.go
-	k3sPinnedImageLabelKey   = "io.cattle." + version.Program + ".pinned"
-	k3sPinnedImageLabelValue = "pinned"
+	k3sPinnedImageLabelKey     = "io.cattle." + version.Program + ".pinned"
+	k3sAutoImportImageLabelKey = "io.cattle." + version.Program + ".import"
+	k3sPinnedImageLabelValue   = "pinned"
 )
 
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
@@ -115,24 +116,6 @@ func Run(ctx context.Context, cfg *config.Node) error {
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
 // If configured, imported images are retagged as being pulled from additional registries.
 func PreloadImages(ctx context.Context, cfg *config.Node) error {
-	fileInfo, err := os.Stat(cfg.Images)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
-		return nil
-	}
-
-	if !fileInfo.IsDir() {
-		return nil
-	}
-
-	fileInfos, err := os.ReadDir(cfg.Images)
-	if err != nil {
-		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
-		return nil
-	}
-
 	client, err := Client(cfg.Containerd.Address)
 	if err != nil {
 		return err
@@ -162,6 +145,28 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		return errors.Wrap(err, "failed to clear pinned labels")
 	}
 
+	go watchImages(ctx, cfg)
+
+	// After setting the watcher, connections and everything, k3s will see if the images folder is already created
+	// if the folder its already created, it will load the images
+	fileInfo, err := os.Stat(cfg.Images)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
+		return nil
+	}
+
+	if !fileInfo.IsDir() {
+		return nil
+	}
+
+	fileInfos, err := os.ReadDir(cfg.Images)
+	if err != nil {
+		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
+		return nil
+	}
+
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {
 			continue
@@ -176,6 +181,7 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		}
 		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
+
 	return nil
 }
 
@@ -214,7 +220,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		}
 	}
 
-	if err := labelImages(ctx, client, images); err != nil {
+	if err := labelImages(ctx, client, images, filepath.Base(filePath)); err != nil {
 		return errors.Wrap(err, "failed to add pinned label to images")
 	}
 	if err := retagImages(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
@@ -245,6 +251,23 @@ func clearLeases(ctx context.Context, client *containerd.Client) error {
 	return nil
 }
 
+// clearLabelFromFile removes the auto import label on images with the value based on the file name
+func clearLabelFromAutoImport(ctx context.Context, client *containerd.Client, filePath string) error {
+	var errs []error
+	imageService := client.ImageService()
+	images, err := imageService.List(ctx, fmt.Sprintf("labels.%q==%s", k3sAutoImportImageLabelKey, filepath.Base(filePath)))
+	if err != nil {
+		return err
+	}
+	for _, image := range images {
+		delete(image.Labels, k3sAutoImportImageLabelKey)
+		if _, err := imageService.Update(ctx, image, "labels"); err != nil {
+			errs = append(errs, errors.Wrap(err, "failed to delete auto import label from image "+image.Name))
+		}
+	}
+	return merr.NewErrors(errs...)
+}
+
 // clearLabels removes the pinned labels on all images in the image store that were previously pinned by k3s
 func clearLabels(ctx context.Context, client *containerd.Client) error {
 	var errs []error
@@ -265,7 +288,7 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 
 // labelImages adds labels to the listed images, indicating that they
 // are pinned by k3s and should not be pruned.
-func labelImages(ctx context.Context, client *containerd.Client, images []images.Image) error {
+func labelImages(ctx context.Context, client *containerd.Client, images []images.Image, fileName string) error {
 	var errs []error
 	imageService := client.ImageService()
 	for i, image := range images {
@@ -277,6 +300,7 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 		if image.Labels == nil {
 			image.Labels = map[string]string{}
 		}
+		image.Labels[k3sAutoImportImageLabelKey] = fileName
 		image.Labels[k3sPinnedImageLabelKey] = k3sPinnedImageLabelValue
 		image.Labels[labels.PinnedImageLabelKey] = labels.PinnedImageLabelValue
 		updatedImage, err := imageService.Update(ctx, image, "labels")
