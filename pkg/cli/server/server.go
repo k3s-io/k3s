@@ -37,10 +37,6 @@ import (
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
-
-	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
-	_ "github.com/lib/pq"              // ensure we have postgres
-	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
 )
 
 func Run(app *cli.Context) error {
