@@ -837,7 +837,7 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	defer cancel()
 
 	_, err = endpoint2.Listen(ctx, endpoint2.Config{
-		Endpoint: endpoint2.SQLiteBackend,
+		Endpoint: "sqlite://",
 	})
 	if err != nil {
 		return err
