@@ -16,20 +16,21 @@ data:
             index index.html;
         }
     }
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: test-loadbalancer
+  name: test-loadbalancer-int
 spec:
   selector:
     matchLabels:
-      k8s-app: nginx-app-loadbalancer
-  replicas: 2
+      k8s-app: nginx-app-loadbalancer-int
+  replicas: 1
   template:
     metadata:
       labels:
-        k8s-app: nginx-app-loadbalancer
+        k8s-app: nginx-app-loadbalancer-int
     spec:
       containers:
       - name: nginx
@@ -47,15 +48,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
- name: nginx-loadbalancer-svc
+ name: nginx-loadbalancer-svc-int
  labels:
-   k8s-app: nginx-app-loadbalancer
+   k8s-app: nginx-app-loadbalancer-int
 spec:
  type: LoadBalancer
+ internalTrafficPolicy: Local
  ports:
- - port: 81
+ - port: 83
    targetPort: 80
    protocol: TCP
    name: http
  selector:
-   k8s-app: nginx-app-loadbalancer
+   k8s-app: nginx-app-loadbalancer-int
