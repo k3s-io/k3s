@@ -14,6 +14,7 @@ replace (
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/google/cadvisor => github.com/google/cadvisor v0.47.3
+	github.com/google/cel-go => github.com/google/cel-go v0.16.1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
