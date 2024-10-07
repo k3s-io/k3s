@@ -371,7 +371,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			startupServerArgs = []string{
 				"--deny-psa-label",
 				"--kube-apiserver-arg",
-				"enable-admission-plugins=\"DenyPSALabel\"",
+				"enable-admission-plugins=DenyPSALabel",
 			}
 			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
@@ -385,7 +385,6 @@ var _ = Describe("startup tests", Ordered, func() {
 			res, err := testutil.K3sCmd("kubectl label --dry-run=server --overwrite ns --all pod-security.kubernetes.io/enforce=baseline")
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(ContainSubstring("denying use of PSA label on namespace"))
-
 		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
