@@ -14,7 +14,7 @@ PKG_TO_TEST=$(find ./pkg/ -type f -name "*_int_test.go" | sed -r 's|/[^/]+$||' |
 for i in $PKG_TO_TEST; do
     name=$(echo "${i##*/}")
     echo $name
-    go test -c -v -ldflags "-X 'github.com/k3s-io/k3s/tests/integration.existingServer=True'" -o dist/artifacts/k3s-integration-$name.test $i -run Integration
+    go test -c -ldflags "-X 'github.com/k3s-io/k3s/tests/integration.existingServer=True'" -o dist/artifacts/k3s-integration-$name.test $i -run Integration -ginkgo.v -test.v
 done
 
 # Integration tests under /tests
@@ -22,7 +22,7 @@ PKG_TO_TEST=$(find ./tests/integration -type f -name "*_int_test.go" | sed -r 's
 for i in $PKG_TO_TEST; do
     name=$(echo "${i##*/}")
     echo $name
-    go test -c -v -ldflags "-X 'github.com/k3s-io/k3s/tests/integration.existingServer=True'" -o dist/artifacts/k3s-integration-$name.test $i -run Integration
+    go test -c -ldflags "-X 'github.com/k3s-io/k3s/tests/integration.existingServer=True'" -o dist/artifacts/k3s-integration-$name.test $i -run Integration -ginkgo.v -test.v
 done
 docker build -f ./tests/integration/Dockerfile.test -t $REPO .
 docker save $REPO -o ./dist/artifacts/$REPO.tar
