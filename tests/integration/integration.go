@@ -389,9 +389,10 @@ func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
 	c.Stdout = &out
+	c.Stderr = &out
 	err := c.Run()
 	if err != nil {
-		return "", fmt.Errorf("%s", err)
+		return out.String(), fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
 }
