@@ -75,6 +75,10 @@ func caCertReplace(server *config.Control, buf io.ReadCloser, force bool) error 
 		return err
 	}
 
+	if err := defaultBootstrap(server, tmpServer); err != nil {
+		return errors.Wrap(err, "failed to set default bootstrap values")
+	}
+
 	if err := validateBootstrap(server, tmpServer); err != nil {
 		if !force {
 			return errors.Wrap(err, "failed to validate new CA certificates and keys")
@@ -83,6 +87,36 @@ func caCertReplace(server *config.Control, buf io.ReadCloser, force bool) error 
 	}
 
 	return cluster.Save(context.TODO(), tmpServer, true)
+}
+
+// defaultBootstrap provides default values from the existing bootstrap fields
+// if the value is not tagged for rotation, or the current value is empty.
+func defaultBootstrap(oldServer, newServer *config.Control) error {
+	errs := []error{}
+	// Use reflection to iterate over all of the bootstrap fields, checking files at each of the new paths.
+	oldMeta := reflect.ValueOf(&oldServer.Runtime.ControlRuntimeBootstrap).Elem()
+	newMeta := reflect.ValueOf(&newServer.Runtime.ControlRuntimeBootstrap).Elem()
+
+	// use the existing file if the new file does not exist or is empty
+	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
+		newVal := newMeta.FieldByName(field.Name)
+		info, err := os.Stat(newVal.String())
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			errs = append(errs, errors.Wrap(err, field.Name))
+			continue
+		}
+
+		if field.Tag.Get("rotate") != "true" || info == nil || info.Size() == 0 {
+			if newVal.CanSet() {
+				oldVal := oldMeta.FieldByName(field.Name)
+				logrus.Infof("Using current data for %s: %s", field.Name, oldVal)
+				newVal.Set(oldVal)
+			} else {
+				errs = append(errs, fmt.Errorf("cannot use current data for %s; field is not settable", field.Name))
+			}
+		}
+	}
+	return merr.NewErrors(errs...)
 }
 
 // validateBootstrap checks the new certs and keys to ensure that the cluster would function properly were they to be used.
@@ -94,39 +128,12 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 	// Use reflection to iterate over all of the bootstrap fields, checking files at each of the new paths.
 	oldMeta := reflect.ValueOf(&oldServer.Runtime.ControlRuntimeBootstrap).Elem()
 	newMeta := reflect.ValueOf(&newServer.Runtime.ControlRuntimeBootstrap).Elem()
-	fields := []reflect.StructField{}
 
 	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
 		// Only handle bootstrap fields tagged for rotation
 		if field.Tag.Get("rotate") != "true" {
 			continue
 		}
-		fields = append(fields, field)
-	}
-
-	// first pass: use the existing file if the new file does not exist or is empty
-	for _, field := range fields {
-		newVal := newMeta.FieldByName(field.Name)
-		info, err := os.Stat(newVal.String())
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			errs = append(errs, errors.Wrap(err, field.Name))
-			continue
-		}
-
-		if info == nil || info.Size() == 0 {
-			if newVal.CanSet() {
-				oldVal := oldMeta.FieldByName(field.Name)
-				logrus.Infof("certificate: %s not provided; using current value %s", field.Name, oldVal)
-				newVal.Set(oldVal)
-			} else {
-				errs = append(errs, fmt.Errorf("cannot use current data for %s; field is not settable", field.Name))
-			}
-		}
-
-	}
-
-	// second pass: validate file contents
-	for _, field := range fields {
 		oldVal := oldMeta.FieldByName(field.Name)
 		newVal := newMeta.FieldByName(field.Name)
 
@@ -150,10 +157,7 @@ func validateBootstrap(oldServer, newServer *config.Control) error {
 		}
 	}
 
-	if len(errs) > 0 {
-		return merr.NewErrors(errs...)
-	}
-	return nil
+	return merr.NewErrors(errs...)
 }
 
 func validateCA(oldCAPath, newCAPath string) error {
