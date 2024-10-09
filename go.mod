@@ -98,6 +98,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
+	github.com/inetaf/tcpproxy v0.0.0-20240214030015-3ce58045626c
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
@@ -142,7 +143,6 @@ require (
 	golang.org/x/sys v0.25.0
 	google.golang.org/grpc v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
-	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
 	k8s.io/apiserver v0.31.1
