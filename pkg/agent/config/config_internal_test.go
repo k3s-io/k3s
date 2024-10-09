@@ -11,7 +11,7 @@ func Test_isValidResolvConf(t *testing.T) {
 		fileContent    string
 		expectedResult bool
 	}{
-		{name: "Valid ResolvConf", fileContent: "nameserver 8.8.8.8\nnameserver 2001:4860:4860::8888\n", expectedResult: true},
+		{name: "Valid ResolvConf", fileContent: "nameserver 8.8.8.8\nnameserver 8.8.8.8:53\nnameserver 2001:4860:4860::8888\n", expectedResult: true},
 		{name: "Invalid ResolvConf", fileContent: "nameserver 999.999.999.999\nnameserver not.an.ip\n", expectedResult: false},
 		{name: "Wrong Nameserver", fileContent: "search example.com\n", expectedResult: false},
 		{name: "One valid nameserver", fileContent: "test test.com\nnameserver 8.8.8.8", expectedResult: true},
