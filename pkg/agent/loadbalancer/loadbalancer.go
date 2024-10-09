@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/inetaf/tcpproxy"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
-	"inet.af/tcpproxy"
 )
 
 // server tracks the connections to a server, so that they can be closed when the server is removed.
