@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
+        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm, svcpoliciesandfirewall]
       max-parallel: 3
     steps:
       - name: "Checkout"
