@@ -112,8 +112,8 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	return PreloadImages(ctx, cfg)
 }
 
-// Watcher make a initial pre load of the images and also watch the agent/images folder
-// to ensure that every new file is added to the watcher state and also
+// Watcher is a controller that watch the agent/images folder
+// to ensure that every new file is added to the watcher state
 func Watcher(ctx context.Context, cfg *config.Node) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
