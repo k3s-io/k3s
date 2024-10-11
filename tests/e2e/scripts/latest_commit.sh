@@ -1,8 +1,13 @@
 #!/bin/bash
-# Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
+
+branch=$1
+output_file=$2
+# Grabs the last 10 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
 iterations=0
-curl -s -H 'Accept: application/vnd.github.v3+json' "https://api.github.com/repos/k3s-io/k3s/commits?per_page=5&sha=$1" | jq -r '.[] | .sha'  &> $2
-# The VMs take time on startup to hit googleapis.com, wait loop until we can
+commits_str=$(curl -s -H 'Accept: application/vnd.github.v3+json' "https://api.github.com/repos/k3s-io/k3s/commits?per_page=10&sha=$branch" | jq -j -r '.[] | .sha, " "')
+read -a commits <<< "$commits_str"
+
+# The VMs take time on startup to hit aws, wait loop until we can
 while ! curl -s --fail https://k3s-ci-builds.s3.amazonaws.com > /dev/null; do
     ((iterations++))
     if [ "$iterations" -ge 30 ]; then
@@ -12,15 +17,12 @@ while ! curl -s --fail https://k3s-ci-builds.s3.amazonaws.com > /dev/null; do
     sleep 1
 done
 
-iterations=0
-curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-$(head -n 1 $2).sha256sum
-while [ $? -ne 0 ]; do
-    ((iterations++))
-    if [ "$iterations" -ge 6 ]; then
-        echo "No valid commits found"
-        exit 1
+for commit in "${commits[@]}"; do
+    if curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-$commit.sha256sum > /dev/null; then
+        echo "$commit" > "$output_file"
+        exit 0
     fi
-    sed -i 1d "$2"
-    sleep 1
-    curl -s --fail https://k3s-ci-builds.s3.amazonaws.com/k3s-$(head -n 1 $2).sha256sum
 done
+
+echo "Failed to find a valid commit, checked: " "${commits[@]}"
+exit 1
