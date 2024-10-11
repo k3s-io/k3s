@@ -963,6 +963,7 @@ create_env_file() {
     $SUDO chmod 0600 ${FILE_K3S_ENV}
     sh -c export | while read x v; do echo $v; done | grep -E '^(K3S|CONTAINERD)_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
     sh -c export | while read x v; do echo $v; done | grep -Ei '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
+    sh -c export | while read x v; do echo $v; done | grep -Ei 'PATH' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
 }
 
 # --- write systemd service file ---
