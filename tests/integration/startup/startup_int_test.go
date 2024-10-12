@@ -124,7 +124,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods without traefik deployed", func() {
 			Eventually(func() error {
-				return testutil.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"})
+				return testutil.CheckDeployments("kube-system", []string{"coredns", "local-path-provisioner", "metrics-server"})
 			}, "90s", "10s").Should(Succeed())
 			nodes, err := testutil.ParseNodes()
 			Expect(err).NotTo(HaveOccurred())
