@@ -52,7 +52,7 @@ func Release(lock int) error {
 
 // CheckLock checks whether any process is using the lock
 func CheckLock(path string) bool {
-	lockByte, _ := exec.Command("lsof", "-w", "-F", "ln", path).Output()
+	lockByte, _ := exec.Command("lsof", "-w", "-F", "lfn", path).Output()
 	locks := string(lockByte)
 	if locks == "" {
 		return false
