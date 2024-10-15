@@ -8,17 +8,15 @@ runs:
       run: |
         curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-        sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
     - name: Install vagrant and libvirt
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant
+        sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant ruby-libvirt
         sudo systemctl enable --now libvirtd
-    - name: Build vagrant dependencies
+    - name: Install vagrant dependencies
       shell: bash
       run: |
-        sudo apt-get build-dep -y vagrant ruby-libvirt
         sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
     # This is a workaround for the libvirt group not being available in the current shell
     # https://github.com/actions/runner-images/issues/7670#issuecomment-1900711711
@@ -26,8 +24,6 @@ runs:
       shell: bash
       run: |
         sudo chmod a+rw /var/run/libvirt/libvirt-sock
-    
-
     - name: Install vagrant-libvirt plugin
       shell: bash
       run: vagrant plugin install vagrant-libvirt
