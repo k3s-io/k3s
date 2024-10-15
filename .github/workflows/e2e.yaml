@@ -33,7 +33,7 @@ jobs:
   e2e:
     name: "E2E Tests"
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
