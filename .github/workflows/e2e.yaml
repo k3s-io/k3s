@@ -9,6 +9,7 @@ on:
       - "!tests/e2e**"
       - "!tests/docker**"
       - ".github/**"
+      - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
   pull_request:
     paths-ignore:
@@ -19,6 +20,7 @@ on:
       - "!tests/e2e**"
       - "!tests/docker**"
       - ".github/**"
+      - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
   workflow_dispatch: {}
 
