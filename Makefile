@@ -43,3 +43,4 @@ local:
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg="REPO TAG GITHUB_TOKEN GOLANG GOCOVER DEBUG" \
 		-t k3s-local -f Dockerfile.local --output=. .
+
