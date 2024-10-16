@@ -315,6 +315,10 @@ setup_verify_arch() {
             ARCH=s390x
             SUFFIX=-${ARCH}
             ;;
+        riscv64)
+            ARCH=riscv64
+            SUFFIX=-${ARCH}
+            ;;
         aarch64)
             ARCH=arm64
             SUFFIX=-${ARCH}
