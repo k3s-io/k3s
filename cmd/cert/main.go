@@ -22,7 +22,16 @@ func main() {
 		),
 	}
 
-	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
-		logrus.Fatal(err)
+	// Create a context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Run the application and handle errors more effectively
+	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {
+		if errors.Is(err, context.Canceled) {
+			logrus.Info("Application canceled")
+		} else {
+			logrus.WithError(err).Fatal("Failed to run application")
+		}
 	}
 }
