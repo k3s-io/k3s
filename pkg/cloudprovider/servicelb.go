@@ -2,12 +2,12 @@ package cloudprovider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
-
+	"encoding/json"
 	"sigs.k8s.io/yaml"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -43,7 +43,6 @@ var (
 	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
 	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
 	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
-	extTrafficPolicyLabel  = "svccontroller." + version.Program + ".cattle.io/exttrafficpolicy"
 	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
 	tolerationsAnnotation  = "svccontroller." + version.Program + ".cattle.io/tolerations"
 	controllerName         = names.ServiceLBController
@@ -56,7 +55,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/mirrored-library-busybox:1.36.1"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.9"
 )
 
 func (k *k3s) Register(ctx context.Context,
@@ -436,17 +435,35 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	oneInt := intstr.FromInt(1)
 	priorityClassName := k.getPriorityClassName(svc)
 	localTraffic := servicehelper.RequestsOnlyLocalTraffic(svc)
+	sourceRangesSet, err := servicehelper.GetLoadBalancerSourceRanges(svc)
+	if err != nil {
+		return nil, err
+	}
+	sourceRanges := strings.Join(sourceRangesSet.StringSlice(), ",")
 	securityContext := &core.PodSecurityContext{}
+
+	for _, ipFamily := range svc.Spec.IPFamilies {
+		switch ipFamily {
+		case core.IPv4Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv4.ip_forward", Value: "1"})
+		case core.IPv6Protocol:
+			securityContext.Sysctls = append(securityContext.Sysctls, core.Sysctl{Name: "net.ipv6.conf.all.forwarding", Value: "1"})
+			if sourceRanges == "0.0.0.0/0" {
+				// The upstream default load-balancer source range only includes IPv4, even if the service is IPv6-only or dual-stack.
+				// If using the default range, and IPv6 is enabled, also allow IPv6.
+				sourceRanges += ",::/0"
+			}
+		}
+	}
 
 	ds := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name:      name,
 			Namespace: k.LBNamespace,
 			Labels: labels.Set{
-				nodeSelectorLabel:     "false",
-				svcNameLabel:          svc.Name,
-				svcNamespaceLabel:     svc.Namespace,
-				extTrafficPolicyLabel: "Cluster",
+				nodeSelectorLabel: "false",
+				svcNameLabel:      svc.Name,
+				svcNamespaceLabel: svc.Namespace,
 			},
 		},
 		TypeMeta: meta.TypeMeta{
@@ -505,7 +522,6 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 			Name:            portName,
 			Image:           k.LBImage,
 			ImagePullPolicy: core.PullIfNotPresent,
-			Command:         []string{"sleep", "inf"},
 			Ports: []core.ContainerPort{
 				{
 					Name:          portName,
@@ -514,7 +530,57 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Protocol:      port.Protocol,
 				},
 			},
+			Env: []core.EnvVar{
+				{
+					Name:  "SRC_PORT",
+					Value: strconv.Itoa(int(port.Port)),
+				},
+				{
+					Name:  "SRC_RANGES",
+					Value: sourceRanges,
+				},
+				{
+					Name:  "DEST_PROTO",
+					Value: string(port.Protocol),
+				},
+			},
+			SecurityContext: &core.SecurityContext{
+				Capabilities: &core.Capabilities{
+					Add: []core.Capability{
+						"NET_ADMIN",
+					},
+				},
+			},
 		}
+
+		if localTraffic {
+			container.Env = append(container.Env,
+				core.EnvVar{
+					Name:  "DEST_PORT",
+					Value: strconv.Itoa(int(port.NodePort)),
+				},
+				core.EnvVar{
+					Name: "DEST_IPS",
+					ValueFrom: &core.EnvVarSource{
+						FieldRef: &core.ObjectFieldSelector{
+							FieldPath: getHostIPsFieldPath(),
+						},
+					},
+				},
+			)
+		} else {
+			container.Env = append(container.Env,
+				core.EnvVar{
+					Name:  "DEST_PORT",
+					Value: strconv.Itoa(int(port.Port)),
+				},
+				core.EnvVar{
+					Name:  "DEST_IPS",
+					Value: strings.Join(svc.Spec.ClusterIPs, ","),
+				},
+			)
+		}
+
 		ds.Spec.Template.Spec.Containers = append(ds.Spec.Template.Spec.Containers, container)
 	}
 
@@ -541,11 +607,6 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		return nil, err
 	}
 	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, tolerations...)
-
-	// Change the label to force the DaemonSet to update and call onPodChange if the ExternalTrafficPolicy changes
-	if localTraffic {
-		ds.Spec.Template.Labels[extTrafficPolicyLabel] = "Local"
-	}
 
 	return ds, nil
 }
@@ -649,8 +710,8 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 	return k.LBDefaultPriorityClassName
 }
 
-// getTolerations retrieves the tolerations from a service's annotations.
-// It parses the tolerations from a JSON or YAML string stored in the annotations.
+// getTolerations retrieves the tolerations from a service's annotations. 
+// It parses the tolerations from a JSON or YAML string stored in the annotations. 
 func (k *k3s) getTolerations(svc *core.Service) ([]core.Toleration, error) {
 	tolerationsStr, ok := svc.Annotations[tolerationsAnnotation]
 	if !ok {
