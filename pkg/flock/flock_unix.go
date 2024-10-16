@@ -19,9 +19,6 @@ limitations under the License.
 package flock
 
 import (
-	"os/exec"
-	"strings"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -48,15 +45,4 @@ func AcquireShared(path string) (int, error) {
 // Release removes an existing lock held by this process.
 func Release(lock int) error {
 	return unix.Flock(lock, unix.LOCK_UN)
-}
-
-// CheckLock checks whether any process is using the lock
-func CheckLock(path string) bool {
-	lockByte, _ := exec.Command("lsof", "-w", "-F", "ln", path).Output()
-	locks := string(lockByte)
-	if locks == "" {
-		return false
-	}
-	readWriteLock := strings.Split(locks, "\n")[2]
-	return readWriteLock == "lR" || readWriteLock == "lW"
 }
