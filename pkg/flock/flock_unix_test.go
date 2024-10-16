@@ -19,8 +19,21 @@ limitations under the License.
 package flock
 
 import (
+	"os/exec"
+	"strings"
 	"testing"
 )
+
+// checkLock checks whether any process is using the lock
+func checkLock(path string) bool {
+	lockByte, _ := exec.Command("lsof", "-w", "-F", "lfn", path).Output()
+	locks := string(lockByte)
+	if locks == "" {
+		return false
+	}
+	readWriteLock := strings.Split(locks, "\n")[2]
+	return readWriteLock == "lR" || readWriteLock == "lW"
+}
 
 func Test_UnitFlock(t *testing.T) {
 	tests := []struct {
@@ -45,7 +58,7 @@ func Test_UnitFlock(t *testing.T) {
 				return
 			}
 
-			if got := CheckLock(tt.path); got != tt.wantCheck {
+			if got := checkLock(tt.path); got != tt.wantCheck {
 				t.Errorf("CheckLock() = %+v\nWant = %+v", got, tt.wantCheck)
 			}
 
@@ -53,7 +66,7 @@ func Test_UnitFlock(t *testing.T) {
 				t.Errorf("Release() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if got := CheckLock(tt.path); got == tt.wantCheck {
+			if got := checkLock(tt.path); got == tt.wantCheck {
 				t.Errorf("CheckLock() = %+v\nWant = %+v", got, !tt.wantCheck)
 			}
 		})
