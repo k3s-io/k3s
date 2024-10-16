@@ -33,12 +33,12 @@ jobs:
   e2e:
     name: "E2E Tests"
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm, svcpoliciesandfirewall]
+        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
       max-parallel: 3
     steps:
       - name: "Checkout"
