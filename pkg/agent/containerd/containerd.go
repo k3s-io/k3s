@@ -29,6 +29,7 @@ import (
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/util/workqueue"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -112,9 +113,11 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	return PreloadImages(ctx, cfg)
 }
 
-// Watcher is a controller that watch the agent/images folder
+// watcher is a controller that watch the agent/images folder
 // to ensure that every new file is added to the watcher state
-func Watcher(ctx context.Context, cfg *config.Node) {
+func watcher(ctx context.Context, cfg *config.Node) {
+	var ImagesWorkqueue workqueue.TypedRateLimitingInterface[fsnotify.Event]
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logrus.Errorf("Error to create a watcher: %s", err.Error())
@@ -124,19 +127,20 @@ func Watcher(ctx context.Context, cfg *config.Node) {
 	// Add agent/images path to the watcher.
 	err = watcher.Add(cfg.Images)
 	if err != nil {
-		logrus.Errorf("Error when creating the watcher controller: %s", err.Error())
+		logrus.Errorf("Error when creating the watcher controller: %v", err)
 		return
 	}
+	//var ImagesWorkqueue workqueue.TypedRateLimitingInterface[fsnotify.Event]
 
 	client, err := Client(cfg.Containerd.Address)
 	if err != nil {
-		logrus.Errorf("Error to create containerd client: %s", err.Error())
+		logrus.Errorf("Error to create containerd client: %v", err)
 		return
 	}
 
 	criConn, err := cri.Connection(ctx, cfg.Containerd.Address)
 	if err != nil {
-		logrus.Errorf("Error to create CRI connection: %s", err.Error())
+		logrus.Errorf("Error to create CRI connection: %v", err)
 		return
 	}
 
@@ -155,18 +159,6 @@ func Watcher(ctx context.Context, cfg *config.Node) {
 	// Ensure that our images are imported into the correct namespace
 	ctx = namespaces.WithNamespace(ctx, constants.K8sContainerdNamespace)
 
-	// At startup all leases from k3s are cleared; we no longer use leases to lock content
-	if err := clearLeases(ctx, client); err != nil {
-		logrus.Errorf("Error while clearing leases: %s", err.Error())
-		return
-	}
-
-	// Clear the pinned labels on all images previously pinned by k3s
-	if err := clearLabels(ctx, client); err != nil {
-		logrus.Errorf("Error while clearing labes: %s", err.Error())
-		return
-	}
-
 	// create the state that watcher will watch
 	stateFileInfos := make(map[string]fs.FileInfo)
 	for _, dirEntry := range fileInfos {
@@ -177,7 +169,7 @@ func Watcher(ctx context.Context, cfg *config.Node) {
 		// get the file info to add to the state map
 		fileInfo, err := dirEntry.Info()
 		if err != nil {
-			logrus.Errorf("Error while getting the info from file: %s", err.Error())
+			logrus.Errorf("Error while getting the info from file: %v", err)
 			continue
 		}
 
@@ -220,7 +212,7 @@ func Watcher(ctx context.Context, cfg *config.Node) {
 			case fsnotify.Create:
 				info, err := os.Stat(event.Name)
 				if err != nil {
-					logrus.Errorf("Error encountered while getting file %s info for event Create: %s", event.Name, err.Error())
+					logrus.Errorf("Error encountered while getting file %s info for event Create: %v", event.Name, err)
 					continue
 				}
 
@@ -248,7 +240,7 @@ func Watcher(ctx context.Context, cfg *config.Node) {
 			if !ok {
 				return
 			}
-			logrus.Errorf("error in watcher controller: %s", err.Error())
+			logrus.Errorf("error in watcher controller: %v", err)
 		}
 	}
 }
@@ -324,7 +316,9 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
 
-	go Watcher(ctx, cfg)
+	// create the workqueue for watcher
+	cfg.ImagesWorkqueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[fsnotify.Event]())
+	go watcher(ctx, cfg)
 
 	return nil
 }
