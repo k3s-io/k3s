@@ -100,6 +100,13 @@ if [ ${ARCH} = s390x ]; then
     export GOARCH="s390x"
 fi
 
+if [ ${ARCH} = riscv64 ]; then
+    export GOARCH="riscv64"
+    # These are needed as we are cross-compiling
+    export CC="riscv64-alpine-linux-musl-gcc"
+    export PKG_CONFIG_PATH=/home/builder/sysroot-riscv64/usr/lib/pkgconfig/
+fi
+
 k3s_binaries=(
     "bin/k3s-agent"
     "bin/k3s-server"
