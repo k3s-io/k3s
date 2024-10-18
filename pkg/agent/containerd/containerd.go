@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +18,6 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/pkg/cri/labels"
 	"github.com/containerd/containerd/reference/docker"
-	"github.com/fsnotify/fsnotify"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -29,7 +27,6 @@ import (
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
-	"k8s.io/client-go/util/workqueue"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -113,138 +110,6 @@ func Run(ctx context.Context, cfg *config.Node) error {
 	return PreloadImages(ctx, cfg)
 }
 
-// watcher is a controller that watch the agent/images folder
-// to ensure that every new file is added to the watcher state
-func watcher(ctx context.Context, cfg *config.Node) {
-	var ImagesWorkqueue workqueue.TypedRateLimitingInterface[fsnotify.Event]
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		logrus.Errorf("Error to create a watcher: %s", err.Error())
-		return
-	}
-
-	// Add agent/images path to the watcher.
-	err = watcher.Add(cfg.Images)
-	if err != nil {
-		logrus.Errorf("Error when creating the watcher controller: %v", err)
-		return
-	}
-	//var ImagesWorkqueue workqueue.TypedRateLimitingInterface[fsnotify.Event]
-
-	client, err := Client(cfg.Containerd.Address)
-	if err != nil {
-		logrus.Errorf("Error to create containerd client: %v", err)
-		return
-	}
-
-	criConn, err := cri.Connection(ctx, cfg.Containerd.Address)
-	if err != nil {
-		logrus.Errorf("Error to create CRI connection: %v", err)
-		return
-	}
-
-	imageClient := runtimeapi.NewImageServiceClient(criConn)
-
-	defer watcher.Close()
-	defer client.Close()
-	defer criConn.Close()
-
-	fileInfos, err := os.ReadDir(cfg.Images)
-	if err != nil {
-		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
-		return
-	}
-
-	// Ensure that our images are imported into the correct namespace
-	ctx = namespaces.WithNamespace(ctx, constants.K8sContainerdNamespace)
-
-	// create the state that watcher will watch
-	stateFileInfos := make(map[string]fs.FileInfo)
-	for _, dirEntry := range fileInfos {
-		if dirEntry.IsDir() {
-			continue
-		}
-
-		// get the file info to add to the state map
-		fileInfo, err := dirEntry.Info()
-		if err != nil {
-			logrus.Errorf("Error while getting the info from file: %v", err)
-			continue
-		}
-
-		// insert the file into the state map that will have the state from the file
-		stateFileInfos[filepath.Join(cfg.Images, dirEntry.Name())] = fileInfo
-	}
-
-	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-
-			switch event.Op {
-			case fsnotify.Write:
-				newStateFile, err := os.Stat(event.Name)
-				if err != nil {
-					logrus.Errorf("Error encountered while getting file %s info for event write: %s", event.Name, err.Error())
-					continue
-				}
-
-				// we do not want to handle directorys, only files
-				if newStateFile.IsDir() {
-					continue
-				}
-
-				lastStateFile := stateFileInfos[event.Name]
-				stateFileInfos[event.Name] = newStateFile
-				logrus.Infof("File added to watcher controller: %s", event.Name)
-				if (newStateFile.Size() != lastStateFile.Size()) && newStateFile.ModTime().After(lastStateFile.ModTime()) {
-					logrus.Infof("File met the requirements for import to containerd image store: %s", event.Name)
-					start := time.Now()
-					if err := preloadFile(ctx, cfg, client, imageClient, event.Name); err != nil {
-						logrus.Errorf("Error encountered while importing %s: %v", event.Name, err)
-						continue
-					}
-					logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
-				}
-			case fsnotify.Create:
-				info, err := os.Stat(event.Name)
-				if err != nil {
-					logrus.Errorf("Error encountered while getting file %s info for event Create: %v", event.Name, err)
-					continue
-				}
-
-				if info.IsDir() {
-					continue
-				}
-
-				stateFileInfos[event.Name] = info
-				logrus.Infof("File added to watcher controller: %s", event.Name)
-
-				start := time.Now()
-				if err := preloadFile(ctx, cfg, client, imageClient, event.Name); err != nil {
-					logrus.Errorf("Error encountered while importing %s: %v", event.Name, err)
-					continue
-				}
-				logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
-			case fsnotify.Rename:
-				delete(stateFileInfos, event.Name)
-				logrus.Infof("Removed file from the watcher controller: %s", event.Name)
-			case fsnotify.Remove:
-				delete(stateFileInfos, event.Name)
-				logrus.Infof("Removed file from the watcher controller: %s", event.Name)
-			}
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			logrus.Errorf("error in watcher controller: %v", err)
-		}
-	}
-}
-
 // PreloadImages reads the contents of the agent images directory, and attempts to
 // import into containerd any files found there. Supported compressed types are decompressed, and
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
@@ -316,9 +181,9 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
 
-	// create the workqueue for watcher
-	cfg.ImagesWorkqueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[fsnotify.Event]())
-	go watcher(ctx, cfg)
+	// create config and run watcher
+	watcher := createWatcher(ctx, cfg)
+	go watcher.run(ctx, cfg)
 
 	return nil
 }
