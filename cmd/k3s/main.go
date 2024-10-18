@@ -30,6 +30,10 @@ var criDefaultConfigPath = "/etc/crictl.yaml"
 
 // main entrypoint for the k3s multicall binary
 func main() {
+	if findDebug(os.Args) {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	dataDir := findDataDir(os.Args)
 
 	// Handle direct invocation via symlink alias (multicall binary behavior)
@@ -85,6 +89,24 @@ func main() {
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatal(err)
 	}
+}
+
+// findDebug reads debug settings from the environment, CLI args, and config file.
+func findDebug(args []string) bool {
+	debug, _ := strconv.ParseBool(os.Getenv(version.ProgramUpper + "_DEBUG"))
+	if debug {
+		return debug
+	}
+	fs := pflag.NewFlagSet("debug-set", pflag.ContinueOnError)
+	fs.ParseErrorsWhitelist.UnknownFlags = true
+	fs.SetOutput(io.Discard)
+	fs.BoolVarP(&debug, "debug", "", false, "(logging) Turn on debug logs")
+	fs.Parse(args)
+	if debug {
+		return debug
+	}
+	debug, _ = strconv.ParseBool(configfilearg.MustFindString(args, "debug"))
+	return debug
 }
 
 // findDataDir reads data-dir settings from the environment, CLI args, and config file.
@@ -280,11 +302,6 @@ func extract(dataDir string) (string, error) {
 		return "", err
 	}
 
-	// Rename the new directory into place, before updating symlinks
-	if err := os.Rename(tempDest, dir); err != nil {
-		return "", err
-	}
-
 	// Create a stable CNI bin dir and place it first in the path so that users have a
 	// consistent location to drop their own CNI plugin binaries.
 	cniPath := filepath.Join(dataDir, "data", "cni")
@@ -292,19 +309,38 @@ func extract(dataDir string) (string, error) {
 	if err := os.MkdirAll(cniPath, 0755); err != nil {
 		return "", err
 	}
+	// Create symlink that points at the cni multicall binary itself
+	logrus.Debugf("Creating symlink %s -> %s", filepath.Join(cniPath, "cni"), cniBin)
+	os.Remove(filepath.Join(cniPath, "cni"))
 	if err := os.Symlink(cniBin, filepath.Join(cniPath, "cni")); err != nil {
 		return "", err
 	}
 
 	// Find symlinks that point to the cni multicall binary, and clone them in the stable CNI bin dir.
-	ents, err := os.ReadDir(filepath.Join(dir, "bin"))
+	// Non-symlink plugins in the stable CNI bin dir will not be overwritten, to allow users to replace our
+	// CNI plugins with their own versions if they want. Note that the cni multicall binary itself is always
+	// symlinked into the stable bin dir and should not be replaced.
+	ents, err := os.ReadDir(filepath.Join(tempDest, "bin"))
 	if err != nil {
 		return "", err
 	}
 	for _, ent := range ents {
 		if info, err := ent.Info(); err == nil && info.Mode()&fs.ModeSymlink != 0 {
-			if target, err := os.Readlink(filepath.Join(dir, "bin", ent.Name())); err == nil && target == "cni" {
-				if err := os.Symlink(cniBin, filepath.Join(cniPath, ent.Name())); err != nil {
+			if target, err := os.Readlink(filepath.Join(tempDest, "bin", ent.Name())); err == nil && target == "cni" {
+				src := filepath.Join(cniPath, ent.Name())
+				// Check if plugin already exists in stable CNI bin dir
+				if info, err := os.Lstat(src); err == nil {
+					if info.Mode()&fs.ModeSymlink != 0 {
+						// Exists and is a symlink, remove it so we can create a new symlink for the new bin.
+						os.Remove(src)
+					} else {
+						// Not a symlink, leave it alone
+						logrus.Debugf("Not replacing non-symlink CNI plugin %s with mode %O", src, info.Mode())
+						continue
+					}
+				}
+				logrus.Debugf("Creating symlink %s -> %s", src, cniBin)
+				if err := os.Symlink(cniBin, src); err != nil {
 					return "", err
 				}
 			}
@@ -321,6 +357,12 @@ func extract(dataDir string) (string, error) {
 		}
 	}
 	if err := os.Symlink(dir, currentSymLink); err != nil {
+		return "", err
+	}
+
+	// Rename the new directory into place after updating symlinks, so that the k3s binary check at the start
+	// of this function only succeeds if everything else has been completed successfully.
+	if err := os.Rename(tempDest, dir); err != nil {
 		return "", err
 	}
 
