@@ -365,7 +365,32 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
-
+	When("a server with a --deny-psa-label is created", func() {
+		It("is created with no arguments", func() {
+			var err error
+			startupServerArgs = []string{
+				"--deny-psa-label",
+				"--kube-apiserver-arg",
+				"enable-admission-plugins=DenyPSALabel",
+			}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return testutil.K3sDefaultDeployments()
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("change label of namespace", func() {
+			res, err := testutil.K3sCmd("kubectl label --dry-run=server --overwrite ns --all pod-security.kubernetes.io/enforce=baseline")
+			Expect(err).To(HaveOccurred())
+			Expect(res).To(ContainSubstring("denying use of PSA label on namespace"))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
 })
 
 var failed bool
