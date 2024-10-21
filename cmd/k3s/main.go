@@ -292,9 +292,9 @@ func extract(dataDir string) (string, error) {
 	if err := os.MkdirAll(cniPath, 0755); err != nil {
 		return "", err
 	}
-	if err := os.Symlink(cniBin, filepath.Join(cniPath, "cni")); err != nil {
-		return "", err
-	}
+	cniSymlink := filepath.Join(cniPath, "cni")
+	os.RemoveAll(cniSymlink)
+	os.Symlink(cniBin, cniSymlink)
 
 	// Find symlinks that point to the cni multicall binary, and clone them in the stable CNI bin dir.
 	ents, err := os.ReadDir(filepath.Join(dir, "bin"))
@@ -304,9 +304,9 @@ func extract(dataDir string) (string, error) {
 	for _, ent := range ents {
 		if info, err := ent.Info(); err == nil && info.Mode()&fs.ModeSymlink != 0 {
 			if target, err := os.Readlink(filepath.Join(dir, "bin", ent.Name())); err == nil && target == "cni" {
-				if err := os.Symlink(cniBin, filepath.Join(cniPath, ent.Name())); err != nil {
-					return "", err
-				}
+				entSymlink := filepath.Join(cniPath, ent.Name())
+				os.RemoveAll(entSymlink)
+				os.Symlink(cniBin, entSymlink)
 			}
 		}
 	}
