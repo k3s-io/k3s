@@ -14,11 +14,18 @@ def defaultOSConfigure(vm)
   end 
 end
 
+# getInstallType is used to control which version of k3s to install
+# To install a specific version, set release_version to the version number
+# To install a specific commit, set release_version to the commit SHA
+# To install the latest commit from a branch, leave release_version empty 
+# and set release_channel to "commit" and set branch to the branch name 
 def getInstallType(vm, release_version, branch, release_channel='')
   if release_version == "skip"
     install_type = "INSTALL_K3S_SKIP_DOWNLOAD=true"
-  elsif !release_version.empty?
+  elsif !release_version.empty? && release_version.start_with?("v1")
     return "INSTALL_K3S_VERSION=#{release_version}"
+  elsif !release_version.empty?
+    return "INSTALL_K3S_COMMIT=#{release_version}"
   elsif !release_channel.empty? && release_channel != "commit"
     return "INSTALL_K3S_CHANNEL=#{release_channel}"
   else
@@ -26,7 +33,7 @@ def getInstallType(vm, release_version, branch, release_channel='')
     scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
     # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", args: [branch, "/tmp/k3s_commits"]
+    vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", env: {GH_TOKEN:ENV['GH_TOKEN']}, args: [branch, "/tmp/k3s_commits"]
     return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
   end
 end
