@@ -213,18 +213,17 @@ func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) erro
 	pathList := []string{
 		filepath.Clean(filepath.Join(dir, "..", "cni")),
 		filepath.Join(dir, "bin"),
+		filepath.Join(dir, "bin", "aux"),
 	}
 	if findPreferBundledBin(args) {
 		pathList = append(
 			pathList,
-			filepath.Join(dir, "bin", "aux"),
 			os.Getenv("PATH"),
 		)
 	} else {
 		pathList = append(
 			pathList,
 			os.Getenv("PATH"),
-			filepath.Join(dir, "bin", "aux"),
 		)
 	}
 	if err := os.Setenv("PATH", strings.Join(pathList, string(os.PathListSeparator))); err != nil {
