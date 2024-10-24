@@ -1,0 +1,39 @@
+#/bin/bash
+
+# This script prepares a cross-compilation environment for $ARCH
+
+if [ -z "$ARCH" ]; then
+    echo "Error: ARCH not defined"
+    exit 1;
+fi
+
+if [ "$ARCH" != "riscv64" ]; then
+    echo "Error: Cross-compilation only available for riscv64"
+    exit 1;
+fi
+
+if [ "$ARCH" = "riscv64" ]; then
+    ALPINE_APK_REPO=https://dl-cdn.alpinelinux.org/alpine/edge/main
+fi
+
+# Build packages for cross-compiling (bootstrap.sh requires a non-root user)
+adduser -D builder
+addgroup builder abuild
+
+su builder -c "abuild-keygen -an"
+cp ~builder/.abuild/builder-*.rsa.pub /etc/apk/keys/
+
+ALPINE_VERSION=$(. /etc/os-release; echo $VERSION_ID | cut -f1,2 -d.)
+su builder -c "cd; git clone --single-branch --branch=$ALPINE_VERSION-stable --depth 1 https://github.com/alpinelinux/aports"
+sed -i "/Cross building base system/i exit 0\n" /home/builder/aports/scripts/bootstrap.sh
+apk update
+su builder -c "CBUILDROOT=~/sysroot-$ARCH ~/aports/scripts/bootstrap.sh $ARCH"
+
+# Install the cross-compiler in the host
+apk -X /home/builder/packages/main add gcc-$ARCH
+
+# Install headers and libraries in the gcc sysroot (upstream packages)
+apk -X $ALPINE_APK_REPO -U --allow-untrusted \
+    -p /home/builder/sysroot-$ARCH --arch $ARCH add \
+    musl musl-dev linux-headers libseccomp-dev libseccomp-static sqlite-dev sqlite-static zlib-static libgcc
+sed -i "s/^prefix=.*/prefix=\/home\/builder\/sysroot-$ARCH\/usr/g" /home/builder/sysroot-riscv64/usr/lib/pkgconfig/libseccomp.pc
