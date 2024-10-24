@@ -54,6 +54,10 @@ func GenerateRuntime(cnf *config.Control) error {
 
 	deps.CreateRuntimeCertFiles(cnf)
 
+	cnf.Datastore.ServerTLSConfig.CAFile = cnf.Runtime.ETCDServerCA
+	cnf.Datastore.ServerTLSConfig.CertFile = cnf.Runtime.ServerETCDCert
+	cnf.Datastore.ServerTLSConfig.KeyFile = cnf.Runtime.ServerETCDKey
+
 	return deps.GenServerDeps(cnf)
 }
 
