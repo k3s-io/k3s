@@ -43,6 +43,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	snapshotv3 "go.etcd.io/etcd/etcdutl/v3/snapshot"
+	"google.golang.org/grpc"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -433,10 +434,6 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 		return errors.Wrapf(err, "failed to check for initialized etcd datastore")
 	}
 
-	if err := e.startClient(ctx); err != nil {
-		return err
-	}
-
 	if !e.config.EtcdDisableSnapshots {
 		e.setSnapshotFunction(ctx)
 		e.cron.Start()
@@ -467,6 +464,10 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 
 	if clientAccessInfo == nil {
 		return e.newCluster(ctx, false)
+	}
+
+	if err := e.startClient(ctx); err != nil {
+		return err
 	}
 
 	go func() {
@@ -738,6 +739,7 @@ func getClientConfig(ctx context.Context, control *config.Control, endpoints ...
 	config := &clientv3.Config{
 		Endpoints:            endpoints,
 		Context:              ctx,
+		DialOptions:          []grpc.DialOption{grpc.WithBlock()},
 		DialTimeout:          defaultDialTimeout,
 		DialKeepAliveTime:    defaultKeepAliveTime,
 		DialKeepAliveTimeout: defaultKeepAliveTimeout,
