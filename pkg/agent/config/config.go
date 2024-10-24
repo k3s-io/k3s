@@ -594,6 +594,12 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 						nodeConfig.Containerd.Root)
 				}
 				nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+			case "nix":
+				if err := containerd.NixSupported(nodeConfig.Containerd.Root); err != nil {
+					return nil, errors.Wrapf(err, "\"nix\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+						nodeConfig.Containerd.Root)
+				}
+				nodeConfig.AgentConfig.ImageServiceSocket = "/run/k3s/nix-snapshotter/nix-snapshotter.sock"
 			}
 		} else {
 			nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ContainerRuntimeEndpoint

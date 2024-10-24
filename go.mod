@@ -115,6 +115,7 @@ require (
 	github.com/opencontainers/runc v1.1.13
 	github.com/opencontainers/selinux v1.11.0
 	github.com/otiai10/copy v1.7.0
+	github.com/pdtpartners/nix-snapshotter v0.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.1
 	github.com/prometheus/common v0.55.0

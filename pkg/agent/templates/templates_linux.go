@@ -35,7 +35,7 @@ version = 2
 {{- if .NodeConfig.AgentConfig.Snapshotter }}
 [plugins."io.containerd.grpc.v1.cri".containerd]
   snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
-  disable_snapshot_annotations = {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}false{{else}}true{{end}}
+  disable_snapshot_annotations = {{ if or (eq .NodeConfig.AgentConfig.Snapshotter "stargz") (eq .NodeConfig.AgentConfig.Snapshotter "nix") }}false{{else}}true{{end}}
   {{ if .NodeConfig.DefaultRuntime }}default_runtime_name = "{{ .NodeConfig.DefaultRuntime }}"{{end}}
 {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}
 {{ if .NodeConfig.AgentConfig.ImageServiceSocket }}
@@ -59,6 +59,14 @@ enable_keychain = true
 {{end}}
 {{end}}
 {{end}}
+{{end}}
+{{ if eq .NodeConfig.AgentConfig.Snapshotter "nix" }}
+[plugins."io.containerd.snapshotter.v1.nix"]
+address = "{{ .NodeConfig.AgentConfig.ImageServiceSocket }}"
+image_service.enable = true
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+platform = "linux/amd64"
+snapshotter = "nix"
 {{end}}
 {{end}}
 
