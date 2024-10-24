@@ -358,3 +358,78 @@ func Test_UnitETCD_Start(t *testing.T) {
 		})
 	}
 }
+
+func Test_UnitETCD_Test(t *testing.T) {
+	type contextInfo struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+	type fields struct {
+		context contextInfo
+		client  *clientv3.Client
+		config  *config.Control
+		name    string
+		address string
+	}
+	type args struct {
+		clientAccessInfo *clientaccess.Info
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		setup    func(e *ETCD, ctxInfo *contextInfo) error
+		teardown func(e *ETCD, ctxInfo *contextInfo) error
+		wantErr  bool
+	}{
+		{
+			name: "Test etcd with no server running",
+			fields: fields{
+				config:  generateTestConfig(),
+				address: mustGetAddress(),
+				name:    "default",
+			},
+			setup: func(e *ETCD, ctxInfo *contextInfo) error {
+				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
+				testutil.GenerateRuntime(e.config)
+				return nil
+			},
+			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
+				ctxInfo.cancel()
+				time.Sleep(1 * time.Second)
+				testutil.CleanupDataDir(e.config)
+				return nil
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &ETCD{
+				client:  tt.fields.client,
+				config:  tt.fields.config,
+				name:    tt.fields.name,
+				address: tt.fields.address,
+			}
+
+			if err := tt.setup(e, &tt.fields.context); err != nil {
+				t.Errorf("Setup for ETCD.Test() failed = %v", err)
+				return
+			}
+			start := time.Now()
+			err := e.Test(tt.fields.context.ctx)
+			duration := time.Now().Sub(start)
+			t.Logf("etcd.Test() completed in %v with err=%v", duration, err)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ETCD.Test() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if duration.Round(time.Second) > statusTimeout {
+				t.Errorf("ETCD.Test() took longer than %v: %v", statusTimeout, duration)
+			}
+			if err := tt.teardown(e, &tt.fields.context); err != nil {
+				t.Errorf("Teardown for ETCD.Test() failed = %v", err)
+				return
+			}
+		})
+	}
+
+}
