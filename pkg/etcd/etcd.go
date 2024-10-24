@@ -55,7 +55,7 @@ import (
 )
 
 const (
-	testTimeout          = time.Second * 30
+	statusTimeout        = time.Second * 30
 	manageTickerTime     = time.Second * 15
 	learnerMaxStallTime  = time.Minute * 5
 	memberRemovalTimeout = time.Minute * 1
@@ -64,7 +64,7 @@ const (
 	// will be a random Duration somewhere between 0 and snapshotJitterMax.
 	snapshotJitterMax = time.Second * 5
 
-	// defaultDialTimeout is intentionally short so that connections timeout within the testTimeout defined above
+	// defaultDialTimeout is intentionally short so that connections timeout within the statusTimeout defined above
 	defaultDialTimeout = 2 * time.Second
 	// other defaults from k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 	defaultKeepAliveTime    = 30 * time.Second
@@ -206,16 +206,9 @@ func (e *ETCD) Test(ctx context.Context) error {
 		return errors.New("etcd datastore is not started")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
-	defer cancel()
-
-	endpoints := getEndpoints(e.config)
-	status, err := e.client.Status(ctx, endpoints[0])
-	if err != nil {
-		return err
-	}
-
-	if status.IsLearner {
+	if status, err := e.status(ctx); err != nil {
+		return errors.Wrap(err, "failed to get etcd status")
+	} else if status.IsLearner {
 		return errors.New("this server has not yet been promoted from learner to voting member")
 	}
 
@@ -228,12 +221,9 @@ func (e *ETCD) Test(ctx context.Context) error {
 	}
 
 	// refresh status to see if any errors remain after clearing alarms
-	status, err = e.client.Status(ctx, endpoints[0])
-	if err != nil {
+	if status, err := e.status(ctx); err != nil {
 		return err
-	}
-
-	if len(status.Errors) > 0 {
+	} else if len(status.Errors) > 0 {
 		return fmt.Errorf("etcd cluster errors: %s", strings.Join(status.Errors, ", "))
 	}
 
@@ -242,6 +232,7 @@ func (e *ETCD) Test(ctx context.Context) error {
 		return err
 	}
 
+	// Ensure that there is a cluster member with our peerURL and name
 	var memberNameUrls []string
 	for _, member := range members.Members {
 		for _, peerURL := range member.PeerURLs {
@@ -253,6 +244,8 @@ func (e *ETCD) Test(ctx context.Context) error {
 			memberNameUrls = append(memberNameUrls, member.Name+"="+member.PeerURLs[0])
 		}
 	}
+
+	// no matching PeerURL on any Member, return an error that indicates what was expected vs what we found.
 	return &membershipError{members: memberNameUrls, self: e.name + "=" + e.peerURL()}
 }
 
@@ -1366,9 +1359,6 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 // clearAlarms checks for any alarms on the local etcd member. If found, they are
 // reported and the alarm state is cleared.
 func (e *ETCD) clearAlarms(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
-	defer cancel()
-
 	if e.client == nil {
 		return errors.New("etcd client was nil")
 	}
@@ -1391,10 +1381,23 @@ func (e *ETCD) clearAlarms(ctx context.Context) error {
 	return nil
 }
 
-func (e *ETCD) defragment(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+// status returns status using the first etcd endpoint.
+// The Status request is timed out after 30 seconds, to avoid hanging on grpc retries
+// if the etcd server is not available.
+func (e *ETCD) status(ctx context.Context) (*clientv3.StatusResponse, error) {
+	if e.client == nil {
+		return nil, errors.New("etcd client was nil")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, statusTimeout)
 	defer cancel()
 
+	endpoints := getEndpoints(e.config)
+	return e.client.Status(ctx, endpoints[0])
+}
+
+// defragment defragments the etcd datastore using the first etcd endpoint
+func (e *ETCD) defragment(ctx context.Context) error {
 	if e.client == nil {
 		return errors.New("etcd client was nil")
 	}
@@ -1575,8 +1578,10 @@ func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]strin
 
 // GetMembersClientURLs will list through the member lists in etcd and return
 // back a combined list of client urls for each member in the cluster
+// The MemberList request is timed out after 30 seconds, to avoid hanging on grpc retries
+// if the etcd server is not available.
 func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	ctx, cancel := context.WithTimeout(ctx, statusTimeout)
 	defer cancel()
 
 	members, err := e.client.MemberList(ctx)
@@ -1591,24 +1596,6 @@ func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
 		}
 	}
 	return clientURLs, nil
-}
-
-// GetMembersNames will list through the member lists in etcd and return
-// back a combined list of member names
-func (e *ETCD) GetMembersNames(ctx context.Context) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
-	defer cancel()
-
-	members, err := e.client.MemberList(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var memberNames []string
-	for _, member := range members.Members {
-		memberNames = append(memberNames, member.Name)
-	}
-	return memberNames, nil
 }
 
 // RemoveSelf will remove the member if it exists in the cluster.  This should
