@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	snapshotv3 "go.etcd.io/etcd/etcdutl/v3/snapshot"
+	snapshotv3 "go.etcd.io/etcd/client/v3/snapshot"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -243,7 +243,7 @@ func (e *ETCD) Snapshot(ctx context.Context) (*managed.SnapshotResult, error) {
 
 	var sf *snapshot.File
 
-	if err := snapshotv3.NewV3(e.client.GetLogger()).Save(ctx, *cfg, snapshotPath); err != nil {
+	if err := snapshotv3.Save(ctx, e.client.GetLogger(), *cfg, snapshotPath); err != nil {
 		sf = &snapshot.File{
 			Name:     snapshotName,
 			Location: "",
