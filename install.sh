@@ -579,7 +579,8 @@ setup_selinux() {
             rpm_site_infix=slemicro
             package_installer=zypper
         fi
-    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = "iot" ]; then
+    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = "iot" ] || \
+         { [ "${ID:-}" = "fedora" ] && [ -n "${OSTREE_VERSION:-}" ]; }; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
@@ -629,7 +630,8 @@ setup_selinux() {
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
     elif [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
-        if [ -x /usr/sbin/transactional-update ] || [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = iot ]; then
+        if [ -x /usr/sbin/transactional-update ] || [ "${ID_LIKE:-}" = coreos ] || \
+            { [ "${ID:-}" = fedora ] && [ -n "${OSTREE_VERSION:-}" ]; }; then
             warn "Please reboot your machine to activate the changes and avoid data loss."
         else
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
