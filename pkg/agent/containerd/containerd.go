@@ -115,10 +115,14 @@ func Run(ctx context.Context, cfg *config.Node) error {
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
 // If configured, imported images are retagged as being pulled from additional registries.
 func PreloadImages(ctx context.Context, cfg *config.Node) error {
-	fileInfo, err := os.Stat(cfg.Images)
-	if os.IsNotExist(err) {
+	err := os.MkdirAll(cfg.Images, 0700)
+	if err != nil {
+		logrus.Errorf("Unable to create agent/images folder in %s: %v", cfg.Images, err)
 		return nil
-	} else if err != nil {
+	}
+
+	fileInfo, err := os.Stat(cfg.Images)
+	if err != nil {
 		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
 		return nil
 	}
@@ -176,6 +180,11 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		}
 		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
+
+	// create config and run watcher
+	watcher := createWatcher(ctx, cfg)
+	go watcher.run(ctx, cfg)
+
 	return nil
 }
 
