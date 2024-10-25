@@ -631,7 +631,7 @@ setup_selinux() {
         fi
     elif [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
         if [ -x /usr/sbin/transactional-update ] || [ "${ID_LIKE:-}" = coreos ] || \
-            { [ "${ID:-}" = fedora ] && [ -n "${OSTREE_VERSION:-}" ]; }; then
+            { { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; }; then
             warn "Please reboot your machine to activate the changes and avoid data loss."
         else
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
