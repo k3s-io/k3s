@@ -580,7 +580,7 @@ setup_selinux() {
             package_installer=zypper
         fi
     elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = "iot" ] || \
-         { [ "${ID:-}" = "fedora" ] && [ -n "${OSTREE_VERSION:-}" ]; }; then
+         { { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; }; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
