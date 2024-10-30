@@ -533,6 +533,7 @@ var ServerFlags = []cli.Flag{
 	DefaultRuntimeFlag,
 	ImageServiceEndpointFlag,
 	DisableDefaultRegistryEndpointFlag,
+	NonrootDevicesFlag,
 	PauseImageFlag,
 	SnapshotterFlag,
 	PrivateRegistryFlag,
