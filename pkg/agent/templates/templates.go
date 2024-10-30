@@ -23,6 +23,7 @@ type ContainerdConfig struct {
 	IsRunningInUserNS     bool
 	EnableUnprivileged    bool
 	NoDefaultEndpoint     bool
+	NonrootDevices        bool
 	PrivateRegistryConfig *registries.Registry
 	ExtraRuntimes         map[string]ContainerdRuntimeConfig
 	Program               string
