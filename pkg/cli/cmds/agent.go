@@ -30,6 +30,7 @@ type Agent struct {
 	Snapshotter              string
 	Docker                   bool
 	ContainerdNoDefault      bool
+	ContainerdNonrootDevices bool
 	ContainerRuntimeEndpoint string
 	DefaultRuntime           string
 	ImageServiceEndpoint     string
@@ -240,6 +241,11 @@ var (
 		Usage:       "(agent/containerd) Disables containerd's fallback default registry endpoint when a mirror is configured for that registry",
 		Destination: &AgentConfig.ContainerdNoDefault,
 	}
+	NonrootDevicesFlag = &cli.BoolFlag{
+		Name:        "nonroot-devices",
+		Usage:       "(agent/containerd) Allows non-root pods to access devices by setting device_ownership_from_security_context=true in the containerd CRI config",
+		Destination: &AgentConfig.ContainerdNonrootDevices,
+	}
 	EnablePProfFlag = &cli.BoolFlag{
 		Name:        "enable-pprof",
 		Usage:       "(experimental) Enable pprof endpoint on supervisor port",
@@ -303,6 +309,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			SnapshotterFlag,
 			PrivateRegistryFlag,
 			DisableDefaultRegistryEndpointFlag,
+			NonrootDevicesFlag,
 			AirgapExtraRegistryFlag,
 			NodeIPFlag,
 			BindAddressFlag,
