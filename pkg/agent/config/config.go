@@ -603,6 +603,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "agent", "containerd", "containerd.log")
 	nodeConfig.Containerd.Registry = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "certs.d")
 	nodeConfig.Containerd.NoDefault = envInfo.ContainerdNoDefault
+	nodeConfig.Containerd.NonrootDevices = envInfo.ContainerdNonrootDevices
 	nodeConfig.Containerd.Debug = envInfo.Debug
 	applyContainerdStateAndAddress(nodeConfig)
 	applyCRIDockerdAddress(nodeConfig)
