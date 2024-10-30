@@ -78,19 +78,20 @@ type EtcdS3 struct {
 }
 
 type Containerd struct {
-	Address       string
-	Log           string
-	Root          string
-	State         string
-	Config        string
-	Opt           string
-	Template      string
-	BlockIOConfig string
-	RDTConfig     string
-	Registry      string
-	NoDefault     bool
-	SELinux       bool
-	Debug         bool
+	Address        string
+	Log            string
+	Root           string
+	State          string
+	Config         string
+	Opt            string
+	Template       string
+	BlockIOConfig  string
+	RDTConfig      string
+	Registry       string
+	NoDefault      bool
+	NonrootDevices bool
+	SELinux        bool
+	Debug          bool
 }
 
 type CRIDockerd struct {
