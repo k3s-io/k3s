@@ -19,6 +19,7 @@ version = 2
   enable_selinux = {{ .NodeConfig.SELinux }}
   enable_unprivileged_ports = {{ .EnableUnprivileged }}
   enable_unprivileged_icmp = {{ .EnableUnprivileged }}
+  device_ownership_from_security_context = {{ .NonrootDevices }}
 
 {{- if .DisableCgroup}}
   disable_cgroup = true

@@ -73,6 +73,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 		SystemdCgroup:         cfg.AgentConfig.Systemd,
 		IsRunningInUserNS:     isRunningInUserNS,
 		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
+		NonrootDevices:        cfg.Containerd.NonrootDevices,
 		PrivateRegistryConfig: cfg.AgentConfig.Registry,
 		ExtraRuntimes:         extraRuntimes,
 		Program:               version.Program,
