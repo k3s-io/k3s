@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        itest: [certrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption, flannelnone]
+        itest: [certrotation, cacertrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption, flannelnone]
       max-parallel: 3
     steps:
     - name: Checkout
@@ -56,7 +56,7 @@ jobs:
       run: | 
         chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" go test -v -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration
+        sudo -E env "PATH=$PATH" go test -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration -ginkgo.v -test.v
     - name: On Failure, Launch Debug Session
       uses: lhotari/action-upterm@v1
       if: ${{ failure() }}

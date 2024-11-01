@@ -14,9 +14,9 @@ If you're interested in contributing documentation, please note the following:
 
 If you're interested in contributing new tests, please see the [TESTING.md](./tests/TESTING.md).
 
-## Code Convetion
+## Code Convention
 
-See the [code convetions documentation](./docs/contrib/code_conventions.md) for more information on how to write code for K3s.
+See the [code conventions documentation](./docs/contrib/code_conventions.md) for more information on how to write code for K3s.
 
 ### Opening PRs and organizing commits
 PRs should generally address only 1 issue at a time. If you need to fix two bugs, open two separate PRs. This will keep the scope of your pull requests smaller and allow them to be reviewed and merged more quickly.

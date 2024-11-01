@@ -1,0 +1,75 @@
+ENV['VAGRANT_NO_PARALLEL'] = 'no'
+NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
+  ["server-0", "agent-0" ])
+NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
+  ['bento/ubuntu-24.04', 'bento/ubuntu-24.04'])
+GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
+RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+GOCOVER = (ENV['E2E_GOCOVER'] || "")
+NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
+NETWORK4_PREFIX = "10.10.10"
+install_type = ""
+
+def provision(vm, role, role_num, node_num)
+  vm.box = NODE_BOXES[node_num]
+  vm.hostname = role
+  node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
+  vm.network "private_network", :ip => node_ip4, :netmask => "255.255.255.0"
+    
+  scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  load vagrant_defaults
+  
+  defaultOSConfigure(vm)
+  addCoverageDir(vm, role, GOCOVER)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
+  
+  if role.include?("server") && role_num == 0
+    vm.provision :k3s, run: 'once' do |k3s|
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.args = "server "
+      k3s.config = <<~YAML
+        node-ip: #{node_ip4}
+        token: vagrant
+      YAML
+      k3s.env = ["K3S_KUBECONFIG_MODE=0644", install_type]
+    end
+  end
+  if role.include?("agent")
+    vm.provision :k3s, run: 'once' do |k3s|
+      k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.args = "agent "
+      k3s.config = <<~YAML
+        server: https://#{NETWORK4_PREFIX}.100:6443
+        token: vagrant
+        node-ip: #{node_ip4}
+      YAML
+      k3s.env = ["K3S_KUBECONFIG_MODE=0644", install_type]
+    end
+  end
+end
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload", "vagrant-libvirt", "vagrant-scp"]
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+    # We replicate the default prefix, but add a timestamp to enable parallel runs and cleanup of old VMs
+    v.default_prefix = File.basename(Dir.getwd) + "_" + Time.now.to_i.to_s + "_"
+  end
+  
+  if NODE_ROLES.kind_of?(String)
+    NODE_ROLES = NODE_ROLES.split(" ", -1)
+  end
+  if NODE_BOXES.kind_of?(String)
+    NODE_BOXES = NODE_BOXES.split(" ", -1)
+  end
+
+  NODE_ROLES.each_with_index do |role, i|
+    role_num = role.split("-", -1).pop.to_i
+    config.vm.define role do |node|
+      provision(node.vm, role, role_num, i)
+    end
+  end
+end

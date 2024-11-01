@@ -24,7 +24,7 @@ import (
 
 const (
 	socketPrefix = "unix://"
-	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin:/usr/sbin:/usr/local/sbin:/usr/bin:/usr/local/bin"
+	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin"
 )
 
 func getContainerdArgs(cfg *config.Node) []string {
@@ -55,10 +55,10 @@ func SetupContainerdConfig(cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
-	// set the path to include the runtimes and then remove the aditional path entries
+	// set the path to include the default runtimes and remove the aditional path entries
 	// that we added after finding the runtimes
 	originalPath := os.Getenv("PATH")
-	os.Setenv("PATH", runtimesPath)
+	os.Setenv("PATH", runtimesPath+string(os.PathListSeparator)+originalPath)
 	extraRuntimes := findContainerRuntimes()
 	os.Setenv("PATH", originalPath)
 

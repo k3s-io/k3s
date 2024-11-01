@@ -40,13 +40,19 @@ jobs:
         make package-image
         make tag-image-latest
 
+    - name: Download Rancher's VEX Hub report
+      run: curl -fsSO https://raw.githubusercontent.com/rancher/vexhub/refs/heads/main/reports/rancher.openvex.json
+
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.24.0
+      uses: aquasecurity/trivy-action@0.28.0
       with:
         image-ref: 'rancher/k3s:latest'
         format: 'table'
         severity: "HIGH,CRITICAL"
         output: "trivy-report.txt"
+      env:
+        TRIVY_VEX: rancher.openvex.json
+        TRIVY_SHOW_SUPPRESSED: true
     
     - name: Upload Trivy Report
       uses: actions/upload-artifact@v4
