@@ -82,10 +82,11 @@ const (
 
 	etcdStatusType = v1.NodeConditionType("EtcdIsVoter")
 
-	StatusUnjoined  MemberStatus = "unjoined"
-	StatusUnhealthy MemberStatus = "unhealthy"
-	StatusLearner   MemberStatus = "learner"
-	StatusVoter     MemberStatus = "voter"
+	StatusUnjoined      MemberStatus = "unjoined"
+	StatusUnhealthy     MemberStatus = "unhealthy"
+	StatusLearner       MemberStatus = "learner"
+	StatusVoter         MemberStatus = "voter"
+	StatusUnknownMember MemberStatus = "unknownMember"
 )
 
 var (
@@ -1189,6 +1190,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 		// a map to track if a node is a member of the etcd cluster or not
 		nodeIsMember := make(map[string]bool)
 		nodesMap := make(map[string]*v1.Node)
+		membersWithoutNode := ""
 		for _, node := range nodes {
 			nodeIsMember[node.Name] = false
 			nodesMap[node.Name] = node
@@ -1214,7 +1216,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 				}
 			}
 			if node == nil {
-				continue
+				membersWithoutNode += (" " + member.Name)
 			}
 
 			// verify if the member is healthy and set the status
@@ -1229,7 +1231,12 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 		}
 
 		for nodeName, node := range nodesMap {
-			if !nodeIsMember[nodeName] {
+			if len(membersWithoutNode) > 0 {
+				statusMsg := fmt.Sprintf("unknown etcd members:%s", membersWithoutNode)
+				if err := e.setEtcdStatusCondition(node, client, nodeName, StatusUnknownMember, statusMsg); err != nil {
+					logrus.Errorf("Unable to set etcd status condition for node %s: %v", node.Name, err)
+				}
+			} else if !nodeIsMember[nodeName] {
 				if err := e.setEtcdStatusCondition(node, client, nodeName, StatusUnjoined, ""); err != nil {
 					logrus.Errorf("Unable to set etcd status condition for a node that is not a cluster member %s: %v", nodeName, err)
 				}
