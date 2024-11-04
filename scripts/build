@@ -52,7 +52,7 @@ VERSIONFLAGS="
     -X ${PKG_CRI_DOCKERD}/cmd/version.GitCommit=HEAD
     -X ${PKG_CRI_DOCKERD}/cmd/version.BuildTime=${buildDate}
 
-    -X ${PKG_ETCD}/api/version.GitSHA=HEAD
+    -X ${PKG_ETCD}/api/v3/version.GitSHA=HEAD
 "
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"
