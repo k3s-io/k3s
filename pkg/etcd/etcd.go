@@ -1352,6 +1352,13 @@ func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client kubernetes.Interface
 			Reason:  "NotAMember",
 			Message: "Node is not a member of the etcd cluster",
 		}
+	case StatusUnknownMember:
+		newCondition = v1.NodeCondition{
+			Type:    etcdStatusType,
+			Status:  "False",
+			Reason:  "UnknownMember",
+			Message: "unknown member detected in etcd cluster",
+		}
 	default:
 		logrus.Warnf("Unknown etcd member status %s", memberStatus)
 		return nil
