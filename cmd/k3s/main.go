@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 )
 
 var criDefaultConfigPath = "/etc/crictl.yaml"
+var externalCLIActions = []string{"crictl", "ctr", "kubectl"}
 
 // main entrypoint for the k3s multicall binary
 func main() {
@@ -105,7 +107,7 @@ func findDebug(args []string) bool {
 	if debug {
 		return debug
 	}
-	debug, _ = strconv.ParseBool(configfilearg.MustFindString(args, "debug"))
+	debug, _ = strconv.ParseBool(configfilearg.MustFindString(args, "debug", externalCLIActions...))
 	return debug
 }
 
@@ -125,7 +127,7 @@ func findDataDir(args []string) string {
 	if dataDir != "" {
 		return dataDir
 	}
-	dataDir = configfilearg.MustFindString(args, "data-dir")
+	dataDir = configfilearg.MustFindString(args, "data-dir", externalCLIActions...)
 	if d, err := datadir.Resolve(dataDir); err == nil {
 		dataDir = d
 	} else {
@@ -143,7 +145,7 @@ func findPreferBundledBin(args []string) bool {
 	fs.SetOutput(io.Discard)
 	fs.BoolVar(&preferBundledBin, "prefer-bundled-bin", false, "Prefer bundled binaries")
 
-	preferRes := configfilearg.MustFindString(args, "prefer-bundled-bin")
+	preferRes := configfilearg.MustFindString(args, "prefer-bundled-bin", externalCLIActions...)
 	if preferRes != "" {
 		preferBundledBin, _ = strconv.ParseBool(preferRes)
 	}
@@ -158,8 +160,7 @@ func findPreferBundledBin(args []string) bool {
 // it returns false so that standard CLI wrapping can occur.
 func runCLIs(dataDir string) bool {
 	progName := filepath.Base(os.Args[0])
-	switch progName {
-	case "crictl", "ctr", "kubectl":
+	if slices.Contains(externalCLIActions, progName) {
 		if err := externalCLI(progName, dataDir, os.Args[1:]); err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Fatal(err)
 		}
