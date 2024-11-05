@@ -9,6 +9,7 @@ on:
       - "!tests/e2e**"
       - "!tests/docker**"
       - ".github/**"
+      - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
   pull_request:
     paths-ignore:
@@ -19,6 +20,7 @@ on:
       - "!tests/e2e**"
       - "!tests/docker**"
       - ".github/**"
+      - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
   workflow_dispatch: {}
 
@@ -33,7 +35,7 @@ jobs:
   e2e:
     name: "E2E Tests"
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
