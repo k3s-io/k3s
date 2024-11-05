@@ -85,7 +85,7 @@ func Test_UnitMustFindString(t *testing.T) {
 	}{
 		{
 			name:   "Target not found in config file",
-			args:   []string{"--foo", "bar"},
+			args:   []string{"k3s", "--foo", "bar"},
 			target: "token",
 
 			want: "",
@@ -95,7 +95,7 @@ func Test_UnitMustFindString(t *testing.T) {
 		},
 		{
 			name:   "Target found in config file",
-			args:   []string{"--foo", "bar"},
+			args:   []string{"k3s", "--foo", "bar"},
 			target: "token",
 
 			want: "12345",
@@ -104,11 +104,31 @@ func Test_UnitMustFindString(t *testing.T) {
 			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
 		},
 		{
-			name:   "Override flag found, function is short-circuited",
-			args:   []string{"--foo", "bar", "-h"},
+			name:   "Override flag is returned if found",
+			args:   []string{"k3s", "--foo", "bar", "--version"},
 			target: "token",
 
-			want: "-h",
+			want: "--version",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Override flag is not returned for specific subcommands",
+			args:   []string{"k3s", "ctr", "--foo", "bar", "--version"},
+			target: "token",
+
+			want: "12345",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Override flag is not returned for specific subcommands",
+			args:   []string{"kubectl", "--foo", "bar", "--help"},
+			target: "token",
+
+			want: "12345",
 
 			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
 			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
@@ -121,7 +141,9 @@ func Test_UnitMustFindString(t *testing.T) {
 				t.Errorf("Setup for MustFindString() failed = %v", err)
 				return
 			}
-			if got := MustFindString(tt.args, tt.target); got != tt.want {
+			got := MustFindString(tt.args, tt.target, "crictl", "ctr", "kubectl")
+			t.Logf("MustFindString(%+v, %+v) = %s", tt.args, tt.target, got)
+			if got != tt.want {
 				t.Errorf("MustFindString() = %+v\nWant = %+v", got, tt.want)
 			}
 		})
