@@ -12,7 +12,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant ruby-libvirt
+        sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant=2.4.1-1 ruby-libvirt
         sudo systemctl enable --now libvirtd
     - name: Install vagrant dependencies
       shell: bash
