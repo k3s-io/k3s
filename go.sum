@@ -412,8 +412,8 @@ github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e/go.mod h1:EX
 github.com/containerd/continuity v0.3.0/go.mod h1:wJEAIwKOm/pBZuBd0JmeTvnLquTB1Ag8espWhkykbPM=
 github.com/containerd/continuity v0.4.3 h1:6HVkalIp+2u1ZLH1J/pYX2oBVXlJZvh1X1A7bEZ9Su8=
 github.com/containerd/continuity v0.4.3/go.mod h1:F6PTNCKepoxEaXLQp3wDAjygEnImnZ/7o4JzpodfroQ=
-github.com/containerd/errdefs v0.1.0 h1:m0wCRBiu1WJT/Fr+iOoQHMQS/eP5myQ8lCv4Dz5ZURM=
-github.com/containerd/errdefs v0.1.0/go.mod h1:YgWiiHtLmSeBrvpw+UfPijzbLaB77mEG1WwJTDETIV0=
+github.com/containerd/errdefs v0.3.0 h1:FSZgGOeK4yuT/+DnF07/Olde/q4KBoMsaamhXxIMDp4=
+github.com/containerd/errdefs v0.3.0/go.mod h1:+YBYIdtsnF4Iw6nWZhJcqGSg/dwvV7tyJ/kCkyJ2k+M=
 github.com/containerd/fifo v1.0.0/go.mod h1:ocF/ME1SX5b1AOlWi9r677YJmCPSwwWnQ9O123vzpE4=
 github.com/containerd/fifo v1.1.0 h1:4I2mbh5stb1u6ycIABlBw9zgtlK8viPI9QkQNRQEEmY=
 github.com/containerd/fifo v1.1.0/go.mod h1:bmC4NWMbXlt2EZ0Hc7Fx7QzTFxgPID13eH0Qu+MAb2o=
@@ -974,8 +974,8 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/containerd v1.7.22-k3s1.28 h1:xmjGz0RakOL/C7z3FM53ke3mHkXLCl8rInGpP9EfNyI=
-github.com/k3s-io/containerd v1.7.22-k3s1.28/go.mod h1:T9perze1nIMl5JzddImIgsCEDaM0i8nAfnm+U48DmJw=
+github.com/k3s-io/containerd v1.7.23-k3s1.28 h1:NHnt78AD3uv4ZLw+4u5AL1TTrTanVxs8gmZffRmmfow=
+github.com/k3s-io/containerd v1.7.23-k3s1.28/go.mod h1:+vNritUoqQTlFedsBErSkyu1yqf3eYikE3oGbEICi+g=
 github.com/k3s-io/cri-dockerd v0.3.12-k3s1.28 h1:6M8Gpo/CC3AQKZ58Hodz9qZZhvyC2wHv0s45ja9HB9o=
 github.com/k3s-io/cri-dockerd v0.3.12-k3s1.28/go.mod h1:YWXI6VrFgqt6VTgvSPvTKYFE+mL37s7jUFufY18JcaE=
 github.com/k3s-io/cri-tools v1.26.0-rc.0-k3s1 h1:yWVy9pS0T1BWBMZBPRy2Q29gaLmaGknQHSnx+HStrVM=
