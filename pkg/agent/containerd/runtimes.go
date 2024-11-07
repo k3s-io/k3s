@@ -71,6 +71,10 @@ func findNvidiaContainerRuntimes(foundRuntimes runtimeConfigs) {
 			RuntimeType: "io.containerd.runc.v2",
 			BinaryName:  "nvidia-container-runtime-experimental",
 		},
+                "nvidia-cdi": {
+                        RuntimeType: "io.containerd.runc.v2",
+                        BinaryName:  "nvidia-container-runtime.cdi",
+                },
 	}
 
 	searchForRuntimes(potentialRuntimes, foundRuntimes)

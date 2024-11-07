@@ -4,8 +4,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/kubernetes-sigs/cri-tools/cmd/crictl"
 	"github.com/urfave/cli"
+	"sigs.k8s.io/cri-tools/cmd/crictl"
 )
 
 func Run(ctx *cli.Context) error {

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,19 +27,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	snapshotv3 "go.etcd.io/etcd/etcdutl/v3/snapshot"
+	snapshotv3 "go.etcd.io/etcd/client/v3/snapshot"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	errorTTL = 24 * time.Hour
+	errorTTL             = 24 * time.Hour
+	s3ReconcileTTL       = time.Minute
+	snapshotListPageSize = 20
 )
 
 var (
@@ -238,7 +243,7 @@ func (e *ETCD) Snapshot(ctx context.Context) (*managed.SnapshotResult, error) {
 
 	var sf *snapshot.File
 
-	if err := snapshotv3.NewV3(e.client.GetLogger()).Save(ctx, *cfg, snapshotPath); err != nil {
+	if err := snapshotv3.Save(ctx, e.client.GetLogger(), *cfg, snapshotPath); err != nil {
 		sf = &snapshot.File{
 			Name:     snapshotName,
 			Location: "",
@@ -360,7 +365,7 @@ func (e *ETCD) Snapshot(ctx context.Context) (*managed.SnapshotResult, error) {
 		}
 	}
 
-	return res, e.ReconcileSnapshotData(ctx)
+	return res, e.reconcileSnapshotData(ctx, res)
 }
 
 // listLocalSnapshots provides a list of the currently stored
@@ -461,7 +466,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) (*managed.SnapshotResult, err
 			res.Deleted = append(res.Deleted, deleted...)
 		}
 	}
-	return res, e.ReconcileSnapshotData(ctx)
+	return res, e.reconcileSnapshotData(ctx, res)
 }
 
 // ListSnapshots returns a list of snapshots. Local snapshots are always listed,
@@ -552,7 +557,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) (*manage
 		}
 	}
 
-	return res, e.ReconcileSnapshotData(ctx)
+	return res, e.reconcileSnapshotData(ctx, res)
 }
 
 func (e *ETCD) deleteSnapshot(snapshotPath string) error {
@@ -644,9 +649,17 @@ func (e *ETCD) emitEvent(esf *k3s.ETCDSnapshotFile) {
 }
 
 // ReconcileSnapshotData reconciles snapshot data in the ETCDSnapshotFile resources.
-// It will reconcile snapshot data from disk locally always, and if S3 is enabled, will attempt to list S3 snapshots
-// and reconcile snapshots from S3.
+// It will reconcile snapshot data from disk locally always, and if S3 is enabled, will attempt to
+// list S3 snapshots and reconcile snapshots from S3.
 func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
+	return e.reconcileSnapshotData(ctx, nil)
+}
+
+// reconcileSnapshotData reconciles snapshot data in the ETCDSnapshotFile resources.
+// It will reconcile snapshot data from disk locally always, and if S3 is enabled, will attempt to
+// list S3 snapshots and reconcile snapshots from S3. Any snapshots listed in the Deleted field of
+// the provided SnapshotResult are deleted, even if they are within a retention window.
+func (e *ETCD) reconcileSnapshotData(ctx context.Context, res *managed.SnapshotResult) error {
 	// make sure the core.Factory is initialized. There can
 	// be a race between this core code startup.
 	for e.config.Runtime.Core == nil {
@@ -720,28 +733,41 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 		return err
 	}
 
-	// List all snapshots matching the selector
 	snapshots := e.config.Runtime.K3s.K3s().V1().ETCDSnapshotFile()
-	esfList, err := snapshots.List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
+	snapshotPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (k8sruntime.Object, error) { return snapshots.List(opts) }))
+	snapshotPager.PageSize = snapshotListPageSize
+	now := time.Now().Round(time.Second)
 
+	// List all snapshots matching the selector
 	// If a snapshot from Kubernetes was found on disk/s3, it is in sync and we can remove it from the map to sync.
 	// If a snapshot from Kubernetes was not found on disk/s3, is is gone and can be removed from Kubernetes.
 	// The one exception to the last rule is failed snapshots - these must be retained for a period of time.
-	for _, esf := range esfList.Items {
-		sfKey := generateETCDSnapshotFileConfigMapKey(esf)
+	if err := snapshotPager.EachListItem(ctx, metav1.ListOptions{LabelSelector: selector.String()}, func(obj k8sruntime.Object) error {
+		esf, ok := obj.(*k3s.ETCDSnapshotFile)
+		if !ok {
+			return errors.New("failed to convert object to ETCDSnapshotFile")
+		}
+		sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
 		logrus.Debugf("Found ETCDSnapshotFile for %s with key %s", esf.Spec.SnapshotName, sfKey)
 		if sf, ok := snapshotFiles[sfKey]; ok && sf.GenerateName() == esf.Name {
 			// exists in both and names match, don't need to sync
 			delete(snapshotFiles, sfKey)
 		} else {
-			// doesn't exist on disk - if it's an error that hasn't expired yet, leave it, otherwise remove it
-			if esf.Status.Error != nil && esf.Status.Error.Time != nil {
+			// doesn't exist on disk/s3
+			if res != nil && slices.Contains(res.Deleted, esf.Spec.SnapshotName) {
+				// snapshot has been intentionally deleted, skip checking for expiration
+			} else if esf.Status.Error != nil && esf.Status.Error.Time != nil {
 				expires := esf.Status.Error.Time.Add(errorTTL)
-				if time.Now().Before(expires) {
-					continue
+				if now.Before(expires) {
+					// it's an error that hasn't expired yet, leave it
+					return nil
+				}
+			} else if esf.Spec.S3 != nil {
+				expires := esf.ObjectMeta.CreationTimestamp.Add(s3ReconcileTTL)
+				if now.Before(expires) {
+					// it's an s3 snapshot that's only just been created, leave it to prevent a race condition
+					// when multiple nodes are uploading snapshots at the same time.
+					return nil
 				}
 			}
 			if ok {
@@ -749,11 +775,15 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 			} else {
 				logrus.Debugf("Key %s not found in snapshotFile list", sfKey)
 			}
+			// otherwise remove it
 			logrus.Infof("Deleting ETCDSnapshotFile for %s", esf.Spec.SnapshotName)
 			if err := snapshots.Delete(esf.Name, &metav1.DeleteOptions{}); err != nil {
 				logrus.Errorf("Failed to delete ETCDSnapshotFile: %v", err)
 			}
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	// Any snapshots remaining in the map from disk/s3 were not found in Kubernetes and need to be created
@@ -794,30 +824,32 @@ func (e *ETCD) ReconcileSnapshotData(ctx context.Context) error {
 	}
 
 	// List and remove all snapshots stored on nodes that do not match the selector
-	esfList, err = snapshots.List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return err
-	}
+	if err := snapshotPager.EachListItem(ctx, metav1.ListOptions{LabelSelector: selector.String()}, func(obj k8sruntime.Object) error {
+		esf, ok := obj.(*k3s.ETCDSnapshotFile)
+		if !ok {
+			return errors.New("failed to convert object to ETCDSnapshotFile")
+		}
 
-	for _, esf := range esfList.Items {
 		if err := snapshots.Delete(esf.Name, &metav1.DeleteOptions{}); err != nil {
 			logrus.Errorf("Failed to delete ETCDSnapshotFile for non-etcd node %s: %v", esf.Spec.NodeName, err)
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	// Update our Node object to note the timestamp of the snapshot storages that have been reconciled
-	now := time.Now().Round(time.Second).Format(time.RFC3339)
 	patch := []map[string]string{
 		{
 			"op":    "add",
-			"value": now,
+			"value": now.Format(time.RFC3339),
 			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationLocalReconciled, "/", "~1"),
 		},
 	}
 	if e.config.EtcdS3 != nil {
 		patch = append(patch, map[string]string{
 			"op":    "add",
-			"value": now,
+			"value": now.Format(time.RFC3339),
 			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationS3Reconciled, "/", "~1"),
 		})
 	}

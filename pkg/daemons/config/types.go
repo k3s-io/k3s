@@ -78,19 +78,20 @@ type EtcdS3 struct {
 }
 
 type Containerd struct {
-	Address       string
-	Log           string
-	Root          string
-	State         string
-	Config        string
-	Opt           string
-	Template      string
-	BlockIOConfig string
-	RDTConfig     string
-	Registry      string
-	NoDefault     bool
-	SELinux       bool
-	Debug         bool
+	Address        string
+	Log            string
+	Root           string
+	State          string
+	Config         string
+	Opt            string
+	Template       string
+	BlockIOConfig  string
+	RDTConfig      string
+	Registry       string
+	NoDefault      bool
+	NonrootDevices bool
+	SELinux        bool
+	Debug          bool
 }
 
 type CRIDockerd struct {
@@ -123,6 +124,8 @@ type Agent struct {
 	NodeIPs                 []net.IP
 	NodeExternalIP          string
 	NodeExternalIPs         []net.IP
+	NodeInternalDNSs        []string
+	NodeExternalDNSs        []string
 	RuntimeSocket           string
 	ImageServiceSocket      string
 	ListenAddress           string
@@ -227,8 +230,6 @@ type Control struct {
 	ClusterInit              bool
 	ClusterReset             bool
 	ClusterResetRestorePath  string
-	EncryptForce             bool
-	EncryptSkip              bool
 	MinTLSVersion            string
 	CipherSuites             []string
 	TLSMinVersion            uint16   `json:"-"`
@@ -288,18 +289,18 @@ func (c *Control) Loopback(urlSafe bool) string {
 }
 
 type ControlRuntimeBootstrap struct {
-	ETCDServerCA       string
-	ETCDServerCAKey    string
-	ETCDPeerCA         string
-	ETCDPeerCAKey      string
-	ServerCA           string
-	ServerCAKey        string
-	ClientCA           string
-	ClientCAKey        string
-	ServiceKey         string
+	ETCDServerCA       string `rotate:"true"`
+	ETCDServerCAKey    string `rotate:"true"`
+	ETCDPeerCA         string `rotate:"true"`
+	ETCDPeerCAKey      string `rotate:"true"`
+	ServerCA           string `rotate:"true"`
+	ServerCAKey        string `rotate:"true"`
+	ClientCA           string `rotate:"true"`
+	ClientCAKey        string `rotate:"true"`
+	ServiceKey         string `rotate:"true"`
 	PasswdFile         string
-	RequestHeaderCA    string
-	RequestHeaderCAKey string
+	RequestHeaderCA    string `rotate:"true"`
+	RequestHeaderCAKey string `rotate:"true"`
 	IPSECKey           string
 	EncryptionConfig   string
 	EncryptionHash     string

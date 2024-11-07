@@ -416,7 +416,7 @@ func (c *Client) SnapshotRetention(ctx context.Context, retention int, prefix st
 		logrus.Infof("Removing S3 snapshot: s3://%s/%s", c.etcdS3.Bucket, df.Key)
 
 		key := path.Base(df.Key)
-		if err := c.DeleteSnapshot(ctx, key); err != nil {
+		if err := c.DeleteSnapshot(ctx, key); err != nil && !snapshot.IsNotExist(err) {
 			return deleted, err
 		}
 		deleted = append(deleted, key)
@@ -431,14 +431,27 @@ func (c *Client) DeleteSnapshot(ctx context.Context, key string) error {
 	defer cancel()
 
 	key = path.Join(c.etcdS3.Folder, key)
-	err := c.mc.RemoveObject(ctx, c.etcdS3.Bucket, key, minio.RemoveObjectOptions{})
-	if err == nil || snapshot.IsNotExist(err) {
-		metadataKey := path.Join(path.Dir(key), snapshot.MetadataDir, path.Base(key))
-		if merr := c.mc.RemoveObject(ctx, c.etcdS3.Bucket, metadataKey, minio.RemoveObjectOptions{}); merr != nil && !snapshot.IsNotExist(merr) {
-			err = merr
+	_, err := c.mc.StatObject(ctx, c.etcdS3.Bucket, key, minio.StatObjectOptions{})
+	if err == nil {
+		if err := c.mc.RemoveObject(ctx, c.etcdS3.Bucket, key, minio.RemoveObjectOptions{}); err != nil {
+			return err
 		}
 	}
 
+	// check for and try to delete the metadata regardless of whether or not the
+	// snapshot existed, just to ensure that things are cleaned up in the case of
+	// ephemeral errors. Metadata delete errors are only exposed if the object
+	// exists and fails to delete.
+	metadataKey := path.Join(path.Dir(key), snapshot.MetadataDir, path.Base(key))
+	_, merr := c.mc.StatObject(ctx, c.etcdS3.Bucket, metadataKey, minio.StatObjectOptions{})
+	if merr == nil {
+		if err := c.mc.RemoveObject(ctx, c.etcdS3.Bucket, metadataKey, minio.RemoveObjectOptions{}); err != nil {
+			return err
+		}
+	}
+
+	// return error from snapshot StatObject call, so that callers can determine
+	// if the object was actually deleted or not by checking for a NotFound error.
 	return err
 }
 

@@ -2,7 +2,7 @@ ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
   ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310', 'generic/ubuntu2310'])
+  ['bento/ubuntu-24.04', 'bento/ubuntu-24.04', 'bento/ubuntu-24.04', 'bento/ubuntu-24.04', 'bento/ubuntu-24.04'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
@@ -99,8 +99,18 @@ def provision(vm, role, role_num, node_num)
 end
 
 def getDBType(role, role_num, vm)
-  
-  if EXTERNAL_DB == "mysql"
+
+  if EXTERNAL_DB == "mariadb"
+    if role.include?("server") && role_num == 0
+      dockerInstall(vm)
+      vm.provision "Start mariaDB", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MARIADB_ROOT_PASSWORD=e2e mariadb:11"
+      vm.provision "shell", inline: "echo \"Wait for mariaDB to startup\"; sleep 10"
+      return "datastore-endpoint: 'mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    elsif role.include?("server") && role_num != 0
+      return "datastore-endpoint: 'mysql://root:e2e@tcp(#{NETWORK_PREFIX}.100:3306)/k3s'"
+    end
+
+  elsif EXTERNAL_DB == "mysql"
     if role.include?("server") && role_num == 0
       dockerInstall(vm)
       vm.provision "Start mysql", inline: "docker run -d -p 3306:3306 --name #{EXTERNAL_DB} -e MYSQL_ROOT_PASSWORD=e2e mysql:5.7"

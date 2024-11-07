@@ -54,6 +54,15 @@ Vagrant.configure("2") do |config|
 
     checkK3sProcesses(test.vm)
 
+    mountDirs(test.vm)
+
+    checkMountPoint(test.vm)
+
+    runUninstall(test.vm)
+
+    checkMountPoint(test.vm)
+
+    unmountDir(test.vm)
   end
 
   %w[libvirt virtualbox vmware_desktop].each do |p|

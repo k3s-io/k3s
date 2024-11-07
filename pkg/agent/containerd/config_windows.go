@@ -10,7 +10,7 @@ import (
 	util3 "github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/kubelet/util"
+	"k8s.io/cri-client/pkg/util"
 )
 
 func getContainerdArgs(cfg *config.Node) []string {

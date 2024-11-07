@@ -13,9 +13,9 @@ import (
 )
 
 // Valid nodeOS:
-// generic/ubuntu2310, generic/centos7, generic/rocky8,
-// opensuse/Leap-15.3.x86_64
-var nodeOS = flag.String("nodeOS", "generic/ubuntu2310", "VM operating system")
+// bento/ubuntu-24.04, opensuse/Leap-15.6.x86_64
+// eurolinux-vagrant/rocky-8, eurolinux-vagrant/rocky-9,
+var nodeOS = flag.String("nodeOS", "bento/ubuntu-24.04", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -84,7 +84,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create new private registry", func() {
-			registry, err := e2e.RunCmdOnNode("docker run -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
+			registry, err := e2e.RunCmdOnNode("docker run --init -d -p 5000:5000 --restart=always --name registry registry:2 ", serverNodeNames[0])
 			fmt.Println(registry)
 			Expect(err).NotTo(HaveOccurred())
 

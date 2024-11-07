@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-7, rocky-8, rocky-9, fedora, opensuse-leap, ubuntu-2204]
+        vm: [centos-9, rocky-8, rocky-9, fedora, opensuse-leap, ubuntu-2404]
       max-parallel: 3
     defaults:
       run:
@@ -65,7 +65,7 @@ jobs:
           vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
           vagrant provision --provision-with=k3s-upload
       - name: Add binary to PATH
-        if: matrix.vm == 'centos-7' || matrix.vm == 'rocky-8' || matrix.vm == 'rocky-9' || matrix.vm == 'opensuse-leap'
+        if: matrix.vm == 'centos-9' || matrix.vm == 'rocky-8' || matrix.vm == 'rocky-9' || matrix.vm == 'opensuse-leap'
         run: vagrant provision --provision-with=add-bin-path
       - name: "⏩ Install K3s"
         run: |
@@ -89,6 +89,14 @@ jobs:
         run: vagrant provision --provision-with=k3s-status
       - name: "k3s-procps"
         run: vagrant provision --provision-with=k3s-procps
+      - name: "k3s-mount-directory"
+        run: vagrant provision --provision-with=k3s-mount-directory
+      - name: "k3s-uninstall"
+        run: vagrant provision --provision-with=k3s-uninstall
+      - name: "k3s-check-mount"
+        run: vagrant provision --provision-with=k3s-check-mount
+      - name: "k3s-unmount-dir"
+        run: vagrant provision --provision-with=k3s-unmount-dir
       - name: Cleanup VM
         run: vagrant destroy -f
       - name: On Failure, launch debug session

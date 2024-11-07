@@ -22,9 +22,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/containerd"
 	ctr2 "github.com/k3s-io/k3s/pkg/ctr"
 	kubectl2 "github.com/k3s-io/k3s/pkg/kubectl"
-	crictl2 "github.com/kubernetes-sigs/cri-tools/cmd/crictl"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	crictl2 "sigs.k8s.io/cri-tools/cmd/crictl"
 )
 
 func init() {

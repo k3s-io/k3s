@@ -6,7 +6,7 @@ ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s"]
-  config.vm.box = "generic/rocky8"
+  config.vm.box = "bento/rockylinux-8"
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
@@ -44,6 +44,15 @@ Vagrant.configure("2") do |config|
 
     checkK3sProcesses(test.vm)
 
+    mountDirs(test.vm)
+
+    checkMountPoint(test.vm)
+
+    runUninstall(test.vm)
+
+    checkMountPoint(test.vm)
+
+    unmountDir(test.vm)
   end
 
   config.vm.provision 'selinux-status', type: 'shell', run: 'once', inline: 'sestatus'

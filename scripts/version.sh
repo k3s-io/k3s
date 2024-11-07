@@ -37,13 +37,13 @@ if [ -z "$VERSION_CONTAINERD" ]; then
     VERSION_CONTAINERD="v0.0.0"
 fi
 
-VERSION_CRICTL=$(get-module-version github.com/kubernetes-sigs/cri-tools)
+VERSION_CRICTL=$(get-module-version sigs.k8s.io/cri-tools)
 if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
 VERSION_K8S_K3S=$(get-module-version k8s.io/kubernetes)
-VERSION_K8S=${VERSION_K8S_K3S%"-k3s1"}
+VERSION_K8S=${VERSION_K8S_K3S%-k3s*}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
@@ -68,8 +68,8 @@ if [ -z "$VERSION_CRI_DOCKERD" ]; then
   VERSION_CRI_DOCKERD="v0.0.0"
 fi
 
-VERSION_CNIPLUGINS="v1.4.0-k3s2"
-VERSION_FLANNEL_PLUGIN="v1.4.0-flannel1"
+VERSION_CNIPLUGINS="v1.6.0-k3s1"
+VERSION_FLANNEL_PLUGIN="v1.6.0-flannel1"
 
 VERSION_KUBE_ROUTER=$(get-module-version github.com/cloudnativelabs/kube-router/v2)
 if [ -z "$VERSION_KUBE_ROUTER" ]; then

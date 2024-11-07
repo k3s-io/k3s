@@ -90,3 +90,48 @@ def waitForNodeReady(vm)
       SHELL
     end
   end
+
+  def mountDirs(vm)
+    vm.provision "k3s-mount-directory", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.inline = <<~SHELL
+      #!/usr/bin/env bash
+      set -eu -o pipefail
+      echo 'Mounting server dir'
+      mount --bind /var/lib/rancher/k3s/server /var/lib/rancher/k3s/server
+      SHELL
+    end
+  end
+
+  def runUninstall(vm)
+    vm.provision "k3s-uninstall", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.inline = <<~SHELL
+      #!/usr/bin/env bash
+      set -eu -o pipefail
+      echo 'Uninstall k3s'
+      k3s-server-uninstall.sh
+      SHELL
+    end
+  end
+
+  def checkMountPoint(vm)
+    vm.provision "k3s-check-mount", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.inline = <<~SHELL
+      #!/usr/bin/env bash
+      set -eu -o pipefail
+      echo 'Check the mount'
+      mount | grep /var/lib/rancher/k3s/server
+      SHELL
+    end
+  end
+
+  def unmountDir(vm)
+    vm.provision "k3s-unmount-dir", type: "shell", run: ENV['CI'] == 'true' ? 'never' : 'once' do |sh|
+      sh.inline = <<~SHELL
+      #!/usr/bin/env bash
+      set -eu -o pipefail
+      echo 'unmount the mount'
+      umount /var/lib/rancher/k3s/server
+      rm -rf /var/lib/rancher
+      SHELL
+    end
+  end

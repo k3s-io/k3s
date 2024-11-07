@@ -1,0 +1,62 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        location /ip {
+            return 200 "$remote_addr\n";
+        }
+         # Default location block to serve the default "Welcome to nginx" page
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-loadbalancer-ext
+spec:
+  selector:
+    matchLabels:
+      k8s-app: nginx-app-loadbalancer-ext
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-app-loadbalancer-ext
+    spec:
+      containers:
+      - name: nginx
+        image: ranchertest/mytestcontainer
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: nginx-loadbalancer-svc-ext
+ labels:
+   k8s-app: nginx-app-loadbalancer-ext
+spec:
+ type: LoadBalancer
+ externalTrafficPolicy: Local
+ ports:
+ - port: 82
+   targetPort: 80
+   protocol: TCP
+   name: http
+ selector:
+   k8s-app: nginx-app-loadbalancer-ext

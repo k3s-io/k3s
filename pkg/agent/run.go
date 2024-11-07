@@ -284,6 +284,18 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
+	if nodeConfig.SupervisorMetrics {
+		if err := metrics.DefaultMetrics.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to serve metrics")
+		}
+	}
+
+	if nodeConfig.EnablePProf {
+		if err := profile.DefaultProfiler.Start(ctx, nodeConfig); err != nil {
+			return errors.Wrap(err, "failed to serve pprof")
+		}
+	}
+
 	<-ctx.Done()
 	return ctx.Err()
 }
@@ -477,6 +489,17 @@ func updateAddressAnnotations(nodeConfig *daemonconfig.Node, nodeAnnotations map
 				}
 			}
 		}
+	}
+
+	if len(agentConfig.NodeInternalDNSs) > 0 {
+		result[cp.InternalDNSKey] = strings.Join(agentConfig.NodeInternalDNSs, ",")
+	} else {
+		delete(result, cp.InternalDNSKey)
+	}
+	if len(agentConfig.NodeExternalDNSs) > 0 {
+		result[cp.ExternalDNSKey] = strings.Join(agentConfig.NodeExternalDNSs, ",")
+	} else {
+		delete(result, cp.ExternalDNSKey)
 	}
 
 	result = labels.Merge(nodeAnnotations, result)

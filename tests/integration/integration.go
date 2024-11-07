@@ -55,7 +55,7 @@ func findK3sExecutable() string {
 		break
 	}
 	if i == 20 {
-		logrus.Fatal("Unable to find k3s executable")
+		logrus.Fatalf("Unable to find k3s executable in %s", k3sBin)
 	}
 	return k3sBin
 }
@@ -254,6 +254,7 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 		return nil, err
 	}
 	cmd.Stderr = f
+	logrus.Info("Starting k3s server. Check k3log.txt for logs")
 	err = cmd.Start()
 	return &K3sServer{cmd, f}, err
 }
@@ -388,9 +389,10 @@ func RunCommand(cmd string) (string, error) {
 	c := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
 	c.Stdout = &out
+	c.Stderr = &out
 	err := c.Run()
 	if err != nil {
-		return "", fmt.Errorf("%s", err)
+		return out.String(), fmt.Errorf("%s", err)
 	}
 	return out.String(), nil
 }

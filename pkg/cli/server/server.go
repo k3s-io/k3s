@@ -32,15 +32,12 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	etcdversion "go.etcd.io/etcd/api/v3/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
-
-	_ "github.com/go-sql-driver/mysql" // ensure we have mysql
-	_ "github.com/lib/pq"              // ensure we have postgres
-	_ "github.com/mattn/go-sqlite3"    // ensure we have sqlite
 )
 
 func Run(app *cli.Context) error {
@@ -151,6 +148,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.Datastore.NotifyInterval = 5 * time.Second
+	serverConfig.ControlConfig.Datastore.EmulatedETCDVersion = etcdversion.Version
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CAFile = cfg.DatastoreCAFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile

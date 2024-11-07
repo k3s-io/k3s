@@ -19,7 +19,7 @@ What is this?
 K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3Apr+k3s) production-ready Kubernetes distribution with the following changes:
 
 1. It is packaged as a single binary.
-1. It adds support for sqlite3 as the default storage backend. Etcd3, MySQL, and Postgres are also supported.
+1. It adds support for sqlite3 as the default storage backend. Etcd3, MariaDB, MySQL, and Postgres are also supported.
 1. It wraps Kubernetes and other components in a single, simple launcher.
 1. It is secure by default with reasonable defaults for lightweight environments.
 1. It has minimal to no OS dependencies (just a sane kernel and cgroup mounts needed).
@@ -61,7 +61,7 @@ What's with the name?
 
 We wanted an installation of Kubernetes that was half the size in terms of memory footprint. Kubernetes is a
 10 letter word stylized as k8s. So something half as big as Kubernetes would be a 5 letter word stylized as
-K3s. There is neither a long-form of K3s nor official pronunciation.
+K3s. A '3' is also an '8' cut in half vertically. There is neither a long-form of K3s nor official pronunciation.
 
 Is this a fork?
 ---------------

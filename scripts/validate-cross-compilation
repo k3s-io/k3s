@@ -10,7 +10,7 @@ GO=${GO-go}
 PKG="github.com/k3s-io/k3s"
 PKG_CONTAINERD="github.com/containerd/containerd"
 PKG_K3S_CONTAINERD="github.com/k3s-io/containerd"
-PKG_CRICTL="github.com/kubernetes-sigs/cri-tools/pkg"
+PKG_CRICTL="sigs.k8s.io/cri-tools/pkg"
 PKG_K8S_BASE="k8s.io/component-base"
 PKG_K8S_CLIENT="k8s.io/client-go/pkg"
 

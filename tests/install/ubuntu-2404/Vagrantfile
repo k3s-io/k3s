@@ -6,14 +6,14 @@ ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s"]
-  config.vm.box = 'generic/ubuntu2204'
+  config.vm.box = 'bento/ubuntu-24.04'
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   # Load in helper functions
   load "../install_util.rb"
 
-  config.vm.define 'install-ubuntu-2204', primary: true do |test|
+  config.vm.define 'install-ubuntu-2404', primary: true do |test|
     test.vm.hostname = 'smoke'
     test.vm.provision 'k3s-upload', type: 'file', run: 'always', source: ENV['TEST_INSTALL_SH'], destination: 'install.sh'
     test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
@@ -44,6 +44,15 @@ Vagrant.configure("2") do |config|
 
     checkCGroupV2(test.vm)
 
+    mountDirs(test.vm)
+
+    checkMountPoint(test.vm)
+
+    runUninstall(test.vm)
+
+    checkMountPoint(test.vm)
+
+    unmountDir(test.vm)
   end
 
   %w[libvirt virtualbox vmware_desktop].each do |p|

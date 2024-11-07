@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -20,7 +21,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/util/retry"
 
 	"github.com/sirupsen/logrus"
@@ -216,20 +219,25 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	logrus.Infof("Reconciling snapshot ConfigMap data")
 
 	// Get a list of existing snapshots
-	snapshotList, err := e.snapshots.List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
 	snapshots := map[string]*apisv1.ETCDSnapshotFile{}
-	for i := range snapshotList.Items {
-		esf := &snapshotList.Items[i]
+	snapshotPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (k8sruntime.Object, error) { return e.snapshots.List(opts) }))
+	snapshotPager.PageSize = snapshotListPageSize
+
+	if err := snapshotPager.EachListItem(e.ctx, metav1.ListOptions{}, func(obj k8sruntime.Object) error {
+		esf, ok := obj.(*k3s.ETCDSnapshotFile)
+		if !ok {
+			return errors.New("failed to convert object to ETCDSnapshotFile")
+		}
+
 		// Do not create entries for snapshots that have been deleted or do not have extra metadata
 		if !esf.DeletionTimestamp.IsZero() || len(esf.Spec.Metadata) == 0 {
-			continue
+			return nil
 		}
 		sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
 		snapshots[sfKey] = esf
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	snapshotConfigMap, err := e.configmaps.Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})

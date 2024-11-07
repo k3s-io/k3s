@@ -117,6 +117,7 @@ var (
 		Name:        "data-dir,d",
 		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 		Destination: &ServerConfig.DataDir,
+		EnvVar:      version.ProgramUpper + "_DATA_DIR",
 	}
 	ServerToken = &cli.StringFlag{
 		Name:        "token,t",
@@ -526,6 +527,7 @@ var ServerFlags = []cli.Flag{
 	DefaultRuntimeFlag,
 	ImageServiceEndpointFlag,
 	DisableDefaultRegistryEndpointFlag,
+	NonrootDevicesFlag,
 	PauseImageFlag,
 	SnapshotterFlag,
 	PrivateRegistryFlag,
@@ -538,6 +540,8 @@ var ServerFlags = []cli.Flag{
 	AirgapExtraRegistryFlag,
 	NodeIPFlag,
 	NodeExternalIPFlag,
+	NodeInternalDNSFlag,
+	NodeExternalDNSFlag,
 	ResolvConfFlag,
 	FlannelIfaceFlag,
 	FlannelConfFlag,
