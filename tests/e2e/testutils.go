@@ -314,22 +314,29 @@ func FetchNodeExternalIP(nodename string) (string, error) {
 }
 
 func GenKubeConfigFile(serverName string) (string, error) {
-	cmd := fmt.Sprintf("vagrant ssh %s -c \"sudo cat /etc/rancher/k3s/k3s.yaml\"", serverName)
-	kubeConfig, err := RunCommand(cmd)
+	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
+	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", serverName, kubeConfigFile)
+	_, err := RunCommand(cmd)
 	if err != nil {
 		return "", err
 	}
+
+	kubeConfig, err := os.ReadFile(kubeConfigFile)
+	if err != nil {
+		return "", err
+	}
+
 	re := regexp.MustCompile(`(?m)==> vagrant:.*\n`)
-	kubeConfig = re.ReplaceAllString(kubeConfig, "")
+	modifiedKubeConfig := re.ReplaceAllString(string(kubeConfig), "")
 	nodeIP, err := FetchNodeExternalIP(serverName)
 	if err != nil {
 		return "", err
 	}
-	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIP, 1)
-	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
-	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
+	modifiedKubeConfig = strings.Replace(modifiedKubeConfig, "127.0.0.1", nodeIP, 1)
+	if err := os.WriteFile(kubeConfigFile, []byte(modifiedKubeConfig), 0644); err != nil {
 		return "", err
 	}
+
 	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
 		return "", err
 	}
@@ -495,6 +502,9 @@ func RunCmdOnNode(cmd string, nodename string) (string, error) {
 	}
 	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
+	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
+	// these are added to the command output and need to be removed
+	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
 	if err != nil {
 		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
 	}
