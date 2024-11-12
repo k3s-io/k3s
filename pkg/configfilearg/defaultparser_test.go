@@ -124,8 +124,28 @@ func Test_UnitMustFindString(t *testing.T) {
 			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
 		},
 		{
-			name:   "Override flag is not returned for specific subcommands",
+			name:   "Override flag is not returned for specific subcommands with full path",
+			args:   []string{"/usr/local/bin/k3s", "ctr", "--foo", "bar", "--version"},
+			target: "token",
+
+			want: "12345",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Override flag is not returned for wrapped commands",
 			args:   []string{"kubectl", "--foo", "bar", "--help"},
+			target: "token",
+
+			want: "12345",
+
+			setup:    func() error { return os.Setenv("K3S_CONFIG_FILE", "./testdata/defaultdata.yaml") },
+			teardown: func() error { return os.Unsetenv("K3S_CONFIG_FILE") },
+		},
+		{
+			name:   "Override flag is not returned for wrapped commands with full path",
+			args:   []string{"/usr/local/bin/kubectl", "--foo", "bar", "--help"},
 			target: "token",
 
 			want: "12345",
