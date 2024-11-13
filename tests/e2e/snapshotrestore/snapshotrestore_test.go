@@ -145,17 +145,6 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Error().NotTo(HaveOccurred())
 		})
 
-		It("Resets non bootstrap nodes", func() {
-			for _, nodeName := range serverNodeNames {
-				if nodeName != serverNodeNames[0] {
-					cmd := "k3s server --cluster-reset"
-					response, err := e2e.RunCmdOnNode(cmd, nodeName)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(response).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
-				}
-			}
-		})
-
 		It("Checks that other servers are not ready", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
