@@ -14,6 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/pkg/errors"
+	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/util/workqueue"
@@ -40,20 +41,17 @@ func CreateWatcher() (*Watcher, error) {
 }
 
 func isFileSupported(path string) bool {
-	supportedExtensions := map[string]bool{
-		".tar":     true,
-		".tar.lz4": true,
-		".tar.bz2": true,
-		".tbz":     true,
-		".tar.gz":  true,
-		".tgz":     true,
-		".tar.zst": true,
-		".tzst":    true,
-		".txt":     true,
+	if filepath.Ext(path) == ".txt" {
+		return true
 	}
 
-	suffix := filepath.Ext(path)
-	return supportedExtensions[suffix]
+	for _, value := range tarfile.SupportedExtensions {
+		if filepath.Ext(path) == value {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (w *Watcher) HandleWatch(path string) error {
@@ -145,23 +143,22 @@ func (w *Watcher) processNextEventForImages(ctx context.Context, cfg *config.Nod
 func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, cfg *config.Node, client *containerd.Client, imageClient runtimeapi.ImageServiceClient) error {
 	defer w.workqueue.Done(event)
 
-	switch event.Op {
-	case fsnotify.Write:
+	if event.Has(fsnotify.Write) {
 		newStateFile, err := os.Stat(event.Name)
 		if err != nil {
-			logrus.Errorf("Failed to get file %s info for image event write: %s", event.Name, err.Error())
-			break
+			logrus.Errorf("Failed to get file %s info for image event WRITE: %s", event.Name, err.Error())
+			return err
 		}
 
 		// we do not want to handle directorys, only files
 		if newStateFile.IsDir() {
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
 		if !isFileSupported(event.Name) {
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
 		lastStateFile := w.filesMap[event.Name]
@@ -172,15 +169,17 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 			start := time.Now()
 			if err := preloadFile(ctx, cfg, client, imageClient, event.Name); err != nil {
 				logrus.Errorf("Failed to import %s: %v", event.Name, err)
-				break
+				return err
 			}
 			logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
 		}
-	case fsnotify.Create:
+	}
+
+	if event.Has(fsnotify.Create) {
 		info, err := os.Stat(event.Name)
 		if err != nil {
-			logrus.Errorf("Failed to get file %s info for image event Create: %v", event.Name, err)
-			break
+			logrus.Errorf("Failed to get file %s info for image event CREATE: %v", event.Name, err)
+			return err
 		}
 
 		if info.IsDir() {
@@ -188,19 +187,19 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 			if event.Name == cfg.Images {
 				if err := w.HandleWatch(cfg.Images); err != nil {
 					logrus.Errorf("Failed to watch %s: %v", cfg.Images, err)
-					break
+					return err
 				}
 
 				if err := w.Populate(cfg.Images); err != nil {
 					logrus.Errorf("Failed to populate %s files: %v", cfg.Images, err)
-					break
+					return err
 				}
 
 				// Read the directory to see if the created folder has files inside
 				fileInfos, err := os.ReadDir(cfg.Images)
 				if err != nil {
 					logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
-					break
+					return err
 				}
 
 				for _, fileInfo := range fileInfos {
@@ -220,12 +219,12 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 			}
 
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
 		if !isFileSupported(event.Name) {
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
 		w.filesMap[event.Name] = info
@@ -234,44 +233,48 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 		start := time.Now()
 		if err := preloadFile(ctx, cfg, client, imageClient, event.Name); err != nil {
 			logrus.Errorf("Error encountered while importing %s: %v", event.Name, err)
-			break
+			return err
 		}
 		logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
-	case fsnotify.Rename:
-		// Clear the map when cfg.Images directory is renamed, it does not need to remove the watcher
+	}
+
+	if event.Has(fsnotify.Remove) {
+		// Clear the map when cfg.Images directory is removed, it does not need to remove the watcher
 		// because the fsnotify already removes
 		if event.Name == cfg.Images {
 			w.ClearMap()
-			break
+			return nil
 		}
 
 		if !isFileSupported(event.Name) {
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
-		// clear label because when a new file will be created because of the rename
-		// the create event will label the images with the name of the new file
+		// Remove the auto import label from the image
 		err := clearLabelFromAutoImport(ctx, client, event.Name)
 		if err != nil {
 			logrus.Errorf("Failed to clear auto import label for %s: %v", event.Name, err)
 		}
 		delete(w.filesMap, event.Name)
 		logrus.Debugf("Removed file from the image watcher controller: %s", event.Name)
-	case fsnotify.Remove:
-		// Clear the map when cfg.Images directory is removed, it does not need to remove the watcher
+	}
+
+	if event.Has(fsnotify.Rename) {
+		// Clear the map when cfg.Images directory is renamed, it does not need to remove the watcher
 		// because the fsnotify already removes
 		if event.Name == cfg.Images {
 			w.ClearMap()
-			break
+			return nil
 		}
 
 		if !isFileSupported(event.Name) {
 			w.workqueue.Done(event)
-			break
+			return nil
 		}
 
-		// Remove the auto import label from the image
+		// clear label because when a new file will be created because of the rename
+		// the create event will label the images with the name of the new file
 		err := clearLabelFromAutoImport(ctx, client, event.Name)
 		if err != nil {
 			logrus.Errorf("Failed to clear auto import label for %s: %v", event.Name, err)
@@ -294,7 +297,7 @@ func watchImages(ctx context.Context, cfg *config.Node) {
 	defer w.watcher.Close()
 
 	if err := w.HandleWatch(filepath.Dir(cfg.Images)); err != nil {
-		logrus.Errorf("Failed to watch %s: %v", cfg.Images, err)
+		logrus.Errorf("Failed to watch %s: %v", filepath.Dir(cfg.Images), err)
 		return
 	}
 
@@ -310,9 +313,9 @@ func watchImages(ctx context.Context, cfg *config.Node) {
 			return
 		}
 	} else if os.IsNotExist(err) {
-		logrus.Debugf("Image folder not created %s", cfg.Images)
+		logrus.Debugf("Image dir %s does not exist", cfg.Images)
 	} else {
-		logrus.Debugf("Unable to get info from %s: %v", cfg.Images, err)
+		logrus.Debugf("Failed to stat image dir %s: %v", cfg.Images, err)
 	}
 
 	go w.runWorkerForImages(ctx, cfg)
