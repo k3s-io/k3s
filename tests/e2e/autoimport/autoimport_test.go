@@ -91,12 +91,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create file for auto import and search in the image store", func() {
-			fmt.Printf("\nCreate the file with hello world image\n")
 			cmd := `echo 'docker.io/library/hello-world:latest' | sudo tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			fmt.Printf("\nSearch for image in image store\n")
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/hello-world'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("library/hello-world"))
@@ -108,6 +106,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			cmd := `mv /var/lib/rancher/k3s/agent/images/testautoimport.txt /var/lib/rancher/k3s/agent/images/testautoimportrename.txt`
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/hello-world'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=testautoimport.txt"))
