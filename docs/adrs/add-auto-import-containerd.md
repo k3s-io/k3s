@@ -42,7 +42,7 @@ When the controller receive a event saying that a file was renamed, or removed, 
 
 ## Decision
 
-- Not decided yet
+- Decided
 
 ## Consequences
 
