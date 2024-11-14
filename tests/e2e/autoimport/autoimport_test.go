@@ -97,8 +97,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/hello-world'`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("library/hello-world"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=testautoimport.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
@@ -110,6 +111,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/hello-world'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=testautoimportrename.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
@@ -121,6 +124,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'k3s'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 
 			cmd = `rm /var/lib/rancher/k3s/agent/images/bb.txt`
@@ -130,6 +135,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'k3s'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 
 			cmd = `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
@@ -138,7 +145,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'k3s'`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
@@ -158,6 +167,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/mysql'`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=mysql.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
