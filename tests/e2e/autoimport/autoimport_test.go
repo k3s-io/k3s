@@ -91,7 +91,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create file for auto import and search in the image store", func() {
-			cmd := `echo 'docker.io/library/hello-world:latest' | sudo tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
+			cmd := `echo docker.io/library/hello-world:latest | sudo tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
@@ -109,7 +109,36 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep 'library/hello-world'`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=testautoimport.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=testautoimportrename.txt"))
+			}, "620s", "5s").Should(Succeed())
+		})
+
+		It("Create, remove and create again a file", func() {
+			cmd := `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
+			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
+			Eventually(func(g Gomega) {
+				cmd := `k3s ctr images list | grep 'k3s'`
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+			}, "620s", "5s").Should(Succeed())
+
+			cmd = `rm /var/lib/rancher/k3s/agent/images/bb.txt`
+			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
+			Eventually(func(g Gomega) {
+				cmd := `k3s ctr images list | grep 'k3s'`
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+			}, "620s", "5s").Should(Succeed())
+
+			cmd = `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
+			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+
+			Eventually(func(g Gomega) {
+				cmd := `k3s ctr images list | grep 'k3s'`
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 			}, "620s", "5s").Should(Succeed())
 		})
 

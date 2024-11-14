@@ -293,13 +293,15 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 	imageService := client.ImageService()
 	for i, image := range images {
 		if image.Labels[k3sPinnedImageLabelKey] == k3sPinnedImageLabelValue &&
-			image.Labels[labels.PinnedImageLabelKey] == labels.PinnedImageLabelValue {
+			image.Labels[labels.PinnedImageLabelKey] == labels.PinnedImageLabelValue &&
+			image.Labels[k3sAutoImportImageLabelKey] == fileName {
 			continue
 		}
 
 		if image.Labels == nil {
 			image.Labels = map[string]string{}
 		}
+
 		image.Labels[k3sAutoImportImageLabelKey] = fileName
 		image.Labels[k3sPinnedImageLabelKey] = k3sPinnedImageLabelValue
 		image.Labels[labels.PinnedImageLabelKey] = labels.PinnedImageLabelValue
