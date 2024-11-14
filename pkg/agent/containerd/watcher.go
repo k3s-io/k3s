@@ -41,12 +41,8 @@ func CreateWatcher() (*Watcher, error) {
 }
 
 func isFileSupported(path string) bool {
-	if filepath.Ext(path) == ".txt" {
-		return true
-	}
-
-	for _, value := range tarfile.SupportedExtensions {
-		if filepath.Ext(path) == value {
+	for _, ext := range append(tarfile.SupportedExtensions, ".txt") {
+		if strings.HasSuffix(path, ext) {
 			return true
 		}
 	}
