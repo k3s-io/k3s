@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 
@@ -21,7 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-var defaultDialer proxy.Dialer = &net.Dialer{}
+var defaultDialer proxy.Dialer = &net.Dialer{
+	Timeout:   10 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
 
 // SetHTTPProxy configures a proxy-enabled dialer to be used for all loadbalancer connections,
 // if the agent has been configured to allow use of a HTTP proxy, and the environment has been configured
@@ -48,7 +52,7 @@ func SetHTTPProxy(address string) error {
 		return nil
 	}
 
-	dialer, err := proxyDialer(proxyURL)
+	dialer, err := proxyDialer(proxyURL, defaultDialer)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create proxy dialer for %s", proxyURL)
 	}
@@ -59,7 +63,7 @@ func SetHTTPProxy(address string) error {
 }
 
 func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
-	serverAddresses, hasOriginalServer := sortServers(serverAddresses, lb.defaultServerAddress)
+	serverAddresses, hasDefaultServer := sortServers(serverAddresses, lb.defaultServerAddress)
 	if len(serverAddresses) == 0 {
 		return false
 	}
@@ -102,8 +106,16 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 	rand.Shuffle(len(lb.randomServers), func(i, j int) {
 		lb.randomServers[i], lb.randomServers[j] = lb.randomServers[j], lb.randomServers[i]
 	})
-	if !hasOriginalServer {
+	// If the current server list does not contain the default server address,
+	// we want to include it in the random server list so that it can be tried if necessary.
+	// However, it should be treated as always failing health checks so that it is only
+	// used if all other endpoints are unavailable.
+	if !hasDefaultServer {
 		lb.randomServers = append(lb.randomServers, lb.defaultServerAddress)
+		if defaultServer, ok := lb.servers[lb.defaultServerAddress]; ok {
+			defaultServer.healthCheck = func() bool { return false }
+			lb.servers[lb.defaultServerAddress] = defaultServer
+		}
 	}
 	lb.currentServerAddress = lb.randomServers[0]
 	lb.nextServerIndex = 1
@@ -163,14 +175,14 @@ func (s *server) dialContext(ctx context.Context, network, address string) (net.
 }
 
 // proxyDialer creates a new proxy.Dialer that routes connections through the specified proxy.
-func proxyDialer(proxyURL *url.URL) (proxy.Dialer, error) {
+func proxyDialer(proxyURL *url.URL, forward proxy.Dialer) (proxy.Dialer, error) {
 	if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
 		// Create a new HTTP proxy dialer
-		httpProxyDialer := http_dialer.New(proxyURL)
+		httpProxyDialer := http_dialer.New(proxyURL, http_dialer.WithDialer(forward.(*net.Dialer)))
 		return httpProxyDialer, nil
 	} else if proxyURL.Scheme == "socks5" {
 		// For SOCKS5 proxies, use the proxy package's FromURL
-		return proxy.FromURL(proxyURL, proxy.Direct)
+		return proxy.FromURL(proxyURL, forward)
 	}
 	return nil, fmt.Errorf("unsupported proxy scheme: %s", proxyURL.Scheme)
 }
@@ -204,17 +216,18 @@ func (lb *LoadBalancer) SetDefault(serverAddress string) {
 	lb.mutex.Lock()
 	defer lb.mutex.Unlock()
 
-	_, hasOriginalServer := sortServers(lb.ServerAddresses, lb.defaultServerAddress)
+	hasDefaultServer := slices.Contains(lb.ServerAddresses, lb.defaultServerAddress)
 	// if the old default server is not currently in use, remove it from the server map
-	if server := lb.servers[lb.defaultServerAddress]; server != nil && !hasOriginalServer {
+	if server := lb.servers[lb.defaultServerAddress]; server != nil && !hasDefaultServer {
 		defer server.closeAll()
 		delete(lb.servers, lb.defaultServerAddress)
 	}
-	// if the new default server doesn't have an entry in the map, add one
+	// if the new default server doesn't have an entry in the map, add one - but
+	// with a failing health check so that it is only used as a last resort.
 	if _, ok := lb.servers[serverAddress]; !ok {
 		lb.servers[serverAddress] = &server{
 			address:     serverAddress,
-			healthCheck: func() bool { return true },
+			healthCheck: func() bool { return false },
 			connections: make(map[net.Conn]struct{}),
 		}
 	}
@@ -243,8 +256,10 @@ func (lb *LoadBalancer) runHealthChecks(ctx context.Context) {
 	wait.Until(func() {
 		lb.mutex.RLock()
 		defer lb.mutex.RUnlock()
+		var healthyServerExists bool
 		for address, server := range lb.servers {
 			status := server.healthCheck()
+			healthyServerExists = healthyServerExists || status
 			if status == false && previousStatus[address] == true {
 				// Only close connections when the server transitions from healthy to unhealthy;
 				// we don't want to re-close all the connections every time as we might be ignoring
@@ -252,6 +267,16 @@ func (lb *LoadBalancer) runHealthChecks(ctx context.Context) {
 				defer server.closeAll()
 			}
 			previousStatus[address] = status
+		}
+
+		// If there is at least one healthy server, and the default server is not in the server list,
+		// close all the connections to the default server so that clients reconnect and switch over
+		// to a preferred server.
+		hasDefaultServer := slices.Contains(lb.ServerAddresses, lb.defaultServerAddress)
+		if healthyServerExists && !hasDefaultServer {
+			if server, ok := lb.servers[lb.defaultServerAddress]; ok {
+				defer server.closeAll()
+			}
 		}
 	}, time.Second, ctx.Done())
 	logrus.Debugf("Stopped health checking for load balancer %s", lb.serviceName)
