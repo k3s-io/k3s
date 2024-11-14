@@ -179,6 +179,8 @@ func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net
 			if !allChecksFailed {
 				defer server.closeAll()
 			}
+		} else {
+			logrus.Debugf("Dial health check failed for %s", targetServer)
 		}
 
 		newServer, err := lb.nextServer(targetServer)
