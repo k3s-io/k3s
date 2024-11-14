@@ -277,6 +277,7 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 		return err
 	}
 	for _, image := range images {
+		delete(image.Labels, k3sAutoImportImageLabelKey)
 		delete(image.Labels, k3sPinnedImageLabelKey)
 		delete(image.Labels, labels.PinnedImageLabelKey)
 		if _, err := imageService.Update(ctx, image, "labels"); err != nil {

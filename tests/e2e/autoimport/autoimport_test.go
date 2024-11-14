@@ -195,12 +195,50 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "5s").Should(Succeed())
 		})
 
-		It("Verify pinned images", func() {
+		It("Verify bb.txt image and see if are pinned", func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+			}, "620s", "5s").Should(Succeed())
+		})
+
+		It("Removes bb.txt file", func() {
+			cmd := `rm /var/lib/rancher/k3s/agent/images/bb.txt`
+			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
+		})
+
+		It("Restarts normally", func() {
+			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
+
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				podsRunningAr := 0
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
+						podsRunningAr++
+					}
+				}
+				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
+			}, "620s", "5s").Should(Succeed())
+		})
+
+		It("Verify if bb.txt image is unpinned", func() {
+			Eventually(func(g Gomega) {
+				cmd := `k3s ctr images list | grep library/busybox`
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
