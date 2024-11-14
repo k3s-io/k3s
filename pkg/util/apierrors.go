@@ -40,7 +40,7 @@ func SendError(err error, resp http.ResponseWriter, req *http.Request, status ..
 
 	// Don't log "apiserver not ready" or "apiserver disabled" errors, they are frequent during startup
 	if !errors.Is(err, ErrAPINotReady) && !errors.Is(err, ErrAPIDisabled) {
-		logrus.Errorf("Sending HTTP %d response to %s: %v", code, req.RemoteAddr, err)
+		logrus.Errorf("Sending %s %d response to %s: %v", req.Proto, code, req.RemoteAddr, err)
 	}
 
 	var serr *apierrors.StatusError
@@ -61,6 +61,7 @@ func SendError(err error, resp http.ResponseWriter, req *http.Request, status ..
 		serr = apierrors.NewGenericServerResponse(code, req.Method, schema.GroupResource{}, req.URL.Path, err.Error(), 0, true)
 	}
 
+	resp.Header().Add("Connection", "close")
 	responsewriters.ErrorNegotiated(serr, scheme.Codecs.WithoutConversion(), schema.GroupVersion{}, resp, req)
 }
 
