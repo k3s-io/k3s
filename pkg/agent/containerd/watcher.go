@@ -247,11 +247,7 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 			return nil
 		}
 
-		// Remove the auto import label from the image
-		err := clearLabelFromAutoImport(ctx, client, event.Name)
-		if err != nil {
-			logrus.Errorf("Failed to clear auto import label for %s: %v", event.Name, err)
-		}
+		// delete the file from the file map
 		delete(w.filesMap, event.Name)
 		logrus.Debugf("Removed file from the image watcher controller: %s", event.Name)
 	}
@@ -269,12 +265,7 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 			return nil
 		}
 
-		// clear label because when a new file will be created because of the rename
-		// the create event will label the images with the name of the new file
-		err := clearLabelFromAutoImport(ctx, client, event.Name)
-		if err != nil {
-			logrus.Errorf("Failed to clear auto import label for %s: %v", event.Name, err)
-		}
+		// delete the file from the file map
 		delete(w.filesMap, event.Name)
 		logrus.Debugf("Removed file from the image watcher controller: %s", event.Name)
 	}

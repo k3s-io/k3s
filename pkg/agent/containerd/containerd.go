@@ -34,9 +34,8 @@ var (
 	// In addition to using the CRI pinned label, we add our own label to indicate that
 	// the image was pinned by the import process, so that we can clear the pin on subsequent startups.
 	// ref: https://github.com/containerd/containerd/blob/release/1.7/pkg/cri/labels/labels.go
-	k3sPinnedImageLabelKey     = "io.cattle." + version.Program + ".pinned"
-	k3sAutoImportImageLabelKey = "io.cattle." + version.Program + ".import"
-	k3sPinnedImageLabelValue   = "pinned"
+	k3sPinnedImageLabelKey   = "io.cattle." + version.Program + ".pinned"
+	k3sPinnedImageLabelValue = "pinned"
 )
 
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
@@ -251,23 +250,6 @@ func clearLeases(ctx context.Context, client *containerd.Client) error {
 	return nil
 }
 
-// clearLabelFromFile removes the auto import label on images with the value based on the file name
-func clearLabelFromAutoImport(ctx context.Context, client *containerd.Client, filePath string) error {
-	var errs []error
-	imageService := client.ImageService()
-	images, err := imageService.List(ctx, fmt.Sprintf("labels.%q==%s", k3sAutoImportImageLabelKey, filepath.Base(filePath)))
-	if err != nil {
-		return err
-	}
-	for _, image := range images {
-		delete(image.Labels, k3sAutoImportImageLabelKey)
-		if _, err := imageService.Update(ctx, image, "labels"); err != nil {
-			errs = append(errs, errors.Wrap(err, "failed to delete auto import label from image "+image.Name))
-		}
-	}
-	return merr.NewErrors(errs...)
-}
-
 // clearLabels removes the pinned labels on all images in the image store that were previously pinned by k3s
 func clearLabels(ctx context.Context, client *containerd.Client) error {
 	var errs []error
@@ -277,7 +259,6 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 		return err
 	}
 	for _, image := range images {
-		delete(image.Labels, k3sAutoImportImageLabelKey)
 		delete(image.Labels, k3sPinnedImageLabelKey)
 		delete(image.Labels, labels.PinnedImageLabelKey)
 		if _, err := imageService.Update(ctx, image, "labels"); err != nil {
@@ -294,8 +275,7 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 	imageService := client.ImageService()
 	for i, image := range images {
 		if image.Labels[k3sPinnedImageLabelKey] == k3sPinnedImageLabelValue &&
-			image.Labels[labels.PinnedImageLabelKey] == labels.PinnedImageLabelValue &&
-			image.Labels[k3sAutoImportImageLabelKey] == fileName {
+			image.Labels[labels.PinnedImageLabelKey] == labels.PinnedImageLabelValue {
 			continue
 		}
 
@@ -303,7 +283,6 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 			image.Labels = map[string]string{}
 		}
 
-		image.Labels[k3sAutoImportImageLabelKey] = fileName
 		image.Labels[k3sPinnedImageLabelKey] = k3sPinnedImageLabelValue
 		image.Labels[labels.PinnedImageLabelKey] = labels.PinnedImageLabelValue
 		updatedImage, err := imageService.Update(ctx, image, "labels")

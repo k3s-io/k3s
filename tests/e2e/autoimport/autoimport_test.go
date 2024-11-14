@@ -97,20 +97,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/redis`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=testautoimport.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
-		It("Change name for the file and see if the label is removed", func() {
+		It("Change name for the file and see if the label is still pinned", func() {
 			cmd := `mv /var/lib/rancher/k3s/agent/images/testautoimport.txt /var/lib/rancher/k3s/agent/images/testautoimportrename.txt`
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/redis`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=testautoimportrename.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -123,7 +121,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -134,7 +131,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -145,13 +141,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
-		It("Move the folder, add another image and then see if the image was added", func() {
+		It("Move the folder, add a image and then see if the image is going to be pinned", func() {
 			cmd := `mv /var/lib/rancher/k3s/agent/images /var/lib/rancher/k3s/agent/test`
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
@@ -166,7 +161,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/mysql`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=mysql.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -188,7 +182,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Verify bb.txt image and see if are pinned", func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -201,7 +194,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
@@ -223,7 +215,6 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Verify if bb.txt image is unpinned", func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.import=bb.txt"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.pinned=pinned"))
 				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
