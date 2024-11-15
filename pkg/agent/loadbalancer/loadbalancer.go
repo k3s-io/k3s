@@ -45,13 +45,12 @@ type LoadBalancer struct {
 	localAddress         string
 	localServerURL       string
 	defaultServerAddress string
-	ServerURL            string
-	ServerAddresses      []string
+	serverURL            string
+	serverAddresses      []string
 	randomServers        []string
 	servers              map[string]*server
 	currentServerAddress string
 	nextServerIndex      int
-	Listener             net.Listener
 }
 
 const RandomPort = 0
@@ -105,7 +104,7 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 		localServerURL:       localServerURL,
 		defaultServerAddress: defaultServerAddress,
 		servers:              make(map[string]*server),
-		ServerURL:            serverURL,
+		serverURL:            serverURL,
 	}
 
 	lb.setServers([]string{lb.defaultServerAddress})
@@ -127,7 +126,7 @@ func New(ctx context.Context, dataDir, serviceName, serverURL string, lbServerPo
 	if err := lb.proxy.Start(); err != nil {
 		return nil, err
 	}
-	logrus.Infof("Running load balancer %s %s -> %v [default: %s]", serviceName, lb.localAddress, lb.ServerAddresses, lb.defaultServerAddress)
+	logrus.Infof("Running load balancer %s %s -> %v [default: %s]", serviceName, lb.localAddress, lb.serverAddresses, lb.defaultServerAddress)
 
 	go lb.runHealthChecks(ctx)
 
@@ -141,7 +140,7 @@ func (lb *LoadBalancer) Update(serverAddresses []string) {
 	if !lb.setServers(serverAddresses) {
 		return
 	}
-	logrus.Infof("Updated load balancer %s server addresses -> %v [default: %s]", lb.serviceName, lb.ServerAddresses, lb.defaultServerAddress)
+	logrus.Infof("Updated load balancer %s server addresses -> %v [default: %s]", lb.serviceName, lb.serverAddresses, lb.defaultServerAddress)
 
 	if err := lb.writeConfig(); err != nil {
 		logrus.Warnf("Error updating load balancer %s config: %s", lb.serviceName, err)
@@ -153,6 +152,13 @@ func (lb *LoadBalancer) LoadBalancerServerURL() string {
 		return ""
 	}
 	return lb.localServerURL
+}
+
+func (lb *LoadBalancer) ServerAddresses() []string {
+	if lb == nil {
+		return nil
+	}
+	return lb.serverAddresses
 }
 
 func (lb *LoadBalancer) dialContext(ctx context.Context, network, _ string) (net.Conn, error) {
