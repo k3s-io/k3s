@@ -15,8 +15,8 @@ type lbConfig struct {
 
 func (lb *LoadBalancer) writeConfig() error {
 	config := &lbConfig{
-		ServerURL:       lb.serverURL,
-		ServerAddresses: lb.serverAddresses,
+		ServerURL:       lb.scheme + "://" + lb.servers.getDefaultAddress(),
+		ServerAddresses: lb.servers.getAddresses(),
 	}
 	configOut, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
@@ -26,20 +26,17 @@ func (lb *LoadBalancer) writeConfig() error {
 }
 
 func (lb *LoadBalancer) updateConfig() error {
-	writeConfig := true
 	if configBytes, err := os.ReadFile(lb.configFile); err == nil {
 		config := &lbConfig{}
 		if err := json.Unmarshal(configBytes, config); err == nil {
-			if config.ServerURL == lb.serverURL {
-				writeConfig = false
-				lb.setServers(config.ServerAddresses)
+			// if the default server from the config matches our current default,
+			// load the rest of the addresses as well.
+			if config.ServerURL == lb.scheme+"://"+lb.servers.getDefaultAddress() {
+				lb.Update(config.ServerAddresses)
+				return nil
 			}
 		}
 	}
-	if writeConfig {
-		if err := lb.writeConfig(); err != nil {
-			return err
-		}
-	}
-	return nil
+	// config didn't exist or used a different default server, write the current config to disk.
+	return lb.writeConfig()
 }
