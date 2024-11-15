@@ -51,7 +51,7 @@ func (e *etcdproxy) Update(addresses []string) {
 	e.etcdLB.Update(addresses)
 
 	validEndpoint := map[string]bool{}
-	for _, address := range e.etcdLB.ServerAddresses {
+	for _, address := range e.etcdLB.ServerAddresses() {
 		validEndpoint[address] = true
 		if _, ok := e.disconnect[address]; !ok {
 			ctx, cancel := context.WithCancel(context.Background())
