@@ -2,15 +2,16 @@ package loadbalancer
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/proxy"
 )
 
+var originalDialer proxy.Dialer
 var defaultEnv map[string]string
 var proxyEnvs = []string{version.ProgramUpper + "_AGENT_HTTP_PROXY_ALLOWED", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"}
 
@@ -19,7 +20,7 @@ func init() {
 }
 
 func prepareEnv(env ...string) {
-	defaultDialer = &net.Dialer{}
+	originalDialer = defaultDialer
 	defaultEnv = map[string]string{}
 	for _, e := range proxyEnvs {
 		if v, ok := os.LookupEnv(e); ok {
@@ -34,6 +35,7 @@ func prepareEnv(env ...string) {
 }
 
 func restoreEnv() {
+	defaultDialer = originalDialer
 	for _, e := range proxyEnvs {
 		if v, ok := defaultEnv[e]; ok {
 			os.Setenv(e, v)

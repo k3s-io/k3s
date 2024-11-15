@@ -22,7 +22,7 @@ type Proxy interface {
 	SupervisorAddresses() []string
 	APIServerURL() string
 	IsAPIServerLBEnabled() bool
-	SetHealthCheck(address string, healthCheck func() bool)
+	SetHealthCheck(address string, healthCheck loadbalancer.HealthCheckFunc)
 }
 
 // NewSupervisorProxy sets up a new proxy for retrieving supervisor and apiserver addresses.  If
@@ -52,7 +52,7 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 			return nil, err
 		}
 		p.supervisorLB = lb
-		p.supervisorURL = lb.LoadBalancerServerURL()
+		p.supervisorURL = lb.LocalURL()
 		p.apiServerURL = p.supervisorURL
 	}
 
@@ -102,7 +102,7 @@ func (p *proxy) Update(addresses []string) {
 	p.supervisorAddresses = supervisorAddresses
 }
 
-func (p *proxy) SetHealthCheck(address string, healthCheck func() bool) {
+func (p *proxy) SetHealthCheck(address string, healthCheck loadbalancer.HealthCheckFunc) {
 	if p.supervisorLB != nil {
 		p.supervisorLB.SetHealthCheck(address, healthCheck)
 	}
@@ -155,7 +155,7 @@ func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 			return err
 		}
 		p.apiServerLB = lb
-		p.apiServerURL = lb.LoadBalancerServerURL()
+		p.apiServerURL = lb.LocalURL()
 	} else {
 		p.apiServerURL = u.String()
 	}
