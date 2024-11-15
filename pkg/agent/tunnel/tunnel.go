@@ -14,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
+	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -310,7 +311,7 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 		if _, ok := disconnect[address]; !ok {
 			conn := a.connect(ctx, wg, address, tlsConfig)
 			disconnect[address] = conn.cancel
-			proxy.SetHealthCheck(address, conn.connected)
+			proxy.SetHealthCheck(address, conn.healthCheck)
 		}
 	}
 
@@ -384,7 +385,7 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 					if _, ok := disconnect[address]; !ok {
 						conn := a.connect(ctx, nil, address, tlsConfig)
 						disconnect[address] = conn.cancel
-						proxy.SetHealthCheck(address, conn.connected)
+						proxy.SetHealthCheck(address, conn.healthCheck)
 					}
 				}
 
@@ -427,21 +428,19 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 }
 
 type agentConnection struct {
-	cancel    context.CancelFunc
-	connected func() bool
+	cancel      context.CancelFunc
+	healthCheck loadbalancer.HealthCheckFunc
 }
 
 // connect initiates a connection to the remotedialer server. Incoming dial requests from
 // the server will be checked by the authorizer function prior to being fulfilled.
 func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) agentConnection {
+	var status loadbalancer.HealthCheckResult
+
 	wsURL := fmt.Sprintf("wss://%s/v1-"+version.Program+"/connect", address)
 	ws := &websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 	}
-
-	// Assume that the connection to the server will succeed, to avoid failing health checks while attempting to connect.
-	// If we cannot connect, connected will be set to false when the initial connection attempt fails.
-	connected := true
 
 	once := sync.Once{}
 	if waitGroup != nil {
@@ -454,7 +453,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}
 
 	onConnect := func(_ context.Context, _ *remotedialer.Session) error {
-		connected = true
+		status = loadbalancer.HealthCheckResultOK
 		logrus.WithField("url", wsURL).Info("Remotedialer connected to proxy")
 		if waitGroup != nil {
 			once.Do(waitGroup.Done)
@@ -467,7 +466,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 		for {
 			// ConnectToProxy blocks until error or context cancellation
 			err := remotedialer.ConnectToProxyWithDialer(ctx, wsURL, nil, auth, ws, a.dialContext, onConnect)
-			connected = false
+			status = loadbalancer.HealthCheckResultFailed
 			if err != nil && !errors.Is(err, context.Canceled) {
 				logrus.WithField("url", wsURL).WithError(err).Error("Remotedialer proxy error; reconnecting...")
 				// wait between reconnection attempts to avoid hammering the server
@@ -484,8 +483,10 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}()
 
 	return agentConnection{
-		cancel:    cancel,
-		connected: func() bool { return connected },
+		cancel: cancel,
+		healthCheck: func() loadbalancer.HealthCheckResult {
+			return status
+		},
 	}
 }
 

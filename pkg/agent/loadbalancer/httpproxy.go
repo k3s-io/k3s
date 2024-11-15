@@ -60,7 +60,7 @@ func SetHTTPProxy(address string) error {
 func proxyDialer(proxyURL *url.URL, forward proxy.Dialer) (proxy.Dialer, error) {
 	if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
 		// Create a new HTTP proxy dialer
-		httpProxyDialer := http_dialer.New(proxyURL, http_dialer.WithDialer(forward.(*net.Dialer)))
+		httpProxyDialer := http_dialer.New(proxyURL, http_dialer.WithConnectionTimeout(10*time.Second), http_dialer.WithDialer(forward.(*net.Dialer)))
 		return httpProxyDialer, nil
 	} else if proxyURL.Scheme == "socks5" {
 		// For SOCKS5 proxies, use the proxy package's FromURL
