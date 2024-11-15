@@ -24,7 +24,7 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 	defer lb.mutex.Unlock()
 
 	newAddresses := sets.NewString(serverAddresses...)
-	curAddresses := sets.NewString(lb.ServerAddresses...)
+	curAddresses := sets.NewString(lb.serverAddresses...)
 	if newAddresses.Equal(curAddresses) {
 		return false
 	}
@@ -53,8 +53,8 @@ func (lb *LoadBalancer) setServers(serverAddresses []string) bool {
 		}
 	}
 
-	lb.ServerAddresses = serverAddresses
-	lb.randomServers = append([]string{}, lb.ServerAddresses...)
+	lb.serverAddresses = serverAddresses
+	lb.randomServers = append([]string{}, lb.serverAddresses...)
 	rand.Shuffle(len(lb.randomServers), func(i, j int) {
 		lb.randomServers[i], lb.randomServers[j] = lb.randomServers[j], lb.randomServers[i]
 	})
@@ -155,7 +155,7 @@ func (lb *LoadBalancer) SetDefault(serverAddress string) {
 	lb.mutex.Lock()
 	defer lb.mutex.Unlock()
 
-	hasDefaultServer := slices.Contains(lb.ServerAddresses, lb.defaultServerAddress)
+	hasDefaultServer := slices.Contains(lb.serverAddresses, lb.defaultServerAddress)
 	// if the old default server is not currently in use, remove it from the server map
 	if server := lb.servers[lb.defaultServerAddress]; server != nil && !hasDefaultServer {
 		defer server.closeAll()
@@ -211,7 +211,7 @@ func (lb *LoadBalancer) runHealthChecks(ctx context.Context) {
 		// If there is at least one healthy server, and the default server is not in the server list,
 		// close all the connections to the default server so that clients reconnect and switch over
 		// to a preferred server.
-		hasDefaultServer := slices.Contains(lb.ServerAddresses, lb.defaultServerAddress)
+		hasDefaultServer := slices.Contains(lb.serverAddresses, lb.defaultServerAddress)
 		if healthyServerExists && !hasDefaultServer {
 			if server, ok := lb.servers[lb.defaultServerAddress]; ok {
 				defer server.closeAll()
