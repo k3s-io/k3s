@@ -5,19 +5,29 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 )
+
+func Test_UnitLoadBalancer(t *testing.T) {
+	_, reporterConfig := GinkgoConfiguration()
+	reporterConfig.Verbose = testing.Verbose()
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "LoadBalancer Suite", reporterConfig)
+}
 
 func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
 type testServer struct {
+	address  string
 	listener net.Listener
 	conns    []net.Conn
 	prefix   string
@@ -31,6 +41,7 @@ func createServer(ctx context.Context, prefix string) (*testServer, error) {
 	s := &testServer{
 		prefix:   prefix,
 		listener: listener,
+		address:  listener.Addr().String(),
 	}
 	go s.serve()
 	go func() {
@@ -53,6 +64,7 @@ func (s *testServer) serve() {
 
 func (s *testServer) close() {
 	logrus.Printf("testServer %s closing", s.prefix)
+	s.address = ""
 	s.listener.Close()
 	for _, conn := range s.conns {
 		conn.Close()
@@ -69,10 +81,6 @@ func (s *testServer) echo(conn net.Conn) {
 	}
 }
 
-func (s *testServer) address() string {
-	return s.listener.Addr().String()
-}
-
 func ping(conn net.Conn) (string, error) {
 	fmt.Fprintf(conn, "ping\n")
 	result, err := bufio.NewReader(conn).ReadString('\n')
@@ -82,221 +90,340 @@ func ping(conn net.Conn) (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
-// Test_UnitFailOver creates a LB using a default server (ie fixed registration endpoint)
-// and then adds a new server (a node). The node server is then closed, and it is confirmed
-// that new connections use the default server.
-func Test_UnitFailOver(t *testing.T) {
-	tmpDir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+var _ = Describe("LoadBalancer", func() {
+	// creates a LB using a default server (ie fixed registration endpoint)
+	// and then adds a new server (a node). The node server is then closed, and it is confirmed
+	// that new connections use the default server.
+	When("loadbalancer is running", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var defaultServer, node1Server, node2Server *testServer
+		var conn1, conn2, conn3, conn4 net.Conn
+		var lb *LoadBalancer
+		var err error
 
-	defaultServer, err := createServer(ctx, "default")
-	if err != nil {
-		t.Fatalf("createServer(default) failed: %v", err)
-	}
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
 
-	node1Server, err := createServer(ctx, "node1")
-	if err != nil {
-		t.Fatalf("createServer(node1) failed: %v", err)
-	}
+			defaultServer, err = createServer(ctx, "default")
+			Expect(err).NotTo(HaveOccurred(), "createServer(default) failed")
 
-	node2Server, err := createServer(ctx, "node2")
-	if err != nil {
-		t.Fatalf("createServer(node2) failed: %v", err)
-	}
+			node1Server, err = createServer(ctx, "node1")
+			Expect(err).NotTo(HaveOccurred(), "createServer(node1) failed")
 
-	// start the loadbalancer with the default server as the only server
-	lb, err := New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address(), RandomPort, false)
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
-	}
+			node2Server, err = createServer(ctx, "node2")
+			Expect(err).NotTo(HaveOccurred(), "createServer(node2) failed")
 
-	parsedURL, err := url.Parse(lb.LoadBalancerServerURL())
-	if err != nil {
-		t.Fatalf("url.Parse failed: %v", err)
-	}
-	localAddress := parsedURL.Host
+			// start the loadbalancer with the default server as the only server
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address, RandomPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+		})
 
-	// add the node as a new server address.
-	lb.Update([]string{node1Server.address()})
+		AfterAll(func() {
+			cancel()
+		})
 
-	// make sure connections go to the node
-	conn1, err := net.Dial("tcp", localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
-	}
-	if result, err := ping(conn1); err != nil {
-		t.Fatalf("ping(conn1) failed: %v", err)
-	} else if result != "node1:ping" {
-		t.Fatalf("Unexpected ping(conn1) result: %v", result)
-	}
+		It("adds node1 as a server", func() {
+			// add the node as a new server address.
+			lb.Update([]string{node1Server.address})
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultOK })
 
-	t.Log("conn1 tested OK")
+			By(fmt.Sprintf("Added node1 server: %v", lb.servers.getServers()))
 
-	// set failing health check for node 1
-	lb.SetHealthCheck(node1Server.address(), func() bool { return false })
+			// wait for state to change
+			Eventually(func() state {
+				if s := lb.servers.getServer(node1Server.address); s != nil {
+					return s.state
+				}
+				return stateInvalid
+			}, 5, 1).Should(Equal(statePreferred))
+		})
 
-	// Server connections are checked every second, now that node 1 is failed
-	// the connections to it should be closed.
-	time.Sleep(2 * time.Second)
+		It("connects to node1", func() {
+			// make sure connections go to the node
+			conn1, err = net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+			Expect(ping(conn1)).To(Equal("node1:ping"), "Unexpected ping(conn1) result")
 
-	if _, err := ping(conn1); err == nil {
-		t.Fatal("Unexpected successful ping on closed connection conn1")
-	}
+			By("conn1 tested OK")
+		})
 
-	t.Log("conn1 closed on failure OK")
+		It("changes node1 state to failed", func() {
+			// set failing health check for node 1
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultFailed })
 
-	// make sure connection still goes to the first node - it is failing health checks but so
-	// is the default endpoint, so it should be tried first with health checks disabled,
-	// before failing back to the default.
-	conn2, err := net.Dial("tcp", localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
+			// wait for state to change
+			Eventually(func() state {
+				if s := lb.servers.getServer(node1Server.address); s != nil {
+					return s.state
+				}
+				return stateInvalid
+			}, 5, 1).Should(Equal(stateFailed))
+		})
 
-	}
-	if result, err := ping(conn2); err != nil {
-		t.Fatalf("ping(conn2) failed: %v", err)
-	} else if result != "node1:ping" {
-		t.Fatalf("Unexpected ping(conn2) result: %v", result)
-	}
+		It("disconnects from node1", func() {
+			// Server connections are checked every second, now that node 1 is failed
+			// the connections to it should be closed.
+			Expect(ping(conn1)).Error().To(HaveOccurred(), "Unexpected successful ping on closed connection conn1")
 
-	t.Log("conn2 tested OK")
+			By("conn1 closed on failure OK")
 
-	// make sure the health checks don't close the connection we just made -
-	// connections should only be closed when it transitions from health to unhealthy.
-	time.Sleep(2 * time.Second)
+			// connections shoould go to the default now that node 1 is failed
+			conn2, err = net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+			Expect(ping(conn2)).To(Equal("default:ping"), "Unexpected ping(conn2) result")
 
-	if result, err := ping(conn2); err != nil {
-		t.Fatalf("ping(conn2) failed: %v", err)
-	} else if result != "node1:ping" {
-		t.Fatalf("Unexpected ping(conn2) result: %v", result)
-	}
+			By("conn2 tested OK")
+		})
 
-	t.Log("conn2 tested OK again")
+		It("does not close connections unexpectedly", func() {
+			// make sure the health checks don't close the connection we just made -
+			// connections should only be closed when it transitions from health to unhealthy.
+			time.Sleep(2 * time.Second)
 
-	// shut down the first node server to force failover to the default
-	node1Server.close()
+			Expect(ping(conn2)).To(Equal("default:ping"), "Unexpected ping(conn2) result")
 
-	// make sure new connections go to the default, and existing connections are closed
-	conn3, err := net.Dial("tcp", localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
+			By("conn2 tested OK again")
+		})
 
-	}
-	if result, err := ping(conn3); err != nil {
-		t.Fatalf("ping(conn3) failed: %v", err)
-	} else if result != "default:ping" {
-		t.Fatalf("Unexpected ping(conn3) result: %v", result)
-	}
+		It("closes connections when dial fails", func() {
+			// shut down the first node server to force failover to the default
+			node1Server.close()
 
-	t.Log("conn3 tested OK")
+			// make sure new connections go to the default, and existing connections are closed
+			conn3, err = net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
 
-	if _, err := ping(conn2); err == nil {
-		t.Fatal("Unexpected successful ping on closed connection conn2")
-	}
+			Expect(ping(conn3)).To(Equal("default:ping"), "Unexpected ping(conn3) result")
 
-	t.Log("conn2 closed on failure OK")
+			By("conn3 tested OK")
+		})
 
-	// add the second node as a new server address.
-	lb.Update([]string{node2Server.address()})
+		It("replaces node2 as a server", func() {
+			// add the second node as a new server address.
+			lb.Update([]string{node2Server.address})
+			lb.SetHealthCheck(node2Server.address, func() HealthCheckResult { return HealthCheckResultOK })
 
-	// make sure connection now goes to the second node,
-	// and connections to the default are closed.
-	conn4, err := net.Dial("tcp", localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
+			By(fmt.Sprintf("Added node2 server: %v", lb.servers.getServers()))
 
-	}
-	if result, err := ping(conn4); err != nil {
-		t.Fatalf("ping(conn4) failed: %v", err)
-	} else if result != "node2:ping" {
-		t.Fatalf("Unexpected ping(conn4) result: %v", result)
-	}
+			// wait for state to change
+			Eventually(func() state {
+				if s := lb.servers.getServer(node2Server.address); s != nil {
+					return s.state
+				}
+				return stateInvalid
+			}, 5, 1).Should(Equal(statePreferred))
+		})
 
-	t.Log("conn4 tested OK")
+		It("connects to node2", func() {
+			// make sure connection now goes to the second node,
+			// and connections to the default are closed.
+			conn4, err = net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
 
-	// Server connections are checked every second, now that we have a healthy
-	// server, connections to the default server should be closed
-	time.Sleep(2 * time.Second)
+			Expect(ping(conn4)).To(Equal("node2:ping"), "Unexpected ping(conn3) result")
 
-	if _, err := ping(conn3); err == nil {
-		t.Fatal("Unexpected successful ping on connection conn3")
-	}
+			By("conn4 tested OK")
+		})
 
-	t.Log("conn3 closed on failure OK")
-}
+		It("does not close connections unexpectedly", func() {
+			// Server connections are checked every second, now that we have a healthy
+			// server, connections to the default server should be closed
+			time.Sleep(2 * time.Second)
 
-// Test_UnitFailFast confirms that connnections to invalid addresses fail quickly
-func Test_UnitFailFast(t *testing.T) {
-	tmpDir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+			Expect(ping(conn2)).Error().To(HaveOccurred(), "Unexpected successful ping on closed connection conn1")
 
-	serverURL := "http://127.0.0.1:0/"
-	lb, err := New(ctx, tmpDir, SupervisorServiceName, serverURL, RandomPort, false)
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
-	}
+			By("conn2 closed on failure OK")
 
-	conn, err := net.Dial("tcp", lb.localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
-	}
+			Expect(ping(conn3)).Error().To(HaveOccurred(), "Unexpected successful ping on closed connection conn1")
 
-	done := make(chan error)
-	go func() {
-		_, err = ping(conn)
-		done <- err
-	}()
-	timeout := time.After(10 * time.Millisecond)
+			By("conn3 closed on failure OK")
+		})
 
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("Unexpected successful ping from invalid address")
-		}
-	case <-timeout:
-		t.Fatal("Test timed out")
-	}
-}
+		It("adds default as a server", func() {
+			// add the default as a full server
+			lb.Update([]string{node2Server.address, defaultServer.address})
+			lb.SetHealthCheck(defaultServer.address, func() HealthCheckResult { return HealthCheckResultOK })
 
-// Test_UnitFailUnreachable confirms that connnections to unreachable addresses do fail
-// within the expected duration
-func Test_UnitFailUnreachable(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping slow test in short mode.")
-	}
-	tmpDir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+			// wait for state to change
+			Eventually(func() state {
+				if s := lb.servers.getServer(defaultServer.address); s != nil {
+					return s.state
+				}
+				return stateInvalid
+			}, 5, 1).Should(Equal(statePreferred))
 
-	serverAddr := "192.0.2.1:6443"
-	lb, err := New(ctx, tmpDir, SupervisorServiceName, "http://"+serverAddr, RandomPort, false)
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
-	}
+			By(fmt.Sprintf("Default server added: %v", lb.servers.getServers()))
+		})
 
-	// Set failing health check to reduce retries
-	lb.SetHealthCheck(serverAddr, func() bool { return false })
+		It("returns the default server in the address list", func() {
+			// confirm that both servers are listed in the address list
+			Expect(lb.ServerAddresses()).To(ConsistOf(node2Server.address, defaultServer.address))
 
-	conn, err := net.Dial("tcp", lb.localAddress)
-	if err != nil {
-		t.Fatalf("net.Dial failed: %v", err)
-	}
+			// confirm that the default is still listed as default
+			Expect(lb.servers.getDefaultAddress()).To(Equal(defaultServer.address), "default server is not default")
 
-	done := make(chan error)
-	go func() {
-		_, err = ping(conn)
-		done <- err
-	}()
-	timeout := time.After(11 * time.Second)
+		})
 
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("Unexpected successful ping from unreachable address")
-		}
-	case <-timeout:
-		t.Fatal("Test timed out")
-	}
-}
+		It("does not return the default server in the address list after removing it", func() {
+			// remove the default as a server
+			lb.Update([]string{node2Server.address})
+			By(fmt.Sprintf("Default removed: %v", lb.servers.getServers()))
+
+			// confirm that it is not listed as a server
+			Expect(lb.ServerAddresses()).To(ConsistOf(node2Server.address))
+
+			// but is still listed as the default
+			Expect(lb.servers.getDefaultAddress()).To(Equal(defaultServer.address), "default server is not default")
+		})
+
+		It("removes default server when no longer default", func() {
+			// set node2 as the default
+			lb.SetDefault(node2Server.address)
+			By(fmt.Sprintf("Default set: %v", lb.servers.getServers()))
+
+			// confirm that it is still listed as a server
+			Expect(lb.ServerAddresses()).To(ConsistOf(node2Server.address))
+
+			// and is listed as the default
+			Expect(lb.servers.getDefaultAddress()).To(Equal(node2Server.address), "node2 server is not default")
+		})
+
+		It("sets all three servers", func() {
+			// set node2 as the default
+			lb.SetDefault(defaultServer.address)
+			By(fmt.Sprintf("Default set: %v", lb.servers.getServers()))
+
+			lb.Update([]string{node1Server.address, node2Server.address, defaultServer.address})
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultOK })
+			lb.SetHealthCheck(node2Server.address, func() HealthCheckResult { return HealthCheckResultOK })
+			lb.SetHealthCheck(defaultServer.address, func() HealthCheckResult { return HealthCheckResultOK })
+
+			// wait for state to change
+			Eventually(func() state {
+				if s := lb.servers.getServer(defaultServer.address); s != nil {
+					return s.state
+				}
+				return stateInvalid
+			}, 5, 1).Should(Equal(statePreferred))
+
+			By(fmt.Sprintf("All servers set: %v", lb.servers.getServers()))
+
+			// confirm that it is still listed as a server
+			Expect(lb.ServerAddresses()).To(ConsistOf(node1Server.address, node2Server.address, defaultServer.address))
+
+			// and is listed as the default
+			Expect(lb.servers.getDefaultAddress()).To(Equal(defaultServer.address), "default server is not default")
+		})
+	})
+
+	// confirms that the loadbalancer will not dial itself
+	When("the default server is the loadbalancer", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var defaultServer *testServer
+		var lb *LoadBalancer
+		var err error
+
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
+
+			defaultServer, err = createServer(ctx, "default")
+			Expect(err).NotTo(HaveOccurred(), "createServer(default) failed")
+			address := defaultServer.address
+			defaultServer.close()
+			_, port, _ := net.SplitHostPort(address)
+			intPort, _ := strconv.Atoi(port)
+
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+address, intPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+		})
+
+		AfterAll(func() {
+			cancel()
+		})
+
+		It("fails immediately", func() {
+			conn, err := net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+
+			_, err = ping(conn)
+			Expect(err).To(HaveOccurred(), "Unexpected successful ping on failed connection")
+		})
+	})
+
+	// confirms that connnections to invalid addresses fail quickly
+	When("there are no valid addresses", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var lb *LoadBalancer
+		var err error
+
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://127.0.0.1:0/", RandomPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+		})
+
+		AfterAll(func() {
+			cancel()
+		})
+
+		It("fails fast", func() {
+			conn, err := net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+
+			done := make(chan error)
+			go func() {
+				_, err = ping(conn)
+				done <- err
+			}()
+			timeout := time.After(10 * time.Millisecond)
+
+			select {
+			case err := <-done:
+				if err == nil {
+					Fail("Unexpected successful ping from invalid address")
+				}
+			case <-timeout:
+				Fail("Test timed out")
+			}
+		})
+	})
+
+	// confirms that connnections to unreachable addresses do fail within the
+	// expected duration
+	When("the server is unreachable", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var lb *LoadBalancer
+		var err error
+
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://192.0.2.1:6443", RandomPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+		})
+
+		AfterAll(func() {
+			cancel()
+		})
+
+		It("fails with the correct timeout", func() {
+			conn, err := net.Dial("tcp", lb.localAddress)
+			Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+
+			done := make(chan error)
+			go func() {
+				_, err = ping(conn)
+				done <- err
+			}()
+			timeout := time.After(11 * time.Second)
+
+			select {
+			case err := <-done:
+				if err == nil {
+					Fail("Unexpected successful ping from unreachable address")
+				}
+			case <-timeout:
+				Fail("Test timed out")
+			}
+		})
+	})
+})

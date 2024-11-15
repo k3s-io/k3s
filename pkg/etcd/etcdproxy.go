@@ -48,6 +48,10 @@ type etcdproxy struct {
 }
 
 func (e *etcdproxy) Update(addresses []string) {
+	if e.etcdLB == nil {
+		return
+	}
+
 	e.etcdLB.Update(addresses)
 
 	validEndpoint := map[string]bool{}
@@ -70,10 +74,8 @@ func (e *etcdproxy) Update(addresses []string) {
 
 // start a polling routine that makes periodic requests to the etcd node's supervisor port.
 // If the request fails, the node is marked unhealthy.
-func (e etcdproxy) createHealthCheck(ctx context.Context, address string) func() bool {
-	// Assume that the connection to the server will succeed, to avoid failing health checks while attempting to connect.
-	// If we cannot connect, connected will be set to false when the initial connection attempt fails.
-	connected := true
+func (e etcdproxy) createHealthCheck(ctx context.Context, address string) loadbalancer.HealthCheckFunc {
+	var status loadbalancer.HealthCheckResult
 
 	host, _, _ := net.SplitHostPort(address)
 	url := fmt.Sprintf("https://%s/ping", net.JoinHostPort(host, strconv.Itoa(e.supervisorPort)))
@@ -89,13 +91,17 @@ func (e etcdproxy) createHealthCheck(ctx context.Context, address string) func()
 		}
 		if err != nil || statusCode != http.StatusOK {
 			logrus.Debugf("Health check %s failed: %v (StatusCode: %d)", address, err, statusCode)
-			connected = false
+			status = loadbalancer.HealthCheckResultFailed
 		} else {
-			connected = true
+			status = loadbalancer.HealthCheckResultOK
 		}
 	}, 5*time.Second, 1.0, true)
 
-	return func() bool {
-		return connected
+	return func() loadbalancer.HealthCheckResult {
+		// Reset the status to unknown on reading, until next time it is checked.
+		// This avoids having a health check result alter the server state between active checks.
+		s := status
+		status = loadbalancer.HealthCheckResultUnknown
+		return s
 	}
 }
