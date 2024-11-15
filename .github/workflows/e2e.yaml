@@ -121,3 +121,62 @@ jobs:
         . ./tests/docker/test-helpers
         . ./tests/docker/test-run-${{ matrix.dtest }}
         echo "Did test-run-${{ matrix.dtest }} pass $?"
+  
+  build-go-tests:
+    name: "Build Go Tests"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Build Go Tests
+      run: |
+        mkdir -p ./dist/artifacts
+        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
+    - name: Upload Go Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-go-tests
+        path: ./dist/artifacts/*.test
+        compression-level: 9
+        rentention-days: 1
+  
+  docker-go:
+    needs: [build, build-go-tests]
+    name: Docker Tests In GO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [basics, cacerts]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: "Download K3s image"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s
+        path: ./dist/artifacts
+    - name: Load and set K3s image
+      run: |
+        docker image load -i ./dist/artifacts/k3s-image.tar
+        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
+        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Download Go Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-go-tests
+        path: ./dist/artifacts
+    # Put the compiled test binary back in the same place as the test source
+    - name: Run ${{ matrix.dtest }} Test
+      run: |
+        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
+        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
+        cd ./tests/docker/${{ matrix.dtest }}
+        ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
