@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,6 +121,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
 			"-e", "K3S_DEBUG=true",
 			os.Getenv("SERVER_DOCKER_ARGS"),
+			os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
 			os.Getenv("REGISTRY_CLUSTER_ARGS"),
 			serverImage,
 			"server", os.Getenv("ARGS"), os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
@@ -177,6 +179,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
 				"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
 				os.Getenv("AGENT_DOCKER_ARGS"),
+				os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
 				getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage),
 				"agent", os.Getenv("ARGS"), os.Getenv("AGENT_ARGS"), os.Getenv(agentInstanceArgs)}, " ")
@@ -330,6 +333,33 @@ func VerifyValidVersion(container string, binary string) error {
 	}
 
 	return nil
+}
+
+// Returns the latest version from the update channel
+func GetVersionFromChannel(upgradeChannel string) (string, error) {
+	url := fmt.Sprintf("https://update.k3s.io/v1-release/channels/%s", upgradeChannel)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to get URL: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	finalURL := resp.Header.Get("Location")
+	if finalURL == "" {
+		return "", fmt.Errorf("location header not set")
+	}
+	version := finalURL[strings.LastIndex(finalURL, "/")+1:]
+	version = strings.Replace(version, "+", "-", 1)
+	return version, nil
 }
 
 // TODO the below functions are duplicated in the integration test utils. Consider combining into commmon package
