@@ -15,7 +15,7 @@ To facilitate K3s CLI testing, see `tests/util/cmd.go` helper functions.
 All integration tests should be placed under `tests/integration/<TEST_NAME>`.  
 All integration test files should be named: `<TEST_NAME>_int_test.go`.  
 All integration test functions should be named: `Test_Integration<TEST_NAME>`.  
-See the [local storage test](../tests/integration/localstorage/localstorage_int_test.go) as an example.
+See the [local storage test](../integration/localstorage/localstorage_int_test.go) as an example.
 
 ## Running
 
