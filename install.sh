@@ -423,22 +423,34 @@ get_k3s_selinux_version() {
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
+
+    # Disable exit-on-error so we can do custom error messages on failure
     set +e
+
+    # Default to a failure status
+    status=1
+
     case $DOWNLOADER in
         curl)
             curl -o $1 -sfL $2
+            status=$?
             ;;
         wget)
             wget -qO $1 $2
+            status=$?
             ;;
         *)
+	    # Enable exit-on-error for fatal to execute
+	    set -e
             fatal "Incorrect executable '$DOWNLOADER'"
             ;;
     esac
 
-    # Abort if download command failed
-    [ $? -eq 0 ] || fatal 'Download failed'
+    # Re-enable exit-on-error
     set -e
+
+    # Abort if download command failed
+    [ $status -eq 0 ] || fatal 'Download failed'
 }
 
 # --- download hash from github url ---
