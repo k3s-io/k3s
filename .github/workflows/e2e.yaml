@@ -152,7 +152,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, cacerts]
+        dtest: [basics, cacerts, bootstraptoken]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
