@@ -152,7 +152,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, cacerts, bootstraptoken, upgrade]
+        dtest: [basics, cacerts, bootstraptoken, upgrade, skew]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -183,7 +183,7 @@ jobs:
         chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
         cd ./tests/docker/${{ matrix.dtest }}
-        if [ ${{ matrix.dtest }} = "upgrade" ]; then
+        if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -branch=$BRANCH_NAME
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
