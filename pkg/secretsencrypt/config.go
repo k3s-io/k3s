@@ -15,7 +15,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	"github.com/sirupsen/logrus"
@@ -237,7 +236,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 	var unixUpdateTime int64
 	var reloadSuccessCounter int64
 	var lastFailure string
-	restConfig, err := clientcmd.BuildConfigFromFlags("", runtime.KubeConfigSupervisor)
+	restConfig, err := util.GetRESTConfig(runtime.KubeConfigSupervisor)
 	if err != nil {
 		return 0, 0, err
 	}
