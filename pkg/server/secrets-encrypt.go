@@ -27,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
@@ -395,18 +393,7 @@ func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip boo
 }
 
 func updateSecrets(ctx context.Context, server *config.Control, nodeName string) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", server.Runtime.KubeConfigSupervisor)
-	if err != nil {
-		return err
-	}
-	// For secrets we need a much higher QPS than default
-	restConfig.QPS = secretsencrypt.SecretQPS
-	restConfig.Burst = secretsencrypt.SecretBurst
-	k8s, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-
+	k8s := server.Runtime.K8s
 	nodeRef := &corev1.ObjectReference{
 		Kind:      "Node",
 		Name:      nodeName,
