@@ -50,6 +50,16 @@ func isFileSupported(path string) bool {
 	return false
 }
 
+func isTarball(path string) bool {
+	for _, ext := range tarfile.SupportedExtensions {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (w *Watcher) HandleWatch(path string) error {
 	if err := w.watcher.Add(path); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to watch from %s directory: %v", path, err))
@@ -127,6 +137,10 @@ func (w *Watcher) processNextEventForImages(ctx context.Context, cfg *config.Nod
 
 	if shutdown {
 		return false
+	}
+
+	if isTarball(event.Name) {
+		time.Sleep(1 * time.Second)
 	}
 
 	if err := w.processImageEvent(ctx, event, cfg, client, imageClient); err != nil {
@@ -225,7 +239,6 @@ func (w *Watcher) processImageEvent(ctx context.Context, event fsnotify.Event, c
 
 		w.filesMap[event.Name] = info
 		logrus.Debugf("File added to watcher controller: %s", event.Name)
-
 		start := time.Now()
 		if err := preloadFile(ctx, cfg, client, imageClient, event.Name); err != nil {
 			logrus.Errorf("Error encountered while importing %s: %v", event.Name, err)
