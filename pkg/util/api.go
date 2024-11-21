@@ -23,7 +23,6 @@ import (
 	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -58,7 +57,7 @@ func GetAddresses(endpoint *v1.Endpoints) []string {
 // readyz endpoint instead of the deprecated healthz endpoint, and supports context.
 func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout time.Duration) error {
 	var lastErr error
-	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	restConfig, err := GetRESTConfig(kubeconfigPath)
 	if err != nil {
 		return err
 	}
@@ -112,7 +111,7 @@ type genericAccessReviewRequest func(context.Context) (*authorizationv1.SubjectA
 // the access would be allowed.
 func WaitForRBACReady(ctx context.Context, kubeconfigPath string, timeout time.Duration, ra authorizationv1.ResourceAttributes, user string, groups ...string) error {
 	var lastErr error
-	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	restConfig, err := GetRESTConfig(kubeconfigPath)
 	if err != nil {
 		return err
 	}

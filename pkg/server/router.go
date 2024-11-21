@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/endpoints/request"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	"k8s.io/kubernetes/pkg/auth/nodeidentifier"
 )
@@ -305,16 +306,17 @@ func fileHandler(fileName ...string) http.Handler {
 }
 
 func apiserversHandler(server *config.Control) http.Handler {
-	var endpointsClient coreclient.EndpointsClient
+	var endpointsClient typedcorev1.EndpointsInterface
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		var endpoints []string
 		if endpointsClient == nil {
 			if server.Runtime.Core != nil {
-				endpointsClient = server.Runtime.Core.Core().V1().Endpoints()
+				endpointsClient = server.Runtime.K8s.CoreV1().Endpoints(metav1.NamespaceDefault)
 			}
 		}
 		if endpointsClient != nil {
-			if endpoint, _ := endpointsClient.Get("default", "kubernetes", metav1.GetOptions{}); endpoint != nil {
+			if endpoint, _ := endpointsClient.Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
 				endpoints = util.GetAddresses(endpoint)
 			}
 		}
