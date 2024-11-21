@@ -171,7 +171,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, lazypull, skew, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, upgrade]
     env:
       BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
     steps:

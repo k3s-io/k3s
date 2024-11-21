@@ -96,10 +96,16 @@ func getPort() int {
 }
 
 // ProvisionServers starts the required number of k3s servers
-// and updates the kubeconfig file with the first server details
+// and updates the kubeconfig file with the first cp server details
 func (config *TestConfig) ProvisionServers(numOfServers int) error {
 	config.NumServers = numOfServers
 	for i := 0; i < config.NumServers; i++ {
+
+		// If a server i already exists, skip. This is useful for scenarios where
+		// the first server is started seperate from the rest of the servers
+		if config.Servers != nil && i < len(config.Servers) {
+			continue
+		}
 
 		testID := filepath.Base(config.TestDir)
 		name := fmt.Sprintf("k3s-server-%d-%s", i, strings.ToLower(testID))
@@ -110,6 +116,18 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 
 		serverImage := getEnvOrDefault("K3S_IMAGE_SERVER", config.K3sImage)
+
+		var joinOrStart string
+		if numOfServers > 0 {
+			if i == 0 {
+				joinOrStart = "--cluster-init"
+			} else {
+				if config.Servers[0].URL == "" {
+					return fmt.Errorf("first server URL is empty")
+				}
+				joinOrStart = fmt.Sprintf("--server %s", config.Servers[0].URL)
+			}
+		}
 
 		// Assemble all the Docker args
 		dRun := strings.Join([]string{"docker run -d",
@@ -124,7 +142,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
 			os.Getenv("REGISTRY_CLUSTER_ARGS"),
 			serverImage,
-			"server", os.Getenv("ARGS"), os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
+			"server", joinOrStart, os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
 		if out, err := RunCommand(dRun); err != nil {
 			return fmt.Errorf("failed to run server container: %s: %v", out, err)
 		}
@@ -147,11 +165,14 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		fmt.Printf("Started %s @ %s\n", name, url)
 
+		// Sleep for a bit to allow the first server to start
+		if i == 0 && numOfServers > 1 {
+			time.Sleep(10 * time.Second)
+		}
 	}
 
 	// Wait for kubeconfig to be available
 	time.Sleep(5 * time.Second)
-	// Write kubeconfig from first serRver
 	return copyAndModifyKubeconfig(config)
 }
 
@@ -211,30 +232,32 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 	return nil
 }
 
+func (config *TestConfig) RemoveNode(nodeName string) error {
+	cmd := fmt.Sprintf("docker stop %s", nodeName)
+	if _, err := RunCommand(cmd); err != nil {
+		return fmt.Errorf("failed to stop node %s: %v", nodeName, err)
+	}
+	cmd = fmt.Sprintf("docker rm %s", nodeName)
+	if _, err := RunCommand(cmd); err != nil {
+		return fmt.Errorf("failed to remove node %s: %v", nodeName, err)
+	}
+	return nil
+}
+
 func (config *TestConfig) Cleanup() error {
 
 	errs := make([]error, 0)
 	// Stop and remove all servers
 	for _, server := range config.Servers {
-		cmd := fmt.Sprintf("docker stop %s", server.Name)
-		if _, err := RunCommand(cmd); err != nil {
-			errs = append(errs, fmt.Errorf("failed to stop server %s: %v", server.Name, err))
-		}
-		cmd = fmt.Sprintf("docker rm %s", server.Name)
-		if _, err := RunCommand(cmd); err != nil {
-			errs = append(errs, fmt.Errorf("failed to remove server %s: %v", server.Name, err))
+		if err := config.RemoveNode(server.Name); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
 	// Stop and remove all agents
 	for _, agent := range config.Agents {
-		cmd := fmt.Sprintf("docker stop %s", agent.Name)
-		if _, err := RunCommand(cmd); err != nil {
-			errs = append(errs, fmt.Errorf("failed to stop agent %s: %v", agent.Name, err))
-		}
-		cmd = fmt.Sprintf("docker rm %s", agent.Name)
-		if _, err := RunCommand(cmd); err != nil {
-			errs = append(errs, fmt.Errorf("failed to remove agent %s: %v", agent.Name, err))
+		if err := config.RemoveNode(agent.Name); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -246,19 +269,33 @@ func (config *TestConfig) Cleanup() error {
 	if config.TestDir != "" {
 		return os.RemoveAll(config.TestDir)
 	}
+	config.Agents = nil
+	config.Servers = nil
 	return nil
 }
 
+// copyAndModifyKubeconfig copies out kubeconfig from first control-plane server
+// and updates the port to match the external port
 func copyAndModifyKubeconfig(config *TestConfig) error {
 	if len(config.Servers) == 0 {
 		return fmt.Errorf("no servers available to copy kubeconfig")
 	}
-	cmd := fmt.Sprintf("docker cp %s:/etc/rancher/k3s/k3s.yaml %s/kubeconfig.yaml", config.Servers[0].Name, config.TestDir)
+
+	serverID := 0
+	for i := range config.Servers {
+		server_args := os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))
+		if !strings.Contains(server_args, "--disable-apiserver") {
+			serverID = i
+			break
+		}
+	}
+
+	cmd := fmt.Sprintf("docker cp %s:/etc/rancher/k3s/k3s.yaml %s/kubeconfig.yaml", config.Servers[serverID].Name, config.TestDir)
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to copy kubeconfig: %v", err)
 	}
 
-	cmd = fmt.Sprintf("sed -i -e \"s/:6443/:%d/g\" %s/kubeconfig.yaml", config.Servers[0].Port, config.TestDir)
+	cmd = fmt.Sprintf("sed -i -e \"s/:6443/:%d/g\" %s/kubeconfig.yaml", config.Servers[serverID].Port, config.TestDir)
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to update kubeconfig: %v", err)
 	}
