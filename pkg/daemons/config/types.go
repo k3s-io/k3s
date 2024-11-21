@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	utilsnet "k8s.io/utils/net"
 )
@@ -371,6 +372,7 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
+	K8s        kubernetes.Interface
 	K3s        *k3s.Factory
 	Core       *core.Factory
 	Event      record.EventRecorder

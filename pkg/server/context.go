@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -43,7 +42,7 @@ func NewContext(ctx context.Context, config *Config, forServer bool) (*Context, 
 	if forServer {
 		cfg = config.ControlConfig.Runtime.KubeConfigSupervisor
 	}
-	restConfig, err := clientcmd.BuildConfigFromFlags("", cfg)
+	restConfig, err := util.GetRESTConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
