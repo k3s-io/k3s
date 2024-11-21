@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/cluster/ports"
 )
@@ -70,7 +69,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		return err
 	}
 
-	nodeRestConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigKubelet)
+	nodeRestConfig, err := util.GetRESTConfig(config.AgentConfig.KubeConfigKubelet)
 	if err != nil {
 		return err
 	}
