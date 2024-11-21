@@ -26,12 +26,12 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/metrics"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1core "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func init() {
@@ -57,7 +57,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return nil
 	}
 
-	restConfig, err := clientcmd.BuildConfigFromFlags("", nodeConfig.AgentConfig.KubeConfigK3sController)
+	restConfig, err := util.GetRESTConfig(nodeConfig.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}
