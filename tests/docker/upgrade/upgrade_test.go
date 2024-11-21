@@ -95,7 +95,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", config.KubeconfigFile)
+				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 		It("should upgrade to current commit build", func() {
@@ -141,7 +141,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should confirm test pod is still Running", func() {
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", config.KubeconfigFile)
+				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 

@@ -88,7 +88,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", config.KubeconfigFile)
+				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 	})

@@ -65,7 +65,7 @@ var _ = Describe("Basic Tests", Ordered, func() {
 		})
 		It("should validate local storage volume", func() {
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", config.KubeconfigFile)
+				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 	})

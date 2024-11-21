@@ -267,17 +267,6 @@ func copyAndModifyKubeconfig(config *TestConfig) error {
 	return nil
 }
 
-// PodReady checks if a pod is ready by querying its status
-func PodReady(podName string, kubeconfig string) (bool, error) {
-
-	cmd := fmt.Sprintf("kubectl get pods -n kube-system -o jsonpath='{.items[*].status.containerStatuses[?(@.name==\"%s\")].ready}' --kubeconfig=%s", podName, kubeconfig)
-	output, err := RunCommand(cmd)
-	if err != nil {
-		return false, fmt.Errorf("failed to get pod status: %v", err)
-	}
-	return strings.Contains(output, "true"), nil
-}
-
 // RunCmdOnDocker runs a command on a docker container
 func RunCmdOnDocker(container, cmd string) (string, error) {
 	dCmd := fmt.Sprintf("docker exec %s %s", container, cmd)
@@ -404,6 +393,25 @@ func ParseNodes(kubeconfigFile string) ([]corev1.Node, error) {
 	}
 
 	return nodes.Items, nil
+}
+
+// PodReady checks if a pod is ready by querying its status
+func PodReady(podName, namespace, kubeconfigFile string) (bool, error) {
+	clientSet, err := k8sClient(kubeconfigFile)
+	if err != nil {
+		return false, err
+	}
+	pod, err := clientSet.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to get pod: %v", err)
+	}
+	// Check if the pod is running
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.Name == podName && containerStatus.Ready {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Checks if all nodes are ready, otherwise returns an error
