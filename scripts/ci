@@ -6,6 +6,9 @@ pushd $SCRIPT_DIR
 
 ./download
 ./validate
+if [ ${ARCH} = riscv64 ]; then
+    ./prepare-cross
+fi
 ./build
 ./package
 

@@ -52,7 +52,7 @@ ENV SELINUX=${SELINUX}
 
 # Set Dapper configuration variables
 ENV DAPPER_RUN_ARGS="--privileged -v k3s-cache:/go/src/github.com/k3s-io/k3s/.cache -v trivy-cache:/root/.cache/trivy" \
-    DAPPER_ENV="REPO TAG DRONE_TAG IMAGE_NAME SKIP_VALIDATE SKIP_IMAGE SKIP_AIRGAP AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID GITHUB_TOKEN GOLANG GOCOVER DEBUG" \
+    DAPPER_ENV="REPO TAG DRONE_TAG IMAGE_NAME ARCH SKIP_VALIDATE SKIP_IMAGE SKIP_AIRGAP AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID GITHUB_TOKEN GOLANG GOCOVER DEBUG" \
     DAPPER_SOURCE="/go/src/github.com/k3s-io/k3s/" \
     DAPPER_OUTPUT="./bin ./dist ./build/out ./build/static ./pkg/static ./pkg/deploy" \
     DAPPER_DOCKER_SOCKET=true \
