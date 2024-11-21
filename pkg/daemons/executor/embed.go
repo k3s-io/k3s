@@ -28,7 +28,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
@@ -269,7 +268,7 @@ func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as
 // uninitialized by the external cloud provider.
 func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+	restConfig, err := util.GetRESTConfig(kubeConfig)
 	if err != nil {
 		return err
 	}
