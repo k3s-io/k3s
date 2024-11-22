@@ -91,15 +91,24 @@ func KubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy
 	return disabled
 }
 
-// APIServers returns a list of apiserver endpoints, suitable for seeding client loadbalancer configurations.
+// WaitForAPIServers returns a list of apiserver endpoints, suitable for seeding client loadbalancer configurations.
 // This function will block until it can return a populated list of apiservers, or if the remote server returns
 // an error (indicating that it does not support this functionality).
-func APIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []string {
+func WaitForAPIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) []string {
 	var addresses []string
+	var info *clientaccess.Info
 	var err error
 
 	_ = wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
-		addresses, err = getAPIServers(ctx, node, proxy)
+		if info == nil {
+			withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
+			info, err = clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
+			if err != nil {
+				logrus.Warnf("Failed to validate server token: %v", err)
+				return false, nil
+			}
+		}
+		addresses, err = GetAPIServers(ctx, info)
 		if err != nil {
 			logrus.Infof("Failed to retrieve list of apiservers from server: %v", err)
 			return false, err
@@ -772,14 +781,8 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	return nodeConfig, nil
 }
 
-// getAPIServers attempts to return a list of apiservers from the server.
-func getAPIServers(ctx context.Context, node *config.Node, proxy proxy.Proxy) ([]string, error) {
-	withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
-	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
-	if err != nil {
-		return nil, err
-	}
-
+// GetAPIServers attempts to return a list of apiservers from the server.
+func GetAPIServers(ctx context.Context, info *clientaccess.Info) ([]string, error) {
 	data, err := info.Get("/v1-" + version.Program + "/apiservers")
 	if err != nil {
 		return nil, err
