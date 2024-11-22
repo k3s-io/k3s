@@ -48,7 +48,7 @@ type NodeError struct {
 
 type SvcExternalIP struct {
 	IP     string `json:"ip"`
-	ipMode string `json:"ipMode"`
+	IPMode string `json:"ipMode"`
 }
 
 type ObjIP struct {
@@ -362,6 +362,19 @@ func GenReport(specReport ginkgo.SpecReport) {
 func GetJournalLogs(node string) (string, error) {
 	cmd := "journalctl -u k3s* --no-pager"
 	return RunCmdOnNode(cmd, node)
+}
+
+func TailJournalLogs(lines int, nodes []string) string {
+	logs := &strings.Builder{}
+	for _, node := range nodes {
+		cmd := fmt.Sprintf("journalctl -u k3s* --no-pager --lines=%d", lines)
+		if l, err := RunCmdOnNode(cmd, node); err != nil {
+			fmt.Fprintf(logs, "** failed to read journald log for node %s ***\n%v\n", node, err)
+		} else {
+			fmt.Fprintf(logs, "** journald log for node %s ***\n%s\n", node, l)
+		}
+	}
+	return logs.String()
 }
 
 // GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
