@@ -35,7 +35,8 @@ jobs:
   e2e:
     name: "E2E Tests"
     needs: build
-    runs-on: ubuntu-24.04
+    if: github.repository == 'k3s-io/k3s'
+    runs-on: equinix-16cpu-64gb
     timeout-minutes: 40
     strategy:
       fail-fast: false
