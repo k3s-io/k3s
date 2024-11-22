@@ -31,12 +31,12 @@ jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
     with:
+      runner: ${{ github.repository == "k3s-io/k3s" && 'equinix-16cpu-64gb' || 'ubuntu-latest' }}
       upload-image: true
   e2e:
     name: "E2E Tests"
     needs: build
-    if: github.repository == 'k3s-io/k3s'
-    runs-on: equinix-16cpu-64gb
+    runs-on:  ${{ github.repository == "k3s-io/k3s" && 'equinix-16cpu-64gb' || 'ubuntu-latest' }}
     timeout-minutes: 40
     strategy:
       fail-fast: false

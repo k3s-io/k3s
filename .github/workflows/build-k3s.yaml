@@ -3,6 +3,10 @@ name: Build K3s
 on: 
   workflow_call:
    inputs:
+    runner:
+      type: string
+      description: 'Runner to build on'
+      default: 'ubuntu-latest'
     upload-repo:
       type: boolean
       required: false
@@ -18,7 +22,7 @@ permissions:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 20
     steps:
     - name: Checkout K3s
