@@ -69,7 +69,7 @@ func NewTestConfig(k3sImage string) (*TestConfig, error) {
 	}
 
 	// Generate random secret
-	config.Secret = fmt.Sprintf("%012d", rand.Intn(1000000000000))
+	config.Secret = fmt.Sprintf("%012d", rand.Int63n(1000000000000))
 	return config, nil
 }
 
