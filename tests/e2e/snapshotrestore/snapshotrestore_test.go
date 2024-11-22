@@ -95,7 +95,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: "+cmd+" result: "+res)
+				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: %q result: %s", cmd, res)
 			}, "240s", "5s").Should(Succeed())
 		})
 
