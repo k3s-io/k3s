@@ -2,8 +2,6 @@ module github.com/k3s-io/k3s
 
 go 1.22.7
 
-toolchain go1.22.9
-
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.11.7
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.15-k3s1.31-3 //v1.31
