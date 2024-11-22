@@ -238,8 +238,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "420s", "2s").Should(Succeed())
 
 			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-			_, err = e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred())
+			res, err = e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd+" result: "+res)
 
 			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
 			res, err = e2e.RunCommand(cmd)
