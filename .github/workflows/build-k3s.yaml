@@ -39,18 +39,27 @@ jobs:
       run: |
         tar -czvf ../k3s-repo.tar.gz .
         mv ../k3s-repo.tar.gz .
-    - name: "Upload K3s directory"
-      if: inputs.upload-repo == true
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s-repo.tar.gz
-        path: k3s-repo.tar.gz
-    - name: "Save K3s image"
-      if: inputs.upload-image == true
-      run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
-    - name: "Upload K3s binary"
-      if: inputs.upload-repo == false
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s
-        path: dist/artifacts/k3s*
+    # - name: "Upload K3s directory"
+    #   if: inputs.upload-repo == true
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: k3s-repo.tar.gz
+    #     path: k3s-repo.tar.gz
+    # - name: "Save K3s image"
+    #   if: inputs.upload-image == true
+    #   run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
+    # - name: "Upload K3s binary"
+    #   if: inputs.upload-repo == false
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: k3s
+    #     path: dist/artifacts/k3s*
+    - name: "Dump CPU info"
+      run: |
+        lscpu
+        lsmem
+    - name: "htop"
+      run: |
+        sudo apt-get install -y htop
+        sleep 3 | htop  > ./htop.out
+        head -c  ./htop.out  | tail -c +10

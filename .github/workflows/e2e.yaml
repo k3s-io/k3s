@@ -28,15 +28,35 @@ permissions:
   contents: read
 
 jobs:
+  test-8cpu:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-8cpu-32gb' || 'ubuntu-latest' }}
+      upload-image: true
+  test-4cpu:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-4cpu-16gb' || 'ubuntu-latest' }}
+      upload-image: true
+  test-gha:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'ubuntu-latest' || 'ubuntu-latest' }}
+      upload-image: true
+  test-keda:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-keda-runner' || 'ubuntu-latest' }}
+      upload-image: true
   build:
     uses: ./.github/workflows/build-k3s.yaml
     with:
-      runner: ${{ github.repository == "k3s-io/k3s" && 'equinix-16cpu-64gb' || 'ubuntu-latest' }}
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-8cpu-32gb' || 'ubuntu-latest' }}
       upload-image: true
   e2e:
     name: "E2E Tests"
     needs: build
-    runs-on:  ${{ github.repository == "k3s-io/k3s" && 'equinix-16cpu-64gb' || 'ubuntu-latest' }}
+    runs-on:  ${{ github.repository == 'k3s-io/k3s' && 'equinix-8cpu-32gb' || 'ubuntu-latest' }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -47,7 +67,6 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
         with: {fetch-depth: 1}
-      
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Cache"
@@ -81,6 +100,9 @@ jobs:
           chmod +x ./dist/artifacts/k3s
           cd tests/e2e/${{ matrix.etest }}
           go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+      - name: On Failure, install ssh 
+        if: ${{ failure() }} && runner.environment == 'self-hosted'
+        run: sudo apt-get -y install openssh-client
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
         if: ${{ failure() }}
