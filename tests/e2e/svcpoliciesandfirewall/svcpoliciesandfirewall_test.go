@@ -128,7 +128,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		Eventually(func(g Gomega) {
 			externalIPs, _ := e2e.FetchExternalIPs(kubeConfigFile, lbSvcExt)
 			g.Expect(externalIPs).To(HaveLen(1), "more than 1 exernalIP found")
-			g.Expect(externalIPs[0]).To(Equal(serverNodeIP),"external IP does not match servernodeIP")
+			g.Expect(externalIPs[0]).To(Equal(serverNodeIP), "external IP does not match servernodeIP")
 		}, "25s", "5s").Should(Succeed())
 	})
 
@@ -154,7 +154,6 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			return e2e.RunCommand(cmd)
 		}, "25s", "5s").ShouldNot(ContainSubstring("10.42"))
 
-		
 		// Verify connectivity to the other nodeIP does not work because of external traffic policy=local
 		for _, externalIP := range lbSvcExternalIPs {
 			if externalIP == lbSvcExtExternalIPs[0] {
@@ -250,7 +249,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		))
 
 		// Check the non working command fails because of internal traffic policy=local
-		Eventually(func() (bool) {
+		Eventually(func() bool {
 			_, err := e2e.RunCommand(nonWorkingCmd)
 			if err != nil && strings.Contains(err.Error(), "exit status") {
 				// Treat exit status as a successful condition
@@ -348,7 +347,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if !failed {
+	if failed {
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	}
 	if !failed || *ci {
