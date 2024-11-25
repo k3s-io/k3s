@@ -39,21 +39,6 @@ var _ = Describe("Basic Tests", Ordered, func() {
 		})
 	})
 
-	Context("Verify Binaries and Images", func() {
-		It("has valid bundled binaries", func() {
-			for _, server := range config.Servers {
-				Expect(tester.VerifyValidVersion(server.Name, "kubectl")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "ctr")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "crictl")).To(Succeed())
-			}
-		})
-		It("has valid airgap images", func() {
-			Expect(config).To(Not(BeNil()))
-			err := VerifyAirgapImages(config.Servers)
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
 	Context("Use Local Storage Volume", func() {
 		It("should apply local storage volume", func() {
 			const volumeTestManifest = "../resources/volume-test.yaml"
@@ -67,6 +52,21 @@ var _ = Describe("Basic Tests", Ordered, func() {
 			Eventually(func() (bool, error) {
 				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
+		})
+	})
+
+	Context("Verify Binaries and Images", func() {
+		It("has valid bundled binaries", func() {
+			for _, server := range config.Servers {
+				Expect(tester.VerifyValidVersion(server.Name, "kubectl")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server.Name, "ctr")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server.Name, "crictl")).To(Succeed())
+			}
+		})
+		It("has valid airgap images", func() {
+			Expect(config).To(Not(BeNil()))
+			err := VerifyAirgapImages(config)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
@@ -83,16 +83,16 @@ var _ = AfterSuite(func() {
 })
 
 // VerifyAirgapImages checks for changes in the airgap image list
-func VerifyAirgapImages(servers []tester.ServerConfig) error {
+func VerifyAirgapImages(config *tester.TestConfig) error {
 	// This file is generated during the build packaging step
 	const airgapImageList = "../../../scripts/airgap/image-list.txt"
 
 	// Use a map to automatically handle duplicates
 	imageSet := make(map[string]struct{})
-	// Collect all images from containers
-	for _, server := range servers {
-		name := server.Name
-		cmd := fmt.Sprintf("docker exec %s crictl images -o json | jq -r '.images[].repoTags[0] | select(. != null)'", name)
+
+	// Collect all images from nodes
+	for _, node := range config.GetNodeNames() {
+		cmd := fmt.Sprintf("docker exec %s crictl images -o json | jq -r '.images[].repoTags[0] | select(. != null)'", node)
 		output, err := tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred(), "failed to execute crictl and jq: %v", err)
 
@@ -114,8 +114,8 @@ func VerifyAirgapImages(servers []tester.ServerConfig) error {
 		return fmt.Errorf("failed to read airgap list file: %v", err)
 	}
 
-	// Sorting doesn't matter with ContainElements
+	// Sorting doesn't matter with ConsistOf
 	existingImages := strings.Split(strings.TrimSpace(string(existing)), "\n")
-	Expect(existingImages).To(ContainElements(uniqueImages))
+	Expect(existingImages).To(ConsistOf(uniqueImages))
 	return nil
 }

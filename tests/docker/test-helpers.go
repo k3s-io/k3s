@@ -244,6 +244,17 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	return nil
 }
 
+func (config *TestConfig) GetNodeNames() []string {
+	var nodeNames []string
+	for _, server := range config.Servers {
+		nodeNames = append(nodeNames, server.Name)
+	}
+	for _, agent := range config.Agents {
+		nodeNames = append(nodeNames, agent.Name)
+	}
+	return nodeNames
+}
+
 func (config *TestConfig) Cleanup() error {
 
 	errs := make([]error, 0)
