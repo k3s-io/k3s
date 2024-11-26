@@ -73,7 +73,7 @@ func NewTestConfig(k3sImage string) (*TestConfig, error) {
 	return config, nil
 }
 
-// portUsed checks if a port is in use
+// portFree checks if a port is in use and returns true if it is free
 func portFree(port int) bool {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
