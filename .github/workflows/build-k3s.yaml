@@ -57,9 +57,5 @@ jobs:
     - name: "Dump CPU info"
       run: |
         lscpu
+        nproc
         lsmem
-    - name: "htop"
-      run: |
-        sudo apt-get install -y htop
-        sleep 3 | htop  > ./htop.out
-        head -c  ./htop.out  | tail -c +10

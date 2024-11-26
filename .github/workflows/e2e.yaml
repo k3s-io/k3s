@@ -28,25 +28,15 @@ permissions:
   contents: read
 
 jobs:
-  test-8cpu:
+  test-arm-2cpu:
     uses: ./.github/workflows/build-k3s.yaml
     with:
-      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-8cpu-32gb' || 'ubuntu-latest' }}
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'oracle-aarch64-2cpu-8gb' || 'ubuntu-latest' }}
       upload-image: true
-  test-4cpu:
+  test-arm-4cpu:
     uses: ./.github/workflows/build-k3s.yaml
     with:
-      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-4cpu-16gb' || 'ubuntu-latest' }}
-      upload-image: true
-  test-gha:
-    uses: ./.github/workflows/build-k3s.yaml
-    with:
-      runner: ${{ github.repository == 'k3s-io/k3s' && 'ubuntu-latest' || 'ubuntu-latest' }}
-      upload-image: true
-  test-keda:
-    uses: ./.github/workflows/build-k3s.yaml
-    with:
-      runner: ${{ github.repository == 'k3s-io/k3s' && 'equinix-keda-runner' || 'ubuntu-latest' }}
+      runner: ${{ github.repository == 'k3s-io/k3s' && 'oracle-aarch64-4cpu-16gb' || 'ubuntu-latest' }}
       upload-image: true
   build:
     uses: ./.github/workflows/build-k3s.yaml
