@@ -155,12 +155,10 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 
 		// we do not want to handle directorys, only files
 		if newStateFile.IsDir() {
-			w.workqueue.Done(key)
 			return nil
 		}
 
 		if !isFileSupported(event.Name) {
-			w.workqueue.Done(key)
 			return nil
 		}
 
@@ -175,8 +173,6 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 			}
 			logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
 		}
-
-		w.workqueue.Done(key)
 	}
 
 	if event.Has(fsnotify.Create) {
@@ -222,12 +218,10 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 				}
 			}
 
-			w.workqueue.Done(key)
 			return nil
 		}
 
 		if !isFileSupported(event.Name) {
-			w.workqueue.Done(key)
 			return nil
 		}
 
@@ -239,7 +233,6 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 			return err
 		}
 		logrus.Infof("Imported images from %s in %s", event.Name, time.Since(start))
-		w.workqueue.Done(key)
 	}
 
 	if event.Has(fsnotify.Remove) {
@@ -251,7 +244,6 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 		}
 
 		if !isFileSupported(event.Name) {
-			w.workqueue.Done(key)
 			return nil
 		}
 
@@ -269,7 +261,6 @@ func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config
 		}
 
 		if !isFileSupported(event.Name) {
-			w.workqueue.Done(key)
 			return nil
 		}
 
