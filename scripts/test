@@ -23,6 +23,10 @@ docker ps
 # Only run basic tests on non amd64 archs, we use GitHub Actions for amd64
 if [ "$ARCH" != 'amd64' ]; then
 
+  export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
+  go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE"
+  echo "Did go test basics $?"
+
   . ./tests/docker/test-run-basics
   echo "Did test-run-basics $?"
 

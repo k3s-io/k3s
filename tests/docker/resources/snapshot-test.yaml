@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stargz-snapshot-test
+spec:
+  containers:
+  - name: stargz-snapshot-test
+    image: "ghcr.io/stargz-containers/k3s-test-ubuntu:20.04-esgz"
+    command: ["sleep"]
+    args: ["infinity"]
