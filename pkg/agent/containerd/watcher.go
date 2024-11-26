@@ -324,7 +324,7 @@ func watchImages(ctx context.Context, cfg *config.Node) {
 
 			// this part is to specify to only get events that were from /agent/images
 			if strings.Contains(event.Name, "/agent/images") {
-				w.workqueue.AddAfter(event, 1*time.Second)
+				w.workqueue.AddAfter(event, 2*time.Second)
 			}
 
 		case err, ok := <-w.watcher.Errors:
