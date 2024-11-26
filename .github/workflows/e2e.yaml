@@ -121,3 +121,85 @@ jobs:
         . ./tests/docker/test-helpers
         . ./tests/docker/test-run-${{ matrix.dtest }}
         echo "Did test-run-${{ matrix.dtest }} pass $?"
+  
+  build-go-tests:
+    name: "Build Go Tests"
+    runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.branch_step.outputs.BRANCH_NAME }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Build Go Tests
+      run: |
+        mkdir -p ./dist/artifacts
+        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
+    - name: Upload Go Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-go-tests
+        path: ./dist/artifacts/*.test
+        compression-level: 9
+        retention-days: 1
+    # For upgrade and skew tests, we need to know the branch name this run is based off.
+    # Since this is predetermined, we can run this step before the docker-go job, saving time.
+    # For PRs we can use the base_ref (ie the target branch of the PR).
+    # For pushes to k3s-io/k3s, the branch_name is a valid ref, master or release-x.y.
+    # For pushes to a fork, we need to determine the branch name by finding the parent branch from git show-branch history.
+    - name: Determine branch name
+      id: branch_step
+      run: |
+        if [ ${{ github.repository }} = "k3s-io/k3s" ]; then 
+          BRANCH_NAME=$(echo ${{ github.base_ref || github.ref_name }})
+        elif [ -z "${{ github.base_ref }}" ]; then
+          # We are in a fork, and need some git history to determine the branch name
+          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
+          BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
+        else
+          BRANCH_NAME=${{ github.base_ref }}
+        fi
+        echo "Branch Name is $BRANCH_NAME"
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+     
+  docker-go:
+    needs: [build, build-go-tests]
+    name: Docker Tests In GO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, upgrade]
+    env:
+      BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: "Download K3s image"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s
+        path: ./dist/artifacts
+    - name: Load and set K3s image
+      run: |
+        docker image load -i ./dist/artifacts/k3s-image.tar
+        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
+        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Download Go Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-go-tests
+        path: ./dist/artifacts
+    - name: Run ${{ matrix.dtest }} Test
+      # Put the compied test binary back in the same place as the test source
+      run: |
+        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
+        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
+        cd ./tests/docker/${{ matrix.dtest }}
+        if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
+          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -branch=$BRANCH_NAME
+        else
+          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
+        fi
