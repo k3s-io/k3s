@@ -24,7 +24,7 @@ import (
 type Watcher struct {
 	watcher   *fsnotify.Watcher
 	filesMap  map[string]fs.FileInfo
-	workqueue workqueue.TypedRateLimitingInterface[fsnotify.Event]
+	workqueue workqueue.TypedDelayingInterface[fsnotify.Event]
 }
 
 func CreateWatcher() (*Watcher, error) {
@@ -36,22 +36,12 @@ func CreateWatcher() (*Watcher, error) {
 	return &Watcher{
 		watcher:   watcher,
 		filesMap:  make(map[string]fs.FileInfo),
-		workqueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[fsnotify.Event]()),
+		workqueue: workqueue.TypedNewDelayingQueue[fsnotify.Event](),
 	}, nil
 }
 
 func isFileSupported(path string) bool {
 	for _, ext := range append(tarfile.SupportedExtensions, ".txt") {
-		if strings.HasSuffix(path, ext) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func isTarball(path string) bool {
-	for _, ext := range tarfile.SupportedExtensions {
 		if strings.HasSuffix(path, ext) {
 			return true
 		}
@@ -137,10 +127,6 @@ func (w *Watcher) processNextEventForImages(ctx context.Context, cfg *config.Nod
 
 	if shutdown {
 		return false
-	}
-
-	if isTarball(event.Name) {
-		time.Sleep(1 * time.Second)
 	}
 
 	if err := w.processImageEvent(ctx, event, cfg, client, imageClient); err != nil {
@@ -338,7 +324,7 @@ func watchImages(ctx context.Context, cfg *config.Node) {
 
 			// this part is to specify to only get events that were from /agent/images
 			if strings.Contains(event.Name, "/agent/images") {
-				w.workqueue.Add(event)
+				w.workqueue.AddAfter(event, 1*time.Second)
 			}
 
 		case err, ok := <-w.watcher.Errors:
