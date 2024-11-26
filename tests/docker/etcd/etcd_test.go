@@ -32,9 +32,8 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 			Eventually(func() error {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
-			Eventually(func(g Gomega) {
-				g.Expect(tester.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
-				g.Expect(tester.NodesReady(config.KubeconfigFile)).To(Succeed())
+			Eventually(func() error {
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames()...)
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should destroy the cluster", func() {
@@ -59,10 +58,9 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 			Eventually(func() error {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "90s", "5s").Should(Succeed())
-			Eventually(func(g Gomega) {
-				g.Expect(tester.ParseNodes(config.KubeconfigFile)).To(HaveLen(6))
-				g.Expect(tester.NodesReady(config.KubeconfigFile)).To(Succeed())
-			}, "60s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames()...)
+			}, "90s", "5s").Should(Succeed())
 		})
 	})
 })

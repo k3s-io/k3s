@@ -463,16 +463,29 @@ func PodReady(podName, namespace, kubeconfigFile string) (bool, error) {
 }
 
 // Checks if all nodes are ready, otherwise returns an error
-func NodesReady(kubeconfigFile string) error {
+// If nodeNames are provided, make sure those nodes are ready
+func NodesReady(kubeconfigFile string, nodeNames ...string) error {
 	nodes, err := ParseNodes(kubeconfigFile)
 	if err != nil {
 		return err
+	}
+	nodesFound := make(map[string]bool, len(nodeNames))
+	for _, nodeName := range nodeNames {
+		nodesFound[nodeName] = false
 	}
 	for _, node := range nodes {
 		for _, condition := range node.Status.Conditions {
 			if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
 				return fmt.Errorf("node %s is not ready", node.Name)
 			}
+			if _, ok := nodesFound[node.Name]; ok {
+				nodesFound[node.Name] = true
+			}
+		}
+	}
+	for nodeName, found := range nodesFound {
+		if !found {
+			return fmt.Errorf("node %s not found", nodeName)
 		}
 	}
 	return nil
