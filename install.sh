@@ -512,16 +512,10 @@ get_pr_artifact_url() {
     fi
     
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
-    wf_raw=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs")
-    build_workflow=$(printf "%s" "${wf_raw}" | jq -r '.check_runs[] |  select(.name == "build / Build")')
+    run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
     
-    # Extract the Run ID from the build workflow and lookup artifacts associated with the run
-    run_id=$(echo "${build_workflow}" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}' | sort -rn | head -1)
-
     # Extract the artifact ID for the "k3s" artifact    
-    artifacts=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts")
-    artifacts_url=$(echo "${artifacts}" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
-    GITHUB_PR_URL="${artifacts_url}"
+    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
 }
 
 # --- download binary from github url ---
