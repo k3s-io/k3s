@@ -781,7 +781,7 @@ create_killall() {
     info "Creating killall script ${KILLALL_K3S_SH}"
     $SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
-[ $(id -u) -eq 0 ] || exec sudo --preserve-env $0 $@
+[ $(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR $0 $@
 
 K3S_DATA_DIR=${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
