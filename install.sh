@@ -883,7 +883,7 @@ create_uninstall() {
     $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
-[ \$(id -u) -eq 0 ] || exec sudo --preserve-env \$0 \$@
+[ \$(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR \$0 \$@
 
 K3S_DATA_DIR=\${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
