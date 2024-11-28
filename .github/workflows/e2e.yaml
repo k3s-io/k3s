@@ -146,13 +146,17 @@ jobs:
     # For upgrade and skew tests, we need to know the branch name this run is based off.
     # Since this is predetermined, we can run this step before the docker-go job, saving time.
     # For PRs we can use the base_ref (ie the target branch of the PR).
-    # For pushes to k3s-io/k3s, the branch_name is a valid ref, master or release-x.y.
+    # For pushes to k3s-io/k3s from dependabot or updatecli, use master
+    # All other pushes should be a valid ref, master or release-1.XX.
     # For pushes to a fork, we need to determine the branch name by finding the parent branch from git show-branch history.
     - name: Determine branch name
       id: branch_step
       run: |
         if [ ${{ github.repository }} = "k3s-io/k3s" ]; then 
           BRANCH_NAME=$(echo ${{ github.base_ref || github.ref_name }})
+          if [[ $BRANCH_NAME =~ ^(dependabot|updatecli) ]]; then
+            BRANCH_NAME=master
+          fi
         elif [ -z "${{ github.base_ref }}" ]; then
           # We are in a fork, and need some git history to determine the branch name
           git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
@@ -162,7 +166,14 @@ jobs:
         fi
         echo "Branch Name is $BRANCH_NAME"
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
-     
+    # branch name should be either master or release-1.XX
+    - name: Fail if branch name does not match pattern
+      run: |
+        if [[ ! ${{ steps.branch_step.outputs.branch_name }} =~ ^(master|release-[0-9]+\.[0-9]+)$ ]]; then
+          echo "Branch name ${{ steps.branch_step.outputs.branch_name }} does not match pattern"
+          exit 1
+        fi
+
   docker-go:
     needs: [build, build-go-tests]
     name: Docker Tests In GO
@@ -193,7 +204,7 @@ jobs:
         name: docker-go-tests
         path: ./dist/artifacts
     - name: Run ${{ matrix.dtest }} Test
-      # Put the compied test binary back in the same place as the test source
+      # Put the compiled test binary back in the same place as the test source
       run: |
         chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
