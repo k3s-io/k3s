@@ -95,28 +95,32 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 		})
+		// Mirror the image as NODEIP:5000/docker-io-library/nginx:1.27.3, but reference it as my-registry.local/library/nginx:1.27.3 -
+		// the rewrite in registries.yaml's entry for my-registry.local should ensure that it is rewritten properly when pulling from
+		// NODEIP:5000 as a mirror.
 		It("Should pull and image from dockerhub and send it to private registry", func() {
-			cmd := "docker pull nginx"
+			cmd := "docker pull docker.io/library/nginx:1.27.3"
 			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			nodeIP, err := e2e.FetchNodeExternalIP(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 
-			cmd = "docker tag nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker tag docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker push " + nodeIP + ":5000/my-webpage"
+			cmd = "docker push " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker image remove nginx " + nodeIP + ":5000/my-webpage"
+			cmd = "docker image remove docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
 			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
+
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/my-webpage", serverNodeNames[0])
+			res, err := e2e.RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.27.3", serverNodeNames[0])
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
