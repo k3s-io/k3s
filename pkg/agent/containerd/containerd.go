@@ -18,6 +18,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/pkg/cri/labels"
 	"github.com/containerd/containerd/reference/docker"
+	reference "github.com/google/go-containerregistry/pkg/name"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -359,6 +360,12 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 	scanner := bufio.NewScanner(imageList)
 	for scanner.Scan() {
 		name := strings.TrimSpace(scanner.Text())
+
+		// the options in the reference.ParseReference are for filtering only strings that cannot be seen as a possible image
+		if _, err := reference.ParseReference(name, reference.WeakValidation, reference.Insecure); err != nil {
+			logrus.Errorf("Unable to pull image %s: %v", name, err)
+			continue
+		}
 
 		if status, err := imageClient.ImageStatus(ctx, &runtimeapi.ImageStatusRequest{
 			Image: &runtimeapi.ImageSpec{
