@@ -361,9 +361,13 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 	for scanner.Scan() {
 		name := strings.TrimSpace(scanner.Text())
 
+		if name == "" {
+			continue
+		}
+
 		// the options in the reference.ParseReference are for filtering only strings that cannot be seen as a possible image
 		if _, err := reference.ParseReference(name, reference.WeakValidation, reference.Insecure); err != nil {
-			logrus.Errorf("Unable to pull image %s: %v", name, err)
+			logrus.Errorf("Failed to parse image reference %q: %v", name, err)
 			continue
 		}
 
