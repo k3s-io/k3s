@@ -32,10 +32,13 @@ def provision(vm, role, role_num, node_num)
   # and still using the heredoc formatting with escapped quotes
   writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
   mkdir -p /etc/rancher/k3s/
-  echo "mirrors:
+  echo 'mirrors:
     my-registry.local:
       endpoint:
-        - \"http://%{net}.100:5000\"" > /etc/rancher/k3s/registries.yaml
+        - http://%{net}.100:5000
+      rewrite:
+        "^library/(.*)$": "docker-io-library/$1"
+  ' > /etc/rancher/k3s/registries.yaml
   SCRIPT
 
   setInsecureRegistryPolicy = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
