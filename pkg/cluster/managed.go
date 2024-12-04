@@ -11,9 +11,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/nodepassword"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -96,7 +100,7 @@ func (c *Cluster) start(ctx context.Context) error {
 // management of etcd cluster membership without being disrupted when a member is removed from the cluster.
 func (c *Cluster) registerDBHandlers(handler http.Handler) (http.Handler, error) {
 	if c.managedDB == nil {
-		return handler, nil
+		return handlerNoEtcd(handler), nil
 	}
 
 	return c.managedDB.Register(handler)
@@ -167,4 +171,19 @@ func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 		}
 		logrus.Warnf("failed to delete old node password secret: %v", err)
 	}
+}
+
+// handlerNoEtcd wraps a handler with an error message indicating that etcd is not deployed.
+func handlerNoEtcd(handler http.Handler) http.Handler {
+	r := mux.NewRouter().SkipClean(true)
+
+	// Wildcard route for anything after /db/
+	r.HandleFunc("/db/{_:.*}", func(resp http.ResponseWriter, r *http.Request) {
+		util.SendError(errors.New("etcd datastore disabled"), resp, r, http.StatusBadRequest)
+	})
+
+	// Needs to come at the end, otherwise wildcard routes won't work
+	r.NotFoundHandler = handler
+
+	return r
 }
