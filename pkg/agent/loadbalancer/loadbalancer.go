@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/inetaf/tcpproxy"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -95,8 +96,18 @@ func New(ctx context.Context, dataDir, serviceName, defaultServerURL string, lbS
 	}
 	lb.proxy.AddRoute(serviceName, &tcpproxy.DialProxy{
 		Addr:        serviceName,
-		DialContext: lb.servers.dialContext,
 		OnDialError: onDialError,
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			start := time.Now()
+			status := "success"
+			conn, err := lb.servers.dialContext(ctx, network, address)
+			latency := time.Since(start)
+			if err != nil {
+				status = "error"
+			}
+			loadbalancerDials.WithLabelValues(serviceName, status).Observe(latency.Seconds())
+			return conn, err
+		},
 	})
 
 	if err := lb.updateConfig(); err != nil {
