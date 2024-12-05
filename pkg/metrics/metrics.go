@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent/https"
+	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	lassometrics "github.com/rancher/lasso/pkg/metrics"
@@ -32,6 +33,8 @@ var DefaultMetrics = &Config{
 func init() {
 	// ensure that lasso exposes metrics through the same registry used by Kubernetes components
 	lassometrics.MustRegister(DefaultRegisterer)
+	// same for loadbalancer metrics
+	loadbalancer.MustRegister(DefaultRegisterer)
 }
 
 // Config holds fields for the metrics listener
