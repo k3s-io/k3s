@@ -32,4 +32,5 @@ import (
 	_ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
 	_ "github.com/containerd/stargz-snapshotter/service/plugin"
 	_ "github.com/containerd/zfs/plugin"
+	_ "github.com/pdtpartners/nix-snapshotter/pkg/plugin"
 )
