@@ -1,0 +1,10 @@
+# This is used as a template to inject the matrix configuration into the updatecli command
+github:
+  user: "github-actions[bot]"
+  email: "41898282+github-actions[bot]@users.noreply.github.com"
+  username: "UPDATECLI_GITHUB_ACTOR"
+  token: "UPDATECLI_GITHUB_TOKEN"
+k3s:
+  org: "k3s-io"
+  repo: "k3s"
+  branch: "release-XXX"
