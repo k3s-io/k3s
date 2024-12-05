@@ -79,6 +79,9 @@ func (sl *serverList) setAddresses(serviceName string, addresses []string) bool 
 					// set state to invalid to prevent server from making additional connections
 					s.state = stateInvalid
 					closeAllFuncs = append(closeAllFuncs, s.closeAll)
+					// remove metrics
+					loadbalancerState.DeleteLabelValues(serviceName, s.address)
+					loadbalancerConnections.DeleteLabelValues(serviceName, s.address)
 					return true
 				}
 				return false
@@ -459,7 +462,7 @@ func (sc *serverConn) Close() error {
 	return sc.Conn.Close()
 }
 
-// runHealthChecks periodically health-checks all servers.
+// runHealthChecks periodically health-checks all servers and updates metrics
 func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 	wait.Until(func() {
 		for _, s := range sl.getServers() {
@@ -468,6 +471,10 @@ func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 				sl.recordSuccess(s, reasonHealthCheck)
 			case HealthCheckResultFailed:
 				sl.recordFailure(s, reasonHealthCheck)
+			}
+			if s.state != stateInvalid {
+				loadbalancerState.WithLabelValues(serviceName, s.address).Set(float64(s.state))
+				loadbalancerConnections.WithLabelValues(serviceName, s.address).Set(float64(len(s.connections)))
 			}
 		}
 	}, time.Second, ctx.Done())
