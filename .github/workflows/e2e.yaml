@@ -269,8 +269,8 @@ jobs:
         echo "User is $(whoami)"
         echo "My Home is $HOME"
     - name: Launch Debug Session
-      uses: owenthereal/action-upterm@v1
+      uses:  mxschmitt/action-tmate@v3
       # if: ${{ failure() }}
-      with:
+      # with:
         ## If no one connects after 5 minutes, shut down server.
-        wait-timeout-minutes: 5
+        # wait-timeout-minutes: 5
