@@ -264,7 +264,7 @@ jobs:
     #     . ./tests/docker/test-run-${{ matrix.dtest }}
     #     echo "Did test-run-${{ matrix.dtest }} pass $?"
     - name: Launch Debug Session
-      uses: dereknola/action-upterm@v1.1
+      uses: owenthereal/action-upterm@v1
       # if: ${{ failure() }}
       with:
         ## If no one connects after 5 minutes, shut down server.
