@@ -248,6 +248,7 @@ jobs:
         sudo chmod +x /usr/bin/yq
         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
         sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        mkdir -p /home/runner/.upterm
     # - name: "Download k3s image"
     #   uses: actions/download-artifact@v4
     #   with:
@@ -263,6 +264,10 @@ jobs:
     #     . ./tests/docker/test-helpers
     #     . ./tests/docker/test-run-${{ matrix.dtest }}
     #     echo "Did test-run-${{ matrix.dtest }} pass $?"
+    - name: Check user
+      run: |
+        echo "User is $(whoami)"
+        echo "My Home is $HOME"
     - name: Launch Debug Session
       uses: owenthereal/action-upterm@v1
       # if: ${{ failure() }}
