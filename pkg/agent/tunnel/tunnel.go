@@ -505,13 +505,14 @@ func (a *agentTunnel) getProxySyncer(ctx context.Context, wg *sync.WaitGroup, tl
 			return
 		}
 
-		newAddresses := sets.New(addresses...)
+		// Compare list of supervisor addresses before and after syncing apiserver
+		// endpoints into the proxy to figure out which supervisors we need to connect to
+		// or disconnect from. Note that the addresses we were passed will not match
+		// the supervisor addresses if the supervisor and apiserver are on different ports -
+		// they must be round-tripped through proxy.Update before comparing.
 		curAddresses := sets.New(proxy.SupervisorAddresses()...)
-		if newAddresses.Equal(curAddresses) {
-			return
-		}
-
 		proxy.Update(addresses)
+		newAddresses := sets.New(proxy.SupervisorAddresses()...)
 
 		// add new servers
 		for address := range newAddresses.Difference(curAddresses) {
