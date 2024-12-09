@@ -15,7 +15,7 @@ for vm in $vms; do
     if [[ $vm =~ $time_regex ]]; then
         vm_time="${BASH_REMATCH[1]}"
         age=$((current_time - vm_time))
-        if [ $age -gt 7200 ]; then
+        if [ $age -gt 3600 ]; then
             virsh destroy $vm
             virsh undefine $vm --remove-all-storage
         fi
@@ -28,7 +28,7 @@ for vm in $vms; do
     if [[ $vm =~ $time_regex ]]; then
         vm_time="${BASH_REMATCH[1]}"
         age=$((current_time - vm_time))
-        if [ $age -gt 7200 ]; then
+        if [ $age -gt 3600 ]; then
             virsh undefine $vm  --remove-all-storage
         fi
     fi
