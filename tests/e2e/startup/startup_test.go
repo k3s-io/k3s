@@ -71,6 +71,12 @@ func KillK3sCluster(nodes []string) error {
 		if _, err := e2e.RunCmdOnNode("k3s-killall.sh", node); err != nil {
 			return err
 		}
+		if _, err := e2e.RunCmdOnNode("journalctl --flush --sync --rotate --vacuum-size=1", node); err != nil {
+			return err
+		}
+		if _, err := e2e.RunCmdOnNode("rm -rf /etc/rancher/k3s/config.yaml.d", node); err != nil {
+			return err
+		}
 		if strings.Contains(node, "server") {
 			if _, err := e2e.RunCmdOnNode("rm -rf /var/lib/rancher/k3s/server/db", node); err != nil {
 				return err
@@ -93,6 +99,83 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("Various Startup Configurations", Ordered, func() {
+	Context("Verify dedicated supervisor port", func() {
+		It("Starts K3s with no issues", func() {
+			for _, node := range agentNodeNames {
+				cmd := "mkdir -p /etc/rancher/k3s/config.yaml.d; grep -F server: /etc/rancher/k3s/config.yaml | sed s/6443/9345/ > /tmp/99-server.yaml; sudo mv /tmp/99-server.yaml /etc/rancher/k3s/config.yaml.d/"
+				res, err := e2e.RunCmdOnNode(cmd, node)
+				By("checking command results: " + res)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			supervisorPortYAML := "supervisor-port: 9345\napiserver-port: 6443\napiserver-bind-address: 0.0.0.0\ndisable: traefik\nnode-taint: node-role.kubernetes.io/control-plane:NoExecute"
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), supervisorPortYAML, "")
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+
+			fmt.Println("CLUSTER CONFIG")
+			fmt.Println("OS:", *nodeOS)
+			fmt.Println("Server Nodes:", serverNodeNames)
+			fmt.Println("Agent Nodes:", agentNodeNames)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Checks node and pod status", func() {
+			fmt.Printf("\nFetching node status\n")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+
+			fmt.Printf("\nFetching pods status\n")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParsePods(kubeConfigFile, true)
+		})
+
+		It("Returns pod metrics", func() {
+			cmd := "kubectl top pod -A"
+			Eventually(func() error {
+				_, err := e2e.RunCommand(cmd)
+				return err
+			}, "600s", "5s").Should(Succeed())
+		})
+
+		It("Returns node metrics", func() {
+			cmd := "kubectl top node"
+			_, err := e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Runs an interactive command a pod", func() {
+			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.36.1 -- uname -a"
+			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Collects logs from a pod", func() {
+			cmd := "kubectl logs -n kube-system -l k8s-app=metrics-server -c metrics-server"
+			_, err := e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Kills the cluster", func() {
+			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 	Context("Verify CRI-Dockerd :", func() {
 		It("Starts K3s with no issues", func() {
 			dockerYAML := "docker: true"
@@ -311,6 +394,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
+		AddReportEntry("config", e2e.GetConfig(append(serverNodeNames, agentNodeNames...)))
 		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
 	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
