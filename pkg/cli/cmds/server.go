@@ -188,6 +188,27 @@ var ServerFlags = []cli.Flag{
 		Value:       6443,
 		Destination: &ServerConfig.HTTPSPort,
 	},
+	&cli.IntFlag{
+		Name:        "supervisor-port",
+		EnvVar:      version.ProgramUpper + "_SUPERVISOR_PORT",
+		Usage:       "(experimental) Supervisor listen port override",
+		Hidden:      true,
+		Destination: &ServerConfig.SupervisorPort,
+	},
+	&cli.IntFlag{
+		Name:        "apiserver-port",
+		EnvVar:      version.ProgramUpper + "_APISERVER_PORT",
+		Usage:       "(experimental) apiserver internal listen port override",
+		Hidden:      true,
+		Destination: &ServerConfig.APIServerPort,
+	},
+	&cli.StringFlag{
+		Name:        "apiserver-bind-address",
+		EnvVar:      version.ProgramUpper + "_APISERVER_BIND_ADDRESS",
+		Usage:       "(experimental) apiserver internal bind address override",
+		Hidden:      true,
+		Destination: &ServerConfig.APIServerBindAddress,
+	},
 	&cli.StringFlag{
 		Name:        "advertise-address",
 		Usage:       "(listener) IPv4/IPv6 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
@@ -195,7 +216,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.IntFlag{
 		Name:        "advertise-port",
-		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: listen-port)",
+		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: https-listen-port)",
 		Destination: &ServerConfig.AdvertisePort,
 	},
 	&cli.StringSliceFlag{
