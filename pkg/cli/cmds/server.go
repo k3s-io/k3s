@@ -508,7 +508,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "embedded-registry",
-		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd; when enabled agents will also listen on the supervisor port",
+		Usage:       "(components) Enable embedded distributed container registry; requires use of embedded containerd; when enabled agents will also listen on the supervisor port",
 		Destination: &ServerConfig.EmbeddedRegistry,
 	},
 	&cli.BoolFlag{
