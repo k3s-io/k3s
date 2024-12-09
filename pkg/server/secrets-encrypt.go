@@ -282,7 +282,10 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 		return err
 	}
 
-	return reencryptAndRemoveKey(ctx, server, skip, nodeName)
+	// We use a timeout of 10s for the reencrypt call, so finish the process as a go routine and return immediately.
+	// No errors are returned to the user via CLI, any errors will be logged on the server
+	go reencryptAndRemoveKey(ctx, server, skip, nodeName)
+	return nil
 }
 
 func addAndRotateKeys(server *config.Control) error {
