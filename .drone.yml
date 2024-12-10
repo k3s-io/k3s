@@ -605,9 +605,10 @@ steps:
     path: /var/run/docker.sock
 
 # For better parallelism, we run the E2E tests in a chunked directed acyclic graph
-# First we cleanup any VMs that are older than 2h. Then, tests are split into 2 groups: 
+# First we cleanup any VMs that are older than 2h. Then, tests are split into 3 groups: 
 # - validatecluster and upgradecluster
-# - secretsencryption and splitserver
+# - secretsencryption and snapshotrestore
+# - splitserver and token
 
 - name: cleanup-vms
   image: test-e2e
@@ -689,16 +690,44 @@ steps:
     go test -v -timeout=30m ./secretsencryption_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/se-coverage.out
   - |
-    cd ../splitserver
+    cd ../snapshotrestore
     vagrant destroy -f
-    go test -v -timeout=30m ./splitserver_test.go -ci -local
-    cp ./coverage.out /tmp/artifacts/split-coverage.out
+    go test -v -timeout=30m ./snapshotrestore_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/snap-coverage.out
   
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
-  - name: docker
-    path: /var/run/docker.sock
+  - name: cache
+    path: /tmp/artifacts
+
+- name: test-e2e-block3
+  image: test-e2e
+  depends_on:
+    - cleanup-vms
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  environment:
+    E2E_GOCOVER: 'true'
+  commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - |
+    cd tests/e2e/splitserver
+    vagrant destroy -f
+    go test -v -timeout=30m ./splitserver_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/split-coverage.out
+  - |
+    cd ../token
+    vagrant destroy -f
+    go test -v -timeout=30m ./token_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/token-coverage.out
+
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
   - name: cache
     path: /tmp/artifacts
 
@@ -707,14 +736,17 @@ steps:
   depends_on:
     - test-e2e-block1
     - test-e2e-block2
+    - test-e2e-block3
   settings:
     token: 
       from_secret: codecov_token
     files:
       - /tmp/artifacts/validate-coverage.out
-      - /tmp/artifacts/se-coverage.out
-      - /tmp/artifacts/split-coverage.out
       - /tmp/artifacts/upgrade-coverage.out
+      - /tmp/artifacts/se-coverage.out
+      - /tmp/artifacts/snap-coverage.out
+      - /tmp/artifacts/split-coverage.out
+      - /tmp/artifacts/token-coverage.out
     flags: 
       - e2etests
   when:
