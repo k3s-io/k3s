@@ -222,7 +222,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, serverNodeNames))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(500, serverNodeNames))
 	} else {
 		Expect(e2e.GetCoverageReport(serverNodeNames)).To(Succeed())
 	}

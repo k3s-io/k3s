@@ -286,7 +286,7 @@ var _ = AfterSuite(func() {
 	allNodes := append(cpNodeNames, etcdNodeNames...)
 	allNodes = append(allNodes, agentNodeNames...)
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, allNodes))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(500, allNodes))
 	} else {
 		Expect(e2e.GetCoverageReport(allNodes)).To(Succeed())
 	}
