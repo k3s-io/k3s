@@ -377,6 +377,19 @@ func TailJournalLogs(lines int, nodes []string) string {
 	return logs.String()
 }
 
+func GetConfig(nodes []string) string {
+	config := &strings.Builder{}
+	for _, node := range nodes {
+		cmd := "tar -Pc /etc/rancher/k3s/ | tar -vxPO"
+		if c, err := RunCmdOnNode(cmd, node); err != nil {
+			fmt.Fprintf(config, "** failed to get config for node %s ***\n%v\n", node, err)
+		} else {
+			fmt.Fprintf(config, "** config for node %s ***\n%s\n", node, c)
+		}
+	}
+	return config.String()
+}
+
 // GetVagrantLog returns the logs of on vagrant commands that initialize the nodes and provision K3s on each node.
 // It also attempts to fetch the systemctl logs of K3s on nodes where the k3s.service failed.
 func GetVagrantLog(cErr error) string {
