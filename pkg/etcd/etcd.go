@@ -559,6 +559,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	defer cancel()
 
 	var (
+		state   string
 		cluster []string
 		add     = true
 	)
@@ -620,12 +621,19 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 			return err
 		}
 		cluster = append(cluster, fmt.Sprintf("%s=%s", e.name, e.peerURL()))
+		state = "existing"
+	} else if len(cluster) > 1 {
+		logrus.Infof("Starting etcd to join cluster with members %v", cluster)
+		state = "existing"
+	} else {
+		logrus.Infof("Starting etcd for new cluster")
+		state = "new"
 	}
 
-	logrus.Infof("Starting etcd to join cluster with members %v", cluster)
 	return e.cluster(ctx, false, executor.InitialOptions{
-		Cluster: strings.Join(cluster, ","),
-		State:   "existing",
+		AdvertisePeerURL: e.peerURL(),
+		Cluster:          strings.Join(cluster, ","),
+		State:            state,
 	})
 }
 
