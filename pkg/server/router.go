@@ -53,7 +53,7 @@ func router(ctx context.Context, config *Config, cfg *cmds.Server) http.Handler 
 	serverConfig := &config.ControlConfig
 	nodeAuth := passwordBootstrap(ctx, config)
 
-	prefix := "/v1-" + version.Program
+	prefix := "/{apiroot:v1-[[:alnum:]]+}"
 	authed := mux.NewRouter().SkipClean(true)
 	authed.Use(auth.HasRole(serverConfig, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup))
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
