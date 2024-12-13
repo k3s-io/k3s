@@ -15,6 +15,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -54,7 +55,7 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: ptr.To(true)})
+	b, err := json.Marshal(handlers.EncryptionRequest{Enable: ptr.To(true)})
 	if err != nil {
 		return err
 	}
@@ -73,7 +74,7 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: ptr.To(false)})
+	b, err := json.Marshal(handlers.EncryptionRequest{Enable: ptr.To(false)})
 	if err != nil {
 		return err
 	}
@@ -96,7 +97,7 @@ func Status(app *cli.Context) error {
 	if err != nil {
 		return wrapServerError(err)
 	}
-	status := server.EncryptionState{}
+	status := handlers.EncryptionState{}
 	if err := json.Unmarshal(data, &status); err != nil {
 		return err
 	}
@@ -153,7 +154,7 @@ func Prepare(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{
+	b, err := json.Marshal(handlers.EncryptionRequest{
 		Stage: ptr.To(secretsencrypt.EncryptionPrepare),
 		Force: cmds.ServerConfig.EncryptForce,
 	})
@@ -175,7 +176,7 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{
+	b, err := json.Marshal(handlers.EncryptionRequest{
 		Stage: ptr.To(secretsencrypt.EncryptionRotate),
 		Force: cmds.ServerConfig.EncryptForce,
 	})
@@ -197,7 +198,7 @@ func Reencrypt(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{
+	b, err := json.Marshal(handlers.EncryptionRequest{
 		Stage: ptr.To(secretsencrypt.EncryptionReencryptActive),
 		Force: cmds.ServerConfig.EncryptForce,
 		Skip:  cmds.ServerConfig.EncryptSkip,
@@ -220,7 +221,7 @@ func RotateKeys(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{
+	b, err := json.Marshal(handlers.EncryptionRequest{
 		Stage: ptr.To(secretsencrypt.EncryptionRotateKeys),
 	})
 	if err != nil {
