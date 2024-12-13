@@ -1,4 +1,4 @@
-package server
+package handlers
 
 import (
 	"context"
@@ -60,9 +60,9 @@ func getEncryptionRequest(req *http.Request) (*EncryptionRequest, error) {
 	return result, err
 }
 
-func encryptionStatusHandler(server *config.Control) http.Handler {
+func EncryptionStatus(control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		status, err := encryptionStatus(server)
+		status, err := encryptionStatus(control)
 		if err != nil {
 			util.SendErrorWithID(err, "secret-encrypt", resp, req, http.StatusInternalServerError)
 			return
@@ -77,9 +77,9 @@ func encryptionStatusHandler(server *config.Control) http.Handler {
 	})
 }
 
-func encryptionStatus(server *config.Control) (EncryptionState, error) {
+func encryptionStatus(control *config.Control) (EncryptionState, error) {
 	state := EncryptionState{}
-	providers, err := secretsencrypt.GetEncryptionProviders(server.Runtime)
+	providers, err := secretsencrypt.GetEncryptionProviders(control.Runtime)
 	if os.IsNotExist(err) {
 		return state, nil
 	} else if err != nil {
@@ -87,17 +87,17 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil {
 		state.Enable = ptr.To(true)
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
+	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !control.EncryptSecrets {
 		state.Enable = ptr.To(false)
 	}
 
-	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), ""); err != nil {
+	if err := verifyEncryptionHashAnnotation(control.Runtime, control.Runtime.Core.Core(), ""); err != nil {
 		state.HashMatch = false
 		state.HashError = err.Error()
 	} else {
 		state.HashMatch = true
 	}
-	stage, _, err := getEncryptionHashAnnotation(server.Runtime.Core.Core())
+	stage, _, err := getEncryptionHashAnnotation(control.Runtime.Core.Core())
 	if err != nil {
 		return state, err
 	}
@@ -122,21 +122,21 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	return state, nil
 }
 
-func encryptionEnable(ctx context.Context, server *config.Control, enable bool) error {
-	providers, err := secretsencrypt.GetEncryptionProviders(server.Runtime)
+func encryptionEnable(ctx context.Context, control *config.Control, enable bool) error {
+	providers, err := secretsencrypt.GetEncryptionProviders(control.Runtime)
 	if err != nil {
 		return err
 	}
 	if len(providers) > 2 {
 		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
 	}
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime, false)
 	if err != nil {
 		return err
 	}
 	if providers[1].Identity != nil && providers[0].AESCBC != nil && !enable {
 		logrus.Infoln("Disabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(control.Runtime, curKeys, enable); err != nil {
 			return err
 		}
 	} else if !enable {
@@ -144,7 +144,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 		return nil
 	} else if providers[0].Identity != nil && providers[1].AESCBC != nil && enable {
 		logrus.Infoln("Enabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(control.Runtime, curKeys, enable); err != nil {
 			return err
 		}
 	} else if enable {
@@ -153,13 +153,13 @@ func encryptionEnable(ctx context.Context, server *config.Control, enable bool) 
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	if err := cluster.Save(ctx, server, true); err != nil {
+	if err := cluster.Save(ctx, control, true); err != nil {
 		return err
 	}
-	return reencryptAndRemoveKey(ctx, server, true, os.Getenv("NODE_NAME"))
+	return reencryptAndRemoveKey(ctx, control, true, os.Getenv("NODE_NAME"))
 }
 
-func encryptionConfigHandler(ctx context.Context, server *config.Control) http.Handler {
+func EncryptionConfig(ctx context.Context, control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPut {
 			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
@@ -173,18 +173,18 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 		if encryptReq.Stage != nil {
 			switch *encryptReq.Stage {
 			case secretsencrypt.EncryptionPrepare:
-				err = encryptionPrepare(ctx, server, encryptReq.Force)
+				err = encryptionPrepare(ctx, control, encryptReq.Force)
 			case secretsencrypt.EncryptionRotate:
-				err = encryptionRotate(ctx, server, encryptReq.Force)
+				err = encryptionRotate(ctx, control, encryptReq.Force)
 			case secretsencrypt.EncryptionRotateKeys:
-				err = encryptionRotateKeys(ctx, server)
+				err = encryptionRotateKeys(ctx, control)
 			case secretsencrypt.EncryptionReencryptActive:
-				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
+				err = encryptionReencrypt(ctx, control, encryptReq.Force, encryptReq.Skip)
 			default:
 				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
 			}
 		} else if encryptReq.Enable != nil {
-			err = encryptionEnable(ctx, server, *encryptReq.Enable)
+			err = encryptionEnable(ctx, control, *encryptReq.Enable)
 		}
 
 		if err != nil {
@@ -199,13 +199,13 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 	})
 }
 
-func encryptionPrepare(ctx context.Context, server *config.Control, force bool) error {
+func encryptionPrepare(ctx context.Context, control *config.Control, force bool) error {
 	states := secretsencrypt.EncryptionStart + "-" + secretsencrypt.EncryptionReencryptFinished
-	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil && !force {
+	if err := verifyEncryptionHashAnnotation(control.Runtime, control.Runtime.Core.Core(), states); err != nil && !force {
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -215,29 +215,29 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	}
 	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
 
-	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+	if err := secretsencrypt.WriteEncryptionConfig(control.Runtime, curKeys, true); err != nil {
 		return err
 	}
 	nodeName := os.Getenv("NODE_NAME")
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionPrepare)
+		return secretsencrypt.WriteEncryptionHashAnnotation(control.Runtime, node, false, secretsencrypt.EncryptionPrepare)
 	})
 	if err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, true)
+	return cluster.Save(ctx, control, true)
 }
 
-func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
-	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
+func encryptionRotate(ctx context.Context, control *config.Control, force bool) error {
+	if err := verifyEncryptionHashAnnotation(control.Runtime, control.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -245,49 +245,49 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	// Right rotate elements
 	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
 
-	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true); err != nil {
+	if err = secretsencrypt.WriteEncryptionConfig(control.Runtime, rotatedKeys, true); err != nil {
 		return err
 	}
 	logrus.Infoln("Encryption keys right rotated")
 	nodeName := os.Getenv("NODE_NAME")
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionRotate)
+		return secretsencrypt.WriteEncryptionHashAnnotation(control.Runtime, node, false, secretsencrypt.EncryptionRotate)
 	})
 	if err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, true)
+	return cluster.Save(ctx, control, true)
 }
 
-func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
-	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
+func encryptionReencrypt(ctx context.Context, control *config.Control, force bool, skip bool) error {
+	if err := verifyEncryptionHashAnnotation(control.Runtime, control.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
 	}
 	// Set the reencrypt-active annotation so other nodes know we are in the process of reencrypting.
 	// As this stage is not persisted, we do not write the annotation to file
 	nodeName := os.Getenv("NODE_NAME")
 	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
+		return secretsencrypt.WriteEncryptionHashAnnotation(control.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
 	}); err != nil {
 		return err
 	}
 
 	// We use a timeout of 10s for the reencrypt call, so finish the process as a go routine and return immediately.
 	// No errors are returned to the user via CLI, any errors will be logged on the server
-	go reencryptAndRemoveKey(ctx, server, skip, nodeName)
+	go reencryptAndRemoveKey(ctx, control, skip, nodeName)
 	return nil
 }
 
-func addAndRotateKeys(server *config.Control) error {
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+func addAndRotateKeys(control *config.Control) error {
+	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime, false)
 	if err != nil {
 		return err
 	}
@@ -297,29 +297,29 @@ func addAndRotateKeys(server *config.Control) error {
 	}
 	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
 
-	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+	if err := secretsencrypt.WriteEncryptionConfig(control.Runtime, curKeys, true); err != nil {
 		return err
 	}
 
 	// Right rotate elements
 	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
 	logrus.Infoln("Rotating secrets-encryption keys")
-	return secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true)
+	return secretsencrypt.WriteEncryptionConfig(control.Runtime, rotatedKeys, true)
 }
 
 // encryptionRotateKeys is both adds and rotates keys, and sets the annotaiton that triggers the
 // reencryption process. It is the preferred way to rotate keys, starting with v1.28
-func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
+func encryptionRotateKeys(ctx context.Context, control *config.Control) error {
 	states := secretsencrypt.EncryptionStart + "-" + secretsencrypt.EncryptionReencryptFinished
-	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil {
+	if err := verifyEncryptionHashAnnotation(control.Runtime, control.Runtime.Core.Core(), states); err != nil {
 		return err
 	}
 
-	if err := verifyRotateKeysSupport(server.Runtime.Core.Core()); err != nil {
+	if err := verifyRotateKeysSupport(control.Runtime.Core.Core()); err != nil {
 		return err
 	}
 
-	reloadTime, reloadSuccesses, err := secretsencrypt.GetEncryptionConfigMetrics(server.Runtime, true)
+	reloadTime, reloadSuccesses, err := secretsencrypt.GetEncryptionConfigMetrics(control.Runtime, true)
 	if err != nil {
 		return err
 	}
@@ -328,72 +328,72 @@ func encryptionRotateKeys(ctx context.Context, server *config.Control) error {
 	// As this stage is not persisted, we do not write the annotation to file
 	nodeName := os.Getenv("NODE_NAME")
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
+		return secretsencrypt.WriteEncryptionHashAnnotation(control.Runtime, node, true, secretsencrypt.EncryptionReencryptActive)
 	}); err != nil {
 		return err
 	}
 
-	if err := addAndRotateKeys(server); err != nil {
+	if err := addAndRotateKeys(control); err != nil {
 		return err
 	}
 
-	if err := secretsencrypt.WaitForEncryptionConfigReload(server.Runtime, reloadSuccesses, reloadTime); err != nil {
+	if err := secretsencrypt.WaitForEncryptionConfigReload(control.Runtime, reloadSuccesses, reloadTime); err != nil {
 		return err
 	}
 
-	return reencryptAndRemoveKey(ctx, server, false, nodeName)
+	return reencryptAndRemoveKey(ctx, control, false, nodeName)
 }
 
-func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip bool, nodeName string) error {
-	if err := updateSecrets(ctx, server, nodeName); err != nil {
+func reencryptAndRemoveKey(ctx context.Context, control *config.Control, skip bool, nodeName string) error {
+	if err := updateSecrets(ctx, control, nodeName); err != nil {
 		return err
 	}
 
 	// If skipping, revert back to the previous stage and do not remove the key
 	if skip {
 		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+			node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
-			secretsencrypt.BootstrapEncryptionHashAnnotation(node, server.Runtime)
-			_, err = server.Runtime.Core.Core().V1().Node().Update(node)
+			secretsencrypt.BootstrapEncryptionHashAnnotation(node, control.Runtime)
+			_, err = control.Runtime.Core.Core().V1().Node().Update(node)
 			return err
 		})
 		return err
 	}
 
 	// Remove last key
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime, false)
+	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime, false)
 	if err != nil {
 		return err
 	}
 
 	logrus.Infoln("Removing key: ", curKeys[len(curKeys)-1])
 	curKeys = curKeys[:len(curKeys)-1]
-	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+	if err = secretsencrypt.WriteEncryptionConfig(control.Runtime, curKeys, true); err != nil {
 		return err
 	}
 
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
+		node, err := control.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		return secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, false, secretsencrypt.EncryptionReencryptFinished)
+		return secretsencrypt.WriteEncryptionHashAnnotation(control.Runtime, node, false, secretsencrypt.EncryptionReencryptFinished)
 	}); err != nil {
 		return err
 	}
 
-	return cluster.Save(ctx, server, true)
+	return cluster.Save(ctx, control, true)
 }
 
-func updateSecrets(ctx context.Context, server *config.Control, nodeName string) error {
-	k8s := server.Runtime.K8s
+func updateSecrets(ctx context.Context, control *config.Control, nodeName string) error {
+	k8s := control.Runtime.K8s
 	nodeRef := &corev1.ObjectReference{
 		Kind:      "Node",
 		Name:      nodeName,
