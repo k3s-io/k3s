@@ -238,27 +238,23 @@ func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string)
 	}
 }
 
-func getServingCert(nodeName string, nodeIPs []net.IP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) (*tls.Certificate, error) {
-	servingCert, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
+func getServingCert(nodeName string, nodeIPs []net.IP, servingCertFile, servingKeyFile, nodePasswordFile string, info *clientaccess.Info) error {
+	body, err := Request("/v1-"+version.Program+"/serving-kubelet.crt", info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	servingCert, servingKey := splitCertKeyPEM(servingCert)
+	servingCert, servingKey := splitCertKeyPEM(body)
 
 	if err := os.WriteFile(servingCertFile, servingCert, 0600); err != nil {
-		return nil, errors.Wrapf(err, "failed to write node cert")
+		return errors.Wrapf(err, "failed to write node cert")
 	}
 
 	if err := os.WriteFile(servingKeyFile, servingKey, 0600); err != nil {
-		return nil, errors.Wrapf(err, "failed to write node key")
+		return errors.Wrapf(err, "failed to write node key")
 	}
 
-	cert, err := tls.X509KeyPair(servingCert, servingKey)
-	if err != nil {
-		return nil, err
-	}
-	return &cert, nil
+	return nil
 }
 
 func getHostFile(filename, keyFile string, info *clientaccess.Info) error {
@@ -303,11 +299,11 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 
 func getNodeNamedHostFile(filename, keyFile, nodeName string, nodeIPs []net.IP, nodePasswordFile string, info *clientaccess.Info) error {
 	basename := filepath.Base(filename)
-	fileBytes, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
+	body, err := Request("/v1-"+version.Program+"/"+basename, info, getNodeNamedCrt(nodeName, nodeIPs, nodePasswordFile))
 	if err != nil {
 		return err
 	}
-	fileBytes, keyBytes := splitCertKeyPEM(fileBytes)
+	fileBytes, keyBytes := splitCertKeyPEM(body)
 
 	if err := os.WriteFile(filename, fileBytes, 0600); err != nil {
 		return errors.Wrapf(err, "failed to write cert %s", filename)
@@ -499,8 +495,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeExternalAndInternalIPs := append(nodeIPs, nodeExternalIPs...)
 
 	// Ask the server to generate a kubelet server cert+key. These files are unique to this node.
-	servingCert, err := getServingCert(nodeName, nodeExternalAndInternalIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info)
-	if err != nil {
+	if err := getServingCert(nodeName, nodeExternalAndInternalIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info); err != nil {
 		return nil, errors.Wrap(err, servingKubeletCert)
 	}
 
@@ -618,7 +613,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	applyCRIDockerdAddress(nodeConfig)
 	applyContainerdQoSClassConfigFileIfPresent(envInfo, &nodeConfig.Containerd)
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
-	nodeConfig.Certificate = servingCert
 
 	if envInfo.BindAddress != "" {
 		nodeConfig.AgentConfig.ListenAddress = envInfo.BindAddress

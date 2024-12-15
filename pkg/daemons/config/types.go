@@ -1,7 +1,6 @@
 package config
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -57,7 +56,6 @@ type Node struct {
 	Images                   string
 	AgentConfig              Agent
 	Token                    string
-	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
 	SupervisorPort           int
 	DefaultRuntime           string
