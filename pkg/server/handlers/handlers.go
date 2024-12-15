@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -63,13 +64,6 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 			return
 		}
 
-		keyFile := control.Runtime.ServingKubeletKey
-		caCerts, caKey, key, err := getCACertAndKeys(control.Runtime.ServerCA, control.Runtime.ServerCAKey, keyFile)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
 		ips := []net.IP{net.ParseIP("127.0.0.1")}
 		program := mux.Vars(req)["program"]
 		if nodeIP := req.Header.Get(program + "-Node-IP"); nodeIP != "" {
@@ -83,27 +77,14 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 			}
 		}
 
-		cert, err := certutil.NewSignedCert(certutil.Config{
+		signAndSend(resp, req, control.Runtime.ServerCA, control.Runtime.ServerCAKey, control.Runtime.ServingKubeletKey, certutil.Config{
 			CommonName: nodeName,
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			AltNames: certutil.AltNames{
 				DNSNames: []string{nodeName, "localhost"},
 				IPs:      ips,
 			},
-		}, key, caCerts[0], caKey)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		keyBytes, err := os.ReadFile(keyFile)
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp.Write(util.EncodeCertsPEM(cert, caCerts))
-		resp.Write(keyBytes)
+		})
 	})
 }
 
@@ -114,92 +95,30 @@ func ClientKubeletCert(control *config.Control, auth nodepassword.NodeAuthValida
 			util.SendError(err, resp, req, errCode)
 			return
 		}
-
-		keyFile := control.Runtime.ClientKubeletKey
-		caCerts, caKey, key, err := getCACertAndKeys(control.Runtime.ClientCA, control.Runtime.ClientCAKey, keyFile)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		cert, err := certutil.NewSignedCert(certutil.Config{
+		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientKubeProxyKey, certutil.Config{
 			CommonName:   "system:node:" + nodeName,
 			Organization: []string{user.NodesGroup},
 			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		}, key, caCerts[0], caKey)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		keyBytes, err := os.ReadFile(keyFile)
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp.Write(util.EncodeCertsPEM(cert, caCerts))
-		resp.Write(keyBytes)
+		})
 	})
 }
 
 func ClientKubeProxyCert(control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		keyFile := control.Runtime.ClientKubeProxyKey
-		caCerts, caKey, key, err := getCACertAndKeys(control.Runtime.ClientCA, control.Runtime.ClientCAKey, keyFile)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		cert, err := certutil.NewSignedCert(certutil.Config{
+		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientKubeProxyKey, certutil.Config{
 			CommonName: user.KubeProxy,
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		}, key, caCerts[0], caKey)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		keyBytes, err := os.ReadFile(keyFile)
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp.Write(util.EncodeCertsPEM(cert, caCerts))
-		resp.Write(keyBytes)
+		})
 	})
 }
 
 func ClientControllerCert(control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		keyFile := control.Runtime.ClientK3sControllerKey
-		caCerts, caKey, key, err := getCACertAndKeys(control.Runtime.ClientCA, control.Runtime.ClientCAKey, keyFile)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		// This user (system:k3s-controller by default) must be bound to a role in rolebindings.yaml or the downstream equivalent
 		program := mux.Vars(req)["program"]
-		cert, err := certutil.NewSignedCert(certutil.Config{
+		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientK3sControllerKey, certutil.Config{
 			CommonName: "system:" + program + "-controller",
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		}, key, caCerts[0], caKey)
-		if err != nil {
-			util.SendError(err, resp, req)
-			return
-		}
-
-		keyBytes, err := os.ReadFile(keyFile)
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp.Write(util.EncodeCertsPEM(cert, caCerts))
-		resp.Write(keyBytes)
+		})
 	})
 }
 
@@ -293,38 +212,104 @@ func Static(urlPrefix, staticDir string) http.Handler {
 	return http.StripPrefix(urlPrefix, http.FileServer(http.Dir(staticDir)))
 }
 
-func getCACertAndKeys(caCertFile, caKeyFile, signingKeyFile string) ([]*x509.Certificate, crypto.Signer, crypto.Signer, error) {
-	keyBytes, err := os.ReadFile(signingKeyFile)
+// csrSigner wraps a CSR with a Public() method and dummy Sign() method to satisfy the
+// crypto.Signer interface required by dynamiclistener's cert helpers.
+type csrSigner struct {
+	csr *x509.CertificateRequest
+}
+
+func (c *csrSigner) Public() crypto.PublicKey {
+	return c.csr.PublicKey
+}
+
+func (c csrSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
+	return nil, errors.New("not implemented")
+}
+
+// signAndSend generates a signed certificate using the requested CA cert/key and config,
+// and sends it to the client.  If the client request is a POST with a signing request as
+// the body, the public key from the CSR is used to generate the certificate. If the
+// client did not submit a signing request, the legacy shared key is used to generate the
+// certificate, and the key is sent along with the certificate.
+func signAndSend(resp http.ResponseWriter, req *http.Request, caCertFile, caKeyFile, signingKeyFile string, certConfig certutil.Config) {
+	caCerts, caKey, err := getCACertAndKey(caCertFile, caKeyFile)
 	if err != nil {
-		return nil, nil, nil, err
+		util.SendError(err, resp, req)
+		return
 	}
 
-	key, err := certutil.ParsePrivateKeyPEM(keyBytes)
-	if err != nil {
-		return nil, nil, nil, err
+	var key crypto.Signer
+	var keyBytes []byte
+	if csr, err := getCSR(req); err == nil {
+		// If the client sent a valid CSR, use the CSR to retrieve the public key
+		key = &csrSigner{csr: csr}
+	} else {
+		// For legacy clients, just use the common key
+		keyBytes, err = os.ReadFile(signingKeyFile)
+		if err != nil {
+			util.SendError(err, resp, req)
+			return
+		}
+		pk, err := certutil.ParsePrivateKeyPEM(keyBytes)
+		if err != nil {
+			util.SendError(err, resp, req)
+			return
+		}
+		key = pk.(crypto.Signer)
 	}
 
+	// create the signed cert using dynamiclistener cert utils
+	cert, err := certutil.NewSignedCert(certConfig, key, caCerts[0], caKey)
+	if err != nil {
+		util.SendError(err, resp, req)
+		return
+	}
+
+	// send the cert and CA bundle
+	resp.Write(util.EncodeCertsPEM(cert, caCerts))
+
+	// also send the common private key, if the client didn't send a CSR
+	if len(keyBytes) > 0 {
+		resp.Write(keyBytes)
+	}
+}
+
+// getCACertAndKey loads the CA bundle and key at the specified paths.
+func getCACertAndKey(caCertFile, caKeyFile string) ([]*x509.Certificate, crypto.Signer, error) {
 	caKeyBytes, err := os.ReadFile(caKeyFile)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	caKey, err := certutil.ParsePrivateKeyPEM(caKeyBytes)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	caBytes, err := os.ReadFile(caCertFile)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	caCert, err := certutil.ParseCertsPEM(caBytes)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return caCert, caKey.(crypto.Signer), key.(crypto.Signer), nil
+	return caCert, caKey.(crypto.Signer), nil
+}
+
+// getCSR decodes a x509.CertificateRequest from a POST request body.
+// If the request is not a POST, or cannot be parsed as a request, an error is returned.
+func getCSR(req *http.Request) (*x509.CertificateRequest, error) {
+	if req.Method != http.MethodPost {
+		return nil, mux.ErrMethodMismatch
+	}
+	csrBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificateRequest(csrBytes)
 }
 
 // addressGetter is a common signature for functions that return an address channel
