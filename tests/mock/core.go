@@ -224,6 +224,16 @@ func (m *NodeStore) Create(node *v1.Node) (*v1.Node, error) {
 	return node, nil
 }
 
+func (m *NodeStore) Get(name string) (*v1.Node, error) {
+	if m.nodes == nil {
+		return nil, ErrorNotFound("node", name)
+	}
+	if node, ok := m.nodes[name]; ok {
+		return &node, nil
+	}
+	return nil, ErrorNotFound("node", name)
+}
+
 func (m *NodeStore) List(ls labels.Selector) ([]v1.Node, error) {
 	nodes := []v1.Node{}
 	if ls == nil {
