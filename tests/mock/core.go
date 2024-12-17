@@ -1,7 +1,10 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/golang/mock/gomock"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	corev1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/generic/fake"
@@ -15,6 +18,31 @@ import (
 //
 // Mocks so that we can call Runtime.Core.Core().V1() without a functioning apiserver
 //
+
+// explicit interface check for core factory mock
+var _ config.CoreFactory = &CoreFactoryMock{}
+
+type CoreFactoryMock struct {
+	CoreMock *CoreMock
+}
+
+func NewCoreFactory(c *gomock.Controller) *CoreFactoryMock {
+	return &CoreFactoryMock{
+		CoreMock: NewCore(c),
+	}
+}
+
+func (m *CoreFactoryMock) Core() core.Interface {
+	return m.CoreMock
+}
+
+func (m *CoreFactoryMock) Sync(ctx context.Context) error {
+	return nil
+}
+
+func (m *CoreFactoryMock) Start(ctx context.Context, defaultThreadiness int) error {
+	return nil
+}
 
 // explicit interface check for core mock
 var _ core.Interface = &CoreMock{}
