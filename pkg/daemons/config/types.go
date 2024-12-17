@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -373,9 +374,15 @@ type ControlRuntime struct {
 
 	K8s        kubernetes.Interface
 	K3s        *k3s.Factory
-	Core       *core.Factory
+	Core       CoreFactory
 	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
+}
+
+type CoreFactory interface {
+	Core() core.Interface
+	Sync(ctx context.Context) error
+	Start(ctx context.Context, defaultThreadiness int) error
 }
 
 func NewRuntime(containerRuntimeReady <-chan struct{}) *ControlRuntime {
