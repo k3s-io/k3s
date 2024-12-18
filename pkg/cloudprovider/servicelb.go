@@ -2,13 +2,12 @@ package cloudprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
-	"sigs.k8s.io/yaml"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -34,6 +33,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
 	utilsptr "k8s.io/utils/ptr"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -710,8 +710,8 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 	return k.LBDefaultPriorityClassName
 }
 
-// getTolerations retrieves the tolerations from a service's annotations. 
-// It parses the tolerations from a JSON or YAML string stored in the annotations. 
+// getTolerations retrieves the tolerations from a service's annotations.
+// It parses the tolerations from a JSON or YAML string stored in the annotations.
 func (k *k3s) getTolerations(svc *core.Service) ([]core.Toleration, error) {
 	tolerationsStr, ok := svc.Annotations[tolerationsAnnotation]
 	if !ok {
