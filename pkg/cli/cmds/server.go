@@ -109,6 +109,7 @@ type Server struct {
 	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
 	ServiceLBNamespace       string
+	DenyPSALabel             bool
 }
 
 var (
@@ -607,6 +608,12 @@ var ServerFlags = []cli.Flag{
 		Name:   "kube-cloud-controller-arg",
 		Usage:  "(flags) Customized flag for kube-cloud-controller-manager process",
 		Value:  &ServerConfig.ExtraCloudControllerArgs,
+	},
+	&cli.BoolFlag{
+		Name:        "deny-psa-label",
+		Usage:       "(experimental) Deny use of pod-security.kubernetes.io labels on Namespaces",
+		Hidden:      true,
+		Destination: &ServerConfig.DenyPSALabel,
 	},
 }
 

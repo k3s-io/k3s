@@ -247,6 +247,7 @@ type Control struct {
 	ServerNodeName           string
 	VLevel                   int
 	VModule                  string
+	DenyPSALabel             bool
 
 	BindAddress string
 	SANs        []string
