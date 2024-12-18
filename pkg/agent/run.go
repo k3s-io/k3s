@@ -177,17 +177,18 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return errors.Wrap(err, "failed to wait for apiserver ready")
 	}
 
-	coreClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
+	// Use the kubelet kubeconfig to update annotations on the local node
+	kubeletClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
 		return err
 	}
 
-	if err := configureNode(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
+	if err := configureNode(ctx, nodeConfig, kubeletClient.CoreV1().Nodes()); err != nil {
 		return err
 	}
 
 	if !nodeConfig.NoFlannel {
-		if err := flannel.Run(ctx, nodeConfig, coreClient.CoreV1().Nodes()); err != nil {
+		if err := flannel.Run(ctx, nodeConfig); err != nil {
 			return err
 		}
 	}

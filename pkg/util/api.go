@@ -147,6 +147,34 @@ func WaitForRBACReady(ctx context.Context, kubeconfigPath string, timeout time.D
 	return nil
 }
 
+// CheckRBAC performs a single SelfSubjectAccessReview or SubjectAccessReview, returning a
+// boolean indicating whether or not the requested access would be allowed. This is basically
+// `kubectl auth can-i`.
+func CheckRBAC(ctx context.Context, kubeconfigPath string, ra authorizationv1.ResourceAttributes, user string, groups ...string) (bool, error) {
+	restConfig, err := GetRESTConfig(kubeconfigPath)
+	if err != nil {
+		return false, err
+	}
+	authClient, err := authorizationv1client.NewForConfig(restConfig)
+	if err != nil {
+		return false, err
+	}
+
+	var reviewFunc genericAccessReviewRequest
+	if len(user) == 0 && len(groups) == 0 {
+		reviewFunc = selfSubjectAccessReview(authClient, ra)
+	} else {
+		reviewFunc = subjectAccessReview(authClient, ra, user, groups)
+	}
+
+	status, err := reviewFunc(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return status.Allowed, nil
+}
+
 // selfSubjectAccessReview returns a function that makes SelfSubjectAccessReview requests using the
 // provided client and attributes, returning a status or error.
 func selfSubjectAccessReview(authClient *authorizationv1client.AuthorizationV1Client, ra authorizationv1.ResourceAttributes) genericAccessReviewRequest {
