@@ -1,9 +1,9 @@
 ARG GOLANG=golang:1.22.9-alpine3.19
-FROM ${GOLANG} as infra
+FROM ${GOLANG} AS infra
 
-ARG http_proxy=$http_proxy
-ARG https_proxy=$https_proxy
-ARG no_proxy=$no_proxy
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
 ENV http_proxy=$http_proxy
 ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
@@ -28,13 +28,13 @@ RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
     fi
 
 ARG SELINUX=true
-ENV SELINUX $SELINUX
-ENV STATIC_BUILD true
+ENV SELINUX=$SELINUX
+ENV STATIC_BUILD=true
 ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
 WORKDIR ${SRC_DIR}/
 
 
-FROM infra as build
+FROM infra AS build
 
 ARG SKIP_VALIDATE
 
@@ -60,7 +60,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 
 RUN ./scripts/binary_size_check.sh
 
-FROM scratch as result
+FROM scratch AS result
 ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
 COPY --from=build ${SRC_DIR}/dist /dist
 COPY --from=build ${SRC_DIR}/bin /bin
