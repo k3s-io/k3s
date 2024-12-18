@@ -43,7 +43,12 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
-	cnf.Runtime = config.NewRuntime(nil)
+	// reuse ready channel from existing runtime if set
+	var readyCh <-chan struct{}
+	if cnf.Runtime != nil {
+		readyCh = cnf.Runtime.ContainerRuntimeReady
+	}
+	cnf.Runtime = config.NewRuntime(readyCh)
 	if err := GenerateDataDir(cnf); err != nil {
 		return err
 	}
