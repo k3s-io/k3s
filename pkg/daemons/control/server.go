@@ -19,7 +19,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
+	toolswatch "k8s.io/client-go/tools/watch"
+	cloudproviderapi "k8s.io/cloud-provider/api"
 	logsapi "k8s.io/component-base/logs/api/v1"
 	"k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/registry/core/node"
@@ -157,8 +164,36 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
+	schedulerNodeReady := make(chan struct{})
+
+	go func() {
+		defer close(schedulerNodeReady)
+
+	apiReadyLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-cfg.Runtime.APIServerReady:
+				break apiReadyLoop
+			case <-time.After(30 * time.Second):
+				logrus.Infof("Waiting for API server to become available to start kube-scheduler")
+			}
+		}
+
+		// If we're running the embedded cloud controller, wait for it to untaint at least one
+		// node (usually, the local node) before starting the scheduler to ensure that it
+		// finds a node that is ready to run pods during its initial scheduling loop.
+		if !cfg.DisableCCM {
+			logrus.Infof("Waiting for untainted node")
+			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil {
+				logrus.Fatalf("failed to wait for untained node: %v", err)
+			}
+		}
+	}()
+
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(ctx, cfg.Runtime.APIServerReady, args)
+	return executor.Scheduler(ctx, schedulerNodeReady, args)
 }
 
 func apiServer(ctx context.Context, cfg *config.Control) error {
@@ -323,7 +358,6 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig":    runtime.KubeConfigCloudController,
 		"node-status-update-frequency": "1m0s",
 		"bind-address":                 cfg.Loopback(false),
-		"feature-gates":                "CloudDualStackNodeIPs=true",
 	}
 	if cfg.NoLeaderElect {
 		argsMap["leader-elect"] = "false"
@@ -359,7 +393,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 			case <-cfg.Runtime.APIServerReady:
 				break apiReadyLoop
 			case <-time.After(30 * time.Second):
-				logrus.Infof("Waiting for API server to become available")
+				logrus.Infof("Waiting for API server to become available to start cloud-controller-manager")
 			}
 		}
 
@@ -448,4 +482,51 @@ func promise(f func() error) <-chan error {
 		close(c)
 	}()
 	return c
+}
+
+// waitForUntaintedNode watches nodes, waiting to find one not tainted as
+// uninitialized by the external cloud provider.
+func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
+
+	restConfig, err := util.GetRESTConfig(kubeConfig)
+	if err != nil {
+		return err
+	}
+	coreClient, err := typedcorev1.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+	nodes := coreClient.Nodes()
+
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (object k8sruntime.Object, e error) {
+			return nodes.List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
+			return nodes.Watch(ctx, options)
+		},
+	}
+
+	condition := func(ev watch.Event) (bool, error) {
+		if node, ok := ev.Object.(*v1.Node); ok {
+			return getCloudTaint(node.Spec.Taints) == nil, nil
+		}
+		return false, errors.New("event object not of type v1.Node")
+	}
+
+	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
+		return errors.Wrap(err, "failed to wait for untainted node")
+	}
+	return nil
+}
+
+// getCloudTaint returns the external cloud provider taint, if present.
+// Cribbed from k8s.io/cloud-provider/controllers/node/node_controller.go
+func getCloudTaint(taints []v1.Taint) *v1.Taint {
+	for _, taint := range taints {
+		if taint.Key == cloudproviderapi.TaintExternalCloudProvider {
+			return &taint
+		}
+	}
+	return nil
 }
