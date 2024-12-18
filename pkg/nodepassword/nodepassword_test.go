@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/rancher/wrangler/v3/pkg/generic/fake"
+	"github.com/k3s-io/k3s/tests/mock"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,10 +28,11 @@ func Test_UnitAsserts(t *testing.T) {
 func Test_UnitEnsureDelete(t *testing.T) {
 	logMemUsage(t)
 
-	ctrl := gomock.NewController(t)
-	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
-	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
-	secretStore := &mockSecretStore{}
+	v1Mock := mock.NewV1(gomock.NewController(t))
+
+	secretClient := v1Mock.SecretMock
+	secretCache := v1Mock.SecretCache
+	secretStore := &mock.SecretStore{}
 
 	// Set up expected call counts for tests
 	// Expect to see 2 creates, any number of cache gets, and 2 deletes.
@@ -59,15 +60,15 @@ func Test_UnitMigrateFile(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 
-	ctrl := gomock.NewController(t)
+	v1Mock := mock.NewV1(gomock.NewController(t))
 
-	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
-	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
-	secretStore := &mockSecretStore{}
+	secretClient := v1Mock.SecretMock
+	secretCache := v1Mock.SecretCache
+	secretStore := &mock.SecretStore{}
 
-	nodeClient := fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](ctrl)
-	nodeCache := fake.NewMockNonNamespacedCacheInterface[*v1.Node](ctrl)
-	nodeStore := &mockNodeStore{}
+	nodeClient := v1Mock.NodeMock
+	nodeCache := v1Mock.NodeCache
+	nodeStore := &mock.NodeStore{}
 
 	// Set up expected call counts for tests
 	// Expect to see 1 node list, any number of cache gets, and however many
@@ -93,19 +94,20 @@ func Test_UnitMigrateFileNodes(t *testing.T) {
 	nodePasswordFile := generateNodePasswordFile(migrateNumNodes)
 	defer os.Remove(nodePasswordFile)
 
-	ctrl := gomock.NewController(t)
+	v1Mock := mock.NewV1(gomock.NewController(t))
 
-	secretClient := fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](ctrl)
-	secretCache := fake.NewMockCacheInterface[*v1.Secret](ctrl)
-	secretStore := &mockSecretStore{}
+	secretClient := v1Mock.SecretMock
+	secretCache := v1Mock.SecretCache
+	secretStore := &mock.SecretStore{}
 
-	nodeClient := fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](ctrl)
-	nodeCache := fake.NewMockNonNamespacedCacheInterface[*v1.Node](ctrl)
-	nodeStore := &mockNodeStore{}
+	nodeClient := v1Mock.NodeMock
+	nodeCache := v1Mock.NodeCache
+	nodeStore := &mock.NodeStore{}
 
-	nodeStore.nodes = make([]v1.Node, createNumNodes, createNumNodes)
-	for i := range nodeStore.nodes {
-		nodeStore.nodes[i].Name = fmt.Sprintf("node%d", i+1)
+	for i := 0; i < createNumNodes; i++ {
+		if _, err := nodeStore.Create(&v1.Node{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("node%d", i+1)}}); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Set up expected call counts for tests
@@ -124,9 +126,13 @@ func Test_UnitMigrateFileNodes(t *testing.T) {
 	}
 	logMemUsage(t)
 
-	for _, node := range nodeStore.nodes {
-		assertNotEqual(t, Ensure(secretClient, node.Name, "wrong-password"), nil)
-		assertEqual(t, Ensure(secretClient, node.Name, node.Name), nil)
+	if nodes, err := nodeStore.List(labels.Everything()); err != nil {
+		t.Fatal(err)
+	} else {
+		for _, node := range nodes {
+			assertNotEqual(t, Ensure(secretClient, node.Name, "wrong-password"), nil)
+			assertEqual(t, Ensure(secretClient, node.Name, node.Name), nil)
+		}
 	}
 
 	newNode := fmt.Sprintf("node%d", migrateNumNodes+1)
@@ -139,65 +145,6 @@ func Test_PasswordError(t *testing.T) {
 	assertEqual(t, errors.Is(err, ErrVerifyFailed), true)
 	assertEqual(t, errors.Is(err, fmt.Errorf("different error")), false)
 	assertNotEqual(t, errors.Unwrap(err), nil)
-}
-
-// --------------------------
-// mock secret store interface
-
-type mockSecretStore struct {
-	entries map[string]map[string]v1.Secret
-}
-
-func (m *mockSecretStore) Create(secret *v1.Secret) (*v1.Secret, error) {
-	if m.entries == nil {
-		m.entries = map[string]map[string]v1.Secret{}
-	}
-	if _, ok := m.entries[secret.Namespace]; !ok {
-		m.entries[secret.Namespace] = map[string]v1.Secret{}
-	}
-	if _, ok := m.entries[secret.Namespace][secret.Name]; ok {
-		return nil, errorAlreadyExists()
-	}
-	m.entries[secret.Namespace][secret.Name] = *secret
-	return secret, nil
-}
-
-func (m *mockSecretStore) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	if m.entries == nil {
-		return errorNotFound()
-	}
-	if _, ok := m.entries[namespace]; !ok {
-		return errorNotFound()
-	}
-	if _, ok := m.entries[namespace][name]; !ok {
-		return errorNotFound()
-	}
-	delete(m.entries[namespace], name)
-	return nil
-}
-
-func (m *mockSecretStore) Get(namespace, name string) (*v1.Secret, error) {
-	if m.entries == nil {
-		return nil, errorNotFound()
-	}
-	if _, ok := m.entries[namespace]; !ok {
-		return nil, errorNotFound()
-	}
-	if secret, ok := m.entries[namespace][name]; ok {
-		return &secret, nil
-	}
-	return nil, errorNotFound()
-}
-
-// --------------------------
-// mock node store interface
-
-type mockNodeStore struct {
-	nodes []v1.Node
-}
-
-func (m *mockNodeStore) List(ls labels.Selector) ([]v1.Node, error) {
-	return m.nodes, nil
 }
 
 // --------------------------
