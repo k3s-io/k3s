@@ -23,6 +23,9 @@ rules:
   - nodes
   verbs:
   - get
+  - list
+  - watch
+  - update
 - apiGroups:
   - ""
   resources:

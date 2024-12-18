@@ -177,7 +177,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return errors.Wrap(err, "failed to wait for apiserver ready")
 	}
 
-	coreClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
+	coreClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigK3sController)
 	if err != nil {
 		return err
 	}
