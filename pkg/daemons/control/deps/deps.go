@@ -29,8 +29,8 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apiserver/pkg/apis/apiserver"
 	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/apiserver/v1"
+	apiserverv1beta1 "k8s.io/apiserver/pkg/apis/apiserver/v1beta1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/util/keyutil"
 )
@@ -785,19 +785,19 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 }
 
 func genEgressSelectorConfig(controlConfig *config.Control) error {
-	var clusterConn apiserver.Connection
+	var clusterConn apiserverv1beta1.Connection
 
 	if controlConfig.EgressSelectorMode == config.EgressSelectorModeDisabled {
-		clusterConn = apiserver.Connection{
-			ProxyProtocol: apiserver.ProtocolDirect,
+		clusterConn = apiserverv1beta1.Connection{
+			ProxyProtocol: apiserverv1beta1.ProtocolDirect,
 		}
 	} else {
-		clusterConn = apiserver.Connection{
-			ProxyProtocol: apiserver.ProtocolHTTPConnect,
-			Transport: &apiserver.Transport{
-				TCP: &apiserver.TCPTransport{
+		clusterConn = apiserverv1beta1.Connection{
+			ProxyProtocol: apiserverv1beta1.ProtocolHTTPConnect,
+			Transport: &apiserverv1beta1.Transport{
+				TCP: &apiserverv1beta1.TCPTransport{
 					URL: fmt.Sprintf("https://%s:%d", controlConfig.BindAddressOrLoopback(false, true), controlConfig.SupervisorPort),
-					TLSConfig: &apiserver.TLSConfig{
+					TLSConfig: &apiserverv1beta1.TLSConfig{
 						CABundle:   controlConfig.Runtime.ServerCA,
 						ClientKey:  controlConfig.Runtime.ClientKubeAPIKey,
 						ClientCert: controlConfig.Runtime.ClientKubeAPICert,
@@ -807,12 +807,12 @@ func genEgressSelectorConfig(controlConfig *config.Control) error {
 		}
 	}
 
-	egressConfig := apiserver.EgressSelectorConfiguration{
+	egressConfig := apiserverv1beta1.EgressSelectorConfiguration{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "EgressSelectorConfiguration",
 			APIVersion: "apiserver.k8s.io/v1beta1",
 		},
-		EgressSelections: []apiserver.EgressSelection{
+		EgressSelections: []apiserverv1beta1.EgressSelection{
 			{
 				Name:       "cluster",
 				Connection: clusterConn,
