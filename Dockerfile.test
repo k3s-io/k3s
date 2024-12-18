@@ -1,24 +1,24 @@
 ARG GOLANG=golang:1.22.9-alpine3.20
-FROM ${GOLANG} as test-base
+FROM ${GOLANG} AS test-base
 
 RUN apk -U --no-cache add bash jq
-ENV K3S_SOURCE /go/src/github.com/k3s-io/k3s/
+ENV K3S_SOURCE=/go/src/github.com/k3s-io/k3s/
 WORKDIR ${K3S_SOURCE}
 
 COPY . ${K3S_SOURCE}
 
-FROM test-base as test-mods
+FROM test-base AS test-mods
 
 COPY ./scripts/test-mods /bin/
 ENTRYPOINT ["/bin/test-mods"]
 
-FROM test-base as test-k3s
+FROM test-base AS test-k3s
 
 RUN apk -U --no-cache add git gcc musl-dev docker curl coreutils python3 openssl py3-pip procps findutils yq pipx
 
 RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
 
-ENV SONOBUOY_VERSION 0.57.2
+ENV SONOBUOY_VERSION=0.57.2
 
 RUN OS=linux; \
     ARCH=$(go env GOARCH); \
@@ -30,7 +30,7 @@ RUN OS=linux; \
     curl -fsL https://storage.googleapis.com/kubernetes-release/release/${RELEASE}/bin/linux/${ARCH}/kubectl -o /usr/local/bin/kubectl; \
     chmod a+x /usr/local/bin/kubectl; 
 
-ENV TEST_CLEANUP true
+ENV TEST_CLEANUP=true
 
 ENTRYPOINT ["./scripts/entry.sh"]
 CMD ["test"]
