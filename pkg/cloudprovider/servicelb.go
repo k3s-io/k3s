@@ -2,12 +2,13 @@ package cloudprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
+
 	"sigs.k8s.io/yaml"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -27,11 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/cloud-provider/names"
 	servicehelper "k8s.io/cloud-provider/service/helpers"
-	"k8s.io/kubernetes/pkg/features"
 	utilsnet "k8s.io/utils/net"
 	utilsptr "k8s.io/utils/ptr"
 )
@@ -563,7 +562,7 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					Name: "DEST_IPS",
 					ValueFrom: &core.EnvVarSource{
 						FieldRef: &core.ObjectFieldSelector{
-							FieldPath: getHostIPsFieldPath(),
+							FieldPath: "status.hostIPs",
 						},
 					},
 				},
@@ -710,8 +709,8 @@ func (k *k3s) getPriorityClassName(svc *core.Service) string {
 	return k.LBDefaultPriorityClassName
 }
 
-// getTolerations retrieves the tolerations from a service's annotations. 
-// It parses the tolerations from a JSON or YAML string stored in the annotations. 
+// getTolerations retrieves the tolerations from a service's annotations.
+// It parses the tolerations from a JSON or YAML string stored in the annotations.
 func (k *k3s) getTolerations(svc *core.Service) ([]core.Toleration, error) {
 	tolerationsStr, ok := svc.Annotations[tolerationsAnnotation]
 	if !ok {
@@ -777,11 +776,4 @@ func ingressToString(ingresses []core.LoadBalancerIngress) []string {
 		}
 	}
 	return parts
-}
-
-func getHostIPsFieldPath() string {
-	if utilfeature.DefaultFeatureGate.Enabled(features.PodHostIPs) {
-		return "status.hostIPs"
-	}
-	return "status.hostIP"
 }
