@@ -152,7 +152,7 @@ func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args 
 }
 
 func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error {
-	command := sapp.NewSchedulerCommand()
+	command := sapp.NewSchedulerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
@@ -165,7 +165,7 @@ func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args
 		// node (usually, the local node) before starting the scheduler to ensure that it
 		// finds a node that is ready to run pods during its initial scheduling loop.
 		if !e.nodeConfig.AgentConfig.DisableCCM {
-			if err := waitForUntaintedNode(ctx, e.nodeConfig.AgentConfig.KubeConfigKubelet); err != nil {
+			if err := waitForUntaintedNode(ctx, e.nodeConfig.AgentConfig.KubeConfigK3sController); err != nil {
 				logrus.Fatalf("failed to wait for untained node: %v", err)
 			}
 		}
