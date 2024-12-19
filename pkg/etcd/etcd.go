@@ -32,7 +32,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
 	endpoint2 "github.com/k3s-io/kine/pkg/endpoint"
-	cp "github.com/otiai10/copy"
+	"github.com/otiai10/copy"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	controllerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
@@ -1050,7 +1050,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		conn.Close()
 	}()
 
-	if err := cp.Copy(etcdDataDir, tmpDataDir, cp.Options{PreserveOwner: true}); err != nil {
+	if err := copy.Copy(etcdDataDir, tmpDataDir, copy.Options{PreserveOwner: true}); err != nil {
 		return err
 	}
 
