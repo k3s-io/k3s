@@ -82,7 +82,7 @@ targets:
     kind: "shell"
     sourceid: "get-pwd"
     spec:
-      command: '{{ source "get-pwd" }}/updatecli/scripts/run-make-generate.sh'
+      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-generate.sh'
       environments:
         - name: PATH
         - name: HOME
