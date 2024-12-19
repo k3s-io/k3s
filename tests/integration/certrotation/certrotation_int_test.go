@@ -46,15 +46,15 @@ var _ = Describe("certificate rotation", Ordered, func() {
 			certHash, err = testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/serving-kube-apiserver.crt | cut -f 1 -d' '")
 			Expect(err).ToNot(HaveOccurred())
 		})
-		It("stop k3s", func() {
+		It("stops k3s", func() {
 			Expect(testutil.K3sKillServer(server)).To(Succeed())
 		})
-		It("certificate rotate", func() {
+		It("rotates certificates", func() {
 			_, err := testutil.K3sCmd("certificate", "rotate", "-d", tmpdDataDir)
 			Expect(err).ToNot(HaveOccurred())
 
 		})
-		It("start k3s server", func() {
+		It("starts k3s server", func() {
 			var err error
 			server2, err = testutil.K3sStartServer(serverArgs...)
 			Expect(err).ToNot(HaveOccurred())
@@ -64,7 +64,18 @@ var _ = Describe("certificate rotation", Ordered, func() {
 				return testutil.K3sDefaultDeployments()
 			}, "360s", "5s").Should(Succeed())
 		})
-		It("get certificate hash", func() {
+		It("checks the certificate status", func() {
+			res, err := testutil.K3sCmd("certificate", "check", "-d", tmpdDataDir)
+			Expect(err).ToNot(HaveOccurred())
+			for i, line := range strings.Split(res, "\n") {
+				// First line is just server info
+				if i == 0 || line == "" {
+					continue
+				}
+				Expect(line).To(MatchRegexp("certificate.*is ok|Checking certificates"), res)
+			}
+		})
+		It("gets certificate hash", func() {
 			// get md5sum of the CA certs
 			var err error
 			caCertHashAfter, err := testutil.RunCommand("md5sum " + tmpdDataDir + "/server/tls/client-ca.crt | cut -f 1 -d' '")
