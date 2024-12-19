@@ -23,6 +23,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/rootlessports"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
+	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -58,7 +59,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(config.StartupHooks))
 
-	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
+	config.ControlConfig.Runtime.Handler = handlers.NewHandler(ctx, &config.ControlConfig, cfg)
 	config.ControlConfig.Runtime.StartupHooksWg = wg
 
 	shArgs := cmds.StartupHookArgs{
@@ -346,7 +347,7 @@ func printTokens(config *config.Control) error {
 	var serverTokenFile string
 	if config.Runtime.ServerToken != "" {
 		serverTokenFile = filepath.Join(config.DataDir, "token")
-		if err := writeToken(config.Runtime.ServerToken, serverTokenFile, config.Runtime.ServerCA); err != nil {
+		if err := handlers.WriteToken(config.Runtime.ServerToken, serverTokenFile, config.Runtime.ServerCA); err != nil {
 			return err
 		}
 
@@ -374,7 +375,7 @@ func printTokens(config *config.Control) error {
 					return err
 				}
 			}
-			if err := writeToken(config.Runtime.AgentToken, agentTokenFile, config.Runtime.ServerCA); err != nil {
+			if err := handlers.WriteToken(config.Runtime.AgentToken, agentTokenFile, config.Runtime.ServerCA); err != nil {
 				return err
 			}
 		} else if serverTokenFile != "" {
@@ -488,18 +489,6 @@ func setupDataDirAndChdir(config *config.Control) error {
 
 func printToken(httpsPort int, advertiseIP, prefix, cmd, varName string) {
 	logrus.Infof("%s %s %s -s https://%s:%d -t ${%s}", prefix, version.Program, cmd, advertiseIP, httpsPort, varName)
-}
-
-func writeToken(token, file, certs string) error {
-	if len(token) == 0 {
-		return nil
-	}
-
-	token, err := clientaccess.FormatToken(token, certs)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(file, []byte(token+"\n"), 0600)
 }
 
 func setNoProxyEnv(config *config.Control) error {

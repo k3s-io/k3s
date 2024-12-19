@@ -1,4 +1,4 @@
-package server
+package handlers
 
 import (
 	"bytes"
@@ -28,14 +28,14 @@ import (
 	"k8s.io/client-go/util/keyutil"
 )
 
-func caCertReplaceHandler(server *config.Control) http.HandlerFunc {
+func CACertReplace(control *config.Control) http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPut {
 			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 		force, _ := strconv.ParseBool(req.FormValue("force"))
-		if err := caCertReplace(server, req.Body, force); err != nil {
+		if err := caCertReplace(control, req.Body, force); err != nil {
 			util.SendErrorWithID(err, "certificate", resp, req, http.StatusInternalServerError)
 			return
 		}
@@ -48,54 +48,54 @@ func caCertReplaceHandler(server *config.Control) http.HandlerFunc {
 // validated to confirm that the new certs share a common root with the existing certs, and if so are saved to
 // the datastore.  If the functions succeeds, servers should be restarted immediately to load the new certs
 // from the bootstrap data.
-func caCertReplace(server *config.Control, buf io.ReadCloser, force bool) error {
-	tmpdir, err := os.MkdirTemp(server.DataDir, ".rotate-ca-tmp-")
+func caCertReplace(control *config.Control, buf io.ReadCloser, force bool) error {
+	tmpdir, err := os.MkdirTemp(control.DataDir, ".rotate-ca-tmp-")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpdir)
 
 	runtime := config.NewRuntime(nil)
-	runtime.EtcdConfig = server.Runtime.EtcdConfig
-	runtime.ServerToken = server.Runtime.ServerToken
+	runtime.EtcdConfig = control.Runtime.EtcdConfig
+	runtime.ServerToken = control.Runtime.ServerToken
 
-	tmpServer := &config.Control{
+	tmpControl := &config.Control{
 		Runtime: runtime,
-		Token:   server.Token,
+		Token:   control.Token,
 		DataDir: tmpdir,
 	}
-	deps.CreateRuntimeCertFiles(tmpServer)
+	deps.CreateRuntimeCertFiles(tmpControl)
 
 	bootstrapData := bootstrap.PathsDataformat{}
 	if err := json.NewDecoder(buf).Decode(&bootstrapData); err != nil {
 		return err
 	}
 
-	if err := bootstrap.WriteToDiskFromStorage(bootstrapData, &tmpServer.Runtime.ControlRuntimeBootstrap); err != nil {
+	if err := bootstrap.WriteToDiskFromStorage(bootstrapData, &tmpControl.Runtime.ControlRuntimeBootstrap); err != nil {
 		return err
 	}
 
-	if err := defaultBootstrap(server, tmpServer); err != nil {
+	if err := defaultBootstrap(control, tmpControl); err != nil {
 		return errors.Wrap(err, "failed to set default bootstrap values")
 	}
 
-	if err := validateBootstrap(server, tmpServer); err != nil {
+	if err := validateBootstrap(control, tmpControl); err != nil {
 		if !force {
 			return errors.Wrap(err, "failed to validate new CA certificates and keys")
 		}
 		logrus.Warnf("Save of CA certificates and keys forced, ignoring validation errors: %v", err)
 	}
 
-	return cluster.Save(context.TODO(), tmpServer, true)
+	return cluster.Save(context.TODO(), tmpControl, true)
 }
 
 // defaultBootstrap provides default values from the existing bootstrap fields
 // if the value is not tagged for rotation, or the current value is empty.
-func defaultBootstrap(oldServer, newServer *config.Control) error {
+func defaultBootstrap(oldControl, newControl *config.Control) error {
 	errs := []error{}
 	// Use reflection to iterate over all of the bootstrap fields, checking files at each of the new paths.
-	oldMeta := reflect.ValueOf(&oldServer.Runtime.ControlRuntimeBootstrap).Elem()
-	newMeta := reflect.ValueOf(&newServer.Runtime.ControlRuntimeBootstrap).Elem()
+	oldMeta := reflect.ValueOf(&oldControl.Runtime.ControlRuntimeBootstrap).Elem()
+	newMeta := reflect.ValueOf(&newControl.Runtime.ControlRuntimeBootstrap).Elem()
 
 	// use the existing file if the new file does not exist or is empty
 	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
@@ -122,12 +122,12 @@ func defaultBootstrap(oldServer, newServer *config.Control) error {
 // validateBootstrap checks the new certs and keys to ensure that the cluster would function properly were they to be used.
 // - The new leaf CA certificates must be verifiable using the same root and intermediate certs as the current leaf CA certificates.
 // - The new service account signing key bundle must include the currently active signing key.
-func validateBootstrap(oldServer, newServer *config.Control) error {
+func validateBootstrap(oldControl, newControl *config.Control) error {
 	errs := []error{}
 
 	// Use reflection to iterate over all of the bootstrap fields, checking files at each of the new paths.
-	oldMeta := reflect.ValueOf(&oldServer.Runtime.ControlRuntimeBootstrap).Elem()
-	newMeta := reflect.ValueOf(&newServer.Runtime.ControlRuntimeBootstrap).Elem()
+	oldMeta := reflect.ValueOf(&oldControl.Runtime.ControlRuntimeBootstrap).Elem()
+	newMeta := reflect.ValueOf(&newControl.Runtime.ControlRuntimeBootstrap).Elem()
 
 	for _, field := range reflect.VisibleFields(oldMeta.Type()) {
 		// Only handle bootstrap fields tagged for rotation
