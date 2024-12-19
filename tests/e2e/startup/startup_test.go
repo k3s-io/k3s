@@ -111,16 +111,16 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), supervisorPortYAML, "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching node status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -130,7 +130,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -176,22 +176,29 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-	Context("Verify CRI-Dockerd :", func() {
+	Context("Verify kubelet config file", func() {
 		It("Starts K3s with no issues", func() {
-			dockerYAML := "docker: true"
-			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), dockerYAML, dockerYAML)
+			for _, node := range append(serverNodeNames, agentNodeNames...) {
+				cmd := "mkdir -p --mode=0777 /tmp/kubelet.conf.d; echo 'apiVersion: kubelet.config.k8s.io/v1beta1\nkind: KubeletConfiguration\nshutdownGracePeriod: 19s\nshutdownGracePeriodCriticalPods: 13s' > /tmp/kubelet.conf.d/99-shutdownGracePeriod.conf"
+				res, err := e2e.RunCmdOnNode(cmd, node)
+				By("checking command results: " + res)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			kubeletConfigDirYAML := "kubelet-arg: config-dir=/tmp/kubelet.conf.d"
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), kubeletConfigDirYAML, kubeletConfigDirYAML)
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching node status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -201,7 +208,59 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching pods status")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParsePods(kubeConfigFile, true)
+		})
+
+		It("Returns kubelet configuration", func() {
+			for _, node := range append(serverNodeNames, agentNodeNames...) {
+				cmd := "kubectl get --raw /api/v1/nodes/" + node + "/proxy/configz"
+				Expect(e2e.RunCommand(cmd)).To(ContainSubstring(`"shutdownGracePeriod":"19s","shutdownGracePeriodCriticalPods":"13s"`))
+			}
+		})
+
+		It("Kills the cluster", func() {
+			err := KillK3sCluster(append(serverNodeNames, agentNodeNames...))
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+	Context("Verify CRI-Dockerd", func() {
+		It("Starts K3s with no issues", func() {
+			dockerYAML := "docker: true"
+			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), dockerYAML, dockerYAML)
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Checks node and pod status", func() {
+			By("Fetching node status")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "360s", "5s").Should(Succeed())
+			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+
+			By("Fetching pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -226,16 +285,16 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), preferBundledYAML, preferBundledYAML)
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching node status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -245,7 +304,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -270,16 +329,16 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), disableAgentYAML, "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching node status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -289,7 +348,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, true)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -350,10 +409,10 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			err := StartK3sCluster(append(serverNodeNames, agentNodeNames...), "", "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By("Server Nodes:" + strings.Join(serverNodeNames, ","))
+			By("Agent Nodes:" + strings.Join(agentNodeNames, ","))
 			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 		})
