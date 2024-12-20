@@ -29,7 +29,7 @@ RUN case "$(go env GOARCH)" in \
     s390x) TRIVY_ARCH="s390x" ;; \
     *) TRIVY_ARCH="" ;; \
     esac
-RUN if [ -n "${TRIVY_ARCH}" ]; then \ 
+RUN if [ -n "${TRIVY_ARCH}" ]; then \
         wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" \
         && tar -zxvf "trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" \
         && mv trivy /usr/local/bin; \
@@ -45,7 +45,7 @@ RUN rm -rf /go/src /go/pkg
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
     curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2;  \
     fi
-    
+
 # Set SELINUX environment variable
 ARG SELINUX=true
 ENV SELINUX=${SELINUX}

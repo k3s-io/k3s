@@ -1,0 +1,58 @@
+#!/bin/bash
+
+all_services=(
+    coredns
+    local-path-provisioner
+    metrics-server
+    traefik
+)
+
+export NUM_SERVERS=1
+export NUM_AGENTS=1
+export WAIT_SERVICES="${all_services[@]}"
+export SERVER_ARGS="--node-taint=CriticalAddonsOnly=true:NoExecute"
+
+start-test() {
+  echo "Cluster is up"
+}
+export -f start-test
+
+# --- suppress test failures if the agent is intentionally incompatible with the server version
+test-post-hook() {
+  if [[ $1 -eq 0 ]]; then
+    return
+  fi
+  dump-logs skip-output
+  grep -sqF 'incompatible down-level server detected' $TEST_DIR/agents/*/logs/system.log
+}
+export -f test-post-hook
+
+REPO=${REPO:-rancher}
+IMAGE_NAME=${IMAGE_NAME:-k3s}
+PREVIOUS_CHANNEL=$(echo ${VERSION_K8S} | awk -F. '{print "v1." ($2 - 1)}')
+PREVIOUS_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/${PREVIOUS_CHANNEL} -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+STABLE_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/stable -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+LATEST_VERSION=$(curl -s https://update.k3s.io/v1-release/channels/latest -o /dev/null -w '%{redirect_url}' | awk -F/ '{print gensub(/\+/, "-", "g", $NF)}')
+
+# --- create a basic cluster to test for compat with the previous minor version of the server and agent
+K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${PREVIOUS_VERSION} LABEL=PREVIOUS-SERVER run-test
+# disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32.
+# This can be ren-enabled once the previous branch is v1.32 or higher, or when RBAC changes have been backported.
+# ref: https://github.com/kubernetes/kubernetes/pull/128168
+#K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${PREVIOUS_VERSION} LABEL=PREVIOUS-AGENT run-test
+
+# --- create a basic cluster to test for compat with the stable version of the server and agent
+K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} LABEL=STABLE-SERVER run-test
+# disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32
+# This can be ren-enabled once the stable release is v1.32 or higher, or when RBAC changes have been backported.
+# ref: https://github.com/kubernetes/kubernetes/pull/128168
+#K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${STABLE_VERSION} LABEL=STABLE-AGENT run-test
+
+# --- create a basic cluster to test for compat with the latest version of the server and agent
+K3S_IMAGE_SERVER=${REPO}/${IMAGE_NAME}:${LATEST_VERSION} LABEL=LATEST-SERVER run-test
+# disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32
+# This can be ren-enabled once the latest release is v1.32 or higher, or when RBAC changes have been backported.
+# ref: https://github.com/kubernetes/kubernetes/pull/128168
+#K3S_IMAGE_AGENT=${REPO}/${IMAGE_NAME}:${LATEST_VERSION} LABEL=LATEST-AGENT run-test
+
+cleanup-test-env
