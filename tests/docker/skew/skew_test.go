@@ -33,7 +33,12 @@ var _ = BeforeSuite(func() {
 	// For master and unreleased branches, we want the latest stable release
 	var upgradeChannel string
 	var err error
-	if *branch == "master" {
+	if *branch == "master" || *branch == "release-v1.32" {
+		// disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32.
+		// This can be ren-enabled once the previous branch is v1.32 or higher, or when RBAC changes have been backported.
+		// ref: https://github.com/kubernetes/kubernetes/pull/128168
+		Skip("Skipping version skew tests for " + *branch + " due to AuthorizeNodeWithSelectors")
+
 		upgradeChannel = "stable"
 	} else {
 		upgradeChannel = strings.Replace(*branch, "release-", "v", 1)
@@ -48,11 +53,11 @@ var _ = BeforeSuite(func() {
 	lastMinorVersion, err = tester.GetVersionFromChannel(upgradeChannel)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lastMinorVersion).To(ContainSubstring("v1."))
+
 	fmt.Println("Using last minor version: ", lastMinorVersion)
 })
 
 var _ = Describe("Skew Tests", Ordered, func() {
-
 	Context("Setup Cluster with Server newer than Agent", func() {
 		It("should provision new servers and old agents", func() {
 			var err error
