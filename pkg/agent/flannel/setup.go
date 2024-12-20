@@ -9,10 +9,12 @@ import (
 	goruntime "runtime"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/agent/util"
+	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -64,9 +66,22 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 	return createFlannelConf(nodeConfig)
 }
 
-func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInterface) error {
+func Run(ctx context.Context, nodeConfig *config.Node) error {
 	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
-	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, nodes); err != nil {
+
+	if err := util.WaitForRBACReady(ctx, nodeConfig.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout, authorizationv1.ResourceAttributes{
+		Verb:     "list",
+		Resource: "nodes",
+	}, ""); err != nil {
+		return errors.Wrap(err, "flannel failed to wait for RBAC")
+	}
+
+	coreClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigK3sController)
+	if err != nil {
+		return err
+	}
+
+	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient.CoreV1().Nodes()); err != nil {
 		return errors.Wrap(err, "flannel failed to wait for PodCIDR assignment")
 	}
 
@@ -75,7 +90,7 @@ func Run(ctx context.Context, nodeConfig *config.Node, nodes typedcorev1.NodeInt
 		return errors.Wrap(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigKubelet, nodeConfig.FlannelIPv6Masq, netMode)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, nodeConfig.AgentConfig.KubeConfigK3sController, nodeConfig.FlannelIPv6Masq, netMode)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("flannel exited: %v", err)
 			os.Exit(1)
@@ -123,7 +138,7 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 
 	if nodeConfig.AgentConfig.FlannelCniConfFile != "" {
 		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
-		return util.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
+		return agentutil.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
 	}
 
 	cniConfJSON := cniConf
@@ -138,7 +153,7 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 		cniConfJSON = strings.ReplaceAll(cniConfJSON, "%SERVICE_CIDR%", nodeConfig.AgentConfig.ServiceCIDR.String())
 	}
 
-	return util.WriteFile(p, cniConfJSON)
+	return agentutil.WriteFile(p, cniConfJSON)
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
@@ -235,7 +250,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	confJSON = strings.ReplaceAll(confJSON, "%backend%", backendConf)
 
 	logrus.Debugf("The flannel configuration is %s", confJSON)
-	return util.WriteFile(nodeConfig.FlannelConfFile, confJSON)
+	return agentutil.WriteFile(nodeConfig.FlannelConfFile, confJSON)
 }
 
 // fundNetMode returns the mode (ipv4, ipv6 or dual-stack) in which flannel is operating

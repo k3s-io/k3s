@@ -29,11 +29,11 @@ type FakeK3sV1 struct {
 }
 
 func (c *FakeK3sV1) Addons(namespace string) v1.AddonInterface {
-	return &FakeAddons{c, namespace}
+	return newFakeAddons(c, namespace)
 }
 
 func (c *FakeK3sV1) ETCDSnapshotFiles() v1.ETCDSnapshotFileInterface {
-	return &FakeETCDSnapshotFiles{c}
+	return newFakeETCDSnapshotFiles(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
