@@ -80,6 +80,13 @@ jobs:
           chmod +x ./dist/artifacts/k3s
           cd tests/e2e/${{ matrix.etest }}
           go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+      - name: On Failure, Upload Journald Logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: ${{ matrix.etest}}-journald-logs
+          path: tests/e2e/${{ matrix.etest }}/*-jlog.txt
+          retention-days: 30
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
         if: ${{ failure() }}
