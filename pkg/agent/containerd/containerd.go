@@ -18,6 +18,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/pkg/cri/labels"
 	"github.com/containerd/containerd/reference/docker"
+	reference "github.com/google/go-containerregistry/pkg/name"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -115,24 +116,6 @@ func Run(ctx context.Context, cfg *config.Node) error {
 // any .txt files are processed as a list of images that should be pre-pulled from remote registries.
 // If configured, imported images are retagged as being pulled from additional registries.
 func PreloadImages(ctx context.Context, cfg *config.Node) error {
-	fileInfo, err := os.Stat(cfg.Images)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
-		return nil
-	}
-
-	if !fileInfo.IsDir() {
-		return nil
-	}
-
-	fileInfos, err := os.ReadDir(cfg.Images)
-	if err != nil {
-		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
-		return nil
-	}
-
 	client, err := Client(cfg.Containerd.Address)
 	if err != nil {
 		return err
@@ -162,6 +145,28 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		return errors.Wrap(err, "failed to clear pinned labels")
 	}
 
+	go watchImages(ctx, cfg)
+
+	// After setting the watcher, connections and everything, k3s will see if the images folder is already created
+	// if the folder its already created, it will load the images
+	fileInfo, err := os.Stat(cfg.Images)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		logrus.Errorf("Unable to find images in %s: %v", cfg.Images, err)
+		return nil
+	}
+
+	if !fileInfo.IsDir() {
+		return nil
+	}
+
+	fileInfos, err := os.ReadDir(cfg.Images)
+	if err != nil {
+		logrus.Errorf("Unable to read images in %s: %v", cfg.Images, err)
+		return nil
+	}
+
 	for _, fileInfo := range fileInfos {
 		if fileInfo.IsDir() {
 			continue
@@ -176,6 +181,7 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 		}
 		logrus.Infof("Imported images from %s in %s", filePath, time.Since(start))
 	}
+
 	return nil
 }
 
@@ -214,7 +220,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		}
 	}
 
-	if err := labelImages(ctx, client, images); err != nil {
+	if err := labelImages(ctx, client, images, filepath.Base(filePath)); err != nil {
 		return errors.Wrap(err, "failed to add pinned label to images")
 	}
 	if err := retagImages(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
@@ -265,7 +271,7 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 
 // labelImages adds labels to the listed images, indicating that they
 // are pinned by k3s and should not be pruned.
-func labelImages(ctx context.Context, client *containerd.Client, images []images.Image) error {
+func labelImages(ctx context.Context, client *containerd.Client, images []images.Image, fileName string) error {
 	var errs []error
 	imageService := client.ImageService()
 	for i, image := range images {
@@ -277,6 +283,7 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 		if image.Labels == nil {
 			image.Labels = map[string]string{}
 		}
+
 		image.Labels[k3sPinnedImageLabelKey] = k3sPinnedImageLabelValue
 		image.Labels[labels.PinnedImageLabelKey] = labels.PinnedImageLabelValue
 		updatedImage, err := imageService.Update(ctx, image, "labels")
@@ -353,6 +360,16 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 	scanner := bufio.NewScanner(imageList)
 	for scanner.Scan() {
 		name := strings.TrimSpace(scanner.Text())
+
+		if name == "" {
+			continue
+		}
+
+		// the options in the reference.ParseReference are for filtering only strings that cannot be seen as a possible image
+		if _, err := reference.ParseReference(name, reference.WeakValidation, reference.Insecure); err != nil {
+			logrus.Errorf("Failed to parse image reference %q: %v", name, err)
+			continue
+		}
 
 		if status, err := imageClient.ImageStatus(ctx, &runtimeapi.ImageStatusRequest{
 			Image: &runtimeapi.ImageSpec{
