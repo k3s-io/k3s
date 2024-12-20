@@ -149,8 +149,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("prunes s3 snapshots", func() {
 			_, err := e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			time.Sleep(time.Second)
 			_, err = e2e.RunCmdOnNode("k3s etcd-snapshot save", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
+			time.Sleep(time.Second)
 			res, err := e2e.RunCmdOnNode("k3s etcd-snapshot prune", serverNodeNames[0])
 			Expect(err).NotTo(HaveOccurred())
 			// There should now be 4 on-demand snapshots - 2 local, and 2 on s3
