@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/kubeadm"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
@@ -153,7 +154,7 @@ func Rotate(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.TokenRotateRequest{
+	b, err := json.Marshal(handlers.TokenRotateRequest{
 		NewToken: ptr.To(cmds.TokenConfig.NewToken),
 	})
 	if err != nil {

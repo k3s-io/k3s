@@ -17,16 +17,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
+	"github.com/k3s-io/k3s/tests/mock"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
-	corev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
-	"github.com/rancher/wrangler/v3/pkg/generic/fake"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/lru"
 )
 
@@ -95,7 +92,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -119,7 +116,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -144,7 +141,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -167,9 +164,9 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
-				coreMock.v1.secret.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
-					return nil, errorNotFound("secret", name)
+				coreMock := mock.NewCore(gomock.NewController(t))
+				coreMock.V1Mock.SecretMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+					return nil, mock.ErrorNotFound("secret", name)
 				})
 				return coreMock, nil
 			},
@@ -192,8 +189,8 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
-				coreMock.v1.secret.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+				coreMock := mock.NewCore(gomock.NewController(t))
+				coreMock.V1Mock.SecretMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
 					return &v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
@@ -231,8 +228,8 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
-				coreMock.v1.secret.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+				coreMock := mock.NewCore(gomock.NewController(t))
+				coreMock.V1Mock.SecretMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
 					return &v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
@@ -250,7 +247,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 						},
 					}, nil
 				})
-				coreMock.v1.configMap.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-ca", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.ConfigMap, error) {
+				coreMock.V1Mock.ConfigMapMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-ca", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.ConfigMap, error) {
 					return &v1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
@@ -286,8 +283,8 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
-				coreMock.v1.secret.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+				coreMock := mock.NewCore(gomock.NewController(t))
+				coreMock.V1Mock.SecretMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
 					return &v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
@@ -307,8 +304,8 @@ func Test_UnitControllerGetClient(t *testing.T) {
 						},
 					}, nil
 				})
-				coreMock.v1.configMap.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-ca", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.ConfigMap, error) {
-					return nil, errorNotFound("configmap", name)
+				coreMock.V1Mock.ConfigMapMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-ca", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.ConfigMap, error) {
+					return nil, mock.ErrorNotFound("configmap", name)
 				})
 				return coreMock, nil
 			},
@@ -334,7 +331,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -359,7 +356,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -383,7 +380,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -415,8 +412,8 @@ func Test_UnitControllerGetClient(t *testing.T) {
 					Timeout:   *defaultEtcdS3.Timeout.DeepCopy(),
 				}
 				f.clientCache.Add(*c.etcdS3, c)
-				coreMock := newCoreMock(gomock.NewController(t))
-				coreMock.v1.secret.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+				coreMock := mock.NewCore(gomock.NewController(t))
+				coreMock.V1Mock.SecretMock.EXPECT().Get(metav1.NamespaceSystem, "my-etcd-s3-config-secret", gomock.Any()).AnyTimes().DoAndReturn(func(namespace, name string, _ metav1.GetOptions) (*v1.Secret, error) {
 					return &v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
@@ -458,7 +455,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				c.etcdS3 = a.etcdS3
 				f.clientCache.Add(*c.etcdS3, c)
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -484,7 +481,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -511,7 +508,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -538,7 +535,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -563,7 +560,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clientCache: lru.New(5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -589,7 +586,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
-				coreMock := newCoreMock(gomock.NewController(t))
+				coreMock := mock.NewCore(gomock.NewController(t))
 				return coreMock, nil
 			},
 		},
@@ -1445,108 +1442,6 @@ func Test_UnitClientSnapshotRetention(t *testing.T) {
 			}
 		})
 	}
-}
-
-//
-// Mocks so that we can call Runtime.Core.Core().V1() without a functioning apiserver
-//
-
-// explicit interface check for core mock
-var _ core.Interface = &coreMock{}
-
-type coreMock struct {
-	v1 *v1Mock
-}
-
-func newCoreMock(c *gomock.Controller) *coreMock {
-	return &coreMock{
-		v1: newV1Mock(c),
-	}
-}
-
-func (m *coreMock) V1() corev1.Interface {
-	return m.v1
-}
-
-// explicit interface check for core v1 mock
-var _ corev1.Interface = &v1Mock{}
-
-type v1Mock struct {
-	configMap             *fake.MockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList]
-	endpoints             *fake.MockControllerInterface[*v1.Endpoints, *v1.EndpointsList]
-	event                 *fake.MockControllerInterface[*v1.Event, *v1.EventList]
-	namespace             *fake.MockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList]
-	node                  *fake.MockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList]
-	persistentVolume      *fake.MockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList]
-	persistentVolumeClaim *fake.MockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList]
-	pod                   *fake.MockControllerInterface[*v1.Pod, *v1.PodList]
-	secret                *fake.MockControllerInterface[*v1.Secret, *v1.SecretList]
-	service               *fake.MockControllerInterface[*v1.Service, *v1.ServiceList]
-	serviceAccount        *fake.MockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList]
-}
-
-func newV1Mock(c *gomock.Controller) *v1Mock {
-	return &v1Mock{
-		configMap:             fake.NewMockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList](c),
-		endpoints:             fake.NewMockControllerInterface[*v1.Endpoints, *v1.EndpointsList](c),
-		event:                 fake.NewMockControllerInterface[*v1.Event, *v1.EventList](c),
-		namespace:             fake.NewMockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList](c),
-		node:                  fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](c),
-		persistentVolume:      fake.NewMockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList](c),
-		persistentVolumeClaim: fake.NewMockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList](c),
-		pod:                   fake.NewMockControllerInterface[*v1.Pod, *v1.PodList](c),
-		secret:                fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](c),
-		service:               fake.NewMockControllerInterface[*v1.Service, *v1.ServiceList](c),
-		serviceAccount:        fake.NewMockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList](c),
-	}
-}
-
-func (m *v1Mock) ConfigMap() corev1.ConfigMapController {
-	return m.configMap
-}
-
-func (m *v1Mock) Endpoints() corev1.EndpointsController {
-	return m.endpoints
-}
-
-func (m *v1Mock) Event() corev1.EventController {
-	return m.event
-}
-
-func (m *v1Mock) Namespace() corev1.NamespaceController {
-	return m.namespace
-}
-
-func (m *v1Mock) Node() corev1.NodeController {
-	return m.node
-}
-
-func (m *v1Mock) PersistentVolume() corev1.PersistentVolumeController {
-	return m.persistentVolume
-}
-
-func (m *v1Mock) PersistentVolumeClaim() corev1.PersistentVolumeClaimController {
-	return m.persistentVolumeClaim
-}
-
-func (m *v1Mock) Pod() corev1.PodController {
-	return m.pod
-}
-
-func (m *v1Mock) Secret() corev1.SecretController {
-	return m.secret
-}
-
-func (m *v1Mock) Service() corev1.ServiceController {
-	return m.service
-}
-
-func (m *v1Mock) ServiceAccount() corev1.ServiceAccountController {
-	return m.serviceAccount
-}
-
-func errorNotFound(gv, name string) error {
-	return apierrors.NewNotFound(schema.ParseGroupResource(gv), name)
 }
 
 //
