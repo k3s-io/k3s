@@ -1,0 +1,88 @@
+name: "Bump CoreDNS Image Version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump rancher/mirrored-coredns-coredns image version"
+
+actions:
+  github:
+    title: "Bump rancher/mirrored-coredns-coredns image version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
+
+sources:
+  # Retrieve the latest tag from the rancher/mirrored-coredns-coredns repository
+  coredns-docker-image:
+    name: "Check CoreDNS image tag in DockerHub"
+    kind: "dockerimage"
+    spec:
+      image: "rancher/mirrored-coredns-coredns"
+      versionfilter:
+        kind: "semver"
+        strict: true
+    transformers:
+      - find: '\d+\.\d+\.\d+'
+
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  docker-image:
+    name: "Check latest image tag for rancher/mirrored-coredns-coredns"
+    kind: "dockerimage"
+    disablesourceinput: true
+    spec:
+      image: "rancher/mirrored-coredns-coredns"
+      tag: '{{ source "coredns-docker-image" }}'
+
+targets:
+  coredns-manifest:
+    name: "Update CoreDNS image version in manifests/coredns.yaml"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "manifests/coredns.yaml"
+      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:\S+"'
+      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}"'
+
+  coredns-airgap:
+    name: "Update CoreDNS image version in scripts/airgap/image-list"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "scripts/airgap/image-list.txt"
+      matchpattern: 'docker.io/rancher/mirrored-coredns-coredns:\S+'
+      replacepattern: 'docker.io/rancher/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}'
+
+  go-generate:
+    name: "Run go generate"
+    kind: "shell"
+    sourceid: "get-pwd"
+    spec:
+      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-generate.sh'
+      environments:
+        - name: PATH
+        - name: HOME
