@@ -63,7 +63,11 @@ func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) cli.C
 				SkipFlagParsing: false,
 				SkipArgReorder:  true,
 				Action:          check,
-				Flags:           CertRotateCommandFlags,
+				Flags: append(CertRotateCommandFlags, &cli.StringFlag{
+					Name:  "output,o",
+					Usage: "Format output. Options: text, table",
+					Value: "text",
+				}),
 			},
 			{
 				Name:            "rotate",
