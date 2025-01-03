@@ -143,7 +143,7 @@ var (
 	}
 	ClusterDNS = &cli.StringSliceFlag{
 		Name:  "cluster-dns",
-		Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+		Usage: "(networking) IPv4/IPv6 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
 		Value: &ServerConfig.ClusterDNS,
 	}
 	ClusterDomain = &cli.StringFlag{
