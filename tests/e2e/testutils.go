@@ -377,6 +377,26 @@ func TailJournalLogs(lines int, nodes []string) string {
 	return logs.String()
 }
 
+// SaveJournalLogs saves the journal logs of each node to a <NAME>-jlog.txt file.
+// When used in GHA CI, the logs are uploaded as an artifact on failure.
+func SaveJournalLogs(nodeNames []string) error {
+	for _, node := range nodeNames {
+		lf, err := os.Create(node + "-jlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		logs, err := GetJournalLogs(node)
+		if err != nil {
+			return err
+		}
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return fmt.Errorf("failed to write %s node logs: %v", node, err)
+		}
+	}
+	return nil
+}
+
 func GetConfig(nodes []string) string {
 	config := &strings.Builder{}
 	for _, node := range nodes {

@@ -454,7 +454,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if failed {
 		AddReportEntry("config", e2e.GetConfig(append(serverNodeNames, agentNodeNames...)))
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		Expect(e2e.SaveJournalLogs(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	}
