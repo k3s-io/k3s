@@ -90,6 +90,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if failed {
+		Expect(e2e.SaveJournalLogs(serverNodeNames)).To(Succeed())
+	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
 		Expect(os.Remove(kubeConfigFile)).To(Succeed())
