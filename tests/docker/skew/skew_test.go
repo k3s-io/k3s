@@ -39,10 +39,10 @@ var _ = BeforeSuite(func() {
 		upgradeChannel = strings.Replace(*branch, "release-", "v", 1)
 		// now that it is in v1.1 format, we want to substract one from the minor version
 		// to get the previous release
-		sV, err := semver.Parse(upgradeChannel)
-		Expect(err).NotTo(HaveOccurred())
+		sV, err := semver.ParseTolerant(upgradeChannel)
+		Expect(err).NotTo(HaveOccurred(), "failed to parse version from "+upgradeChannel)
 		sV.Minor--
-		upgradeChannel = sV.String()
+		upgradeChannel = fmt.Sprintf("v%d.%d", sV.Major, sV.Minor)
 	}
 
 	lastMinorVersion, err = tester.GetVersionFromChannel(upgradeChannel)
