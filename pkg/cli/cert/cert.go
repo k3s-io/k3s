@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
@@ -92,27 +93,60 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 
 	now := time.Now()
 	warn := now.Add(time.Hour * 24 * config.CertificateRenewDays)
-
-	for service, files := range fileMap {
-		logrus.Info("Checking certificates for " + service)
-		for _, file := range files {
-			// ignore errors, as some files may not exist, or may not contain certs.
-			// Only check whatever exists and has certs.
-			certs, _ := certutil.CertsFromFile(file)
-			for _, cert := range certs {
-				if now.Before(cert.NotBefore) {
-					logrus.Errorf("%s: certificate %s is not valid before %s", file, cert.Subject, cert.NotBefore.Format(time.RFC3339))
-				} else if now.After(cert.NotAfter) {
-					logrus.Errorf("%s: certificate %s expired at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
-				} else if warn.After(cert.NotAfter) {
-					logrus.Warnf("%s: certificate %s will expire within %d days at %s", file, cert.Subject, config.CertificateRenewDays, cert.NotAfter.Format(time.RFC3339))
-				} else {
-					logrus.Infof("%s: certificate %s is ok, expires at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
+	outFmt := app.String("output")
+	switch outFmt {
+	case "text":
+		for service, files := range fileMap {
+			logrus.Info("Checking certificates for " + service)
+			for _, file := range files {
+				// ignore errors, as some files may not exist, or may not contain certs.
+				// Only check whatever exists and has certs.
+				certs, _ := certutil.CertsFromFile(file)
+				for _, cert := range certs {
+					if now.Before(cert.NotBefore) {
+						logrus.Errorf("%s: certificate %s is not valid before %s", file, cert.Subject, cert.NotBefore.Format(time.RFC3339))
+					} else if now.After(cert.NotAfter) {
+						logrus.Errorf("%s: certificate %s expired at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
+					} else if warn.After(cert.NotAfter) {
+						logrus.Warnf("%s: certificate %s will expire within %d days at %s", file, cert.Subject, config.CertificateRenewDays, cert.NotAfter.Format(time.RFC3339))
+					} else {
+						logrus.Infof("%s: certificate %s is ok, expires at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
+					}
 				}
 			}
 		}
+	case "table":
+		var tabBuffer bytes.Buffer
+		w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "CERTIFICATE\tSUBJECT\tSTATUS\tEXPIRES\n")
+		fmt.Fprintf(w, "-----------\t-------\t------\t-------")
+		for _, files := range fileMap {
+			for _, file := range files {
+				certs, _ := certutil.CertsFromFile(file)
+				for _, cert := range certs {
+					baseName := filepath.Base(file)
+					var status string
+					expiration := cert.NotAfter.Format(time.RFC3339)
+					if now.Before(cert.NotBefore) {
+						status = "NOT YET VALID"
+						expiration = cert.NotBefore.Format(time.RFC3339)
+					} else if now.After(cert.NotAfter) {
+						status = "EXPIRED"
+					} else if warn.After(cert.NotAfter) {
+						status = "WARNING"
+					} else {
+						status = "OK"
+					}
+					fmt.Fprintf(w, "\n%s\t%s\t%s\t%s", baseName, cert.Subject, status, expiration)
+				}
+			}
+		}
+		w.Flush()
+		fmt.Println(tabBuffer.String())
+	default:
+		return fmt.Errorf("invalid output format %s", outFmt)
 	}
-
 	return nil
 }
 
