@@ -80,6 +80,13 @@ jobs:
           chmod +x ./dist/artifacts/k3s
           cd tests/e2e/${{ matrix.etest }}
           go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+      - name: On Failure, Upload Journald Logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: ${{ matrix.etest}}-journald-logs
+          path: tests/e2e/${{ matrix.etest }}/*-jlog.txt
+          retention-days: 30
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
         if: ${{ failure() }}
@@ -159,6 +166,9 @@ jobs:
           fi
         elif [ -z "${{ github.base_ref }}" ]; then
           # We are in a fork, and need some git history to determine the branch name
+          # For some reason, the first fetch doesn't always get the full history, so we sleep and fetch again
+          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
+          sleep 5
           git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
           BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
         else
@@ -171,6 +181,7 @@ jobs:
       run: |
         if [[ ! ${{ steps.branch_step.outputs.branch_name }} =~ ^(master|release-[0-9]+\.[0-9]+)$ ]]; then
           echo "Branch name ${{ steps.branch_step.outputs.branch_name }} does not match pattern"
+          echo "If this is a PR/fork, ensure you have recently rebased off master/release-1.XX branch"
           exit 1
         fi
 
