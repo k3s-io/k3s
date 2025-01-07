@@ -33,7 +33,7 @@ var _ = BeforeSuite(func() {
 	// For master and unreleased branches, we want the latest stable release
 	var upgradeChannel string
 	var err error
-	if *branch == "master" || *branch == "release-v1.32" {
+	if *branch == "master" || *branch == "release-1.32" {
 		// disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32.
 		// This can be ren-enabled once the previous branch is v1.32 or higher, or when RBAC changes have been backported.
 		// ref: https://github.com/kubernetes/kubernetes/pull/128168
@@ -44,10 +44,10 @@ var _ = BeforeSuite(func() {
 		upgradeChannel = strings.Replace(*branch, "release-", "v", 1)
 		// now that it is in v1.1 format, we want to substract one from the minor version
 		// to get the previous release
-		sV, err := semver.Parse(upgradeChannel)
-		Expect(err).NotTo(HaveOccurred())
+		sV, err := semver.ParseTolerant(upgradeChannel)
+		Expect(err).NotTo(HaveOccurred(), "failed to parse version from "+upgradeChannel)
 		sV.Minor--
-		upgradeChannel = sV.String()
+		upgradeChannel = fmt.Sprintf("v%d.%d", sV.Major, sV.Minor)
 	}
 
 	lastMinorVersion, err = tester.GetVersionFromChannel(upgradeChannel)
