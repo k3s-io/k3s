@@ -216,7 +216,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
 	reg := registry.NewRegistry(ociClient, router, registryOpts...)
-	regSvr := reg.Server(":" + c.RegistryPort)
+	regSvr, err := reg.Server(":" + c.RegistryPort)
+	if err != nil {
+		return errors.Wrap(err, "failed to create spegel registry server")
+	}
 
 	// Close router on shutdown
 	go func() {
@@ -237,7 +240,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
 	_ = wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(_ context.Context) (bool, error) {
-		return router.Ready()
+		return router.Ready(ctx)
 	})
 
 	return nil
