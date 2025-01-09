@@ -95,6 +95,7 @@ require (
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.25.7
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/stdr v1.2.3-0.20220714215716-96bad1d688c5
@@ -168,6 +169,7 @@ require (
 	k8s.io/kubernetes v1.29.9
 	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	sigs.k8s.io/yaml v1.4.0
+	github.com/google/go-containerregistry v0.20.2
 )
 
 require (
@@ -256,8 +258,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/fvbommel/sortorder v1.1.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
@@ -279,7 +279,6 @@ require (
 	github.com/google/cel-go v0.17.8 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/go-containerregistry v0.20.2 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
