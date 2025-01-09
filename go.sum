@@ -468,8 +468,8 @@ github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
 github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
-github.com/cyphar/filepath-securejoin v0.3.4 h1:VBWugsJh2ZxJmLFSM06/0qzQyiQX2Qs0ViKrUAcqdZ8=
-github.com/cyphar/filepath-securejoin v0.3.4/go.mod h1:8s/MCNJREmFK0H02MF6Ihv1nakJe4L/w3WZLHNkvlYM=
+github.com/cyphar/filepath-securejoin v0.3.5 h1:L81NHjquoQmcPgXcttUS9qTSR/+bXry6pbSINQGpjj4=
+github.com/cyphar/filepath-securejoin v0.3.5/go.mod h1:edhVd3c6OXKjUmSrVa/tGJRS9joFTxlslFCAyaxigkE=
 github.com/d2g/dhcp4 v0.0.0-20170904100407-a1d1b6c41b1c/go.mod h1:Ct2BUK8SB0YC1SMSibvLzxjeJLnrYEVLULFNiHY9YfQ=
 github.com/d2g/dhcp4client v1.0.0/go.mod h1:j0hNfjhrt2SxUOw55nL0ATM/z4Yt3t2Kd1mW34z5W5s=
 github.com/d2g/dhcp4server v0.0.0-20181031114812-7d4a0a7f59a5/go.mod h1:Eo87+Kg/IX2hfWJfwxMzLyuSZyxSoAug2nGa1G2QAi8=
@@ -1021,8 +1021,8 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.0-k3s1 h1:cr0h
 github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.0-k3s1/go.mod h1:Kun5c2svjAPx0nnvJKYQWhfeNW+O0EpzHgRhDcYoSY0=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.0-k3s1 h1:jx/EPIAzm6iPCNjXp6rbcv3L+ElzNMVl1oj85iaRWyM=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.0-k3s1/go.mod h1:/vuNyuDhhSkWaqPq1t/ncDtqvlOftYgosR747XXodNM=
-github.com/k3s-io/runc v1.2.1-k3s1 h1:74ZffmoNVdX+jO+XYLv0iU/A9Yse1DZ2slZog7gNDgE=
-github.com/k3s-io/runc v1.2.1-k3s1/go.mod h1:/PXzF0h531HTMsYQnmxXkBD7YaGShm/2zcRB79dksUc=
+github.com/k3s-io/runc v1.2.4-k3s1 h1:wCqlmxJiVUsZvdNsSUUm7Ng0kCK2wAgyBt4lcp2lLP8=
+github.com/k3s-io/runc v1.2.4-k3s1/go.mod h1:nSxcWUydXrsBZVYNSkTjoQ/N6rcyTtn+1SD5D4+kRIM=
 github.com/k3s-io/spegel v0.0.23-0.20240516234953-f3d2c4072314 h1:TrZb/yM0OtBuifPXlKaOfcxpJqzakA8+KsoO4c69ZLM=
 github.com/k3s-io/spegel v0.0.23-0.20240516234953-f3d2c4072314/go.mod h1:bMHfSjj1+Zf5VITCZe/wLjuni6rYAj/DjPU/kIVnhfA=
 github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwSWoI=
