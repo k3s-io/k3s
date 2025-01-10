@@ -171,7 +171,6 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	sigs.k8s.io/cri-tools v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.4.0
-	github.com/google/go-containerregistry v0.20.2
 )
 
 require (
