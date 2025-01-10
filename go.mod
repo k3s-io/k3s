@@ -102,6 +102,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/golang/mock v1.6.0
 	github.com/google/cadvisor v0.48.1
+	github.com/google/go-containerregistry v0.20.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
@@ -169,7 +170,6 @@ require (
 	k8s.io/kubernetes v1.29.9
 	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	sigs.k8s.io/yaml v1.4.0
-	github.com/google/go-containerregistry v0.20.2
 )
 
 require (
@@ -258,6 +258,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
+	github.com/fvbommel/sortorder v1.1.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect

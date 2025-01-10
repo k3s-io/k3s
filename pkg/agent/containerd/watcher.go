@@ -15,7 +15,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
-	"github.com/rancher/wrangler/v3/pkg/merr"
+	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/util/workqueue"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -24,7 +24,7 @@ import (
 type Watcher struct {
 	watcher    *fsnotify.Watcher
 	filesCache map[string]fs.FileInfo
-	workqueue  workqueue.TypedDelayingInterface[string]
+	workqueue  workqueue.DelayingInterface
 }
 
 func CreateWatcher() (*Watcher, error) {
@@ -36,7 +36,7 @@ func CreateWatcher() (*Watcher, error) {
 	return &Watcher{
 		watcher:    watcher,
 		filesCache: make(map[string]fs.FileInfo),
-		workqueue:  workqueue.TypedNewDelayingQueue[string](),
+		workqueue:  workqueue.NewDelayingQueue(),
 	}, nil
 }
 
@@ -136,8 +136,18 @@ func (w *Watcher) processNextEventForImages(ctx context.Context, cfg *config.Nod
 	return true
 }
 
-func (w *Watcher) processImageEvent(ctx context.Context, key string, cfg *config.Node, client *containerd.Client, imageClient runtimeapi.ImageServiceClient) error {
-	defer w.workqueue.Done(key)
+func (w *Watcher) processImageEvent(ctx context.Context, obj interface{}, cfg *config.Node, client *containerd.Client, imageClient runtimeapi.ImageServiceClient) error {
+	var (
+		key string
+		ok  bool
+	)
+
+	defer w.workqueue.Done(obj)
+
+	if key, ok = obj.(string); !ok {
+		logrus.Errorf("expected string in workqueue but got %#v", obj)
+		return nil
+	}
 
 	file, err := os.Stat(key)
 	// if the file does not exists, we assume that the event was RENAMED or REMOVED
