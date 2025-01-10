@@ -510,7 +510,7 @@ get_pr_artifact_url() {
     if [ -z "${commit_id}" ]; then
         fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
-    
+
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
     run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
     
@@ -626,7 +626,7 @@ setup_selinux() {
     install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
 
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] || 
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] ||
        [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = iot ]; then
         policy_error=warn
     fi
@@ -646,7 +646,7 @@ setup_selinux() {
 }
 
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || 
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] ||
        [ -r /etc/fedora-release ] || [ -r /etc/system-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
         repodir=/etc/yum.repos.d
         if [ -d /etc/zypp/repos.d ]; then
@@ -775,7 +775,7 @@ create_killall() {
     info "Creating killall script ${KILLALL_K3S_SH}"
     $SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
-[ $(id -u) -eq 0 ] || exec sudo $0 $@
+[ $(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR $0 $@
 
 K3S_DATA_DIR=${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
@@ -877,7 +877,7 @@ create_uninstall() {
     $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
-[ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
+[ \$(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR \$0 \$@
 
 K3S_DATA_DIR=\${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
