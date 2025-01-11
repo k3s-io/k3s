@@ -34,7 +34,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
-		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
+		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/server/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
 	&cli.StringFlag{
