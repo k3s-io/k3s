@@ -604,8 +604,27 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: test-e2e
+# For better parallelism, we run the E2E tests in a chunked directed acyclic graph
+# First we cleanup any VMs that are older than 1h. Then, tests are split into 2 groups: 
+# - validatecluster, token, and upgradecluster
+# - secretsencryption and splitserver
+
+- name: cleanup-vms
   image: test-e2e
+  pull: never
+  depends_on:
+    - build-e2e-image
+  commands:
+  # Cleanup VMs that are older than 1h. Happens if a previous test panics or is canceled
+  - tests/e2e/scripts/cleanup_vms.sh
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+
+- name: test-block1
+  image: test-e2e
+  depends_on:
+    - cleanup-vms
   pull: never
   resources:
     cpu: 6000
@@ -617,8 +636,6 @@ steps:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
   - docker stop registry && docker rm registry
-  # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
-  - tests/e2e/scripts/cleanup_vms.sh
   - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
   - |
     cd tests/e2e/validatecluster
@@ -626,15 +643,10 @@ steps:
     go test -v -timeout=45m ./validatecluster_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/validate-coverage.out
   - |
-    cd ../secretsencryption
+    cd ../token
     vagrant destroy -f
-    go test -v -timeout=30m ./secretsencryption_test.go -ci -local
-    cp ./coverage.out /tmp/artifacts/se-coverage.out
-  - |
-    cd ../splitserver
-    vagrant destroy -f
-    go test -v -timeout=30m ./splitserver_test.go -ci -local
-    cp ./coverage.out /tmp/artifacts/split-coverage.out
+    go test -v -timeout=30m ./token_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/token-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
@@ -652,6 +664,7 @@ steps:
       E2E_RELEASE_CHANNEL=$UPGRADE_CHANNEL go test -v -timeout=45m ./upgradecluster_test.go  -ci -local -ginkgo.v
       cp ./coverage.out /tmp/artifacts/upgrade-coverage.out
     fi
+ 
   - docker stop registry && docker rm registry
   
   volumes:
@@ -662,16 +675,50 @@ steps:
   - name: cache
     path: /tmp/artifacts
 
+- name: test-block2
+  image: test-e2e
+  depends_on:
+    - cleanup-vms
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  environment:
+    E2E_GOCOVER: 'true'
+  commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - |
+    cd tests/e2e/secretsencryption
+    vagrant destroy -f
+    go test -v -timeout=30m ./secretsencryption_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/se-coverage.out
+  - |
+    cd ../splitserver
+    vagrant destroy -f
+    go test -v -timeout=30m ./splitserver_test.go -ci -local
+    cp ./coverage.out /tmp/artifacts/split-coverage.out
+  
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: cache
+    path: /tmp/artifacts
+
 - name: upload to codecov
   image: robertstettner/drone-codecov
+  depends_on:
+    - test-block1
+    - test-block2
   settings:
     token: 
       from_secret: codecov_token
     files:
       - /tmp/artifacts/validate-coverage.out
+      - /tmp/artifacts/upgrade-coverage.out
       - /tmp/artifacts/se-coverage.out
       - /tmp/artifacts/split-coverage.out
-      - /tmp/artifacts/upgrade-coverage.out
+      - /tmp/artifacts/token-coverage.out
     flags: 
       - e2etests
   when:
