@@ -197,6 +197,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 				Proxy:         cfg.EtcdS3Proxy,
 				Region:        cfg.EtcdS3Region,
 				SecretKey:     cfg.EtcdS3SecretKey,
+				SessionToken:  cfg.EtcdS3SessionToken,
 				SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
 				Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
 			}
