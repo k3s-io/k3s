@@ -205,14 +205,21 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 		tr.Proxy = http.ProxyURL(u)
 	}
 
-	var creds *credentials.Credentials
-	if len(etcdS3.AccessKey) == 0 && len(etcdS3.SecretKey) == 0 {
-		creds = credentials.NewIAM("") // for running on ec2 instance
-		if _, err := creds.Get(); err != nil {
-			return nil, errors.Wrap(err, "failed to get IAM credentials")
-		}
-	} else {
-		creds = credentials.NewStaticV4(etcdS3.AccessKey, etcdS3.SecretKey, "")
+	creds := credentials.NewChainCredentials([]credentials.Provider{
+		&credentials.Static{
+			Value: credentials.Value{
+				AccessKeyID:     etcdS3.AccessKey,
+				SecretAccessKey: etcdS3.SecretKey,
+				SessionToken:    etcdS3.SessionToken,
+				SignerType:      credentials.SignatureV4,
+			},
+		},
+		&credentials.FileAWSCredentials{},
+		&credentials.IAM{},
+	})
+
+	if _, err := creds.Get(); err != nil {
+		return nil, errors.Wrap(err, "failed to get credentials")
 	}
 
 	opt := minio.Options{
