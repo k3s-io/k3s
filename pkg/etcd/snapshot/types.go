@@ -47,6 +47,7 @@ type S3Config struct {
 	// Mask these fields in the embedded struct to avoid serializing their values in the snapshotFile record
 	AccessKey    string          `json:"accessKey,omitempty"`
 	ConfigSecret string          `json:"configSecret,omitempty"`
+	SessionToken string          `json:"sessionToken,omitempty"`
 	Proxy        string          `json:"proxy,omitempty"`
 	SecretKey    string          `json:"secretKey,omitempty"`
 	Timeout      metav1.Duration `json:"timeout,omitempty"`
