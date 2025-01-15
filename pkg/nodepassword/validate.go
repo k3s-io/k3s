@@ -66,7 +66,7 @@ func GetNodeAuthValidator(ctx context.Context, control *config.Control) NodeAuth
 		// get client address, to see if deferred node password validation should be allowed when the apiserver
 		// is not available. Deferred password validation is only allowed for requests from the local client.
 		client, _, _ := net.SplitHostPort(req.RemoteAddr)
-		isLocal := client == "127.0.0.1" || client == "::1"
+		isLocal := client == "127.0.0.1" || client == "::1" || client == control.BindAddress
 
 		if secretClient == nil || nodeClient == nil {
 			if runtime.Core != nil {
