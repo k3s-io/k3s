@@ -72,6 +72,7 @@ type EtcdS3 struct {
 	Proxy         string          `json:"proxy,omitempty"`
 	Region        string          `json:"region,omitempty"`
 	SecretKey     string          `json:"secretKey,omitempty"`
+	SessionToken  string          `json:"sessionToken,omitempty"`
 	Insecure      bool            `json:"insecure,omitempty"`
 	SkipSSLVerify bool            `json:"skipSSLVerify,omitempty"`
 	Timeout       metav1.Duration `json:"timeout,omitempty"`
