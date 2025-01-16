@@ -36,7 +36,7 @@ case ${OS} in
     ;;
 esac
 
-git clone --single-branch --branch=${VERSION_CONTAINERD} --depth=1 https://${PKG_CONTAINERD_K3S} ${CONTAINERD_DIR}
+git clone --single-branch --branch=${VERSION_CONTAINERD} --depth=1 https://${PKG_CONTAINERD_K3S/\/v*/} ${CONTAINERD_DIR}
 
 for CHART_FILE in $(grep -rlF HelmChart manifests/ | xargs yq eval --no-doc .spec.chart | xargs -n1 basename); do
   CHART_NAME=$(echo $CHART_FILE | grep -oE '^(-*[a-z])+')

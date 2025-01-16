@@ -20,16 +20,16 @@
 package containerd
 
 import (
-	_ "github.com/containerd/aufs/plugin"
-	_ "github.com/containerd/containerd/metrics"
-	_ "github.com/containerd/containerd/metrics/cgroups"
-	_ "github.com/containerd/containerd/metrics/cgroups/v2"
-	_ "github.com/containerd/containerd/runtime/v2/runc/options"
-	_ "github.com/containerd/containerd/snapshots/btrfs/plugin"
-	_ "github.com/containerd/containerd/snapshots/devmapper/plugin"
-	_ "github.com/containerd/containerd/snapshots/native/plugin"
-	_ "github.com/containerd/containerd/snapshots/overlay/plugin"
-	_ "github.com/containerd/fuse-overlayfs-snapshotter/plugin"
+	_ "github.com/containerd/containerd/api/types/runc/options"
+	_ "github.com/containerd/containerd/v2/core/metrics/cgroups"
+	_ "github.com/containerd/containerd/v2/core/metrics/cgroups/v2"
+	_ "github.com/containerd/containerd/v2/plugins/diff/walking/plugin"
+	_ "github.com/containerd/containerd/v2/plugins/snapshots/blockfile/plugin"
+	_ "github.com/containerd/containerd/v2/plugins/snapshots/btrfs/plugin"
+	_ "github.com/containerd/containerd/v2/plugins/snapshots/devmapper/plugin"
+	_ "github.com/containerd/containerd/v2/plugins/snapshots/native/plugin"
+	_ "github.com/containerd/containerd/v2/plugins/snapshots/overlay/plugin"
+	_ "github.com/containerd/fuse-overlayfs-snapshotter/v2/plugin"
 	_ "github.com/containerd/stargz-snapshotter/service/plugin"
-	_ "github.com/containerd/zfs/plugin"
+	_ "github.com/containerd/zfs/v2/plugin"
 )

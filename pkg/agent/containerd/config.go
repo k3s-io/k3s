@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
