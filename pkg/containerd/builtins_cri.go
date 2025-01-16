@@ -19,4 +19,8 @@
 
 package containerd
 
-import _ "github.com/containerd/containerd/pkg/cri"
+import (
+	_ "github.com/containerd/containerd/v2/plugins/cri"
+	_ "github.com/containerd/containerd/v2/plugins/cri/images"
+	_ "github.com/containerd/containerd/v2/plugins/cri/runtime"
+)
