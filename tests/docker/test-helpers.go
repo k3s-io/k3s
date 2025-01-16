@@ -183,8 +183,9 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				os.Getenv("SERVER_DOCKER_ARGS"),
 				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
+				yamlMount,
 				serverImage,
-				"server", joinOrStart, os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
+				"server", joinOrStart, os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
 			if out, err := RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to run server container: %s: %v", out, err)
 			}
@@ -271,7 +272,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
 					getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage),
-					"agent", os.Getenv("ARGS"), os.Getenv("AGENT_ARGS"), os.Getenv(agentInstanceArgs)}, " ")
+					"agent", os.Getenv("ARGS"), os.Getenv(agentInstanceArgs)}, " ")
 
 				if out, err := RunCommand(dRun); err != nil {
 					return fmt.Errorf("failed to run agent container: %s: %v", out, err)
