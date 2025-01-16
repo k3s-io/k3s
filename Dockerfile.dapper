@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.23.3-alpine3.20
+ARG GOLANG=golang:1.23.4-alpine3.20
 FROM ${GOLANG}
 
 # Set proxy environment variables
