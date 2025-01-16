@@ -27,6 +27,7 @@ var _ = Describe("Basic Tests", Ordered, func() {
 		It("should provision servers and agents", func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
+			config.NeedRestart = true
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
