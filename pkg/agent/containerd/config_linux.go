@@ -16,7 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/opencontainers/runc/libcontainer/userns"
+	"github.com/moby/sys/userns"
 	"github.com/pdtpartners/nix-snapshotter/pkg/nix"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

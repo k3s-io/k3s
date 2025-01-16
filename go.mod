@@ -4,6 +4,7 @@ go 1.23.3
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.9
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.9
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.15-k3s1.32-1 // v1.32.0-k3s1
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.2.1
@@ -21,6 +22,7 @@ replace (
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common => github.com/prometheus/common v0.55.0
+	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.0.30-k3s1
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.0.30-k3s1
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.19-k3s1
@@ -79,6 +81,7 @@ replace (
 
 require (
 	github.com/Microsoft/hcsshim v0.12.9
+	github.com/Microsoft/hcsshim v0.12.9
 	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cloudnativelabs/kube-router/v2 v2.0.0-00010101000000-000000000000
@@ -89,8 +92,15 @@ require (
 	github.com/containerd/fuse-overlayfs-snapshotter/v2 v2.1.0
 	github.com/containerd/stargz-snapshotter v0.16.3
 	github.com/containerd/zfs/v2 v2.0.0-rc.0
+	github.com/containerd/containerd/api v1.8.0
+	github.com/containerd/containerd/v2 v2.0.2
+	github.com/containerd/errdefs v1.0.0
+	github.com/containerd/fuse-overlayfs-snapshotter/v2 v2.1.0
+	github.com/containerd/stargz-snapshotter v0.16.3
+	github.com/containerd/zfs/v2 v2.0.0-rc.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/distribution/reference v0.6.0
 	github.com/distribution/reference v0.6.0
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
@@ -117,6 +127,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/libp2p/go-libp2p v0.38.2
 	github.com/minio/minio-go/v7 v7.0.83
+	github.com/moby/sys/userns v0.1.0
 	github.com/moby/sys/userns v0.1.0
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -199,6 +210,8 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20231105174938-2b5cbb29f3e2 // indirect
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
+	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20231105174938-2b5cbb29f3e2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
@@ -220,11 +233,14 @@ require (
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/checkpoint-restore/checkpointctl v1.3.0 // indirect
 	github.com/checkpoint-restore/go-criu/v7 v7.2.0 // indirect
+	github.com/checkpoint-restore/checkpointctl v1.3.0 // indirect
+	github.com/checkpoint-restore/go-criu/v7 v7.2.0 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/container-storage-interface/spec v1.9.0 // indirect
 	github.com/containerd/btrfs/v2 v2.0.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/console v1.0.4 // indirect
+	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
@@ -232,6 +248,12 @@ require (
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/imgcrypt/v2 v2.0.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
+	github.com/containerd/nri v0.8.0 // indirect
+	github.com/containerd/otelttrpc v0.1.0 // indirect
+	github.com/containerd/platforms v1.0.0-rc.1 // indirect
+	github.com/containerd/plugin v1.0.0 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
+	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/nri v0.8.0 // indirect
 	github.com/containerd/otelttrpc v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
@@ -249,6 +271,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
+	github.com/docker/cli v27.3.1+incompatible // indirect
 	github.com/docker/cli v27.3.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
@@ -271,6 +294,7 @@ require (
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
@@ -298,6 +322,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
 	github.com/hanwen/go-fuse/v2 v2.6.3 // indirect
+	github.com/hanwen/go-fuse/v2 v2.6.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -310,6 +335,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/intel/goresctrl v0.8.0 // indirect
 	github.com/intel/goresctrl v0.8.0 // indirect
 	github.com/ipfs/boxo v0.27.0 // indirect
 	github.com/ipfs/go-cid v0.4.1 // indirect
@@ -361,6 +387,7 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
+	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/miekg/dns v1.1.62 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
@@ -482,6 +509,7 @@ require (
 	github.com/tidwall/btree v1.6.0 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
+	github.com/vbatts/tar-split v0.11.6 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
@@ -495,6 +523,7 @@ require (
 	go.etcd.io/etcd/raft/v3 v3.5.19 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.42.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.56.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.56.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
 	go.opentelemetry.io/otel v1.32.0 // indirect
