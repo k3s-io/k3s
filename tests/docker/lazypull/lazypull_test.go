@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -28,8 +27,7 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
-
-			Expect(os.Setenv("SERVER_ARGS", "--snapshotter=stargz")).To(Succeed())
+			config.ServerYaml = "snapshotter: stargz"
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
@@ -121,7 +119,10 @@ func lookLayers(node, layer string) error {
 func getTopmostLayer(node, container string) (string, error) {
 	var targetContainer string
 	cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io c ls -q labels.\"io.kubernetes.container.name\"==\"%s\" | sed -n 1p", node, container)
-	targetContainer, _ = tester.RunCommand(cmd)
+	targetContainer, err := tester.RunCommand(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to get target container: %v", err)
+	}
 	targetContainer = strings.TrimSpace(targetContainer)
 	fmt.Println("targetContainer: ", targetContainer)
 	if targetContainer == "" {
