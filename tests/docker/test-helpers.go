@@ -30,18 +30,21 @@ type TestConfig struct {
 	K3sImage       string
 	NumServers     int
 	NumAgents      int
-	Servers        []ServerConfig
-	Agents         []AgentConfig
+	NeedRestart    bool
+	Servers        []Server
+	Agents         []Agent
+	ServerYaml     string
+	AgentYaml      string
 }
 
-type ServerConfig struct {
+type Server struct {
 	Name string
 	Port int
 	IP   string
 	URL  string
 }
 
-type AgentConfig struct {
+type Agent struct {
 	Name string
 	IP   string
 }
@@ -117,6 +120,15 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		serverImage := getEnvOrDefault("K3S_IMAGE_SERVER", config.K3sImage)
 
+		// Write the server yaml to a tmp file and mount it into the container
+		var yamlMount string
+		if config.ServerYaml != "" {
+			if err := os.WriteFile(filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)), []byte(config.ServerYaml), 0644); err != nil {
+				return fmt.Errorf("failed to write server yaml: %v", err)
+			}
+			yamlMount = fmt.Sprintf("--mount type=bind,src=%s,dst=/etc/rancher/k3s/config.yaml", filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)))
+		}
+
 		var joinOrStart string
 		if numOfServers > 0 {
 			if i == 0 {
@@ -129,22 +141,53 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			}
 		}
 
-		// Assemble all the Docker args
-		dRun := strings.Join([]string{"docker run -d",
-			"--name", name,
-			"--hostname", name,
-			"--privileged",
-			"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
-			"-p", "6443",
-			"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
-			"-e", "K3S_DEBUG=true",
-			os.Getenv("SERVER_DOCKER_ARGS"),
-			os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
-			os.Getenv("REGISTRY_CLUSTER_ARGS"),
-			serverImage,
-			"server", joinOrStart, os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
-		if out, err := RunCommand(dRun); err != nil {
-			return fmt.Errorf("failed to run server container: %s: %v", out, err)
+		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
+		// and start the server using the install script
+		if config.NeedRestart {
+			dRun := strings.Join([]string{"docker run -d",
+				"--name", name,
+				"--hostname", name,
+				"--privileged",
+				"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
+				"--memory", "2048m",
+				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+				"-e", "K3S_DEBUG=true",
+				"-v", "/sys/fs/bpf:/sys/fs/bpf",
+				"-v", "/lib/modules:/lib/modules",
+				"-v", "/var/run/docker.sock:/var/run/docker.sock",
+				"-v", "/var/lib/docker:/var/lib/docker",
+				yamlMount,
+				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+				"rancher/systemd-node:v0.0.5",
+				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
+			if out, err := RunCommand(dRun); err != nil {
+				return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
+			}
+			time.Sleep(5 * time.Second)
+			// The pipe requires that we use sh -c with "" to run the command
+			sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
+				joinOrStart+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
+			if out, err := RunCmdOnDocker(name, sCmd); err != nil {
+				return fmt.Errorf("failed to start server: %s: %v", out, err)
+			}
+		} else {
+			// Assemble all the Docker args
+			dRun := strings.Join([]string{"docker run -d",
+				"--name", name,
+				"--hostname", name,
+				"--privileged",
+				"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
+				"-p", "6443",
+				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+				"-e", "K3S_DEBUG=true",
+				os.Getenv("SERVER_DOCKER_ARGS"),
+				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
+				os.Getenv("REGISTRY_CLUSTER_ARGS"),
+				serverImage,
+				"server", joinOrStart, os.Getenv("SERVER_ARGS"), os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
+			if out, err := RunCommand(dRun); err != nil {
+				return fmt.Errorf("failed to run server container: %s: %v", out, err)
+			}
 		}
 
 		// Get the IP address of the container
@@ -156,7 +199,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		url := fmt.Sprintf("https://%s:6443", ip)
 
-		config.Servers = append(config.Servers, ServerConfig{
+		config.Servers = append(config.Servers, Server{
 			Name: name,
 			Port: port,
 			IP:   ip,
@@ -192,21 +235,47 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 
 			agentInstanceArgs := fmt.Sprintf("AGENT_%d_ARGS", i)
 
-			// Assemble all the Docker args
-			dRun := strings.Join([]string{"docker run -d",
-				"--name", name,
-				"--hostname", name,
-				"--privileged",
-				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
-				"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
-				os.Getenv("AGENT_DOCKER_ARGS"),
-				os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
-				os.Getenv("REGISTRY_CLUSTER_ARGS"),
-				getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage),
-				"agent", os.Getenv("ARGS"), os.Getenv("AGENT_ARGS"), os.Getenv(agentInstanceArgs)}, " ")
+			if config.NeedRestart {
+				dRun := strings.Join([]string{"docker run -d",
+					"--name", name,
+					"--hostname", name,
+					"--privileged",
+					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
+					"-v", "/sys/fs/bpf:/sys/fs/bpf",
+					"-v", "/lib/modules:/lib/modules",
+					"-v", "/var/run/docker.sock:/var/run/docker.sock",
+					"-v", "/var/lib/docker:/var/lib/docker",
+					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+					"rancher/systemd-node:v0.0.5",
+					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
+				if out, err := RunCommand(dRun); err != nil {
+					return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
+				}
+				time.Sleep(5 * time.Second)
+				// The pipe requires that we use sh -c with "" to run the command
+				sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
+					os.Getenv(agentInstanceArgs))
+				if out, err := RunCmdOnDocker(name, sCmd); err != nil {
+					return fmt.Errorf("failed to start server: %s: %v", out, err)
+				}
+			} else {
+				// Assemble all the Docker args
+				dRun := strings.Join([]string{"docker run -d",
+					"--name", name,
+					"--hostname", name,
+					"--privileged",
+					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
+					os.Getenv("AGENT_DOCKER_ARGS"),
+					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
+					os.Getenv("REGISTRY_CLUSTER_ARGS"),
+					getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage),
+					"agent", os.Getenv("ARGS"), os.Getenv("AGENT_ARGS"), os.Getenv(agentInstanceArgs)}, " ")
 
-			if out, err := RunCommand(dRun); err != nil {
-				return fmt.Errorf("failed to run agent container: %s: %v", out, err)
+				if out, err := RunCommand(dRun); err != nil {
+					return fmt.Errorf("failed to run agent container: %s: %v", out, err)
+				}
 			}
 
 			// Get the IP address of the container
@@ -216,7 +285,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			}
 			ip := strings.TrimSpace(ipOutput)
 
-			config.Agents = append(config.Agents, AgentConfig{
+			config.Agents = append(config.Agents, Agent{
 				Name: name,
 				IP:   ip,
 			})
