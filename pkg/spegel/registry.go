@@ -3,7 +3,7 @@ package spegel
 import (
 	"net"
 
-	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/rancher/wharfie/pkg/registries"
 )
