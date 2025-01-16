@@ -88,6 +88,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &ServerConfig.EtcdS3SecretKey,
 	},
 	&cli.StringFlag{
+		Name:        "s3-session-token,etcd-s3-session-token",
+		Usage:       "(db) S3 session token",
+		EnvVar:      "AWS_SESSION_TOKEN",
+		Destination: &ServerConfig.EtcdS3SessionToken,
+	},
+	&cli.StringFlag{
 		Name:        "s3-bucket,etcd-s3-bucket",
 		Usage:       "(db) S3 bucket name",
 		Destination: &ServerConfig.EtcdS3BucketName,
