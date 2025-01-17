@@ -37,7 +37,7 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 		var newSecret string
 		It("creates a bootstrap token", func() {
 			var err error
-			newSecret, err = tester.RunCmdOnDocker(config.Servers[0].Name, "k3s token create --ttl=5m --description=Test")
+			newSecret, err = config.Servers[0].RunCmdOnNode("k3s token create --ttl=5m --description=Test")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newSecret).NotTo(BeEmpty())
 		})
