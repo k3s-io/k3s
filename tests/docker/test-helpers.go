@@ -32,21 +32,20 @@ type TestConfig struct {
 	NumAgents      int
 	NeedRestart    bool
 	Servers        []Server
-	Agents         []Agent
+	Agents         []DockerNode
 	ServerYaml     string
 	AgentYaml      string
 }
 
-type Server struct {
+type DockerNode struct {
 	Name string
-	Port int
 	IP   string
-	URL  string
 }
 
-type Agent struct {
-	Name string
-	IP   string
+type Server struct {
+	DockerNode
+	Port int
+	URL  string
 }
 
 // NewTestConfig initializes the test environment and returns the configuration
@@ -140,6 +139,12 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				joinOrStart = fmt.Sprintf("--server %s", config.Servers[0].URL)
 			}
 		}
+		newServer := Server{
+			DockerNode: DockerNode{
+				Name: name,
+			},
+			Port: port,
+		}
 
 		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
 		// and start the server using the install script
@@ -167,7 +172,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			// The pipe requires that we use sh -c with "" to run the command
 			sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
 				joinOrStart+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
-			if out, err := RunCmdOnDocker(name, sCmd); err != nil {
+			if out, err := newServer.RunCmdOnNode(sCmd); err != nil {
 				return fmt.Errorf("failed to start server: %s: %v", out, err)
 			}
 		} else {
@@ -199,13 +204,9 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		ip := strings.TrimSpace(ipOutput)
 
 		url := fmt.Sprintf("https://%s:6443", ip)
-
-		config.Servers = append(config.Servers, Server{
-			Name: name,
-			Port: port,
-			IP:   ip,
-			URL:  url,
-		})
+		newServer.URL = url
+		newServer.IP = ip
+		config.Servers = append(config.Servers, newServer)
 
 		fmt.Printf("Started %s @ %s\n", name, url)
 
@@ -235,6 +236,9 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			name := fmt.Sprintf("k3s-agent-%d-%s", i, strings.ToLower(testID))
 
 			agentInstanceArgs := fmt.Sprintf("AGENT_%d_ARGS", i)
+			newAgent := DockerNode{
+				Name: name,
+			}
 
 			if config.NeedRestart {
 				dRun := strings.Join([]string{"docker run -d",
@@ -257,7 +261,8 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				// The pipe requires that we use sh -c with "" to run the command
 				sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
 					os.Getenv(agentInstanceArgs))
-				if out, err := RunCmdOnDocker(name, sCmd); err != nil {
+
+				if out, err := newAgent.RunCmdOnNode(sCmd); err != nil {
 					return fmt.Errorf("failed to start server: %s: %v", out, err)
 				}
 			} else {
@@ -285,11 +290,9 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				return err
 			}
 			ip := strings.TrimSpace(ipOutput)
+			newAgent.IP = ip
+			config.Agents = append(config.Agents, newAgent)
 
-			config.Agents = append(config.Agents, Agent{
-				Name: name,
-				IP:   ip,
-			})
 			fmt.Printf("Started %s\n", name)
 			return nil
 		})
@@ -385,9 +388,9 @@ func copyAndModifyKubeconfig(config *TestConfig) error {
 	return nil
 }
 
-// RunCmdOnDocker runs a command on a docker container
-func RunCmdOnDocker(container, cmd string) (string, error) {
-	dCmd := fmt.Sprintf("docker exec %s %s", container, cmd)
+// RunCmdOnNode runs a command on a docker container
+func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
+	dCmd := fmt.Sprintf("docker exec %s %s", node.Name, cmd)
 	return RunCommand(dCmd)
 }
 
@@ -425,8 +428,8 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 // VerifyValidVersion checks for invalid version strings
-func VerifyValidVersion(container string, binary string) error {
-	output, err := RunCmdOnDocker(container, binary+" version")
+func VerifyValidVersion(node Server, binary string) error {
+	output, err := node.RunCmdOnNode(binary + " version")
 	if err != nil {
 		return err
 	}

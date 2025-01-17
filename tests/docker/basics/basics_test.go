@@ -59,9 +59,9 @@ var _ = Describe("Basic Tests", Ordered, func() {
 	Context("Verify Binaries and Images", func() {
 		It("has valid bundled binaries", func() {
 			for _, server := range config.Servers {
-				Expect(tester.VerifyValidVersion(server.Name, "kubectl")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "ctr")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "crictl")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "kubectl")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "ctr")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "crictl")).To(Succeed())
 			}
 		})
 		It("has valid airgap images", func() {
