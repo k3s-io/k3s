@@ -67,7 +67,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 		})
 		It("should match respective versions", func() {
 			for _, server := range config.Servers {
-				out, err := tester.RunCmdOnDocker(server.Name, "k3s --version")
+				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
 				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1
 				cVersion := strings.Split(*k3sImage, ":")[1]
@@ -76,7 +76,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 				Expect(out).To(ContainSubstring(cVersion))
 			}
 			for _, agent := range config.Agents {
-				Expect(tester.RunCmdOnDocker(agent.Name, "k3s --version")).
+				Expect(agent.RunCmdOnNode("k3s --version")).
 					To(ContainSubstring(strings.Replace(lastMinorVersion, "-", "+", 1)))
 			}
 		})
@@ -115,11 +115,11 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
-			out, err := tester.RunCmdOnDocker(config.Servers[0].Name, "k3s --version")
+			out, err := config.Servers[0].RunCmdOnNode("k3s --version")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(out).To(ContainSubstring(strings.Replace(lastMinorVersion, "-", "+", 1)))
 			for _, server := range config.Servers[1:] {
-				out, err := tester.RunCmdOnDocker(server.Name, "k3s --version")
+				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
 				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1-amd64
 				cVersion := strings.Split(*k3sImage, ":")[1]
