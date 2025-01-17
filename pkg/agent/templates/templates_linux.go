@@ -3,6 +3,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"text/template"
 )
 
@@ -10,5 +11,9 @@ import (
 var templateFuncs = template.FuncMap{
 	"deschemify": func(s string) string {
 		return s
+	},
+	"toJson": func(v interface{}) string {
+		output, _ := json.Marshal(v)
+		return string(output)
 	},
 }
