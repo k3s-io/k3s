@@ -84,7 +84,7 @@ func lookLayers(node, layer string) error {
 	layersNum := 0
 	var err error
 	for layersNum = 0; layersNum < 100; layersNum++ {
-		// We use RunCommand instead of RunCmdOnDocker because we pipe the output to jq
+		// We use RunCommand instead of RunCmdOnNode because we pipe the output to jq
 		cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io snapshot --snapshotter=stargz info %s | jq -r '.Parent'", node, layer)
 		layer, err = tester.RunCommand(cmd)
 		if err != nil {
