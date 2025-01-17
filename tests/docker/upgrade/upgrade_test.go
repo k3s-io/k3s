@@ -1,4 +1,4 @@
-package main
+package upgrade
 
 import (
 	"flag"
@@ -81,7 +81,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should confirm latest version", func() {
 			for _, server := range config.Servers {
-				out, err := tester.RunCmdOnDocker(server.Name, "k3s --version")
+				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(out).To(ContainSubstring(strings.Replace(latestVersion, "-", "+", 1)))
 			}
@@ -127,11 +127,11 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should confirm commit version", func() {
 			for _, server := range config.Servers {
-				Expect(tester.VerifyValidVersion(server.Name, "kubectl")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "ctr")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server.Name, "crictl")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "kubectl")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "ctr")).To(Succeed())
+				Expect(tester.VerifyValidVersion(server, "crictl")).To(Succeed())
 
-				out, err := tester.RunCmdOnDocker(server.Name, "k3s --version")
+				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
