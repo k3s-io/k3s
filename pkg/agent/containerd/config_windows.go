@@ -18,6 +18,8 @@ func getContainerdArgs(cfg *config.Node) []string {
 		"containerd",
 		"-c", cfg.Containerd.Config,
 	}
+	// The legacy version 2 windows containerd config template did include
+	// address/state/root settings, so they do not need to be passed on the command line.
 	return args
 }
 
@@ -28,11 +30,11 @@ func SetupContainerdConfig(cfg *config.Node) error {
 		logrus.Warn("SELinux isn't supported on windows")
 	}
 
+	cfg.DefaultRuntime = "runhcs-wcow-process"
+	cfg.AgentConfig.Snapshotter = "windows"
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         true,
-		SystemdCgroup:         false,
-		IsRunningInUserNS:     false,
 		PrivateRegistryConfig: cfg.AgentConfig.Registry,
 		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}
