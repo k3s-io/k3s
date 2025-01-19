@@ -22,7 +22,7 @@ RUN apk -U --no-cache add \
 RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
 
 # Install Trivy
-ENV TRIVY_VERSION="0.58.1"
+ENV TRIVY_VERSION="0.58.2"
 RUN case "$(go env GOARCH)" in \
     arm64) TRIVY_ARCH="ARM64" ;; \
     amd64) TRIVY_ARCH="64bit" ;; \
