@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -20,17 +19,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/set"
 )
 
 type TestConfig struct {
 	TestDir        string
 	KubeconfigFile string
-	Label          string
-	Secret         string
+	Token          string
 	K3sImage       string
-	NumServers     int
-	NumAgents      int
-	NeedRestart    bool
 	Servers        []Server
 	Agents         []DockerNode
 	ServerYaml     string
@@ -49,7 +45,9 @@ type Server struct {
 }
 
 // NewTestConfig initializes the test environment and returns the configuration
-// k3s version and tag information is extracted from the version.sh script
+// If k3sImage == "rancher/systemd-node", then the systemd-node container and the local k3s binary
+// will be used to start the server. This is useful for scenarios where the server needs to be restarted.
+// k3s version and tag information should be extracted from the version.sh script
 // and supplied as an argument to the function/test
 func NewTestConfig(k3sImage string) (*TestConfig, error) {
 	config := &TestConfig{
@@ -62,8 +60,6 @@ func NewTestConfig(k3sImage string) (*TestConfig, error) {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
 	}
 	config.TestDir = tempDir
-	// Setup cleanup on exit
-	// setupCleanup(config)
 
 	// Create required directories
 	if err := os.MkdirAll(filepath.Join(config.TestDir, "logs"), 0755); err != nil {
@@ -71,7 +67,7 @@ func NewTestConfig(k3sImage string) (*TestConfig, error) {
 	}
 
 	// Generate random secret
-	config.Secret = fmt.Sprintf("%012d", rand.Int63n(1000000000000))
+	config.Token = fmt.Sprintf("%012d", rand.Int63n(1000000000000))
 	return config, nil
 }
 
@@ -100,8 +96,7 @@ func getPort() int {
 // ProvisionServers starts the required number of k3s servers
 // and updates the kubeconfig file with the first cp server details
 func (config *TestConfig) ProvisionServers(numOfServers int) error {
-	config.NumServers = numOfServers
-	for i := 0; i < config.NumServers; i++ {
+	for i := 0; i < numOfServers; i++ {
 
 		// If a server i already exists, skip. This is useful for scenarios where
 		// the first server is started seperate from the rest of the servers
@@ -110,14 +105,12 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 
 		testID := filepath.Base(config.TestDir)
-		name := fmt.Sprintf("k3s-server-%d-%s", i, strings.ToLower(testID))
+		name := fmt.Sprintf("server-%d-%s", i, strings.ToLower(testID))
 
 		port := getPort()
 		if port == -1 {
 			return fmt.Errorf("failed to find an available port")
 		}
-
-		serverImage := getEnvOrDefault("K3S_IMAGE_SERVER", config.K3sImage)
 
 		// Write the server yaml to a tmp file and mount it into the container
 		var yamlMount string
@@ -148,14 +141,14 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
 		// and start the server using the install script
-		if config.NeedRestart {
+		if config.K3sImage == "rancher/systemd-node" {
 			dRun := strings.Join([]string{"docker run -d",
 				"--name", name,
 				"--hostname", name,
 				"--privileged",
 				"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
 				"--memory", "2048m",
-				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 				"-e", "K3S_DEBUG=true",
 				"-v", "/sys/fs/bpf:/sys/fs/bpf",
 				"-v", "/lib/modules:/lib/modules",
@@ -163,7 +156,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-v", "/var/lib/docker:/var/lib/docker",
 				yamlMount,
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
-				"rancher/systemd-node:v0.0.5",
+				fmt.Sprintf("%s:v0.0.5", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 			if out, err := RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
@@ -183,13 +176,13 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"--privileged",
 				"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
 				"-p", "6443",
-				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 				"-e", "K3S_DEBUG=true",
 				os.Getenv("SERVER_DOCKER_ARGS"),
 				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
 				yamlMount,
-				serverImage,
+				config.K3sImage,
 				"server", joinOrStart, os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
 			if out, err := RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to run server container: %s: %v", out, err)
@@ -222,7 +215,6 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 }
 
 func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
-	config.NumAgents = numOfAgents
 	if err := checkVersionSkew(config); err != nil {
 		return err
 	}
@@ -230,29 +222,30 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 	k3sURL := getEnvOrDefault("K3S_URL", config.Servers[0].URL)
 
 	var g errgroup.Group
-	for i := 0; i < config.NumAgents; i++ {
+	for i := 0; i < numOfAgents; i++ {
 		i := i // capture loop variable
 		g.Go(func() error {
-			name := fmt.Sprintf("k3s-agent-%d-%s", i, strings.ToLower(testID))
+			name := fmt.Sprintf("agent-%d-%s", i, strings.ToLower(testID))
 
 			agentInstanceArgs := fmt.Sprintf("AGENT_%d_ARGS", i)
 			newAgent := DockerNode{
 				Name: name,
 			}
 
-			if config.NeedRestart {
+			if config.K3sImage == "rancher/systemd-node" {
 				dRun := strings.Join([]string{"docker run -d",
 					"--name", name,
 					"--hostname", name,
 					"--privileged",
-					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+					"--memory", "2048m",
+					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
 					"-v", "/sys/fs/bpf:/sys/fs/bpf",
 					"-v", "/lib/modules:/lib/modules",
 					"-v", "/var/run/docker.sock:/var/run/docker.sock",
 					"-v", "/var/lib/docker:/var/lib/docker",
 					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
-					"rancher/systemd-node:v0.0.5",
+					fmt.Sprintf("%s:v0.0.5", config.K3sImage),
 					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 				if out, err := RunCommand(dRun); err != nil {
 					return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
@@ -271,12 +264,12 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"--name", name,
 					"--hostname", name,
 					"--privileged",
-					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Secret),
+					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
 					os.Getenv("AGENT_DOCKER_ARGS"),
 					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
-					getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage),
+					config.K3sImage,
 					"agent", os.Getenv("ARGS"), os.Getenv(agentInstanceArgs)}, " ")
 
 				if out, err := RunCommand(dRun); err != nil {
@@ -317,6 +310,7 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	return nil
 }
 
+// Returns a list of all node names
 func (config *TestConfig) GetNodeNames() []string {
 	var nodeNames []string
 	for _, server := range config.Servers {
@@ -391,25 +385,25 @@ func copyAndModifyKubeconfig(config *TestConfig) error {
 // RunCmdOnNode runs a command on a docker container
 func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
 	dCmd := fmt.Sprintf("docker exec %s %s", node.Name, cmd)
-	return RunCommand(dCmd)
+	out, err := RunCommand(dCmd)
+	if err != nil {
+		return out, fmt.Errorf("%v: on node %s: %s", err, node.Name, out)
+	}
+	return out, nil
 }
 
 // RunCommand Runs command on the host.
-// Returns stdout and embeds stderr inside the error message.
 func RunCommand(cmd string) (string, error) {
-	var stdout, stderr bytes.Buffer
 	c := exec.Command("bash", "-c", cmd)
-	c.Stdout = &stdout
-	c.Stderr = &stderr
-	err := c.Run()
+	out, err := c.CombinedOutput()
 	if err != nil {
-		return stdout.String(), fmt.Errorf("failed to run command: %s: %s: %v", cmd, stderr.String(), err)
+		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
 	}
-	return stdout.String(), nil
+	return string(out), err
 }
 
 func checkVersionSkew(config *TestConfig) error {
-	if config.NumAgents > 0 {
+	if len(config.Agents) > 0 {
 		serverImage := getEnvOrDefault("K3S_IMAGE_SERVER", config.K3sImage)
 		agentImage := getEnvOrDefault("K3S_IMAGE_AGENT", config.K3sImage)
 		if semver.Compare(semver.MajorMinor(agentImage), semver.MajorMinor(serverImage)) > 0 {
@@ -472,7 +466,33 @@ func GetVersionFromChannel(upgradeChannel string) (string, error) {
 	return version, nil
 }
 
+// TODO the below functions are replicated from e2e test utils. Consider combining into commmon package
+func (config TestConfig) DeployWorkload(workload string) (string, error) {
+	resourceDir := "../resources"
+	files, err := os.ReadDir(resourceDir)
+	if err != nil {
+		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
+		return "", err
+	}
+	fmt.Println("\nDeploying", workload)
+	for _, f := range files {
+		filename := filepath.Join(resourceDir, f.Name())
+		if strings.TrimSpace(f.Name()) == workload {
+			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + config.KubeconfigFile
+			return RunCommand(cmd)
+		}
+	}
+	return "", nil
+}
+
 // TODO the below functions are duplicated in the integration test utils. Consider combining into commmon package
+
+// CheckDefaultDeployments checks if the default deployments: coredns, local-path-provisioner, metrics-server, traefik
+// for K3s are ready, otherwise returns an error
+func CheckDefaultDeployments(kubeconfigFile string) error {
+	return DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, kubeconfigFile)
+}
+
 // DeploymentsReady checks if the provided list of deployments are ready, otherwise returns an error
 func DeploymentsReady(deployments []string, kubeconfigFile string) error {
 
@@ -516,6 +536,19 @@ func ParseNodes(kubeconfigFile string) ([]corev1.Node, error) {
 	return nodes.Items, nil
 }
 
+func ParsePods(kubeconfigFile string) ([]corev1.Pod, error) {
+	clientSet, err := k8sClient(kubeconfigFile)
+	if err != nil {
+		return nil, err
+	}
+	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return pods.Items, nil
+}
+
 // PodReady checks if a pod is ready by querying its status
 func PodReady(podName, namespace, kubeconfigFile string) (bool, error) {
 	clientSet, err := k8sClient(kubeconfigFile)
@@ -535,18 +568,25 @@ func PodReady(podName, namespace, kubeconfigFile string) (bool, error) {
 	return false, nil
 }
 
-// Checks if all nodes are ready, otherwise returns an error
-func NodesReady(kubeconfigFile string) error {
+// Checks if provided nodes are ready, otherwise returns an error
+func NodesReady(kubeconfigFile string, nodeNames []string) error {
 	nodes, err := ParseNodes(kubeconfigFile)
 	if err != nil {
 		return err
 	}
+	nodesToCheck := set.New(nodeNames...)
+	readyNodes := make(set.Set[string], 0)
 	for _, node := range nodes {
 		for _, condition := range node.Status.Conditions {
 			if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
 				return fmt.Errorf("node %s is not ready", node.Name)
 			}
+			readyNodes.Insert(node.Name)
 		}
+	}
+	// Check if all nodes are ready
+	if !nodesToCheck.Equal(readyNodes) {
+		return fmt.Errorf("expected nodes %v, found %v", nodesToCheck, readyNodes)
 	}
 	return nil
 }
