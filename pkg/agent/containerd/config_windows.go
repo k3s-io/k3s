@@ -64,3 +64,7 @@ func FuseoverlayfsSupported(root string) error {
 func StargzSupported(root string) error {
 	return errors.Wrapf(util3.ErrUnsupportedPlatform, "stargz is not supported")
 }
+
+func NixSupported(root string) error {
+	return errors.Wrapf(util3.ErrUnsupportedPlatform, "nix is not supported")
+}
