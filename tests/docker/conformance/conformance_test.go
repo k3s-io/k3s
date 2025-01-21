@@ -14,6 +14,7 @@ import (
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var serial = flag.Bool("serial", false, "Run the Serial Conformance Tests")
 var config *tester.TestConfig
 
 func Test_DockerConformance(t *testing.T) {
@@ -55,10 +56,25 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 		})
 		// Takes about 15min to run, so expect nothing to happen for a while
 		It("should run parallel conformance tests", func() {
-			cmd := fmt.Sprintf("%s --conformance -o %s --skip=\"Serial|Slow|Flaky\" -p %d --extra-ginkgo-args=\"%s\" --kubeconfig %s",
+			if *serial {
+				Skip("Skipping parallel conformance tests")
+			}
+			cmd := fmt.Sprintf("%s -o %s --focus=\"Conformance\" --skip=\"Serial|Flaky\" -p %d --extra-ginkgo-args=\"%s\" --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
 				filepath.Join(config.TestDir, "logs"),
 				runtime.NumCPU()/2,
+				"--poll-progress-after=60s,--poll-progress-interval=30s",
+				config.KubeconfigFile)
+			By("Hydrophone: " + cmd)
+			Expect(tester.RunCommand(cmd)).Error().ShouldNot(HaveOccurred())
+		})
+		It("should run serial conformance tests", func() {
+			if !*serial {
+				Skip("Skipping serial conformance tests")
+			}
+			cmd := fmt.Sprintf("%s -o %s --focus=\"Serial\" --skip=\"Flaky\"  --extra-ginkgo-args=\"%s\" --kubeconfig %s",
+				filepath.Join(config.TestDir, "hydrophone"),
+				filepath.Join(config.TestDir, "logs"),
 				"--poll-progress-after=60s,--poll-progress-interval=30s",
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
