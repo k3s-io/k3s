@@ -193,7 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, upgrade]
     env:
       BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
     steps:
@@ -206,6 +206,7 @@ jobs:
         path: ./dist/artifacts
     - name: Load and set K3s image
       run: |
+        chmod +x ./dist/artifacts/k3s
         docker image load -i ./dist/artifacts/k3s-image.tar
         IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
         echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
@@ -222,6 +223,8 @@ jobs:
         cd ./tests/docker/${{ matrix.dtest }}
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -branch=$BRANCH_NAME
+        elif [ ${{ matrix.dtest }} = "snapshotrestore" ]; then
+          ./${{ matrix.dtest }}.test -ci 
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
         fi
