@@ -43,13 +43,13 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 		})
 		It("joins the agent with the new tokens", func() {
 			newSecret = strings.ReplaceAll(newSecret, "\n", "")
-			config.Secret = newSecret
+			config.Token = newSecret
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func(g Gomega) {
 				nodes, err := tester.ParseNodes(config.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(nodes).To(HaveLen(2))
-				g.Expect(tester.NodesReady(config.KubeconfigFile)).To(Succeed())
+				g.Expect(tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
