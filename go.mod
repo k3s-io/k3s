@@ -134,7 +134,7 @@ require (
 	github.com/rancher/wharfie v0.6.7
 	github.com/rancher/wrangler/v3 v3.2.0-rc.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rootless-containers/rootlesskit v1.0.1
+	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spegel-org/spegel v1.0.18
 	github.com/spf13/pflag v1.0.5
