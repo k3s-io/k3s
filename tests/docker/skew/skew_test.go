@@ -18,9 +18,6 @@ var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var branch = flag.String("branch", "master", "The release branch to test")
 var config *tester.TestConfig
 
-var numServers = 1
-var numAgents = 1
-
 func Test_DockerSkew(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
@@ -59,13 +56,13 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("Skew Tests", Ordered, func() {
 	Context("Setup Cluster with Server newer than Agent", func() {
-		It("should provision new servers and old agents", func() {
+		It("should provision new server and old agent", func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(config.ProvisionServers(numServers)).To(Succeed())
+			Expect(config.ProvisionServers(1)).To(Succeed())
 			config.K3sImage = "rancher/k3s:" + lastMinorVersion
-			Expect(config.ProvisionAgents(numAgents)).To(Succeed())
+			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
@@ -86,11 +83,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			}
 		})
 		It("should deploy a test pod", func() {
-			const volumeTestManifest = "../resources/volume-test.yaml"
-
-			// Apply the manifest
-			cmd := fmt.Sprintf("kubectl apply -f %s --kubeconfig=%s", volumeTestManifest, config.KubeconfigFile)
-			_, err := tester.RunCommand(cmd)
+			_, err := config.DeployWorkload("volume-test.yaml")
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {
@@ -116,7 +109,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func(g Gomega) {
 				g.Expect(tester.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
-				g.Expect(tester.NodesReady(config.KubeconfigFile)).To(Succeed())
+				g.Expect(tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
