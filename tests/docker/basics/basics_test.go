@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var k3sImage = flag.String("k3sImage", "", "The image used to provision containers")
 var config *tester.TestConfig
 
 func Test_DockerBasic(t *testing.T) {
@@ -27,7 +27,6 @@ var _ = Describe("Basic Tests", Ordered, func() {
 		It("should provision servers and agents", func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
-			config.NeedRestart = true
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
@@ -35,18 +34,14 @@ var _ = Describe("Basic Tests", Ordered, func() {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile)
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
 
 	Context("Use Local Storage Volume", func() {
 		It("should apply local storage volume", func() {
-			const volumeTestManifest = "../resources/volume-test.yaml"
-
-			// Apply the manifest
-			cmd := fmt.Sprintf("kubectl apply -f %s --kubeconfig=%s", volumeTestManifest, config.KubeconfigFile)
-			_, err := tester.RunCommand(cmd)
+			_, err := config.DeployWorkload("volume-test.yaml")
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 		})
 		It("should validate local storage volume", func() {

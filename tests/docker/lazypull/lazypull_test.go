@@ -33,18 +33,14 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile)
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
 
 	Context("Use Snapshot Container", func() {
 		It("should apply local storage volume", func() {
-			const snapshotTestManifest = "../resources/snapshot-test.yaml"
-
-			// Apply the manifest
-			cmd := fmt.Sprintf("kubectl apply -f %s --kubeconfig=%s", snapshotTestManifest, config.KubeconfigFile)
-			_, err := tester.RunCommand(cmd)
+			_, err := config.DeployWorkload("snapshot-test.yaml")
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 		})
 		It("should have the pod come up", func() {
