@@ -60,15 +60,15 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			testID := filepath.Base(config.TestDir)
 			Expect(err).NotTo(HaveOccurred())
 			for i := 0; i < numServers; i++ {
-				m1 := fmt.Sprintf("--mount type=volume,src=k3s-server-%d-%s-rancher,dst=/var/lib/rancher/k3s", i, testID)
-				m2 := fmt.Sprintf("--mount type=volume,src=k3s-server-%d-%s-log,dst=/var/log", i, testID)
-				m3 := fmt.Sprintf("--mount type=volume,src=k3s-server-%d-%s-etc,dst=/etc/rancher", i, testID)
+				m1 := fmt.Sprintf("--mount type=volume,src=server-%d-%s-rancher,dst=/var/lib/rancher/k3s", i, testID)
+				m2 := fmt.Sprintf("--mount type=volume,src=server-%d-%s-log,dst=/var/log", i, testID)
+				m3 := fmt.Sprintf("--mount type=volume,src=server-%d-%s-etc,dst=/etc/rancher", i, testID)
 				Expect(os.Setenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i), fmt.Sprintf("%s %s %s", m1, m2, m3))).To(Succeed())
 			}
 			for i := 0; i < numAgents; i++ {
-				m1 := fmt.Sprintf("--mount type=volume,src=k3s-agent-%d-%s-rancher,dst=/var/lib/rancher/k3s", i, testID)
-				m2 := fmt.Sprintf("--mount type=volume,src=k3s-agent-%d-%s-log,dst=/var/log", i, testID)
-				m3 := fmt.Sprintf("--mount type=volume,src=k3s-agent-%d-%s-etc,dst=/etc/rancher", i, testID)
+				m1 := fmt.Sprintf("--mount type=volume,src=agent-%d-%s-rancher,dst=/var/lib/rancher/k3s", i, testID)
+				m2 := fmt.Sprintf("--mount type=volume,src=agent-%d-%s-log,dst=/var/log", i, testID)
+				m3 := fmt.Sprintf("--mount type=volume,src=agent-%d-%s-etc,dst=/etc/rancher", i, testID)
 				Expect(os.Setenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i), fmt.Sprintf("%s %s %s", m1, m2, m3))).To(Succeed())
 			}
 		})
@@ -87,11 +87,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			}
 		})
 		It("should deploy a test pod", func() {
-			const volumeTestManifest = "../resources/volume-test.yaml"
-
-			// Apply the manifest
-			cmd := fmt.Sprintf("kubectl apply -f %s --kubeconfig=%s", volumeTestManifest, config.KubeconfigFile)
-			_, err := tester.RunCommand(cmd)
+			_, err := config.DeployWorkload("volume-test.yaml")
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {

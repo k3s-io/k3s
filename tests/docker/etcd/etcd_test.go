@@ -33,7 +33,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames()...)
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should destroy the cluster", func() {
@@ -59,7 +59,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "90s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames()...)
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "90s", "5s").Should(Succeed())
 		})
 	})
