@@ -150,6 +150,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"--memory", "2048m",
 				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 				"-e", "K3S_DEBUG=true",
+				"-e", "GOCOVERDIR=/tmp/k3s-cov",
 				"-v", "/sys/fs/bpf:/sys/fs/bpf",
 				"-v", "/lib/modules:/lib/modules",
 				"-v", "/var/run/docker.sock:/var/run/docker.sock",
@@ -162,10 +163,14 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
 			}
 			time.Sleep(5 * time.Second)
+			cmd := "mkdir -p /tmp/k3s-cov"
+			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
+				return fmt.Errorf("failed to create coverage directory: %s: %v", out, err)
+			}
 			// The pipe requires that we use sh -c with "" to run the command
-			sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
+			cmd = fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
 				joinOrStart+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
-			if out, err := newServer.RunCmdOnNode(sCmd); err != nil {
+			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 				return fmt.Errorf("failed to start server: %s: %v", out, err)
 			}
 		} else {
@@ -178,6 +183,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-p", "6443",
 				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 				"-e", "K3S_DEBUG=true",
+				"-e", "GOCOVERDIR=/tmp/",
 				os.Getenv("SERVER_DOCKER_ARGS"),
 				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
@@ -266,6 +272,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"--privileged",
 					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
+					"-e", "GOCOVERDIR=/tmp/",
 					os.Getenv("AGENT_DOCKER_ARGS"),
 					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
