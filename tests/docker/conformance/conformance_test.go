@@ -59,14 +59,14 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			if *serial {
 				Skip("Skipping parallel conformance tests")
 			}
-			cmd := fmt.Sprintf("%s -o %s --focus=\"Conformance\" --skip=\"Serial|Flaky\" -p %d --extra-ginkgo-args=\"%s\" --kubeconfig %s",
+			cmd := fmt.Sprintf("%s --focus=\"Conformance\" --skip=\"Serial|Flaky\" -p %d --extra-ginkgo-args=\"%s\" --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
-				filepath.Join(config.TestDir, "logs"),
 				runtime.NumCPU()/2,
 				"--poll-progress-after=60s,--poll-progress-interval=30s",
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
-			Expect(tester.RunCommand(cmd)).Error().ShouldNot(HaveOccurred())
+			res, err := tester.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred(), res)
 		})
 		It("should run serial conformance tests", func() {
 			if !*serial {
@@ -78,7 +78,8 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 				"--poll-progress-after=60s,--poll-progress-interval=30s",
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
-			Expect(tester.RunCommand(cmd)).Error().ShouldNot(HaveOccurred())
+			res, err := tester.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred(), res)
 		})
 	})
 
