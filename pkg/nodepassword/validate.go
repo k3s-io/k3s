@@ -2,7 +2,6 @@ package nodepassword
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"os"
 	"path"
@@ -63,20 +62,15 @@ func GetNodeAuthValidator(ctx context.Context, control *config.Control) NodeAuth
 			return "", http.StatusBadRequest, errors.New("header node name does not match auth node name")
 		}
 
-		// get client address, to see if deferred node password validation should be allowed when the apiserver
-		// is not available. Deferred password validation is only allowed for requests from the local client.
-		client, _, _ := net.SplitHostPort(req.RemoteAddr)
-		isLocal := client == "127.0.0.1" || client == "::1" || client == control.BindAddress
-
 		if secretClient == nil || nodeClient == nil {
 			if runtime.Core != nil {
 				// initialize the client if we can
 				secretClient = runtime.Core.Core().V1().Secret()
 				nodeClient = runtime.Core.Core().V1().Node()
-			} else if isLocal && node.Name == os.Getenv("NODE_NAME") {
+			} else if node.Name == os.Getenv("NODE_NAME") {
 				// If we're verifying our own password, verify it locally and ensure a secret later.
 				return verifyLocalPassword(ctx, control, &mu, deferredNodes, node)
-			} else if isLocal && control.DisableAPIServer && !isNodeAuth {
+			} else if control.DisableAPIServer && !isNodeAuth {
 				// If we're running on an etcd-only node, and the request didn't use Node Identity auth,
 				// defer node password verification until an apiserver joins the cluster.
 				return verifyRemotePassword(ctx, control, &mu, deferredNodes, node)
