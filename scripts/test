@@ -59,6 +59,9 @@ fi
 . ./tests/docker/test-run-hardened
 echo "Did test-run-hardened $?"
 
+go test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -serial
+
+go test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE"
 # ---
 
 [ "$ARCH" != 'amd64' ] && \
