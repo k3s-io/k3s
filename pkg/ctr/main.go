@@ -20,9 +20,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/containerd/cmd/ctr/app"
-	"github.com/containerd/containerd/pkg/seed"
-	"github.com/urfave/cli"
+	"github.com/containerd/containerd/v2/cmd/ctr/app"
+	"github.com/urfave/cli/v2"
 )
 
 func Main() {
@@ -30,14 +29,13 @@ func Main() {
 }
 
 func main() {
-	seed.WithTimeAndRand()
 	app := app.New()
 	for i, flag := range app.Flags {
-		if sFlag, ok := flag.(cli.StringFlag); ok {
-			if sFlag.Name == "address, a" {
+		if sFlag, ok := flag.(*cli.StringFlag); ok {
+			if sFlag.Name == "address" {
 				sFlag.Value = "/run/k3s/containerd/containerd.sock"
 				app.Flags[i] = sFlag
-			} else if sFlag.Name == "namespace, n" {
+			} else if sFlag.Name == "namespace" {
 				sFlag.Value = "k8s.io"
 				app.Flags[i] = sFlag
 			}
