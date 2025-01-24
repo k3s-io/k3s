@@ -2,6 +2,7 @@ package spegel
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -131,7 +132,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		level = ipfslog.LevelDebug
 		stdlog := log.New(logrus.StandardLogger().Writer(), "spegel ", log.LstdFlags)
-		logger := stdr.NewWithOptions(stdlog, stdr.Options{Verbosity: ptr.To(10)})
+		logger := stdr.NewWithOptions(stdlog, stdr.Options{Verbosity: ptr.To(7)})
 		ctx = logr.NewContext(ctx, logger)
 	}
 	ipfslog.SetAllLoggers(level)
@@ -197,7 +198,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	}
 	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create p2p router")
+		return errors.Wrap(err, "failed to create P2P router")
 	}
 	go router.Run(ctx)
 
@@ -216,13 +217,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
 	reg := registry.NewRegistry(ociClient, router, registryOpts...)
-	regSvr := reg.Server(":" + c.RegistryPort)
-
-	// Close router on shutdown
-	go func() {
-		<-ctx.Done()
-		router.Close()
-	}()
+	regSvr, err := reg.Server(":" + c.RegistryPort)
+	if err != nil {
+		return errors.Wrap(err, "failed to create embedded registry server")
+	}
 
 	// Track images available in containerd and publish via p2p router
 	go state.Track(ctx, ociClient, router, resolveLatestTag)
@@ -232,29 +230,52 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
-	mRouter.PathPrefix("/v1-" + version.Program + "/p2p").Handler(c.peerInfo())
+	mRouter.PathPrefix("/v1-{program}/p2p").Handler(c.peerInfo())
 
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
-	_ = wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(_ context.Context) (bool, error) {
-		return router.Ready()
-	})
-
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(_ context.Context) (bool, error) {
+		ready, _ := router.Ready(ctx)
+		return ready, nil
+	}); err != nil {
+		logrus.Warnf("Failed to wait for P2P mesh to become ready, will retry in the background: %v", err)
+	}
 	return nil
 }
 
 // peerInfo sends a peer address retrieved from the bootstrapper via HTTP
 func (c *Config) peerInfo() http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		client, _, _ := net.SplitHostPort(req.RemoteAddr)
-		info, err := c.Bootstrapper.Get()
-		if err != nil {
-			http.Error(resp, "Internal Error", http.StatusInternalServerError)
+		info, err := c.Bootstrapper.Get(req.Context())
+		if err != nil || len(info) == 0 {
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		logrus.Debugf("Serving p2p peer addr %s to client at %s", info, client)
-		resp.WriteHeader(http.StatusOK)
+
+		addrs := []string{}
+		for _, ai := range info {
+			for _, ma := range ai.Addrs {
+				addrs = append(addrs, fmt.Sprintf("%s/p2p/%s", ma, ai.ID))
+			}
+		}
+
+		client, _, _ := net.SplitHostPort(req.RemoteAddr)
+		if req.Header.Get("Accept") == "application/json" {
+			b, err := json.Marshal(addrs)
+			if err != nil {
+				http.Error(resp, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			logrus.Debugf("Serving p2p peer addrs %v to client at %s", addrs, client)
+			resp.Header().Set("Content-Type", "application/json")
+			resp.WriteHeader(http.StatusOK)
+			resp.Write(b)
+			return
+		}
+
+		logrus.Debugf("Serving p2p peer addr %v to client at %s", addrs[0], client)
 		resp.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(resp, "%s/p2p/%s", info.Addrs[0].String(), info.ID.String())
+		resp.WriteHeader(http.StatusOK)
+		resp.Write([]byte(addrs[0]))
 	})
 }
