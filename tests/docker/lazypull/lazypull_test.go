@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -28,25 +27,20 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
-
-			Expect(os.Setenv("SERVER_ARGS", "--snapshotter=stargz")).To(Succeed())
+			config.ServerYaml = "snapshotter: stargz"
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
 				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile)
+				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
 
 	Context("Use Snapshot Container", func() {
 		It("should apply local storage volume", func() {
-			const snapshotTestManifest = "../resources/snapshot-test.yaml"
-
-			// Apply the manifest
-			cmd := fmt.Sprintf("kubectl apply -f %s --kubeconfig=%s", snapshotTestManifest, config.KubeconfigFile)
-			_, err := tester.RunCommand(cmd)
+			_, err := config.DeployWorkload("snapshot-test.yaml")
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 		})
 		It("should have the pod come up", func() {
@@ -86,7 +80,7 @@ func lookLayers(node, layer string) error {
 	layersNum := 0
 	var err error
 	for layersNum = 0; layersNum < 100; layersNum++ {
-		// We use RunCommand instead of RunCmdOnDocker because we pipe the output to jq
+		// We use RunCommand instead of RunCmdOnNode because we pipe the output to jq
 		cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io snapshot --snapshotter=stargz info %s | jq -r '.Parent'", node, layer)
 		layer, err = tester.RunCommand(cmd)
 		if err != nil {
@@ -121,7 +115,10 @@ func lookLayers(node, layer string) error {
 func getTopmostLayer(node, container string) (string, error) {
 	var targetContainer string
 	cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io c ls -q labels.\"io.kubernetes.container.name\"==\"%s\" | sed -n 1p", node, container)
-	targetContainer, _ = tester.RunCommand(cmd)
+	targetContainer, err := tester.RunCommand(cmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to get target container: %v", err)
+	}
 	targetContainer = strings.TrimSpace(targetContainer)
 	fmt.Println("targetContainer: ", targetContainer)
 	if targetContainer == "" {
