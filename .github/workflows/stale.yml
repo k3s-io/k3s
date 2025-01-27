@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Close Stale Issues
-        uses: actions/stale@v9.0.0
+        uses: actions/stale@v9.1.0
         with:
           # ensure PRs are exempt
           days-before-pr-stale: -1
