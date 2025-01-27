@@ -36,9 +36,9 @@ func Test_E2EClusterValidation(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -48,16 +48,16 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			fmt.Println("Server Nodes:", serverNodes)
+			fmt.Println("Agent Nodes:", agentNodes)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -100,9 +100,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
-			for _, nodeName := range serverNodeNames {
+			for _, node := range serverNodes {
 				Eventually(func(g Gomega) {
-					res, err := e2e.RunCmdOnNode(cmd, nodeName)
+					res, err := node.RunCmdOnNode(cmd)
 					g.Expect(err).NotTo(HaveOccurred())
 					Expect(res).Should(ContainSubstring("test-clusterip"))
 				}, "120s", "10s").Should(Succeed())
@@ -113,8 +113,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
-				nodeExternalIP, _ := e2e.FetchNodeExternalIP(nodeName)
+			for _, node := range serverNodes {
+				nodeExternalIP, _ := node.FetchNodeExternalIP()
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
@@ -140,8 +140,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
-				ip, _ := e2e.FetchNodeExternalIP(nodeName)
+			for _, node := range serverNodes {
+				ip, _ := node.FetchNodeExternalIP()
 
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
 				port, err := e2e.RunCommand(cmd)
@@ -167,8 +167,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, *hardened)
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
-			for _, nodeName := range serverNodeNames {
-				ip, _ := e2e.FetchNodeExternalIP(nodeName)
+			for _, node := range serverNodes {
+				ip, _ := node.FetchNodeExternalIP()
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
 
@@ -275,7 +275,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 	Context("Validate restart", func() {
 		It("Restarts normally", func() {
-			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			errRestart := e2e.RestartCluster(append(serverNodes, agentNodes...))
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
@@ -300,29 +300,29 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 	Context("Valdiate Certificate Rotation", func() {
 		It("Stops K3s and rotates certificates", func() {
-			errStop := e2e.StopCluster(serverNodeNames)
+			errStop := e2e.StopCluster(serverNodes)
 			Expect(errStop).NotTo(HaveOccurred(), "Cluster could not be stopped successfully")
 
-			for _, nodeName := range serverNodeNames {
+			for _, node := range serverNodes {
 				cmd := "k3s certificate rotate"
-				_, err := e2e.RunCmdOnNode(cmd, nodeName)
-				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+nodeName)
+				_, err := node.RunCmdOnNode(cmd)
+				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+node.String())
 			}
 		})
 
 		It("Start normally", func() {
 			// Since we stopped all the server, we have to start 2 at once to get it back up
 			// If we only start one at a time, the first will hang waiting for the second to be up
-			_, err := e2e.RunCmdOnNode("systemctl --no-block start k3s", serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode("systemctl --no-block start k3s")
 			Expect(err).NotTo(HaveOccurred())
-			err = e2e.StartCluster(serverNodeNames[1:])
+			err = e2e.StartCluster(serverNodes[1:])
 			Expect(err).NotTo(HaveOccurred(), "Cluster could not be started successfully")
 
 			Eventually(func(g Gomega) {
-				for _, nodeName := range serverNodeNames {
+				for _, node := range serverNodes {
 					cmd := "test ! -e /var/lib/rancher/k3s/server/tls/dynamic-cert-regenerate"
-					_, err := e2e.RunCmdOnNode(cmd, nodeName)
-					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+nodeName)
+					_, err := node.RunCmdOnNode(cmd)
+					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+node.String())
 				}
 			}, "620s", "5s").Should(Succeed())
 
@@ -354,21 +354,21 @@ var _ = Describe("Verify Create", Ordered, func() {
 				"",
 			}
 
-			for _, nodeName := range serverNodeNames {
-				grCert, errGrep := e2e.RunCmdOnNode(grepCert, nodeName)
-				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+nodeName)
+			for _, node := range serverNodes {
+				grCert, errGrep := node.RunCmdOnNode(grepCert)
+				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+node.String())
 				re := regexp.MustCompile("tls-[0-9]+")
 				tls := re.FindAllString(grCert, -1)[0]
 				diff := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
 					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
-				result, err := e2e.RunCmdOnNode(diff, nodeName)
-				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+nodeName)
+				result, err := node.RunCmdOnNode(diff)
+				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+node.String())
 
 				certArray := strings.Split(result, "\n")
-				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+nodeName)
+				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+node.String())
 			}
 
-			errRestartAgent := e2e.RestartCluster(agentNodeNames)
+			errRestartAgent := e2e.RestartCluster(agentNodes)
 			Expect(errRestartAgent).NotTo(HaveOccurred(), "Agent could not be restart successfully")
 		})
 
@@ -382,9 +382,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

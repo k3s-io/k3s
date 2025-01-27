@@ -27,9 +27,9 @@ func Test_E2EWasm(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -39,22 +39,22 @@ var _ = Describe("Verify Can run Wasm workloads", Ordered, func() {
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		fmt.Println("CLUSTER CONFIG")
 		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodeNames)
-		fmt.Println("Agent Nodes:", agentNodeNames)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+		fmt.Println("Server Nodes:", serverNodes)
+		fmt.Println("Agent Nodes:", agentNodes)
+		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	// Server node needs to be ready before we continue
 	It("Checks Node and Pod Status", func() {
-		fmt.Printf("\nFetching node status\n")
+		By("Fetching Nodes status")
 		Eventually(func(g Gomega) {
 			nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -62,9 +62,9 @@ var _ = Describe("Verify Can run Wasm workloads", Ordered, func() {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
 		}, "620s", "5s").Should(Succeed())
-		_, _ = e2e.ParseNodes(kubeConfigFile, true)
+		e2e.DumpPods(kubeConfigFile)
 
-		fmt.Printf("\nFetching Pods status\n")
+		By("Fetching Pods status")
 		Eventually(func(g Gomega) {
 			pods, err := e2e.ParsePods(kubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -76,15 +76,15 @@ var _ = Describe("Verify Can run Wasm workloads", Ordered, func() {
 				}
 			}
 		}, "620s", "5s").Should(Succeed())
-		_, _ = e2e.ParsePods(kubeConfigFile, true)
+		e2e.DumpPods(kubeConfigFile)
 	})
 
 	It("Verify wasm-related containerd shims are installed", func() {
 		expected_shims := []string{"containerd-shim-spin-v2", "containerd-shim-slight-v1"}
-		for _, node := range append(serverNodeNames, agentNodeNames...) {
+		for _, node := range append(serverNodes, agentNodes...) {
 			for _, shim := range expected_shims {
 				cmd := fmt.Sprintf("which %s", shim)
-				_, err := e2e.RunCmdOnNode(cmd, node)
+				_, err := node.RunCmdOnNode(cmd)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}
@@ -136,9 +136,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(append(serverNodes, agentNodes...))).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

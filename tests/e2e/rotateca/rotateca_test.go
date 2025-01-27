@@ -30,9 +30,9 @@ func Test_E2ECustomCARotation(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	agentNodeNames  []string
-	serverNodeNames []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -42,21 +42,21 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			fmt.Println("Server Nodes:", serverNodes)
+			fmt.Println("Agent Nodes:", agentNodes)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -64,9 +64,9 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -78,7 +78,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParsePods(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 		})
 
 		It("Generates New CA Certificates", func() {
@@ -88,23 +88,23 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 				"DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
 			}
 			for _, cmd := range cmds {
-				_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+				_, err := serverNodes[0].RunCmdOnNode(cmd)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 
 		It("Rotates CA Certificates", func() {
 			cmd := "k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodeNames)).To(Succeed())
+			Expect(e2e.RestartCluster(serverNodes)).To(Succeed())
 		})
 
 		It("Restarts K3s agents", func() {
-			Expect(e2e.RestartCluster(agentNodeNames)).To(Succeed())
+			Expect(e2e.RestartCluster(agentNodes)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
@@ -127,7 +127,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 					}
 				}
 			}, "420s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 		})
 	})
 })
@@ -139,9 +139,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

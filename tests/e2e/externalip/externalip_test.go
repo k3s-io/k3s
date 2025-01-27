@@ -56,9 +56,9 @@ func Test_E2EExternalIP(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -68,16 +68,16 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		fmt.Println("CLUSTER CONFIG")
 		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodeNames)
-		fmt.Println("Agent Nodes:", agentNodeNames)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+		fmt.Println("Server Nodes:", serverNodes)
+		fmt.Println("Agent Nodes:", agentNodes)
+		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -166,9 +166,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(append(serverNodes, agentNodes...))).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

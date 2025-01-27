@@ -30,42 +30,42 @@ func Test_E2ERootlessStartupValidation(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
 )
 
-func StartK3sCluster(nodes []string, serverYAML string) error {
+func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string) error {
 	for _, node := range nodes {
 
 		resetCmd := "head -n 3 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
 		yamlCmd := fmt.Sprintf("echo '%s' >> /etc/rancher/k3s/config.yaml", serverYAML)
 		startCmd := "systemctl --user restart k3s-rootless"
 
-		if _, err := e2e.RunCmdOnNode(resetCmd, node); err != nil {
+		if _, err := node.RunCmdOnNode(resetCmd); err != nil {
 			return err
 		}
-		if _, err := e2e.RunCmdOnNode(yamlCmd, node); err != nil {
+		if _, err := node.RunCmdOnNode(yamlCmd); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlesNode("systemctl --user daemon-reload", node); err != nil {
+		if _, err := RunCmdOnRootlessNode("systemctl --user daemon-reload", node.String()); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlesNode(startCmd, node); err != nil {
+		if _, err := RunCmdOnRootlessNode(startCmd, node.String()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func KillK3sCluster(nodes []string) error {
+func KillK3sCluster(nodes []e2e.VagrantNode) error {
 	for _, node := range nodes {
-		if _, err := RunCmdOnRootlesNode(`systemctl --user stop k3s-rootless`, node); err != nil {
+		if _, err := RunCmdOnRootlessNode(`systemctl --user stop k3s-rootless`, node.String()); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlesNode("k3s-killall.sh", node); err != nil {
+		if _, err := RunCmdOnRootlessNode("k3s-killall.sh", node.String()); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlesNode("rm -rf /home/vagrant/.rancher/k3s/server/db", node); err != nil {
+		if _, err := RunCmdOnRootlessNode("rm -rf /home/vagrant/.rancher/k3s/server/db", node.String()); err != nil {
 			return err
 		}
 	}
@@ -77,13 +77,13 @@ var _ = ReportAfterEach(e2e.GenReport)
 var _ = BeforeSuite(func() {
 	var err error
 	if *local {
-		serverNodeNames, _, err = e2e.CreateLocalCluster(*nodeOS, 1, 0)
+		serverNodes, _, err = e2e.CreateLocalCluster(*nodeOS, 1, 0)
 	} else {
-		serverNodeNames, _, err = e2e.CreateCluster(*nodeOS, 1, 0)
+		serverNodes, _, err = e2e.CreateCluster(*nodeOS, 1, 0)
 	}
 	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 	//Checks if system is using cgroup v2
-	_, err = e2e.RunCmdOnNode("cat /sys/fs/cgroup/cgroup.controllers", serverNodeNames[0])
+	_, err = serverNodes[0].RunCmdOnNode("cat /sys/fs/cgroup/cgroup.controllers")
 	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
 })
@@ -91,18 +91,18 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Various Startup Configurations", Ordered, func() {
 	Context("Verify standard startup :", func() {
 		It("Starts K3s with no issues", func() {
-			err := StartK3sCluster(serverNodeNames, "")
+			err := StartK3sCluster(serverNodes, "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			kubeConfigFile, err = GenRootlessKubeConfigFile(serverNodeNames[0])
+			fmt.Println("Server Nodes:", serverNodes)
+			kubeConfigFile, err = GenRootlessKubeConfigFile(serverNodes[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 			_, _ = e2e.ParseNodes(kubeConfigFile, false)
 
-			fmt.Printf("\nFetching pods status\n")
+			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -154,7 +154,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(serverNodeNames)
+			err := KillK3sCluster(serverNodes)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -168,9 +168,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, serverNodeNames))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, serverNodes))
 	} else {
-		Expect(e2e.GetCoverageReport(serverNodeNames)).To(Succeed())
+		Expect(e2e.GetCoverageReport(serverNodes)).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

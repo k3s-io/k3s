@@ -33,9 +33,9 @@ func Test_E2EAutoImport(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -45,21 +45,21 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			fmt.Println("Server Nodes:", serverNodes)
+			fmt.Println("Agent Nodes:", agentNodes)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks Node and Pod Status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -67,9 +67,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 
-			fmt.Printf("\nFetching Pods status\n")
+			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -81,93 +81,93 @@ var _ = Describe("Verify Create", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParsePods(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 		})
 
 		It("Create a folder in agent/images", func() {
 			cmd := `mkdir /var/lib/rancher/k3s/agent/images`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 
 		It("Create file for auto import and search in the image store", func() {
 			cmd := `echo docker.io/library/redis:latest | sudo tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/redis`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Change name for the file and see if the label is still pinned", func() {
 			cmd := `mv /var/lib/rancher/k3s/agent/images/testautoimport.txt /var/lib/rancher/k3s/agent/images/testautoimportrename.txt`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/redis`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Create, remove and create again a file", func() {
 			cmd := `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 
 			cmd = `rm /var/lib/rancher/k3s/agent/images/bb.txt`
-			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err = serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 
 			cmd = `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
-			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err = serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Move the folder, add a image and then see if the image is going to be pinned", func() {
 			cmd := `mv /var/lib/rancher/k3s/agent/images /var/lib/rancher/k3s/agent/test`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			cmd = `echo 'docker.io/library/mysql:latest' | sudo tee /var/lib/rancher/k3s/agent/test/mysql.txt`
-			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err = serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			cmd = `mv /var/lib/rancher/k3s/agent/test /var/lib/rancher/k3s/agent/images`
-			_, err = e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err = serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/mysql`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Restarts normally", func() {
-			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			errRestart := e2e.RestartCluster(append(serverNodes, agentNodes...))
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
@@ -182,25 +182,25 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Verify bb.txt image and see if are pinned", func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Removes bb.txt file", func() {
 			cmd := `rm /var/lib/rancher/k3s/agent/images/bb.txt`
-			_, err := e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+			_, err := serverNodes[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
 		It("Restarts normally", func() {
-			errRestart := e2e.RestartCluster(append(serverNodeNames, agentNodeNames...))
+			errRestart := e2e.RestartCluster(append(serverNodes, agentNodes...))
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
@@ -215,8 +215,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Verify if bb.txt image is unpinned", func() {
 			Eventually(func(g Gomega) {
 				cmd := `k3s ctr images list | grep library/busybox`
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cattle.k3s.pinned=pinned"))
-				g.Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).ShouldNot(ContainSubstring("io.cri-containerd.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).ShouldNot(ContainSubstring("io.cattle.k3s.pinned=pinned"))
+				g.Expect(serverNodes[0].RunCmdOnNode(cmd)).ShouldNot(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 		})
 
@@ -231,7 +231,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 
 	if !failed {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

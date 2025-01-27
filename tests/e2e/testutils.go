@@ -18,6 +18,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// defining the VagrantNode type allows methods like RunCmdOnNode to be defined on it.
+// This makes test code more consistent, as similar functions can exists in Docker and E2E tests.
+type VagrantNode string
+
+func (v VagrantNode) String() string {
+	return string(v)
+}
+
+func VagrantSlice(v []VagrantNode) []string {
+	nodes := make([]string, 0, len(v))
+	for _, node := range v {
+		nodes = append(nodes, node.String())
+	}
+	return nodes
+}
+
 type Node struct {
 	Name       string
 	Status     string
@@ -39,9 +55,8 @@ type Pod struct {
 	IP        string
 	Node      string
 }
-
 type NodeError struct {
-	Node string
+	Node VagrantNode
 	Cmd  string
 	Err  error
 }
@@ -65,7 +80,7 @@ func (ne *NodeError) Unwrap() error {
 	return ne.Err
 }
 
-func newNodeError(cmd, node string, err error) *NodeError {
+func newNodeError(cmd string, node VagrantNode, err error) *NodeError {
 	return &NodeError{
 		Cmd:  cmd,
 		Node: node,
@@ -84,17 +99,17 @@ func CountOfStringInSlice(str string, pods []Pod) int {
 }
 
 // genNodeEnvs generates the node and testing environment variables for vagrant up
-func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string, string) {
-	serverNodeNames := make([]string, serverCount)
+func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, string) {
+	serverNodes := make([]VagrantNode, serverCount)
 	for i := 0; i < serverCount; i++ {
-		serverNodeNames[i] = "server-" + strconv.Itoa(i)
+		serverNodes[i] = VagrantNode("server-" + strconv.Itoa(i))
 	}
-	agentNodeNames := make([]string, agentCount)
+	agentNodes := make([]VagrantNode, agentCount)
 	for i := 0; i < agentCount; i++ {
-		agentNodeNames[i] = "agent-" + strconv.Itoa(i)
+		agentNodes[i] = VagrantNode("agent-" + strconv.Itoa(i))
 	}
 
-	nodeRoles := strings.Join(serverNodeNames, " ") + " " + strings.Join(agentNodeNames, " ")
+	nodeRoles := strings.Join(VagrantSlice(serverNodes), " ") + " " + strings.Join(VagrantSlice(agentNodes), " ")
 	nodeRoles = strings.TrimSpace(nodeRoles)
 
 	nodeBoxes := strings.Repeat(nodeOS+" ", serverCount+agentCount)
@@ -102,12 +117,12 @@ func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]string, []string
 
 	nodeEnvs := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s"`, nodeRoles, nodeBoxes)
 
-	return serverNodeNames, agentNodeNames, nodeEnvs
+	return serverNodes, agentNodes, nodeEnvs
 }
 
-func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+func CreateCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, error) {
 
-	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
+	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
 	for _, env := range os.Environ() {
@@ -116,16 +131,16 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 		}
 	}
 	// Bring up the first server node
-	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
+	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
+		return nil, nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
-	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+	for _, node := range append(serverNodes[1:], agentNodes...) {
+		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
 		fmt.Println(cmd)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
@@ -134,7 +149,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 			return nil
 		})
 		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
-		if strings.Contains(node, "agent") {
+		if strings.Contains(node.String(), "agent") {
 			time.Sleep(5 * time.Second)
 		} else {
 			time.Sleep(30 * time.Second)
@@ -144,16 +159,17 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]string, []stri
 		return nil, nil, err
 	}
 
-	return serverNodeNames, agentNodeNames, nil
+	return serverNodes, agentNodes, nil
 }
 
-func scpK3sBinary(nodeNames []string) error {
+func scpK3sBinary(nodeNames []VagrantNode) error {
 	for _, node := range nodeNames {
-		cmd := fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node)
+		cmd := fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node.String())
 		if _, err := RunCommand(cmd); err != nil {
 			return fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
 		}
-		if _, err := RunCmdOnNode("mv /tmp/k3s /usr/local/bin/", node); err != nil {
+		cmd = "vagrant ssh " + node.String() + " -c \"sudo mv /tmp/k3s /usr/local/bin/\""
+		if _, err := RunCommand(cmd); err != nil {
 			return err
 		}
 	}
@@ -163,9 +179,9 @@ func scpK3sBinary(nodeNames []string) error {
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
 // This is intended only for local testing purposes when writing a new E2E test.
-func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, []string, error) {
+func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, error) {
 
-	serverNodeNames, agentNodeNames, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
+	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
 	var cmd string
@@ -179,15 +195,15 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 
 	// Provision the first server node. In GitHub Actions, this also imports the VM image into libvirt, which
 	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
-	cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodeNames[0])
+	cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, newNodeError(cmd, serverNodeNames[0], err)
+		return nil, nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
-	for _, node := range append(serverNodeNames[1:], agentNodeNames...) {
+	for _, node := range append(serverNodes[1:], agentNodes...) {
 		cmd := fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
@@ -202,12 +218,12 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		return nil, nil, err
 	}
 
-	if err := scpK3sBinary(append(serverNodeNames, agentNodeNames...)); err != nil {
+	if err := scpK3sBinary(append(serverNodes, agentNodes...)); err != nil {
 		return nil, nil, err
 	}
 	// Install K3s on all nodes in parallel
 	errg, _ = errgroup.WithContext(context.Background())
-	for _, node := range append(serverNodeNames, agentNodeNames...) {
+	for _, node := range append(serverNodes, agentNodes...) {
 		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
@@ -222,7 +238,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]string, [
 		return nil, nil, err
 	}
 
-	return serverNodeNames, agentNodeNames, nil
+	return serverNodes, agentNodes, nil
 }
 
 func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
@@ -301,9 +317,9 @@ func FetchIngressIP(kubeconfig string) ([]string, error) {
 	return ingressIPs, nil
 }
 
-func FetchNodeExternalIP(nodename string) (string, error) {
-	cmd := "vagrant ssh " + nodename + " -c  \"ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1\""
-	ipaddr, err := RunCommand(cmd)
+func (v VagrantNode) FetchNodeExternalIP() (string, error) {
+	cmd := "ip -f inet addr show eth1| awk '/inet / {print $2}'|cut -d/ -f1"
+	ipaddr, err := v.RunCmdOnNode(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -313,9 +329,9 @@ func FetchNodeExternalIP(nodename string) (string, error) {
 	return nodeip, nil
 }
 
-func GenKubeConfigFile(serverName string) (string, error) {
-	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
-	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", serverName, kubeConfigFile)
+func GenKubeConfigFile(nodeName string) (string, error) {
+	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
+	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeConfigFile)
 	_, err := RunCommand(cmd)
 	if err != nil {
 		return "", err
@@ -328,7 +344,8 @@ func GenKubeConfigFile(serverName string) (string, error) {
 
 	re := regexp.MustCompile(`(?m)==> vagrant:.*\n`)
 	modifiedKubeConfig := re.ReplaceAllString(string(kubeConfig), "")
-	nodeIP, err := FetchNodeExternalIP(serverName)
+	vNode := VagrantNode(nodeName)
+	nodeIP, err := vNode.FetchNodeExternalIP()
 	if err != nil {
 		return "", err
 	}
@@ -359,16 +376,16 @@ func GenReport(specReport ginkgo.SpecReport) {
 	fmt.Printf("%s", status)
 }
 
-func GetJournalLogs(node string) (string, error) {
+func (v VagrantNode) GetJournalLogs() (string, error) {
 	cmd := "journalctl -u k3s* --no-pager"
-	return RunCmdOnNode(cmd, node)
+	return v.RunCmdOnNode(cmd)
 }
 
-func TailJournalLogs(lines int, nodes []string) string {
+func TailJournalLogs(lines int, nodes []VagrantNode) string {
 	logs := &strings.Builder{}
 	for _, node := range nodes {
 		cmd := fmt.Sprintf("journalctl -u k3s* --no-pager --lines=%d", lines)
-		if l, err := RunCmdOnNode(cmd, node); err != nil {
+		if l, err := node.RunCmdOnNode(cmd); err != nil {
 			fmt.Fprintf(logs, "** failed to read journald log for node %s ***\n%v\n", node, err)
 		} else {
 			fmt.Fprintf(logs, "** journald log for node %s ***\n%s\n", node, l)
@@ -379,14 +396,14 @@ func TailJournalLogs(lines int, nodes []string) string {
 
 // SaveJournalLogs saves the journal logs of each node to a <NAME>-jlog.txt file.
 // When used in GHA CI, the logs are uploaded as an artifact on failure.
-func SaveJournalLogs(nodeNames []string) error {
-	for _, node := range nodeNames {
-		lf, err := os.Create(node + "-jlog.txt")
+func SaveJournalLogs(nodes []VagrantNode) error {
+	for _, node := range nodes {
+		lf, err := os.Create(node.String() + "-jlog.txt")
 		if err != nil {
 			return err
 		}
 		defer lf.Close()
-		logs, err := GetJournalLogs(node)
+		logs, err := node.GetJournalLogs()
 		if err != nil {
 			return err
 		}
@@ -397,11 +414,11 @@ func SaveJournalLogs(nodeNames []string) error {
 	return nil
 }
 
-func GetConfig(nodes []string) string {
+func GetConfig(nodes []VagrantNode) string {
 	config := &strings.Builder{}
 	for _, node := range nodes {
 		cmd := "tar -Pc /etc/rancher/k3s/ | tar -vxPO"
-		if c, err := RunCmdOnNode(cmd, node); err != nil {
+		if c, err := node.RunCmdOnNode(cmd); err != nil {
 			fmt.Fprintf(config, "** failed to get config for node %s ***\n%v\n", node, err)
 		} else {
 			fmt.Fprintf(config, "** config for node %s ***\n%s\n", node, c)
@@ -416,7 +433,7 @@ func GetVagrantLog(cErr error) string {
 	var nodeErr *NodeError
 	nodeJournal := ""
 	if errors.As(cErr, &nodeErr) {
-		nodeJournal, _ = GetJournalLogs(nodeErr.Node)
+		nodeJournal, _ = nodeErr.Node.GetJournalLogs()
 		nodeJournal = "\nNode Journal Logs:\n" + nodeJournal
 	}
 
@@ -504,11 +521,17 @@ func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
 	return pods, nil
 }
 
+func DumpPods(kubeConfig string) {
+	cmd := "kubectl get pods -o wide --no-headers -A"
+	res, _ := RunCommand(cmd)
+	fmt.Println(strings.TrimSpace(res))
+}
+
 // RestartCluster restarts the k3s service on each node given
-func RestartCluster(nodeNames []string) error {
-	for _, nodeName := range nodeNames {
+func RestartCluster(nodes []VagrantNode) error {
+	for _, node := range nodes {
 		cmd := "systemctl restart k3s* --all"
-		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+		if _, err := node.RunCmdOnNode(cmd); err != nil {
 			return err
 		}
 	}
@@ -516,13 +539,13 @@ func RestartCluster(nodeNames []string) error {
 }
 
 // StartCluster starts the k3s service on each node given
-func StartCluster(nodeNames []string) error {
-	for _, nodeName := range nodeNames {
+func StartCluster(nodes []VagrantNode) error {
+	for _, node := range nodes {
 		cmd := "systemctl start k3s"
-		if strings.Contains(nodeName, "agent") {
+		if strings.Contains(node.String(), "agent") {
 			cmd += "-agent"
 		}
-		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+		if _, err := node.RunCmdOnNode(cmd); err != nil {
 			return err
 		}
 	}
@@ -530,10 +553,10 @@ func StartCluster(nodeNames []string) error {
 }
 
 // StopCluster starts the k3s service on each node given
-func StopCluster(nodeNames []string) error {
-	for _, nodeName := range nodeNames {
+func StopCluster(nodes []VagrantNode) error {
+	for _, node := range nodes {
 		cmd := "systemctl stop k3s*"
-		if _, err := RunCmdOnNode(cmd, nodeName); err != nil {
+		if _, err := node.RunCmdOnNode(cmd); err != nil {
 			return err
 		}
 	}
@@ -541,18 +564,18 @@ func StopCluster(nodeNames []string) error {
 }
 
 // RunCmdOnNode executes a command from within the given node as sudo
-func RunCmdOnNode(cmd string, nodename string) (string, error) {
+func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
 	injectEnv := ""
 	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
 	}
-	runcmd := "vagrant ssh " + nodename + " -c \"sudo " + injectEnv + cmd + "\""
+	runcmd := "vagrant ssh " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
 	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
 	// these are added to the command output and need to be removed
 	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
 	if err != nil {
-		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, v.String(), out, err)
 	}
 	return out, nil
 }
@@ -569,16 +592,16 @@ func RunCommand(cmd string) (string, error) {
 	return string(out), err
 }
 
-func UpgradeCluster(nodeNames []string, local bool) error {
+func UpgradeCluster(nodes []VagrantNode, local bool) error {
 	upgradeVersion := "E2E_RELEASE_CHANNEL=commit"
 	if local {
-		if err := scpK3sBinary(nodeNames); err != nil {
+		if err := scpK3sBinary(nodes); err != nil {
 			return err
 		}
 		upgradeVersion = "E2E_RELEASE_VERSION=skip"
 	}
-	for _, nodeName := range nodeNames {
-		cmd := upgradeVersion + " vagrant provision " + nodeName
+	for _, node := range nodes {
+		cmd := upgradeVersion + " vagrant provision " + node.String()
 		if out, err := RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
 			return err
@@ -587,16 +610,16 @@ func UpgradeCluster(nodeNames []string, local bool) error {
 	return nil
 }
 
-func GetCoverageReport(nodeNames []string) error {
+func GetCoverageReport(nodes []VagrantNode) error {
 	if os.Getenv("E2E_GOCOVER") == "" {
 		return nil
 	}
 	covDirs := []string{}
-	for _, nodeName := range nodeNames {
-		covDir := nodeName + "-cov"
+	for _, node := range nodes {
+		covDir := node.String() + "-cov"
 		covDirs = append(covDirs, covDir)
 		os.MkdirAll(covDir, 0755)
-		cmd := "vagrant scp " + nodeName + ":/tmp/k3scov/* " + covDir
+		cmd := "vagrant scp " + node.String() + ":/tmp/k3scov/* " + covDir
 		if _, err := RunCommand(cmd); err != nil {
 			return err
 		}

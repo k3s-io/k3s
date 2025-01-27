@@ -33,10 +33,10 @@ func Test_E2EPoliciesAndFirewall(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
-	nodes           []e2e.Node
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
+	nodes          []e2e.Node
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -46,16 +46,16 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		fmt.Println("CLUSTER CONFIG")
 		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodeNames)
-		fmt.Println("Agent Nodes:", agentNodeNames)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+		fmt.Println("Server Nodes:", serverNodes)
+		fmt.Println("Agent Nodes:", agentNodes)
+		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -325,16 +325,28 @@ spec:
 	// Verify that only the allowed node can curl. That node should be able to curl both externalIPs (i.e. node.InternalIP)
 	It("Verify firewall is working", func() {
 		for _, node := range nodes {
+			var sNode, aNode e2e.VagrantNode
+			for _, n := range serverNodes {
+				if n.String() == nodes[0].Name {
+					sNode = n
+				}
+			}
+			for _, n := range agentNodes {
+				if n.String() == nodes[1].Name {
+					aNode = n
+				}
+			}
+
 			// Verify connectivity from nodes[0] works because we passed its IP to the loadBalancerSourceRanges
 			Eventually(func() (string, error) {
 				cmd := "curl -s --max-time 5 " + node.InternalIP + ":82"
-				return e2e.RunCmdOnNode(cmd, nodes[0].Name)
+				return sNode.RunCmdOnNode(cmd)
 			}, "40s", "5s").Should(ContainSubstring("Welcome to nginx"))
 
 			// Verify connectivity from nodes[1] fails because we did not pass its IP to the loadBalancerSourceRanges
 			Eventually(func(g Gomega) error {
 				cmd := "curl -s --max-time 5 " + node.InternalIP + ":82"
-				_, err := e2e.RunCmdOnNode(cmd, nodes[1].Name)
+				_, err := aNode.RunCmdOnNode(cmd)
 				return err
 			}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
 		}
@@ -348,9 +360,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

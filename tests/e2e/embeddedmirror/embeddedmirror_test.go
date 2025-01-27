@@ -33,9 +33,9 @@ func Test_E2EPrivateRegistry(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -45,20 +45,20 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 			fmt.Println("CLUSTER CONFIG")
 			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodeNames)
-			fmt.Println("Agent Nodes:", agentNodeNames)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+			fmt.Println("Server Nodes:", serverNodes)
+			fmt.Println("Agent Nodes:", agentNodes)
+			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("Checks Node and Pod Status", func() {
-			fmt.Printf("\nFetching node status\n")
+			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -66,9 +66,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 
-			fmt.Printf("\nFetching Pods status\n")
+			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
 				pods, err := e2e.ParsePods(kubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -80,7 +80,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParsePods(kubeConfigFile, true)
+			e2e.DumpPods(kubeConfigFile)
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
 			res, err := e2e.RunCommand("kubectl create deployment my-webpage-1 --image=docker.io/library/nginx:1.25.3")
@@ -128,7 +128,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Should expose embedded registry metrics", func() {
-			grepCmd := fmt.Sprintf("kubectl get --raw /api/v1/nodes/%s/proxy/metrics | grep -F 'spegel_advertised_images{registry=\"docker.io\"}'", serverNodeNames[0])
+			grepCmd := fmt.Sprintf("kubectl get --raw /api/v1/nodes/%s/proxy/metrics | grep -F 'spegel_advertised_images{registry=\"docker.io\"}'", serverNodes[0])
 			res, err := e2e.RunCommand(grepCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
@@ -147,9 +147,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(append(serverNodes, agentNodes...))).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

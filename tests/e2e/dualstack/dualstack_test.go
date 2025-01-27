@@ -28,9 +28,9 @@ func Test_E2EDualStack(t *testing.T) {
 }
 
 var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
+	kubeConfigFile string
+	serverNodes    []e2e.VagrantNode
+	agentNodes     []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -40,16 +40,16 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 		fmt.Println("CLUSTER CONFIG")
 		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodeNames)
-		fmt.Println("Agent Nodes:", agentNodeNames)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+		fmt.Println("Server Nodes:", serverNodes)
+		fmt.Println("Agent Nodes:", agentNodes)
+		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -121,7 +121,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 				}
 				cmd := fmt.Sprintf("curl -L --insecure http://%s", ip)
 				Eventually(func() (string, error) {
-					return e2e.RunCmdOnNode(cmd, serverNodeNames[0])
+					return serverNodes[0].RunCmdOnNode(cmd)
 				}, "60s", "5s").Should(ContainSubstring("Welcome to nginx!"), "failed cmd: "+cmd)
 			}
 		}
@@ -196,9 +196,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
