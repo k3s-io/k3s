@@ -38,7 +38,7 @@ var (
 func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) cli.Command {
 	return cli.Command{
 		Name:            TokenCommand,
-		Usage:           "Manage bootstrap tokens",
+		Usage:           "Manage tokens",
 		SkipFlagParsing: false,
 		SkipArgReorder:  true,
 		Subcommands: []cli.Command{
@@ -97,7 +97,7 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 			},
 			{
 				Name:  "rotate",
-				Usage: "Rotate original server token with a new bootstrap token",
+				Usage: "Rotate original server token with a new server token",
 				Flags: append(TokenFlags,
 					&cli.StringFlag{
 						Name:        "token,t",
