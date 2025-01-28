@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver/v4"
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,7 +63,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			config.K3sImage = "rancher/k3s:" + lastMinorVersion
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
@@ -85,7 +86,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
+				return tests.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 		It("should destroy the cluster", func() {
@@ -103,11 +104,11 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			config.K3sImage = *k3sImage
 			Expect(config.ProvisionServers(3)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func(g Gomega) {
-				g.Expect(tester.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
-				g.Expect(tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
+				g.Expect(tests.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
+				g.Expect(tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {

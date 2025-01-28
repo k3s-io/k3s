@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,7 +36,7 @@ var _ = Describe("local storage", Ordered, func() {
 	When("a new local storage is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 		It("creates a new pvc", func() {
