@@ -36,11 +36,7 @@ func Test_E2EUpgradeValidation(t *testing.T) {
 	RunSpecs(t, "Upgrade Cluster Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-	agentNodes     []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -48,30 +44,29 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
-			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodes)
-			fmt.Println("Agent Nodes:", agentNodes)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
+			tc.Hardened = *hardened
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks Node and Pod Status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -81,22 +76,22 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
 		It("Verifies ClusterIP Service", func() {
-			_, err := e2e.DeployWorkload("clusterip.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("clusterip.yaml")
 
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed")
 
-			cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+			cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
 			}, "240s", "5s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
 
-			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
+			clusterip, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-clusterip-svc", false)
 			cmd = "curl -L --insecure http://" + clusterip + "/name.html"
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				Eventually(func() (string, error) {
 					return node.RunCmdOnNode(cmd)
 				}, "120s", "10s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
@@ -104,16 +99,16 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("Verifies NodePort Service", func() {
-			_, err := e2e.DeployWorkload("nodeport.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("nodeport.yaml")
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed")
 
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				nodeExternalIP, _ := node.FetchNodeExternalIP()
-				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
+				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + tc.KubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 
-				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
@@ -127,15 +122,15 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("Verifies LoadBalancer Service", func() {
-			_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("loadbalancer.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Loadbalancer manifest not deployed")
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
+				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + tc.KubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
 				port, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
-				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"))
@@ -148,10 +143,10 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("Verifies Ingress", func() {
-			_, err := e2e.DeployWorkload("ingress.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("ingress.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
@@ -161,13 +156,13 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("Verifies Daemonset", func() {
-			_, err := e2e.DeployWorkload("daemonset.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("daemonset.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
-			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
+			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false) //nodes :=
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
@@ -178,25 +173,25 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("Verifies dns access", func() {
-			_, err := e2e.DeployWorkload("dnsutils.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("dnsutils.yaml")
 			Expect(err).NotTo(HaveOccurred(), "dnsutils manifest not deployed")
 
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods dnsutils --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pods dnsutils --kubeconfig=" + tc.KubeConfigFile
 				return e2e.RunCommand(cmd)
 			}, "420s", "2s").Should(ContainSubstring("dnsutils"))
 
-			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
+			cmd := "kubectl --kubeconfig=" + tc.KubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
 			}, "420s", "2s").Should(ContainSubstring("kubernetes.default.svc.cluster.local"))
 		})
 
 		It("Verifies Local Path Provisioner storage ", func() {
-			_, err := e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
+			_, err := tc.DeployWorkload("local-path-provisioner.yaml")
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + tc.KubeConfigFile
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println(res)
@@ -205,7 +200,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 			}, "240s", "2s").Should(Succeed())
 
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pod volume-test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pod volume-test --kubeconfig=" + tc.KubeConfigFile
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println(res)
@@ -214,25 +209,25 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 				g.Expect(res).Should(ContainSubstring("Running"))
 			}, "420s", "2s").Should(Succeed())
 
-			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
+			cmd := "kubectl --kubeconfig=" + tc.KubeConfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
 			res, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 			fmt.Println("Data stored in pvc: local-path-test")
 
-			cmd = "kubectl delete pod volume-test --kubeconfig=" + kubeConfigFile
+			cmd = "kubectl delete pod volume-test --kubeconfig=" + tc.KubeConfigFile
 			res, err = e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 
-			_, err = e2e.DeployWorkload("local-path-provisioner.yaml", kubeConfigFile, *hardened)
+			_, err = tc.DeployWorkload("local-path-provisioner.yaml")
 			Expect(err).NotTo(HaveOccurred(), "local-path-provisioner manifest not deployed")
 
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods -o=name -l app=local-path-provisioner --field-selector=status.phase=Running -n kube-system --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pods -o=name -l app=local-path-provisioner --field-selector=status.phase=Running -n kube-system --kubeconfig=" + tc.KubeConfigFile
 				return e2e.RunCommand(cmd)
 			}, "420s", "2s").Should(ContainSubstring("local-path-provisioner"))
 
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pod volume-test --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pod volume-test --kubeconfig=" + tc.KubeConfigFile
 				res, err := e2e.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println(res)
@@ -242,34 +237,34 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 			// Check data after re-creation
 			Eventually(func() (string, error) {
-				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
+				cmd := "kubectl exec volume-test --kubeconfig=" + tc.KubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"), "Failed to retrieve data from pvc")
 		})
 
 		It("Upgrades with no issues", func() {
 			var err error
-			Expect(e2e.UpgradeCluster(append(serverNodes, agentNodes...), *local)).To(Succeed())
-			Expect(e2e.RestartCluster(append(serverNodes, agentNodes...))).To(Succeed())
+			Expect(e2e.UpgradeCluster(append(tc.Servers, tc.Agents...), *local)).To(Succeed())
+			Expect(e2e.RestartCluster(append(tc.Servers, tc.Agents...))).To(Succeed())
 			fmt.Println("CLUSTER UPGRADED")
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
+			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("After upgrade Checks Node and Pod Status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.ParseNodes(kubeConfigFile, true)
+			e2e.ParseNodes(tc.KubeConfigFile, true)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -279,19 +274,19 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 					}
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.ParsePods(kubeConfigFile, true)
+			e2e.ParsePods(tc.KubeConfigFile, true)
 		})
 
 		It("After upgrade verifies ClusterIP Service", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 				return e2e.RunCommand(cmd)
 			}, "420s", "5s").Should(ContainSubstring("test-clusterip"))
 
-			clusterip, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-clusterip-svc", false)
+			clusterip, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-clusterip-svc", false)
 			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				Eventually(func() (string, error) {
 					return node.RunCmdOnNode(cmd)
 				}, "120s", "10s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
@@ -300,14 +295,14 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 		It("After upgrade verifies NodePort Service", func() {
 
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				nodeExternalIP, _ := node.FetchNodeExternalIP()
-				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
+				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + tc.KubeConfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
 				nodeport, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func() (string, error) {
-					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 
@@ -320,9 +315,9 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("After upgrade verifies LoadBalancer Service", func() {
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + kubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
+				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + tc.KubeConfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
 				port, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(func() (string, error) {
@@ -331,14 +326,14 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"))
 
 				Eventually(func() (string, error) {
-					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + kubeConfigFile
+					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"))
 			}
 		})
 
 		It("After upgrade verifies Ingress", func() {
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
 				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
 				fmt.Println(cmd)
@@ -350,10 +345,10 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("After upgrade verifies Daemonset", func() {
-			nodes, _ := e2e.ParseNodes(kubeConfigFile, false) //nodes :=
+			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false) //nodes :=
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(kubeConfigFile, false)
+				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
 				count := e2e.CountOfStringInSlice("test-daemonset", pods)
 				fmt.Println("POD COUNT")
 				fmt.Println(count)
@@ -364,14 +359,14 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 		It("After upgrade verifies dns access", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
+				cmd := "kubectl --kubeconfig=" + tc.KubeConfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should((ContainSubstring("kubernetes.default.svc.cluster.local")))
 		})
 
 		It("After upgrade verify Local Path Provisioner storage ", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl exec volume-test --kubeconfig=" + kubeConfigFile + " -- cat /data/test"
+				cmd := "kubectl exec volume-test --kubeconfig=" + tc.KubeConfigFile + " -- cat /data/test"
 				return e2e.RunCommand(cmd)
 			}, "180s", "2s").Should(ContainSubstring("local-path-test"))
 		})
@@ -385,12 +380,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

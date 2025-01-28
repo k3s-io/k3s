@@ -33,10 +33,8 @@ func Test_E2EPoliciesAndFirewall(t *testing.T) {
 }
 
 var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-	agentNodes     []e2e.VagrantNode
-	nodes          []e2e.Node
+	tc    *e2e.TestConfig
+	nodes []e2e.Node
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -46,35 +44,32 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		fmt.Println("CLUSTER CONFIG")
-		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodes)
-		fmt.Println("Agent Nodes:", agentNodes)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
-		Expect(err).NotTo(HaveOccurred())
+		By("CLUSTER CONFIG")
+		By("OS: " + *nodeOS)
+		By(tc.Status())
 	})
 
 	It("Checks Node Status", func() {
 		Eventually(func(g Gomega) {
 			var err error
-			nodes, err = e2e.ParseNodes(kubeConfigFile, false)
+			nodes, err = e2e.ParseNodes(tc.KubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
 		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(kubeConfigFile, true)
+		_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Checks Pod Status", func() {
 		Eventually(func(g Gomega) {
-			pods, err := e2e.ParsePods(kubeConfigFile, false)
+			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
 			for _, pod := range pods {
 				if strings.Contains(pod.Name, "helm-install") {
@@ -84,23 +79,22 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 				}
 			}
 		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParsePods(kubeConfigFile, true)
-		Expect(err).NotTo(HaveOccurred())
+		e2e.DumpPods(tc.KubeConfigFile)
 	})
 
 	// Verifies that the service with external traffic policy=local is deployed
 	// Verifies that the external-ip is only set to the node IP where the server runs
 	// It also verifies that the service with external traffic policy=cluster has both node IPs as externalIP
 	It("Verify external traffic policy=local gets set up correctly", func() {
-		_, err := e2e.DeployWorkload("loadbalancer.yaml", kubeConfigFile, false)
+		_, err := tc.DeployWorkload("loadbalancer.yaml")
 		Expect(err).NotTo(HaveOccurred(), "loadbalancer not deployed")
-		_, err = e2e.DeployWorkload("loadbalancer-extTrafficPol.yaml", kubeConfigFile, false)
+		_, err = tc.DeployWorkload("loadbalancer-extTrafficPol.yaml")
 		Expect(err).NotTo(HaveOccurred(), "loadbalancer-extTrafficPol not deployed")
 
 		// Check where the server pod is running
 		var serverNodeName string
 		Eventually(func() (string, error) {
-			pods, err := e2e.ParsePods(kubeConfigFile, false)
+			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 			for _, pod := range pods {
 				if strings.Contains(pod.Name, "test-loadbalancer-ext") {
@@ -122,11 +116,11 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		lbSvc := "nginx-loadbalancer-svc"
 		lbSvcExt := "nginx-loadbalancer-svc-ext"
 		Eventually(func() ([]string, error) {
-			return e2e.FetchExternalIPs(kubeConfigFile, lbSvc)
+			return e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvc)
 		}, "25s", "5s").Should(HaveLen(2), "external IP count not equal to 2")
 
 		Eventually(func(g Gomega) {
-			externalIPs, _ := e2e.FetchExternalIPs(kubeConfigFile, lbSvcExt)
+			externalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvcExt)
 			g.Expect(externalIPs).To(HaveLen(1), "more than 1 exernalIP found")
 			g.Expect(externalIPs[0]).To(Equal(serverNodeIP), "external IP does not match servernodeIP")
 		}, "25s", "5s").Should(Succeed())
@@ -136,9 +130,9 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 	// It also verifies that the service with external traffic policy=cluster can be accessed and the source IP is MASQ
 	It("Verify connectivity in external traffic policy=local", func() {
 		lbSvc := "nginx-loadbalancer-svc"
-		lbSvcExternalIPs, _ := e2e.FetchExternalIPs(kubeConfigFile, lbSvc)
+		lbSvcExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvc)
 		lbSvcExt := "nginx-loadbalancer-svc-ext"
-		lbSvcExtExternalIPs, _ := e2e.FetchExternalIPs(kubeConfigFile, lbSvcExt)
+		lbSvcExtExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvcExt)
 
 		// Verify connectivity to the external IP of the lbsvc service and the IP should be the flannel interface IP because of MASQ
 		for _, externalIP := range lbSvcExternalIPs {
@@ -170,20 +164,20 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 	// Verifies that the internal traffic policy=local is deployed
 	It("Verify internal traffic policy=local gets set up correctly", func() {
-		_, err := e2e.DeployWorkload("loadbalancer-intTrafficPol.yaml", kubeConfigFile, false)
+		_, err := tc.DeployWorkload("loadbalancer-intTrafficPol.yaml")
 		Expect(err).NotTo(HaveOccurred(), "loadbalancer-intTrafficPol not deployed")
-		_, err = e2e.DeployWorkload("pod_client.yaml", kubeConfigFile, false)
+		_, err = tc.DeployWorkload("pod_client.yaml")
 		Expect(err).NotTo(HaveOccurred(), "pod client not deployed")
 
 		// Check that service exists
 		Eventually(func() (string, error) {
-			clusterIP, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-loadbalancer-svc-int", false)
+			clusterIP, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-loadbalancer-svc-int", false)
 			return clusterIP, nil
 		}, "25s", "5s").Should(ContainSubstring("10.43"))
 
 		// Check that client pods are running
 		Eventually(func() string {
-			pods, err := e2e.ParsePods(kubeConfigFile, false)
+			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred())
 			for _, pod := range pods {
 				if strings.Contains(pod.Name, "client-deployment") {
@@ -199,7 +193,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 	It("Verify connectivity in internal traffic policy=local", func() {
 		var clientPod1, clientPod1Node, clientPod1IP, clientPod2, clientPod2Node, clientPod2IP, serverNodeName string
 		Eventually(func(g Gomega) {
-			pods, err := e2e.ParsePods(kubeConfigFile, false)
+			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 			Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 			for _, pod := range pods {
 				if strings.Contains(pod.Name, "test-loadbalancer-int") {
@@ -232,12 +226,12 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 		var workingCmd, nonWorkingCmd string
 		if serverNodeName == clientPod1Node {
-			workingCmd = "kubectl --kubeconfig=" + kubeConfigFile + " exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
-			nonWorkingCmd = "kubectl --kubeconfig=" + kubeConfigFile + " exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+			workingCmd = "kubectl exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+			nonWorkingCmd = "kubectl exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
 		}
 		if serverNodeName == clientPod2Node {
-			workingCmd = "kubectl --kubeconfig=" + kubeConfigFile + " exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
-			nonWorkingCmd = "kubectl --kubeconfig=" + kubeConfigFile + " exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+			workingCmd = "kubectl exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+			nonWorkingCmd = "kubectl exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
 		}
 
 		Eventually(func() (string, error) {
@@ -260,7 +254,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 		// curling a service with internal traffic policy=cluster. It should work on both pods
 		for _, pod := range []string{clientPod1, clientPod2} {
-			cmd := "kubectl --kubeconfig=" + kubeConfigFile + " exec " + pod + " -- curl -s --max-time 5 nginx-loadbalancer-svc:81/ip"
+			cmd := "kubectl exec " + pod + " -- curl -s --max-time 5 nginx-loadbalancer-svc:81/ip"
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
 			}, "20s", "5s").Should(SatisfyAny(
@@ -291,7 +285,7 @@ spec:
     k8s-app: nginx-app-loadbalancer-ext
 `
 		// Remove the service nginx-loadbalancer-svc-ext
-		_, err := e2e.RunCommand("kubectl --kubeconfig=" + kubeConfigFile + " delete svc nginx-loadbalancer-svc-ext")
+		_, err := e2e.RunCommand("kubectl delete svc nginx-loadbalancer-svc-ext")
 		Expect(err).NotTo(HaveOccurred(), "failed to remove service nginx-loadbalancer-svc-ext")
 
 		// Parse and execute the template with the node IP
@@ -312,12 +306,12 @@ spec:
 		tmpFile.Close()
 
 		// Apply the manifest using kubectl
-		applyCmd := fmt.Sprintf("kubectl --kubeconfig=%s apply -f %s", kubeConfigFile, tmpFile.Name())
+		applyCmd := fmt.Sprintf("kubectl apply -f %s", tmpFile.Name())
 		out, err := e2e.RunCommand(applyCmd)
 		Expect(err).NotTo(HaveOccurred(), out)
 
 		Eventually(func() (string, error) {
-			clusterIP, _ := e2e.FetchClusterIP(kubeConfigFile, "nginx-loadbalancer-svc-ext-firewall", false)
+			clusterIP, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-loadbalancer-svc-ext-firewall", false)
 			return clusterIP, nil
 		}, "25s", "5s").Should(ContainSubstring("10.43"))
 	})
@@ -326,12 +320,12 @@ spec:
 	It("Verify firewall is working", func() {
 		for _, node := range nodes {
 			var sNode, aNode e2e.VagrantNode
-			for _, n := range serverNodes {
+			for _, n := range tc.Servers {
 				if n.String() == nodes[0].Name {
 					sNode = n
 				}
 			}
-			for _, n := range agentNodes {
+			for _, n := range tc.Agents {
 				if n.String() == nodes[1].Name {
 					aNode = n
 				}
@@ -360,12 +354,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

@@ -34,6 +34,23 @@ func VagrantSlice(v []VagrantNode) []string {
 	return nodes
 }
 
+type TestConfig struct {
+	Hardened       bool
+	KubeConfigFile string
+	Servers        []VagrantNode
+	Agents         []VagrantNode
+}
+
+func (tc *TestConfig) Status() string {
+	sN := VagrantSlice(tc.Servers)
+	aN := VagrantSlice(tc.Agents)
+	hardened := ""
+	if tc.Hardened {
+		hardened = "Hardened: true\n"
+	}
+	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", tc.KubeConfigFile, hardened, sN, aN)
+}
+
 type Node struct {
 	Name       string
 	Status     string
@@ -120,7 +137,7 @@ func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []V
 	return serverNodes, agentNodes, nodeEnvs
 }
 
-func CreateCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, error) {
+func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, error) {
 
 	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
@@ -134,7 +151,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, [
 	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, newNodeError(cmd, serverNodes[0], err)
+		return nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
@@ -156,10 +173,30 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, [
 		}
 	}
 	if err := errg.Wait(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return serverNodes, agentNodes, nil
+	// For startup test, we don't start the cluster, so check first before
+	// generating the kubeconfig file
+	var kubeConfigFile string
+	res, err := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
+	if err != nil {
+		return nil, err
+	}
+	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
+		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tc := &TestConfig{
+		KubeConfigFile: kubeConfigFile,
+		Servers:        serverNodes,
+		Agents:         agentNodes,
+	}
+
+	return tc, nil
 }
 
 func scpK3sBinary(nodeNames []VagrantNode) error {
@@ -179,7 +216,7 @@ func scpK3sBinary(nodeNames []VagrantNode) error {
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
 // This is intended only for local testing purposes when writing a new E2E test.
-func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, error) {
+func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, error) {
 
 	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
@@ -198,7 +235,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNo
 	cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
-		return nil, nil, newNodeError(cmd, serverNodes[0], err)
+		return nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
@@ -215,11 +252,11 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNo
 		time.Sleep(10 * time.Second)
 	}
 	if err := errg.Wait(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := scpK3sBinary(append(serverNodes, agentNodes...)); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// Install K3s on all nodes in parallel
 	errg, _ = errgroup.WithContext(context.Background())
@@ -235,15 +272,34 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) ([]VagrantNo
 		time.Sleep(20 * time.Second)
 	}
 	if err := errg.Wait(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return serverNodes, agentNodes, nil
+	// For startup test, we don't start the cluster, so check first before generating the kubeconfig file.
+	// Systemctl returns a exit code of 3 when the service is inactive, so we don't check for errors
+	// on the command itself.
+	var kubeConfigFile string
+	var err error
+	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
+	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
+		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tc := &TestConfig{
+		KubeConfigFile: kubeConfigFile,
+		Servers:        serverNodes,
+		Agents:         agentNodes,
+	}
+
+	return tc, nil
 }
 
-func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) {
+func (tc TestConfig) DeployWorkload(workload string) (string, error) {
 	resourceDir := "../amd64_resource_files"
-	if hardened {
+	if tc.Hardened {
 		resourceDir = "../cis_amd64_resource_files"
 	}
 	files, err := os.ReadDir(resourceDir)
@@ -255,7 +311,7 @@ func DeployWorkload(workload, kubeconfig string, hardened bool) (string, error) 
 	for _, f := range files {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {
-			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + kubeconfig
+			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeConfigFile
 			return RunCommand(cmd)
 		}
 	}
@@ -329,6 +385,7 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 	return nodeip, nil
 }
 
+// GenKubeConfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
 func GenKubeConfigFile(nodeName string) (string, error) {
 	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
 	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeConfigFile)
@@ -569,7 +626,7 @@ func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
 	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
 	}
-	runcmd := "vagrant ssh " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
+	runcmd := "vagrant ssh --no-tty " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
 	out, err := RunCommand(runcmd)
 	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
 	// these are added to the command output and need to be removed

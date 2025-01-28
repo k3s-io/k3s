@@ -32,11 +32,7 @@ func Test_E2EPrivateRegistry(t *testing.T) {
 	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-	agentNodes     []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -45,32 +41,30 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodes)
-			fmt.Println("Agent Nodes:", agentNodes)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
-			Expect(err).NotTo(HaveOccurred())
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+
 		})
 		It("Checks Node and Pod Status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -80,17 +74,17 @@ var _ = Describe("Verify Create", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
 		It("Create new private registry", func() {
-			registry, err := serverNodes[0].RunCmdOnNode("docker run --init -d -p 5000:5000 --restart=always --name registry registry:2 ")
+			registry, err := tc.Servers[0].RunCmdOnNode("docker run --init -d -p 5000:5000 --restart=always --name registry registry:2 ")
 			fmt.Println(registry)
 			Expect(err).NotTo(HaveOccurred())
 
 		})
 		It("ensures registry is working", func() {
-			a, err := serverNodes[0].RunCmdOnNode("docker ps -a | grep registry\n")
+			a, err := tc.Servers[0].RunCmdOnNode("docker ps -a | grep registry\n")
 			fmt.Println(a)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -100,33 +94,33 @@ var _ = Describe("Verify Create", Ordered, func() {
 		// NODEIP:5000 as a mirror.
 		It("Should pull and image from dockerhub and send it to private registry", func() {
 			cmd := "docker pull docker.io/library/nginx:1.27.3"
-			_, err := serverNodes[0].RunCmdOnNode(cmd)
+			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			nodeIP, err := serverNodes[0].FetchNodeExternalIP()
+			nodeIP, err := tc.Servers[0].FetchNodeExternalIP()
 			Expect(err).NotTo(HaveOccurred())
 
 			cmd = "docker tag docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
-			_, err = serverNodes[0].RunCmdOnNode(cmd)
+			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			cmd = "docker push " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
-			_, err = serverNodes[0].RunCmdOnNode(cmd)
+			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			cmd = "docker image remove docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
-			_, err = serverNodes[0].RunCmdOnNode(cmd)
+			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := serverNodes[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.27.3")
+			res, err := tc.Servers[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.27.3")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			var pod e2e.Pod
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				for _, p := range pods {
 					if strings.Contains(p.Name, "my-webpage") {
 						pod = p
@@ -137,7 +131,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 
 			cmd := "curl " + pod.IP
-			Expect(serverNodes[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
+			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
 		})
 
 	})
@@ -150,17 +144,17 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(append(tc.Servers, tc.Agents...))).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
-		r1, err := serverNodes[0].RunCmdOnNode("docker rm -f registry")
+		r1, err := tc.Servers[0].RunCmdOnNode("docker rm -f registry")
 		Expect(err).NotTo(HaveOccurred(), r1)
-		r2, err := serverNodes[0].RunCmdOnNode("kubectl delete deployment my-webpage")
+		r2, err := tc.Servers[0].RunCmdOnNode("kubectl delete deployment my-webpage")
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

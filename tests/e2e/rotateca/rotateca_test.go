@@ -2,7 +2,6 @@ package rotateca
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -29,11 +28,7 @@ func Test_E2ECustomCARotation(t *testing.T) {
 	RunSpecs(t, "Custom Certificate Rotation Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-	agentNodes     []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -42,33 +37,31 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodes)
-			fmt.Println("Agent Nodes:", agentNodes)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
-			Expect(err).NotTo(HaveOccurred())
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+
 		})
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -78,7 +71,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
 		It("Generates New CA Certificates", func() {
@@ -88,28 +81,28 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 				"DATA_DIR=/opt/rancher/k3s /tmp/generate-custom-ca-certs.sh",
 			}
 			for _, cmd := range cmds {
-				_, err := serverNodes[0].RunCmdOnNode(cmd)
+				_, err := tc.Servers[0].RunCmdOnNode(cmd)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 
 		It("Rotates CA Certificates", func() {
 			cmd := "k3s certificate rotate-ca --path=/opt/rancher/k3s/server"
-			_, err := serverNodes[0].RunCmdOnNode(cmd)
+			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Restarts K3s servers", func() {
-			Expect(e2e.RestartCluster(serverNodes)).To(Succeed())
+			Expect(e2e.RestartCluster(tc.Servers)).To(Succeed())
 		})
 
 		It("Restarts K3s agents", func() {
-			Expect(e2e.RestartCluster(agentNodes)).To(Succeed())
+			Expect(e2e.RestartCluster(tc.Agents)).To(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -117,7 +110,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			}, "420s", "5s").Should(Succeed())
 
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -127,7 +120,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 					}
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 	})
 })
@@ -139,12 +132,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

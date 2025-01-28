@@ -2,7 +2,6 @@ package rotateca
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -25,10 +24,7 @@ func Test_E2EBtrfsSnapshot(t *testing.T) {
 	RunSpecs(t, "Btrfs Snapshot Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -38,31 +34,29 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 			var err error
 			// OS and server are hardcoded because only openSUSE Leap 15.5 natively supports Btrfs
 			if *local {
-				serverNodes, _, err = e2e.CreateLocalCluster("opensuse/Leap-15.6.x86_64", 1, 0)
+				tc, err = e2e.CreateLocalCluster("opensuse/Leap-15.6.x86_64", 1, 0)
 			} else {
-				serverNodes, _, err = e2e.CreateCluster("opensuse/Leap-15.6.x86_64", 1, 0)
+				tc, err = e2e.CreateCluster("opensuse/Leap-15.6.x86_64", 1, 0)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("Server Nodes:", serverNodes)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
-			Expect(err).NotTo(HaveOccurred())
+			By("CLUSTER CONFIG")
+			By(tc.Status())
 		})
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -72,11 +66,11 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 					}
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 		It("Checks that btrfs snapshots exist", func() {
 			cmd := "btrfs subvolume list /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.btrfs"
-			res, err := serverNodes[0].RunCmdOnNode(cmd)
+			res, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/active/\\d+"))
 			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/snapshots/\\d+"))
@@ -91,10 +85,10 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(serverNodes)).To(Succeed())
+		Expect(e2e.SaveJournalLogs(tc.Servers)).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

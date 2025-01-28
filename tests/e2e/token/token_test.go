@@ -33,11 +33,7 @@ func Test_E2EToken(t *testing.T) {
 	RunSpecs(t, "SnapshotRestore Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-	agentNodes     []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -46,33 +42,31 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 		It("Starts up with no issues", func() {
 			var err error
 			if *local {
-				serverNodes, agentNodes, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 			} else {
-				serverNodes, agentNodes, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodes)
-			fmt.Println("Agent Nodes:", agentNodes)
-			kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodes[0].String())
-			Expect(err).NotTo(HaveOccurred())
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+
 		})
 
 		It("Checks Node and Pod Status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -82,30 +76,30 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 					}
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.DumpPods(kubeConfigFile)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
 		var permToken string
 		It("Creates a permanent agent token", func() {
 			permToken = "perage.s0xt4u0hl5guoyi6"
-			_, err := serverNodes[0].RunCmdOnNode("k3s token create --ttl=0 " + permToken)
+			_, err := tc.Servers[0].RunCmdOnNode("k3s token create --ttl=0 " + permToken)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err := serverNodes[0].RunCmdOnNode("k3s token list")
+			res, err := tc.Servers[0].RunCmdOnNode("k3s token list")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(MatchRegexp(`perage\s+<forever>\s+<never>`))
 		})
 		It("Joins an agent with the permanent token", func() {
 			cmd := fmt.Sprintf("echo 'token: %s' | sudo tee -a /etc/rancher/k3s/config.yaml > /dev/null", permToken)
-			_, err := agentNodes[0].RunCmdOnNode(cmd)
+			_, err := tc.Agents[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			_, err = agentNodes[0].RunCmdOnNode("systemctl start k3s-agent")
+			_, err = tc.Agents[0].RunCmdOnNode("systemctl start k3s-agent")
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(len(serverNodes) + 1))
+				g.Expect(len(nodes)).Should(Equal(len(tc.Servers) + 1))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -114,38 +108,38 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 	})
 	Context("Agent joins with temporary token:", func() {
 		It("Creates a 20s agent token", func() {
-			_, err := serverNodes[0].RunCmdOnNode("k3s token create --ttl=20s 20sect.jxnpve6vg8dqm895")
+			_, err := tc.Servers[0].RunCmdOnNode("k3s token create --ttl=20s 20sect.jxnpve6vg8dqm895")
 			Expect(err).NotTo(HaveOccurred())
-			res, err := serverNodes[0].RunCmdOnNode("k3s token list")
+			res, err := tc.Servers[0].RunCmdOnNode("k3s token list")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(MatchRegexp(`20sect\s+[0-9]{2}s`))
 		})
 		It("Cleans up 20s token automatically", func() {
 			Eventually(func() (string, error) {
-				return serverNodes[0].RunCmdOnNode("k3s token list")
+				return tc.Servers[0].RunCmdOnNode("k3s token list")
 			}, "25s", "5s").ShouldNot(ContainSubstring("20sect"))
 		})
 		var tempToken string
 		It("Creates a 10m agent token", func() {
 			tempToken = "10mint.ida18trbbk43szwk"
-			_, err := serverNodes[0].RunCmdOnNode("k3s token create --ttl=10m " + tempToken)
+			_, err := tc.Servers[0].RunCmdOnNode("k3s token create --ttl=10m " + tempToken)
 			Expect(err).NotTo(HaveOccurred())
 			time.Sleep(2 * time.Second)
-			res, err := serverNodes[0].RunCmdOnNode("k3s token list")
+			res, err := tc.Servers[0].RunCmdOnNode("k3s token list")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(MatchRegexp(`10mint\s+[0-9]m`))
 		})
 		It("Joins an agent with the 10m token", func() {
 			cmd := fmt.Sprintf("echo 'token: %s' | sudo tee -a /etc/rancher/k3s/config.yaml > /dev/null", tempToken)
-			_, err := agentNodes[1].RunCmdOnNode(cmd)
+			_, err := tc.Agents[1].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			_, err = agentNodes[1].RunCmdOnNode("systemctl start k3s-agent")
+			_, err = tc.Agents[1].RunCmdOnNode("systemctl start k3s-agent")
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(len(serverNodes) + 2))
+				g.Expect(len(nodes)).Should(Equal(len(tc.Servers) + 2))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -155,23 +149,23 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 	Context("Rotate server bootstrap token", func() {
 		serverToken := "1234"
 		It("Creates a new server token", func() {
-			Expect(serverNodes[0].RunCmdOnNode("k3s token rotate -t vagrant --new-token=" + serverToken)).
+			Expect(tc.Servers[0].RunCmdOnNode("k3s token rotate -t vagrant --new-token=" + serverToken)).
 				To(ContainSubstring("Token rotated, restart k3s nodes with new token"))
 		})
 		It("Restarts servers with the new token", func() {
 			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				_, err := node.RunCmdOnNode(cmd)
 				Expect(err).NotTo(HaveOccurred())
 			}
-			for _, node := range serverNodes {
+			for _, node := range tc.Servers {
 				_, err := node.RunCmdOnNode("systemctl restart k3s")
 				Expect(err).NotTo(HaveOccurred())
 			}
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(len(serverNodes) + 2))
+				g.Expect(len(nodes)).Should(Equal(len(tc.Servers) + 2))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -179,15 +173,15 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 		})
 		It("Rejoins an agent with the new server token", func() {
 			cmd := fmt.Sprintf("sed -i 's/token:.*/token: %s/' /etc/rancher/k3s/config.yaml", serverToken)
-			_, err := agentNodes[0].RunCmdOnNode(cmd)
+			_, err := tc.Agents[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
-			_, err = agentNodes[0].RunCmdOnNode("systemctl restart k3s-agent")
+			_, err = tc.Agents[0].RunCmdOnNode("systemctl restart k3s-agent")
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should(Equal(len(serverNodes) + 2))
+				g.Expect(len(nodes)).Should(Equal(len(tc.Servers) + 2))
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
@@ -203,12 +197,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodes, agentNodes...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodes, agentNodes...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

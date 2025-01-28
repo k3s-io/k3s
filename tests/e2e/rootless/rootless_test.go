@@ -29,10 +29,7 @@ func Test_E2ERootlessStartupValidation(t *testing.T) {
 	RunSpecs(t, "Startup Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile string
-	serverNodes    []e2e.VagrantNode
-)
+var tc *e2e.TestConfig
 
 func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string) error {
 	for _, node := range nodes {
@@ -77,13 +74,13 @@ var _ = ReportAfterEach(e2e.GenReport)
 var _ = BeforeSuite(func() {
 	var err error
 	if *local {
-		serverNodes, _, err = e2e.CreateLocalCluster(*nodeOS, 1, 0)
+		tc, err = e2e.CreateLocalCluster(*nodeOS, 1, 0)
 	} else {
-		serverNodes, _, err = e2e.CreateCluster(*nodeOS, 1, 0)
+		tc, err = e2e.CreateCluster(*nodeOS, 1, 0)
 	}
 	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 	//Checks if system is using cgroup v2
-	_, err = serverNodes[0].RunCmdOnNode("cat /sys/fs/cgroup/cgroup.controllers")
+	_, err = tc.Servers[0].RunCmdOnNode("cat /sys/fs/cgroup/cgroup.controllers")
 	Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
 })
@@ -91,30 +88,31 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Various Startup Configurations", Ordered, func() {
 	Context("Verify standard startup :", func() {
 		It("Starts K3s with no issues", func() {
-			err := StartK3sCluster(serverNodes, "")
+			err := StartK3sCluster(tc.Servers, "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
-			fmt.Println("CLUSTER CONFIG")
-			fmt.Println("OS:", *nodeOS)
-			fmt.Println("Server Nodes:", serverNodes)
-			kubeConfigFile, err = GenRootlessKubeConfigFile(serverNodes[0].String())
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+			kubeConfigFile, err := GenRootlessKubeConfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
+			tc.KubeConfigFile = kubeConfigFile
 		})
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(kubeConfigFile, false)
+			_, _ = e2e.ParseNodes(tc.KubeConfigFile, false)
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(kubeConfigFile, false)
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
@@ -124,7 +122,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					}
 				}
 			}, "360s", "5s").Should(Succeed())
-			_, _ = e2e.ParsePods(kubeConfigFile, false)
+			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
 		It("Returns pod metrics", func() {
@@ -154,7 +152,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(serverNodes)
+			err := KillK3sCluster(tc.Servers)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -168,12 +166,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, serverNodes))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.Servers))
 	} else {
-		Expect(e2e.GetCoverageReport(serverNodes)).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.Servers)).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })
