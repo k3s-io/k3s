@@ -109,7 +109,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/helm-controller v0.16.6
-	github.com/k3s-io/kine v0.13.5
+	github.com/k3s-io/kine v0.13.8
 	github.com/klauspost/compress v1.17.11
 	github.com/libp2p/go-libp2p v0.38.2
 	github.com/minio/minio-go/v7 v7.0.83
@@ -138,18 +138,18 @@ require (
 	github.com/urfave/cli v1.22.15
 	github.com/vishvananda/netlink v1.3.0
 	github.com/yl2chen/cidranger v1.0.2
-	go.etcd.io/etcd/api/v3 v3.5.16
-	go.etcd.io/etcd/client/pkg/v3 v3.5.16
-	go.etcd.io/etcd/client/v3 v3.5.16
+	go.etcd.io/etcd/api/v3 v3.5.18
+	go.etcd.io/etcd/client/pkg/v3 v3.5.18
+	go.etcd.io/etcd/client/v3 v3.5.18
 	go.etcd.io/etcd/etcdutl/v3 v3.5.13
-	go.etcd.io/etcd/server/v3 v3.5.16
+	go.etcd.io/etcd/server/v3 v3.5.18
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.32.0
 	golang.org/x/mod v0.22.0
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.34.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.29.0
-	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc v1.70.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.31.5
 	k8s.io/apimachinery v0.31.5
@@ -203,7 +203,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/bronze1man/goStrongswanVici v0.0.0-20231128135937-211cef3b0b20 // indirect
-	github.com/canonical/go-dqlite v1.5.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
@@ -306,7 +305,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.1 // indirect
+	github.com/jackc/pgx/v5 v5.7.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
@@ -446,20 +445,20 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
-	go.etcd.io/etcd/client/v2 v2.305.16 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.5.16 // indirect
-	go.etcd.io/etcd/raft/v3 v3.5.16 // indirect
+	go.etcd.io/etcd/client/v2 v2.305.18 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.5.18 // indirect
+	go.etcd.io/etcd/raft/v3 v3.5.18 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.42.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.54.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
-	go.opentelemetry.io/otel v1.31.0 // indirect
+	go.opentelemetry.io/otel v1.32.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.31.0 // indirect
-	go.opentelemetry.io/otel/metric v1.31.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
-	go.opentelemetry.io/otel/trace v1.31.0 // indirect
+	go.opentelemetry.io/otel/metric v1.32.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.32.0 // indirect
+	go.opentelemetry.io/otel/trace v1.32.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	go.uber.org/dig v1.18.0 // indirect
