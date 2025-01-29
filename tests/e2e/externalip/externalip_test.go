@@ -58,94 +58,96 @@ var tc *e2e.TestConfig
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = Describe("Verify External-IP config", Ordered, func() {
-
-	It("Starts up with no issues", func() {
-		var err error
-		if *local {
-			tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
-		} else {
-			tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-		}
-		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		By("CLUSTER CONFIG")
-		By("OS: " + *nodeOS)
-		By(tc.Status())
-	})
-
-	It("Checks Node Status", func() {
-		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			for _, node := range nodes {
-				g.Expect(node.Status).Should(Equal("Ready"))
+	Context("Cluster comes up with External-IP configuration", func() {
+		It("Starts up with no issues", func() {
+			var err error
+			if *local {
+				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			} else {
+				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
-		}, "620s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
-		Expect(err).NotTo(HaveOccurred())
-	})
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+		})
 
-	It("Checks Pod Status", func() {
-		Eventually(func(g Gomega) {
-			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			for _, pod := range pods {
-				if strings.Contains(pod.Name, "helm-install") {
-					g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-				} else {
-					g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+		It("Checks Node Status", func() {
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
 				}
+			}, "620s", "5s").Should(Succeed())
+			_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Checks Pod Status", func() {
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "620s", "5s").Should(Succeed())
+			e2e.DumpPods(tc.KubeConfigFile)
+		})
+	})
+	Context("Deploy workloads to check cluster connectivity of the nodes", func() {
+		It("Verifies that each node has vagrant IP", func() {
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
+			Expect(err).NotTo(HaveOccurred())
+			for _, node := range nodeIPs {
+				Expect(node.IPv4).Should(ContainSubstring("10.10."))
 			}
-		}, "620s", "5s").Should(Succeed())
-		e2e.DumpPods(tc.KubeConfigFile)
-	})
+		})
+		It("Verifies that each pod has vagrant IP or clusterCIDR IP", func() {
+			podIPs, err := e2e.GetPodIPs(tc.KubeConfigFile)
+			Expect(err).NotTo(HaveOccurred())
+			for _, pod := range podIPs {
+				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
+			}
+		})
+		It("Verifies that flannel added the correct annotation for the external-ip", func() {
+			nodeIPs, err := getExternalIPs(tc.KubeConfigFile)
+			Expect(err).NotTo(HaveOccurred())
+			for _, annotation := range nodeIPs {
+				Expect(annotation).Should(ContainSubstring("10.100.100."))
+			}
+		})
+		It("Verifies internode connectivity over the tunnel", func() {
+			_, err := tc.DeployWorkload("pod_client.yaml")
+			Expect(err).NotTo(HaveOccurred())
 
-	It("Verifies that each node has vagrant IP", func() {
-		nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
-		Expect(err).NotTo(HaveOccurred())
-		for _, node := range nodeIPs {
-			Expect(node.IPv4).Should(ContainSubstring("10.10."))
-		}
-	})
-	It("Verifies that each pod has vagrant IP or clusterCIDR IP", func() {
-		podIPs, err := e2e.GetPodIPs(tc.KubeConfigFile)
-		Expect(err).NotTo(HaveOccurred())
-		for _, pod := range podIPs {
-			Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
-		}
-	})
-	It("Verifies that flannel added the correct annotation for the external-ip", func() {
-		nodeIPs, err := getExternalIPs(tc.KubeConfigFile)
-		Expect(err).NotTo(HaveOccurred())
-		for _, annotation := range nodeIPs {
-			Expect(annotation).Should(ContainSubstring("10.100.100."))
-		}
-	})
-	It("Verifies internode connectivity over the tunnel", func() {
-		_, err := tc.DeployWorkload("pod_client.yaml")
-		Expect(err).NotTo(HaveOccurred())
+			// Wait for the pod_client to have an IP
+			Eventually(func() string {
+				ips, _ := getClientIPs(tc.KubeConfigFile)
+				return ips[0].IPv4
+			}, "40s", "5s").Should(ContainSubstring("10.42"), "failed getClientIPs")
 
-		// Wait for the pod_client to have an IP
-		Eventually(func() string {
-			ips, _ := getClientIPs(tc.KubeConfigFile)
-			return ips[0].IPv4
-		}, "40s", "5s").Should(ContainSubstring("10.42"), "failed getClientIPs")
-
-		clientIPs, err := getClientIPs(tc.KubeConfigFile)
-		Expect(err).NotTo(HaveOccurred())
-		for _, ip := range clientIPs {
-			cmd := "kubectl exec svc/client-curl -- curl -m7 " + ip.IPv4 + "/name.html"
+			clientIPs, err := getClientIPs(tc.KubeConfigFile)
+			Expect(err).NotTo(HaveOccurred())
+			for _, ip := range clientIPs {
+				cmd := "kubectl exec svc/client-curl -- curl -m7 " + ip.IPv4 + "/name.html"
+				Eventually(func() (string, error) {
+					return e2e.RunCommand(cmd)
+				}, "20s", "3s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
+			}
+		})
+		It("Verifies loadBalancer service's IP is the node-external-ip", func() {
+			_, err := tc.DeployWorkload("loadbalancer.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			cmd := "kubectl get svc -l k8s-app=nginx-app-loadbalancer -o=jsonpath='{range .items[*]}{.metadata.name}{.status.loadBalancer.ingress[*].ip}{end}'"
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
-			}, "20s", "3s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
-		}
-	})
-	It("Verifies loadBalancer service's IP is the node-external-ip", func() {
-		_, err := tc.DeployWorkload("loadbalancer.yaml")
-		Expect(err).NotTo(HaveOccurred())
-		cmd := "kubectl get svc -l k8s-app=nginx-app-loadbalancer -o=jsonpath='{range .items[*]}{.metadata.name}{.status.loadBalancer.ingress[*].ip}{end}'"
-		Eventually(func() (string, error) {
-			return e2e.RunCommand(cmd)
-		}, "20s", "3s").Should(ContainSubstring("10.100.100"), "failed cmd: "+cmd)
+			}, "20s", "3s").Should(ContainSubstring("10.100.100"), "failed cmd: "+cmd)
+		})
 	})
 })
 

@@ -30,57 +30,58 @@ var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
-var _ = Describe("Verify Can run Wasm workloads", Ordered, func() {
-
-	It("Starts up with no issues", func() {
-		var err error
-		if *local {
-			tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
-		} else {
-			tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-		}
-		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		By("CLUSTER CONFIG")
-		By("OS: " + *nodeOS)
-		By(tc.Status())
-	})
-
-	// Server node needs to be ready before we continue
-	It("Checks Node and Pod Status", func() {
-		By("Fetching Nodes status")
-		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			for _, node := range nodes {
-				g.Expect(node.Status).Should(Equal("Ready"))
+var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
+	Context("Cluster comes up with Wasm configuration", func() {
+		It("Starts up with no issues", func() {
+			var err error
+			if *local {
+				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			} else {
+				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 			}
-		}, "620s", "5s").Should(Succeed())
-		e2e.DumpPods(tc.KubeConfigFile)
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+			By("CLUSTER CONFIG")
+			By("OS: " + *nodeOS)
+			By(tc.Status())
+		})
 
-		By("Fetching Pods status")
-		Eventually(func(g Gomega) {
-			pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			for _, pod := range pods {
-				if strings.Contains(pod.Name, "helm-install") {
-					g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-				} else {
-					g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+		// Server node needs to be ready before we continue
+		It("Checks Node and Pod Status", func() {
+			By("Fetching Nodes status")
+			Eventually(func(g Gomega) {
+				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, node := range nodes {
+					g.Expect(node.Status).Should(Equal("Ready"))
+				}
+			}, "620s", "5s").Should(Succeed())
+			e2e.DumpPods(tc.KubeConfigFile)
+
+			By("Fetching Pods status")
+			Eventually(func(g Gomega) {
+				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				g.Expect(err).NotTo(HaveOccurred())
+				for _, pod := range pods {
+					if strings.Contains(pod.Name, "helm-install") {
+						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
+					} else {
+						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
+					}
+				}
+			}, "620s", "5s").Should(Succeed())
+			e2e.DumpPods(tc.KubeConfigFile)
+		})
+
+		It("Verify wasm-related containerd shims are installed", func() {
+			expected_shims := []string{"containerd-shim-spin-v2", "containerd-shim-slight-v1"}
+			for _, node := range append(tc.Servers, tc.Agents...) {
+				for _, shim := range expected_shims {
+					cmd := fmt.Sprintf("which %s", shim)
+					_, err := node.RunCmdOnNode(cmd)
+					Expect(err).NotTo(HaveOccurred())
 				}
 			}
-		}, "620s", "5s").Should(Succeed())
-		e2e.DumpPods(tc.KubeConfigFile)
-	})
-
-	It("Verify wasm-related containerd shims are installed", func() {
-		expected_shims := []string{"containerd-shim-spin-v2", "containerd-shim-slight-v1"}
-		for _, node := range append(tc.Servers, tc.Agents...) {
-			for _, shim := range expected_shims {
-				cmd := fmt.Sprintf("which %s", shim)
-				_, err := node.RunCmdOnNode(cmd)
-				Expect(err).NotTo(HaveOccurred())
-			}
-		}
+		})
 	})
 
 	Context("Verify Wasm workloads can run on the cluster", func() {
