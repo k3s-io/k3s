@@ -105,16 +105,6 @@ func newNodeError(cmd string, node VagrantNode, err error) *NodeError {
 	}
 }
 
-func CountOfStringInSlice(str string, pods []Pod) int {
-	count := 0
-	for _, pod := range pods {
-		if strings.Contains(pod.Name, str) {
-			count++
-		}
-	}
-	return count
-}
-
 // genNodeEnvs generates the node and testing environment variables for vagrant up
 func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, string) {
 	serverNodes := make([]VagrantNode, serverCount)
@@ -215,7 +205,6 @@ func scpK3sBinary(nodeNames []VagrantNode) error {
 
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
-// This is intended only for local testing purposes when writing a new E2E test.
 func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, error) {
 
 	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
@@ -707,19 +696,29 @@ func GetCoverageReport(nodes []VagrantNode) error {
 	return nil
 }
 
-// getPodIPs returns the IPs of all pods
+// GetDaemonsetReady returns the number of ready pods for the given daemonset
+func GetDaemonsetReady(daemonset string, kubeConfigFile string) (int, error) {
+	cmd := "kubectl get ds " + daemonset + " -o jsonpath='{range .items[*]}{.status.numberReady}' --kubeconfig=" + kubeConfigFile
+	out, err := RunCommand(cmd)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(out)
+}
+
+// GetPodIPs returns the IPs of all pods
 func GetPodIPs(kubeConfigFile string) ([]ObjIP, error) {
 	cmd := `kubectl get pods -A -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIPs[*].ip}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
 	return GetObjIPs(cmd)
 }
 
-// getNodeIPs returns the IPs of all nodes
+// GetNodeIPs returns the IPs of all nodes
 func GetNodeIPs(kubeConfigFile string) ([]ObjIP, error) {
 	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.addresses[?(@.type == "InternalIP")].address}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
 	return GetObjIPs(cmd)
 }
 
-// getObjIPs executes a command to collect IPs
+// GetObjIPs executes a command to collect IPs
 func GetObjIPs(cmd string) ([]ObjIP, error) {
 	var objIPs []ObjIP
 	res, err := RunCommand(cmd)

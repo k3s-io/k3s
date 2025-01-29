@@ -181,14 +181,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				fmt.Println("POD COUNT")
-				fmt.Println(count)
-				fmt.Println("NODE COUNT")
-				fmt.Println(len(nodes))
-				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
-			}, "420s", "10s").Should(Succeed())
+				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(nodes).To(HaveLen(count), "Daemonset pod count does not match node count")
+			}, "240s", "10s").Should(Succeed())
 		})
 
 		It("Verifies dns access", func() {
@@ -278,9 +274,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
+				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
 				podsRunningAr := 0
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {

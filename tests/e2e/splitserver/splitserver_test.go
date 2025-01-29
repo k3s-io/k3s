@@ -255,13 +255,9 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				fmt.Println("POD COUNT")
-				fmt.Println(count)
-				fmt.Println("CP COUNT")
-				fmt.Println(len(cpNodes))
-				g.Expect(len(cpNodes)).Should((Equal(count)), "Daemonset pod count does not match cp node count")
+				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(cpNodes).To(HaveLen(count), "Daemonset pod count does not match cp node count")
 			}, "240s", "10s").Should(Succeed())
 		})
 

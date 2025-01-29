@@ -159,16 +159,12 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 			_, err := tc.DeployWorkload("daemonset.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
-			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false) //nodes :=
+			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				fmt.Println("POD COUNT")
-				fmt.Println(count)
-				fmt.Println("NODE COUNT")
-				fmt.Println(len(nodes))
-				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
+				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(nodes).To(HaveLen(count), "Daemonset pod count does not match node count")
 			}, "240s", "10s").Should(Succeed())
 		})
 
@@ -345,17 +341,13 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("After upgrade verifies Daemonset", func() {
-			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false) //nodes :=
+			nodes, _ := e2e.ParseNodes(tc.KubeConfigFile, false)
 
 			Eventually(func(g Gomega) {
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				count := e2e.CountOfStringInSlice("test-daemonset", pods)
-				fmt.Println("POD COUNT")
-				fmt.Println(count)
-				fmt.Println("NODE COUNT")
-				fmt.Println(len(nodes))
-				g.Expect(len(nodes)).Should(Equal(count), "Daemonset pod count does not match node count")
-			}, "420s", "1s").Should(Succeed())
+				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(nodes).To(HaveLen(count), "Daemonset pod count does not match node count")
+			}, "240s", "10s").Should(Succeed())
 		})
 		It("After upgrade verifies dns access", func() {
 			Eventually(func() (string, error) {
