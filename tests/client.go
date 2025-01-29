@@ -75,6 +75,25 @@ func ParsePods(kubeconfigFile string) ([]corev1.Pod, error) {
 	return pods.Items, nil
 }
 
+// AllPodsUp checks if pods on the cluster are Running or Succeeded, otherwise returns an error
+func AllPodsUp(kubeconfigFile string) error {
+	clientSet, err := K8sClient(kubeconfigFile)
+	if err != nil {
+		return err
+	}
+	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods.Items {
+		// Check if the pod is running
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
+			return fmt.Errorf("pod %s is %s", pod.Name, pod.Status.Phase)
+		}
+	}
+	return nil
+}
+
 // PodReady checks if a pod is ready by querying its status
 func PodReady(podName, namespace, kubeconfigFile string) (bool, error) {
 	clientSet, err := K8sClient(kubeconfigFile)

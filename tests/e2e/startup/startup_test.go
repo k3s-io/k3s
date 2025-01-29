@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -123,19 +124,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
-
-			By("Fetching pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -200,19 +190,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
-
-			By("Fetching pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -251,19 +230,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
 
-			By("Fetching pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -294,19 +263,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
 
-			By("Fetching pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -337,19 +296,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
 
-			By("Fetching pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})

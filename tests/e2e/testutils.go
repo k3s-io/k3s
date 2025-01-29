@@ -42,13 +42,13 @@ type TestConfig struct {
 }
 
 func (tc *TestConfig) Status() string {
-	sN := VagrantSlice(tc.Servers)
-	aN := VagrantSlice(tc.Agents)
+	sN := strings.Join(VagrantSlice(tc.Servers), " ")
+	aN := strings.Join(VagrantSlice(tc.Agents), " ")
 	hardened := ""
 	if tc.Hardened {
 		hardened = "Hardened: true\n"
 	}
-	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", tc.KubeConfigFile, hardened, sN, aN)
+	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", hardened, tc.KubeConfigFile, sN, aN)
 }
 
 type Node struct {
@@ -63,15 +63,6 @@ func (n Node) String() string {
 	return fmt.Sprintf("Node (name: %s, status: %s, roles: %s)", n.Name, n.Status, n.Roles)
 }
 
-type Pod struct {
-	NameSpace string
-	Name      string
-	Ready     string
-	Status    string
-	Restarts  string
-	IP        string
-	Node      string
-}
 type NodeError struct {
 	Node VagrantNode
 	Cmd  string
@@ -221,7 +212,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 
 	// Provision the first server node. In GitHub Actions, this also imports the VM image into libvirt, which
 	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
-	cmd = fmt.Sprintf(`%s %s vagrant up --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
+	cmd = fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, newNodeError(cmd, serverNodes[0], err)
@@ -525,46 +516,6 @@ func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
 		fmt.Println(nodeList)
 	}
 	return nodes, nil
-}
-
-func formatPods(input string) ([]Pod, error) {
-	pods := make([]Pod, 0, 10)
-	input = strings.TrimSpace(input)
-	split := strings.Split(input, "\n")
-	for _, rec := range split {
-		fields := strings.Fields(string(rec))
-		if len(fields) < 8 {
-			return nil, fmt.Errorf("invalid pod record: %s", rec)
-		}
-		pod := Pod{
-			NameSpace: fields[0],
-			Name:      fields[1],
-			Ready:     fields[2],
-			Status:    fields[3],
-			Restarts:  fields[4],
-			IP:        fields[6],
-			Node:      fields[7],
-		}
-		pods = append(pods, pod)
-	}
-	return pods, nil
-}
-
-func ParsePods(kubeConfig string, print bool) ([]Pod, error) {
-	podList := ""
-
-	cmd := "kubectl get pods -o wide --no-headers -A"
-	res, _ := RunCommand(cmd)
-	podList = strings.TrimSpace(res)
-
-	pods, err := formatPods(res)
-	if err != nil {
-		return nil, err
-	}
-	if print {
-		fmt.Println(podList)
-	}
-	return pods, nil
 }
 
 func DumpPods(kubeConfig string) {

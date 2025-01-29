@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -59,17 +60,9 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Checks Pod Status", func() {
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+		It("Checks pod status", func() {
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -106,7 +99,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 				if strings.Contains(ip, "::") {
 					ip = "[" + ip + "]"
 				}
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				pods, err := tests.ParsePods(tc.KubeConfigFile)
 				Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if !strings.HasPrefix(pod.Name, "ds-clusterip-pod") {

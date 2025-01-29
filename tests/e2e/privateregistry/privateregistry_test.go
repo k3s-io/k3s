@@ -7,9 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Valid nodeOS:
@@ -51,7 +53,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			By(tc.Status())
 
 		})
-		It("Checks Node and Pod Status", func() {
+		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
@@ -62,19 +64,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 
-			By("Fetching Pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
-			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			By("Fetching pod status")
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
+			}, "620s", "10s").Should(Succeed())
 		})
 
 		It("Create new private registry", func() {
@@ -118,19 +111,19 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			var pod e2e.Pod
+			var pod corev1.Pod
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				pods, err := tests.ParsePods(tc.KubeConfigFile)
 				for _, p := range pods {
 					if strings.Contains(p.Name, "my-webpage") {
 						pod = p
 					}
 				}
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(pod.Status).Should(Equal("Running"))
+				g.Expect(string(pod.Status.Phase)).Should(Equal("Running"))
 			}, "60s", "5s").Should(Succeed())
 
-			cmd := "curl " + pod.IP
+			cmd := "curl " + pod.Status.PodIP
 			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
 		})
 

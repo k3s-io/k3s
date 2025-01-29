@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -53,7 +53,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 
 		})
 
-		It("Checks Node and Pod Status", func() {
+		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
@@ -62,20 +62,10 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "420s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
 
-			By("Fetching Pods status")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
-			}, "420s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
+			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 

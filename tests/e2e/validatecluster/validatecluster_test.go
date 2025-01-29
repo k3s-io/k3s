@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -55,7 +56,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			By(tc.Status())
 		})
 
-		It("Checks Node and Pod Status", func() {
+		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
 				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
@@ -67,16 +68,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, _ = e2e.ParseNodes(tc.KubeConfigFile, true)
 
 			fmt.Printf("\nFetching Pods status\n")
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -276,15 +269,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeConfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pod count does not match node count")
-				pods, _ := e2e.ParsePods(tc.KubeConfigFile, false)
-				podsRunningAr := 0
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "test-daemonset") && pod.Status == "Running" && pod.Ready == "1/1" {
-						podsRunningAr++
-					}
-				}
-				g.Expect(len(nodes)).Should((Equal(podsRunningAr)), "Daemonset pods are not running after the restart")
+				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pods that are ready does not match node count")
 			}, "620s", "5s").Should(Succeed())
 		})
 	})
@@ -317,16 +302,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}
 			}, "620s", "5s").Should(Succeed())
 
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "620s", "5s").Should(Succeed())
 		})
 

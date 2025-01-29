@@ -13,6 +13,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,16 +70,8 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		})
 
 		It("Checks Pod Status", func() {
-			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(pod.Status).Should(Equal("Completed"), pod.Name)
-					} else {
-						g.Expect(pod.Status).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "300s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
@@ -96,11 +89,11 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Check where the server pod is running
 			var serverNodeName string
 			Eventually(func() (string, error) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				pods, err := tests.ParsePods(tc.KubeConfigFile)
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-ext") {
-						serverNodeName = pod.Node
+						serverNodeName = pod.Spec.NodeName
 						break
 					}
 				}
@@ -179,11 +172,11 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// Check that client pods are running
 			Eventually(func() string {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				pods, err := tests.ParsePods(tc.KubeConfigFile)
 				Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "client-deployment") {
-						return pod.Status
+						return string(pod.Status.Phase)
 					}
 				}
 				return ""
@@ -195,21 +188,21 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		It("Verify connectivity in internal traffic policy=local", func() {
 			var clientPod1, clientPod1Node, clientPod1IP, clientPod2, clientPod2Node, clientPod2IP, serverNodeName string
 			Eventually(func(g Gomega) {
-				pods, err := e2e.ParsePods(tc.KubeConfigFile, false)
+				pods, err := tests.ParsePods(tc.KubeConfigFile)
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-int") {
-						serverNodeName = pod.Node
+						serverNodeName = pod.Spec.NodeName
 					}
 					if strings.Contains(pod.Name, "client-deployment") {
 						if clientPod1 == "" {
 							clientPod1 = pod.Name
-							clientPod1Node = pod.Node
-							clientPod1IP = pod.IP
+							clientPod1Node = pod.Spec.NodeName
+							clientPod1IP = pod.Status.PodIP
 						} else {
 							clientPod2 = pod.Name
-							clientPod2Node = pod.Node
-							clientPod2IP = pod.IP
+							clientPod2Node = pod.Spec.NodeName
+							clientPod2IP = pod.Status.PodIP
 						}
 					}
 				}
