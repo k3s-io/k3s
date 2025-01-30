@@ -93,6 +93,7 @@ type Containerd struct {
 	NonrootDevices bool
 	SELinux        bool
 	Debug          bool
+	ConfigVersion  int
 }
 
 type CRIDockerd struct {

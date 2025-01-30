@@ -6,16 +6,16 @@ package containerd
 import (
 	"os"
 
-	"github.com/containerd/containerd"
-	overlayutils "github.com/containerd/containerd/snapshots/overlay/overlayutils"
-	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
+	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter/v2"
 	stargz "github.com/containerd/stargz-snapshotter/service"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/opencontainers/runc/libcontainer/userns"
+	"github.com/moby/sys/userns"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -31,9 +31,16 @@ func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
 		"containerd",
 		"-c", cfg.Containerd.Config,
-		"-a", cfg.Containerd.Address,
-		"--state", cfg.Containerd.State,
-		"--root", cfg.Containerd.Root,
+	}
+
+	// The legacy version 2 linux containerd config template did not include
+	// address/state/root settings, so they need to be passed on the command line.
+	if cfg.Containerd.ConfigVersion < 3 {
+		args = append(args,
+			"-a", cfg.Containerd.Address,
+			"--state", cfg.Containerd.State,
+			"--root", cfg.Containerd.Root,
+		)
 	}
 	return args
 }
