@@ -95,7 +95,7 @@ set -o noglob
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
 
-GITHUB_URL=https://github.com/k3s-io/k3s/releases
+GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
 GITHUB_PR_URL=""
 STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
@@ -513,8 +513,8 @@ get_pr_artifact_url() {
 
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
     run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
-    
-    # Extract the artifact ID for the "k3s" artifact    
+
+    # Extract the artifact ID for the "k3s" artifact
     GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
 }
 
