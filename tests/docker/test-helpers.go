@@ -21,6 +21,7 @@ type TestConfig struct {
 	KubeconfigFile string
 	Token          string
 	K3sImage       string
+	DBType         string
 	Servers        []Server
 	Agents         []DockerNode
 	ServerYaml     string
@@ -115,16 +116,28 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			yamlMount = fmt.Sprintf("--mount type=bind,src=%s,dst=/etc/rancher/k3s/config.yaml", filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)))
 		}
 
-		var joinOrStart string
-		if numOfServers > 0 {
-			if i == 0 {
-				joinOrStart = "--cluster-init"
-			} else {
-				if config.Servers[0].URL == "" {
-					return fmt.Errorf("first server URL is empty")
-				}
-				joinOrStart = fmt.Sprintf("--server %s", config.Servers[0].URL)
+		var joinServer string
+		var dbConnect string
+		var err error
+		if config.DBType == "" && numOfServers > 1 {
+			config.DBType = "etcd"
+		} else if config.DBType == "" {
+			config.DBType = "sqlite"
+		}
+		if i == 0 {
+			dbConnect, err = config.setupDatabase(true)
+			if err != nil {
+				return err
 			}
+		} else {
+			dbConnect, err = config.setupDatabase(false)
+			if err != nil {
+				return err
+			}
+			if config.Servers[0].URL == "" {
+				return fmt.Errorf("first server URL is empty")
+			}
+			joinServer = fmt.Sprintf("--server %s", config.Servers[0].URL)
 		}
 		newServer := Server{
 			DockerNode: DockerNode{
@@ -163,7 +176,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			}
 			// The pipe requires that we use sh -c with "" to run the command
 			cmd = fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
-				joinOrStart+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
+				dbConnect+" "+joinServer+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
 			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 				return fmt.Errorf("failed to start server: %s: %v", out, err)
 			}
@@ -183,7 +196,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
 				yamlMount,
 				config.K3sImage,
-				"server", joinOrStart, os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
+				"server", dbConnect, joinServer, os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
 			if out, err := RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to run server container: %s: %v", out, err)
 			}
@@ -212,6 +225,40 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 	// Wait for kubeconfig to be available
 	time.Sleep(5 * time.Second)
 	return copyAndModifyKubeconfig(config)
+}
+
+// setupDatabase will start the configured database if startDB is true,
+// and return the correct flag to join the configured database
+func (config *TestConfig) setupDatabase(startDB bool) (string, error) {
+
+	joinFlag := ""
+	startCmd := ""
+	switch config.DBType {
+	case "mysql":
+		startCmd = "docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=docker -p 3306:3306 mysql:8.4"
+		joinFlag = "--datastore-endpoint='mysql://root:docker@tcp(172.17.0.1:3306)/k3s'"
+	case "postgres":
+		startCmd = "docker run -d --name postgres -e POSTGRES_PASSWORD=docker -p 5432:5432 postgres:16-alpine"
+		joinFlag = "--datastore-endpoint='postgres://postgres:docker@tcp(172.17.0.1:5432)/k3s'"
+	case "etcd":
+		if startDB {
+			joinFlag = "--cluster-init"
+		}
+	case "sqlite":
+		break
+	default:
+		return "", fmt.Errorf("unsupported database type: %s", config.DBType)
+	}
+
+	if startDB && startCmd != "" {
+		if out, err := RunCommand(startCmd); err != nil {
+			return "", fmt.Errorf("failed to start %s container: %s: %v", config.DBType, out, err)
+		}
+		// Wait for DB to start
+		time.Sleep(10 * time.Second)
+	}
+	return joinFlag, nil
+
 }
 
 func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
@@ -337,6 +384,18 @@ func (config *TestConfig) Cleanup() error {
 	for _, agent := range config.Agents {
 		if err := config.RemoveNode(agent.Name); err != nil {
 			errs = append(errs, err)
+		}
+	}
+
+	// Stop DB if it was started
+	if config.DBType != "etcd" {
+		cmd := fmt.Sprintf("docker stop %s", config.DBType)
+		if _, err := RunCommand(cmd); err != nil {
+			errs = append(errs, fmt.Errorf("failed to stop %s: %v", config.DBType, err))
+		}
+		cmd = fmt.Sprintf("docker rm %s", config.DBType)
+		if _, err := RunCommand(cmd); err != nil {
+			errs = append(errs, fmt.Errorf("failed to remove %s: %v", config.DBType, err))
 		}
 	}
 
