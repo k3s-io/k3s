@@ -4,9 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
@@ -15,6 +18,7 @@ import (
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var db = flag.String("db", "", "The database to use for the tests (sqlite, etcd, mysql, postgres)")
 var serial = flag.Bool("serial", false, "Run the Serial Conformance Tests")
 var config *tester.TestConfig
 
@@ -31,6 +35,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			var err error
 			config, err = tester.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
+			config.DBType = *db
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
@@ -60,30 +65,56 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			if *serial {
 				Skip("Skipping parallel conformance tests")
 			}
-			cmd := fmt.Sprintf("%s --focus=\"Conformance\" --skip=\"Serial|Flaky\" -p %d --extra-ginkgo-args=\"%s\" --kubeconfig %s",
+			cmd := fmt.Sprintf("%s --focus=\"Conformance\" --skip=\"Serial|Flaky\" -v 2 -p %d --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
 				runtime.NumCPU()/2,
-				"--poll-progress-after=60s,--poll-progress-interval=30s",
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
-			res, err := tester.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred(), res)
+			hc, err := StartCmd(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			// Periodically check the number of tests that have run, since the hydrophone output does not support a progress status
+			// Taken from https://github.com/kubernetes-sigs/hydrophone/issues/223#issuecomment-2547174722
+			go func() {
+				cmd := fmt.Sprintf("kubectl exec -n=conformance e2e-conformance-test -c output-container --kubeconfig=%s -- cat /tmp/results/e2e.log | grep -o \"•\" | wc -l",
+					config.KubeconfigFile)
+				for i := 1; ; i++ {
+					time.Sleep(120 * time.Second)
+					if hc.ProcessState != nil {
+						break
+					}
+					res, _ := tester.RunCommand(cmd)
+					res = strings.TrimSpace(res)
+					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
+				}
+			}()
+			Expect(hc.Wait()).To(Succeed())
 		})
 		It("should run serial conformance tests", func() {
 			if !*serial {
 				Skip("Skipping serial conformance tests")
 			}
-			cmd := fmt.Sprintf("%s -o %s --focus=\"Serial\" --skip=\"Flaky\"  --extra-ginkgo-args=\"%s\" --kubeconfig %s",
+			cmd := fmt.Sprintf("%s --focus=\"Serial\" --skip=\"Flaky\"  -v 2 --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
-				filepath.Join(config.TestDir, "logs"),
-				"--poll-progress-after=60s,--poll-progress-interval=30s",
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
-			res, err := tester.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred(), res)
+			hc, err := StartCmd(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			go func() {
+				cmd := fmt.Sprintf("kubectl exec -n=conformance e2e-conformance-test -c output-container --kubeconfig=%s -- cat /tmp/results/e2e.log | grep -o \"•\" | wc -l",
+					config.KubeconfigFile)
+				for i := 1; ; i++ {
+					time.Sleep(120 * time.Second)
+					if hc.ProcessState != nil {
+						break
+					}
+					res, _ := tester.RunCommand(cmd)
+					res = strings.TrimSpace(res)
+					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
+				}
+			}()
+			Expect(hc.Wait()).To(Succeed())
 		})
 	})
-
 })
 
 var failed bool
@@ -96,3 +127,15 @@ var _ = AfterSuite(func() {
 		config.Cleanup()
 	}
 })
+
+// StartCmd starts a command and pipes its output to
+// the ginkgo Writr, with the expectation to poll the progress of the command
+func StartCmd(cmd string) (*exec.Cmd, error) {
+	c := exec.Command("sh", "-c", cmd)
+	c.Stdout = GinkgoWriter
+	c.Stderr = GinkgoWriter
+	if err := c.Start(); err != nil {
+		return c, err
+	}
+	return c, nil
+}
