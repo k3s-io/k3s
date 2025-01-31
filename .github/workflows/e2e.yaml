@@ -141,7 +141,7 @@ jobs:
       matrix:
         arch: [amd64, arm64]
     outputs:
-      branch_name: ${{ steps.branch_step.outputs.BRANCH_NAME }}
+      channel: ${{ steps.channel_step.outputs.channel }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -159,40 +159,21 @@ jobs:
         compression-level: 9
         retention-days: 1
     # For upgrade and skew tests, we need to know the branch name this run is based off.
-    # Since this is predetermined, we can run this step before the docker-go job, saving time.
-    # For PRs we can use the base_ref (ie the target branch of the PR).
-    # For pushes to k3s-io/k3s from dependabot or updatecli, use master
-    # All other pushes should be a valid ref, master or release-1.XX.
-    # For pushes to a fork, we need to determine the branch name by finding the parent branch from git show-branch history.
-    - name: Determine branch name
-      id: branch_step
+    # Since this is predetermined, we can run this step before the actual test job, saving time.
+    - name: Determine channel
+      id: channel_step
       run: |
-        if [ ${{ github.repository }} = "k3s-io/k3s" ]; then 
-          BRANCH_NAME=$(echo ${{ github.base_ref || github.ref_name }})
-          if [[ $BRANCH_NAME =~ ^(dependabot|updatecli) ]]; then
-            BRANCH_NAME=master
-          fi
-        elif [ -z "${{ github.base_ref }}" ]; then
-          # We are in a fork, and need some git history to determine the branch name
-          # For some reason, the first fetch doesn't always get the full history, so we sleep and fetch again
-          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
-          sleep 5
-          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
-          BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
-        else
-          BRANCH_NAME=${{ github.base_ref }}
-        fi
-        echo "Branch Name is $BRANCH_NAME"
-        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
-    # branch name should be either master or release-1.XX
-    - name: Fail if branch name does not match pattern
+        . ./scripts/version.sh
+        MINOR_VER=$(echo $VERSION_TAG | cut -d'.' -f1,2)
+        echo "CHANNEL=$MINOR_VER" >> $GITHUB_OUTPUT 
+    # channel name should be v1.XX or latest
+    - name: Fail if channel name does not match pattern
       run: |
-        if [[ ! ${{ steps.branch_step.outputs.branch_name }} =~ ^(master|release-[0-9]+\.[0-9]+)$ ]]; then
-          echo "Branch name ${{ steps.branch_step.outputs.branch_name }} does not match pattern"
-          echo "If this is a PR/fork, ensure you have recently rebased off master/release-1.XX branch"
+        if [[ ! ${{ steps.channel_step.outputs.channel }} =~ ^v1\.[0-9]+$|latest$ ]]; then
+          echo "Channel name ${{ steps.channel_step.outputs.channel }} does not match pattern"
           exit 1
         fi
-
+  
   docker-go:
     needs: [build, build-go-tests]
     name: Docker AMD64
@@ -203,7 +184,7 @@ jobs:
       matrix:
         dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, upgrade]
     env:
-      BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
+      CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -230,7 +211,7 @@ jobs:
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
         cd ./tests/docker/${{ matrix.dtest }}
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
-          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -branch=$BRANCH_NAME
+          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [ ${{ matrix.dtest }} = "snapshotrestore" ]; then
           ./${{ matrix.dtest }}.test -ci 
         else
