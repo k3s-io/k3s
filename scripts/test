@@ -59,16 +59,13 @@ fi
 . ./tests/docker/test-run-hardened
 echo "Did test-run-hardened $?"
 
-# go test -timeout=30m ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -serial -ginkgo.v
-
-if [ "$ARCH" != 'arm' ]; then
-  go test -timeout=50m ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -ginkgo.v
-  echo "Did go test conformance $?"
-fi
 # ---
 
 [ "$ARCH" != 'amd64' ] && \
   early-exit "Skipping remaining tests, images not available for $ARCH."
+
+go test -timeout=50m ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -ginkgo.v
+echo "Did go test conformance $?"
 
 # ---
 
