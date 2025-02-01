@@ -158,7 +158,7 @@ jobs:
         path: ./dist/artifacts/*.test
         compression-level: 9
         retention-days: 1
-    # For upgrade and skew tests, we need to know the branch name this run is based off.
+    # For upgrade and skew tests, we need to know the channel this run is based off.
     # Since this is predetermined, we can run this step before the actual test job, saving time.
     - name: Determine channel
       id: channel_step
@@ -175,26 +175,37 @@ jobs:
         fi
   
   docker-go:
-    needs: [build, build-go-tests]
-    name: Docker AMD64
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    needs: [build, build-arm64, build-go-tests]
+    name: Docker
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, upgrade]
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: "Download K3s image"
+    - name: "Download K3s image (amd64)"
+      if: ${{ matrix.arch == 'amd64' }}
       uses: actions/download-artifact@v4
       with:
         name: k3s
         path: ./dist/artifacts
+    - name: "Download K3s image (arm64)"
+      if: ${{ matrix.arch == 'arm64' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s-arm64
+        path: ./dist/artifacts
     - name: Load and set K3s image
       run: |
+        if [ ${{ matrix.arch }} = "arm64" ]; then
+          mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s
+        fi
         chmod +x ./dist/artifacts/k3s
         docker image load -i ./dist/artifacts/k3s-image.tar
         IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
@@ -202,7 +213,7 @@ jobs:
     - name: Download Go Tests
       uses: actions/download-artifact@v4
       with:
-        name: docker-go-tests-amd64
+        name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts
     - name: Run ${{ matrix.dtest }} Test
       # Put the compiled test binary back in the same place as the test source
@@ -217,48 +228,3 @@ jobs:
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
         fi
-
-  docker-go-arm64:
-    needs: [build-arm64, build-go-tests]
-    name: Docker ARM64
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        dtest: [basics, bootstraptoken, cacerts, etcd ]
-    env:
-      BRANCH_NAME: ${{ needs.build-go-tests.outputs.branch_name }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: "Download K3s image"
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s-arm64
-        path: ./dist/artifacts
-    - name: Load and set K3s image
-      run: |
-        mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s 
-        chmod +x ./dist/artifacts/k3s
-        docker image load -i ./dist/artifacts/k3s-image.tar
-        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
-        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
-    - name: Download Go Tests
-      uses: actions/download-artifact@v4
-      with:
-        name: docker-go-tests-arm64
-        path: ./dist/artifacts
-    - name: Run ${{ matrix.dtest }} Test
-      # Put the compiled test binary back in the same place as the test source
-      run: |
-        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
-        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
-        cd ./tests/docker/${{ matrix.dtest }}
-        ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
-    - name: On Failure, Launch Debug Session
-      uses: dereknola/action-upterm@v1.1
-      if: ${{ failure() }}
-      with:
-        ## If no one connects after 5 minutes, shut down server.
-        wait-timeout-minutes: 5
