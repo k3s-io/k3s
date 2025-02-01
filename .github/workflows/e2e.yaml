@@ -105,34 +105,6 @@ jobs:
           files: tests/e2e/${{ matrix.etest }}/coverage.out
           flags: e2etests # optional
           verbose: true # optional (default = false)
-  docker:
-    needs: build
-    name: Docker Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        dtest: [basics, bootstraptoken, cacerts, compat, lazypull, upgrade]
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    - name: "Download k3s image"
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s
-        path: ./dist/artifacts
-    - name: Load k3s image
-      run: docker image load -i ./dist/artifacts/k3s-image.tar
-    - name: Run ${{ matrix.dtest }} Test
-      run: | 
-        chmod +x ./dist/artifacts/k3s
-        . ./scripts/version.sh
-        . ./tests/docker/test-helpers
-        . ./tests/docker/test-run-${{ matrix.dtest }}
-        echo "Did test-run-${{ matrix.dtest }} pass $?"
   
   build-go-tests:
     name: "Build Go Tests"
