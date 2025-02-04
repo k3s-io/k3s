@@ -20,8 +20,9 @@ mkdir -p $artifacts
 docker ps
 
 # ---
-# Only run basic tests on non amd64 archs, we use GitHub Actions for amd64
-if [ "$ARCH" != 'amd64' ]; then
+# Only run PR tests on arm arch, we use GitHub Actions for amd64 and arm64
+# Run all tests on tag events, as we want test failures to block the release
+if [ "$ARCH" == 'arm' ] ||  [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
 
   export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
   go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE"
@@ -47,12 +48,9 @@ if [ "$ARCH" != 'amd64' ]; then
 fi
 
 
-
+#TODO convert this to new go test framework
 . ./tests/docker/test-run-hardened
 echo "Did test-run-hardened $?"
-
-. ./tests/docker/test-run-etcd
-echo "Did test-run-etcd $?"
 
 # ---
 
