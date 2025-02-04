@@ -17,7 +17,7 @@ import (
 // Using these two flags, we upgrade from the latest release of <branch> to
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
-var branch = flag.String("branch", "master", "The release branch to test")
+var channel = flag.String("channel", "latest", "The release channel to test")
 var config *tester.TestConfig
 
 var numServers = 1
@@ -34,22 +34,15 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 	Context("Setup Cluster with Lastest Release", func() {
 		var latestVersion string
 		It("should determine latest branch version", func() {
-			var upgradeChannel string
-			var err error
-			if *branch == "master" {
-				upgradeChannel = "latest"
-			} else {
-				upgradeChannel = strings.Replace(*branch, "release-", "v", 1)
-				url := fmt.Sprintf("https://update.k3s.io/v1-release/channels/%s", upgradeChannel)
-				resp, err := http.Head(url)
-				// Cover the case where the branch does not exist yet,
-				// such as a new unreleased minor version
-				if err != nil || resp.StatusCode != http.StatusOK {
-					upgradeChannel = "latest"
-				}
+			url := fmt.Sprintf("https://update.k3s.io/v1-release/channels/%s", *channel)
+			resp, err := http.Head(url)
+			// Cover the case where the branch does not exist yet,
+			// such as a new unreleased minor version
+			if err != nil || resp.StatusCode != http.StatusOK {
+				*channel = "latest"
 			}
 
-			latestVersion, err = tester.GetVersionFromChannel(upgradeChannel)
+			latestVersion, err = tester.GetVersionFromChannel(*channel)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latestVersion).To(ContainSubstring("v1."))
 			fmt.Println("Using latest version: ", latestVersion)
@@ -131,6 +124,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 				Expect(err).NotTo(HaveOccurred())
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
 				cVersion = strings.Replace(cVersion, "-", "+", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
