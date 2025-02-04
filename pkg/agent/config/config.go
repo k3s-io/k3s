@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -639,50 +638,22 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.KubeConfigKubelet = kubeconfigKubelet
 	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
 	nodeConfig.AgentConfig.KubeConfigK3sController = kubeconfigK3sController
-	if envInfo.Rootless {
-		nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "agent", "kubelet")
-	}
 	nodeConfig.AgentConfig.Snapshotter = envInfo.Snapshotter
 	nodeConfig.AgentConfig.IPSECPSK = controlConfig.IPSECPSK
 	nodeConfig.Containerd.Config = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml")
 	nodeConfig.Containerd.Root = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	nodeConfig.CRIDockerd.Root = filepath.Join(envInfo.DataDir, "agent", "cri-dockerd")
-	if !nodeConfig.Docker {
-		if nodeConfig.ImageServiceEndpoint != "" {
-			nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ImageServiceEndpoint
-		} else if nodeConfig.ContainerRuntimeEndpoint == "" {
-			switch nodeConfig.AgentConfig.Snapshotter {
-			case "overlayfs":
-				if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
-					return nil, errors.Wrapf(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
-						nodeConfig.Containerd.Root)
-				}
-			case "fuse-overlayfs":
-				if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
-					return nil, errors.Wrapf(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
-						nodeConfig.Containerd.Root)
-				}
-			case "stargz":
-				if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
-					return nil, errors.Wrapf(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
-						nodeConfig.Containerd.Root)
-				}
-				nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
-			}
-		} else {
-			nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ContainerRuntimeEndpoint
-		}
-	}
 	nodeConfig.Containerd.Opt = filepath.Join(envInfo.DataDir, "agent", "containerd")
 	nodeConfig.Containerd.Log = filepath.Join(envInfo.DataDir, "agent", "containerd", "containerd.log")
 	nodeConfig.Containerd.Registry = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "certs.d")
 	nodeConfig.Containerd.NoDefault = envInfo.ContainerdNoDefault
 	nodeConfig.Containerd.NonrootDevices = envInfo.ContainerdNonrootDevices
 	nodeConfig.Containerd.Debug = envInfo.Debug
-	applyContainerdStateAndAddress(nodeConfig)
-	applyCRIDockerdAddress(nodeConfig)
-	applyContainerdQoSClassConfigFileIfPresent(envInfo, &nodeConfig.Containerd)
 	nodeConfig.Containerd.Template = filepath.Join(envInfo.DataDir, "agent", "etc", "containerd", "config.toml.tmpl")
+
+	if envInfo.Rootless {
+		nodeConfig.AgentConfig.RootDir = filepath.Join(envInfo.DataDir, "agent", "kubelet")
+	}
 
 	if envInfo.BindAddress != "" {
 		nodeConfig.AgentConfig.ListenAddress = envInfo.BindAddress
@@ -739,13 +710,26 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	if nodeConfig.Docker {
+	if nodeConfig.ImageServiceEndpoint != "" {
+		nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ImageServiceEndpoint
+	}
+
+	if nodeConfig.ContainerRuntimeEndpoint != "" {
+		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
+	} else if nodeConfig.Docker {
+		if err := applyCRIDockerdOSSpecificConfig(nodeConfig); err != nil {
+			return nil, err
+		}
 		nodeConfig.AgentConfig.CNIPlugin = true
 		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.CRIDockerd.Address
-	} else if nodeConfig.ContainerRuntimeEndpoint == "" {
-		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.Containerd.Address
 	} else {
-		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
+		if err := applyContainerdOSSpecificConfig(nodeConfig); err != nil {
+			return nil, err
+		}
+		if err := applyContainerdQoSClassConfigFileIfPresent(envInfo, &nodeConfig.Containerd); err != nil {
+			return nil, err
+		}
+		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.Containerd.Address
 	}
 
 	if controlConfig.ClusterIPRange != nil {
