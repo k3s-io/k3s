@@ -38,6 +38,11 @@ func applyContainerdOSSpecificConfig(nodeConfig *config.Node) error {
 			return pkgerrors.WithMessagef(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
 				nodeConfig.Containerd.Root)
 		}
+	case "nix":
+		if err := containerd.NixSupported(nodeConfig.Containerd.Root); err != nil {
+			return nil, errors.Wrapf(err, "\"nix\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+				nodeConfig.Containerd.Root)
+		}
 		nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 	}
 
