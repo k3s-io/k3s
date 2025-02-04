@@ -15,7 +15,7 @@ import (
 // Using these two flags, we upgrade from the latest release of <branch> to
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
-var branch = flag.String("branch", "master", "The release branch to test")
+var channel = flag.String("channel", "latest", "The release channel to test")
 var config *tester.TestConfig
 
 func Test_DockerSkew(t *testing.T) {
@@ -30,14 +30,17 @@ var _ = BeforeSuite(func() {
 	// For master and unreleased branches, we want the latest stable release
 	var upgradeChannel string
 	var err error
-	if *branch == "master" {
+	if *channel == "latest" || *channel == "v1.32" {
+		// disabled: AuthorizeNodeWithSelectors is now on by default, which breaks compat with agents < v1.32.
+		// This can be ren-enabled once the previous branch is v1.32 or higher, or when RBAC changes have been backported.
+		// ref: https://github.com/kubernetes/kubernetes/pull/128168
+		Skip("Skipping version skew tests for " + *channel + " due to AuthorizeNodeWithSelectors")
+
 		upgradeChannel = "stable"
 	} else {
-		upgradeChannel = strings.Replace(*branch, "release-", "v", 1)
-		// now that it is in v1.1 format, we want to substract one from the minor version
-		// to get the previous release
-		sV, err := semver.ParseTolerant(upgradeChannel)
-		Expect(err).NotTo(HaveOccurred(), "failed to parse version from "+upgradeChannel)
+		// We want to substract one from the minor version to get the previous release
+		sV, err := semver.ParseTolerant(*channel)
+		Expect(err).NotTo(HaveOccurred(), "failed to parse version from "+*channel)
 		sV.Minor--
 		upgradeChannel = fmt.Sprintf("v%d.%d", sV.Major, sV.Minor)
 	}
