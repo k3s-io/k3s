@@ -59,6 +59,9 @@ echo "Did test-run-hardened $?"
 [ "$ARCH" != 'amd64' ] && \
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
+go test -timeout=50m ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -ginkgo.v
+echo "Did go test conformance $?"
+
 # ---
 
 if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
