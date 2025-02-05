@@ -47,14 +47,6 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: validate-cross-compilation
-  image: rancher/dapper:v0.6.0
-  commands:
-  - dapper validate-cross-compilation
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-
 - name: fossa
   image: rancher/drone-fossa:latest
   failure: ignore
