@@ -5,6 +5,10 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
+if [ "${OS}" != "linux" ]; then
+  exit
+fi
+
 TAG=${TAG:-${VERSION_TAG}${SUFFIX}}
 REPO=${REPO:-rancher}
 IMAGE_NAME=${IMAGE_NAME:-k3s}
