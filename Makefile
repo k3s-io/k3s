@@ -1,5 +1,6 @@
 TARGETS := $(shell ls scripts | grep -v \\.sh)
 GO_FILES ?= $$(find . -name '*.go' | grep -v generated)
+SHELL := /bin/bash
 
 
 .dapper:
@@ -9,7 +10,11 @@ GO_FILES ?= $$(find . -name '*.go' | grep -v generated)
 	@./.dapper.tmp -v
 	@mv .dapper.tmp .dapper
 
-$(TARGETS): .dapper
+.PHONY: docker.sock
+docker.sock:
+	while ! docker version 1>/dev/null; do sleep 1; done
+
+$(TARGETS): .dapper docker.sock
 	./.dapper $@
 
 .PHONY: deps
