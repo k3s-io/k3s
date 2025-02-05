@@ -108,10 +108,10 @@ jobs:
   
   build-go-tests:
     name: "Build Go Tests"
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     outputs:
       channel: ${{ steps.channel_step.outputs.channel }}
     steps:
@@ -122,7 +122,7 @@ jobs:
     - name: Build Go Tests
       run: |
         mkdir -p ./dist/artifacts
-        GOOS=linux GOARCH=${{ matrix.arch }} go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
+        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
     - name: Upload Go Tests
       uses: actions/upload-artifact@v4
       with:

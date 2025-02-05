@@ -8,8 +8,8 @@ import (
 	"github.com/k3s-io/k3s/tests/e2e"
 )
 
-// RunCmdOnRootlesNode executes a command from within the given node as user vagrant
-func RunCmdOnRootlesNode(cmd string, nodename string) (string, error) {
+// RunCmdOnRootlessNode executes a command from within the given node as user vagrant
+func RunCmdOnRootlessNode(cmd string, nodename string) (string, error) {
 	injectEnv := ""
 	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
@@ -23,11 +23,12 @@ func RunCmdOnRootlesNode(cmd string, nodename string) (string, error) {
 }
 
 func GenRootlessKubeConfigFile(serverName string) (string, error) {
-	kubeConfig, err := RunCmdOnRootlesNode("cat /home/vagrant/.kube/k3s.yaml", serverName)
+	kubeConfig, err := RunCmdOnRootlessNode("cat /home/vagrant/.kube/k3s.yaml", serverName)
 	if err != nil {
 		return "", err
 	}
-	nodeIP, err := e2e.FetchNodeExternalIP(serverName)
+	vNode := e2e.VagrantNode(serverName)
+	nodeIP, err := vNode.FetchNodeExternalIP()
 	if err != nil {
 		return "", err
 	}
