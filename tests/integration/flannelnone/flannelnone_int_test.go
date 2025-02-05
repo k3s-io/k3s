@@ -1,5 +1,5 @@
 /*
-This test verifies that even if we use flannel-backend=none, kube-api starts correctly so that it can 
+This test verifies that even if we use flannel-backend=none, kube-api starts correctly so that it can
 accept the custom CNI plugin manifest. We want to catch regressions in which kube-api is unresponsive.
 To do so we check for 25s that we can consistently query kube-api. We check that pods are in pending
 state, which is what should happen if there is no cni plugin
@@ -14,8 +14,6 @@ import (
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var server *testutil.K3sServer
@@ -44,25 +42,24 @@ var _ = Describe("flannel-backend=none", Ordered, func() {
 		It("checks pods status", func() {
 			// Wait for pods to come up before running the real test
 			Eventually(func() int {
-				pods, _ := testutil.ParsePods("kube-system", metav1.ListOptions{})
+				pods, _ := testutil.ParsePodsInNS("kube-system")
 				return len(pods)
 			}, "180s", "5s").Should(BeNumerically(">", 0))
 
-
-			pods, err := testutil.ParsePods("kube-system", metav1.ListOptions{})
+			pods, err := testutil.ParsePodsInNS("kube-system")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Pods should remain in Pending state because there is no network plugin
-			Consistently(func () bool {
+			Consistently(func() bool {
 				for _, pod := range pods {
 					if !strings.Contains(string(pod.Status.Phase), "Pending") {
 						return false
 					}
 				}
 				return true
-				}, "25s").Should(BeTrue())
-			})
+			}, "25s").Should(BeTrue())
 		})
+	})
 })
 
 var failed bool

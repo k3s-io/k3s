@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +42,7 @@ var _ = Describe("flannel-ipv6-masq", Ordered, func() {
 	When("a ipv4 and ipv6 cidr is present", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "10s").Should(Succeed())
 		})
 		It("creates pods with two IPs", func() {

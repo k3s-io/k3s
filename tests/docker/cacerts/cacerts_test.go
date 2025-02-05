@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,7 +63,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 		})
 	})

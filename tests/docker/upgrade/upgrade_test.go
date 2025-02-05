@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,7 +70,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(config.ProvisionServers(numServers)).To(Succeed())
 			Expect(config.ProvisionAgents(numAgents)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should confirm latest version", func() {
@@ -84,7 +85,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "failed to apply volume test manifest")
 
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
+				return tests.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 		It("should upgrade to current commit build", func() {
@@ -111,7 +112,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(numAgents)).To(Succeed())
 
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 		})
 		It("should confirm commit version", func() {
@@ -131,7 +132,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should confirm test pod is still Running", func() {
 			Eventually(func() (bool, error) {
-				return tester.PodReady("volume-test", "kube-system", config.KubeconfigFile)
+				return tests.PodReady("volume-test", "kube-system", config.KubeconfigFile)
 			}, "20s", "5s").Should(BeTrue())
 		})
 
