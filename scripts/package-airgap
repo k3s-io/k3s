@@ -5,6 +5,10 @@ cd $(dirname $0)/..
 
 . ./scripts/version.sh
 
+if [ "${OS}" != "linux" ]; then
+  exit
+fi
+
 airgap_image_file='scripts/airgap/image-list.txt'
 images=$(cat "${airgap_image_file}")
 xargs -n1 docker pull <<< "${images}"
