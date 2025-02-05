@@ -1,6 +1,7 @@
 package services
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -9,6 +10,9 @@ import (
 )
 
 func Test_UnitFilesForServices(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "k3s")
+	serverDir := filepath.Join(dataDir, "server")
+	agentDir := filepath.Join(dataDir, "agent")
 	type args struct {
 		controlConfig config.Control
 		services      []string
@@ -25,7 +29,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 			args: args{
 				services: All,
 				controlConfig: config.Control{
-					DataDir: "/var/lib/rancher/k3s/server",
+					DataDir: serverDir,
 					Runtime: &config.ControlRuntime{},
 				},
 			},
@@ -35,62 +39,62 @@ func Test_UnitFilesForServices(t *testing.T) {
 			},
 			want: map[string][]string{
 				"admin": []string{
-					"/var/lib/rancher/k3s/server/tls/client-admin.crt",
-					"/var/lib/rancher/k3s/server/tls/client-admin.key",
+					filepath.Join(serverDir, "tls", "client-admin.crt"),
+					filepath.Join(serverDir, "tls", "client-admin.key"),
 				},
 				"api-server": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.crt",
-					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.key",
-					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt",
-					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.key",
+					filepath.Join(serverDir, "tls", "client-kube-apiserver.crt"),
+					filepath.Join(serverDir, "tls", "client-kube-apiserver.key"),
+					filepath.Join(serverDir, "tls", "serving-kube-apiserver.crt"),
+					filepath.Join(serverDir, "tls", "serving-kube-apiserver.key"),
 				},
 				"auth-proxy": []string{
-					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.crt",
-					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.key",
+					filepath.Join(serverDir, "tls", "client-auth-proxy.crt"),
+					filepath.Join(serverDir, "tls", "client-auth-proxy.key"),
 				},
 				"cloud-controller": []string{
-					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.key",
+					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.key"),
 				},
 				"controller-manager": []string{
-					"/var/lib/rancher/k3s/server/tls/client-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-controller.key",
+					filepath.Join(serverDir, "tls", "client-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-controller.key"),
 				},
 				"etcd": []string{
-					"/var/lib/rancher/k3s/server/tls/etcd/client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/client.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-client.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.key",
+					filepath.Join(serverDir, "tls", "etcd", "client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "client.key"),
+					filepath.Join(serverDir, "tls", "etcd", "server-client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "server-client.key"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.key"),
 				},
 				"k3s-controller": []string{
-					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.key",
-					"/var/lib/rancher/k3s/agent/client-k3s-controller.crt",
-					"/var/lib/rancher/k3s/agent/client-k3s-controller.key",
+					filepath.Join(serverDir, "tls", "client-k3s-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-k3s-controller.key"),
+					filepath.Join(agentDir, "client-k3s-controller.crt"),
+					filepath.Join(agentDir, "client-k3s-controller.key"),
 				},
 				"kube-proxy": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.crt",
-					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.key",
-					"/var/lib/rancher/k3s/agent/client-kube-proxy.crt",
-					"/var/lib/rancher/k3s/agent/client-kube-proxy.key",
+					filepath.Join(serverDir, "tls", "client-kube-proxy.crt"),
+					filepath.Join(serverDir, "tls", "client-kube-proxy.key"),
+					filepath.Join(agentDir, "client-kube-proxy.crt"),
+					filepath.Join(agentDir, "client-kube-proxy.key"),
 				},
 				"kubelet": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kubelet.key",
-					"/var/lib/rancher/k3s/server/tls/serving-kubelet.key",
-					"/var/lib/rancher/k3s/agent/client-kubelet.crt",
-					"/var/lib/rancher/k3s/agent/client-kubelet.key",
-					"/var/lib/rancher/k3s/agent/serving-kubelet.crt",
-					"/var/lib/rancher/k3s/agent/serving-kubelet.key",
+					filepath.Join(serverDir, "tls", "client-kubelet.key"),
+					filepath.Join(serverDir, "tls", "serving-kubelet.key"),
+					filepath.Join(agentDir, "client-kubelet.crt"),
+					filepath.Join(agentDir, "client-kubelet.key"),
+					filepath.Join(agentDir, "serving-kubelet.crt"),
+					filepath.Join(agentDir, "serving-kubelet.key"),
 				},
 				"scheduler": []string{
-					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
-					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
+					filepath.Join(serverDir, "tls", "client-scheduler.crt"),
+					filepath.Join(serverDir, "tls", "client-scheduler.key"),
 				},
 				"supervisor": []string{
-					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
-					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
+					filepath.Join(serverDir, "tls", "client-supervisor.crt"),
+					filepath.Join(serverDir, "tls", "client-supervisor.key"),
 				},
 			},
 		},
@@ -99,7 +103,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 			args: args{
 				services: Server,
 				controlConfig: config.Control{
-					DataDir: "/var/lib/rancher/k3s/server",
+					DataDir: serverDir,
 					Runtime: &config.ControlRuntime{},
 				},
 			},
@@ -109,42 +113,42 @@ func Test_UnitFilesForServices(t *testing.T) {
 			},
 			want: map[string][]string{
 				"admin": []string{
-					"/var/lib/rancher/k3s/server/tls/client-admin.crt",
-					"/var/lib/rancher/k3s/server/tls/client-admin.key",
+					filepath.Join(serverDir, "tls", "client-admin.crt"),
+					filepath.Join(serverDir, "tls", "client-admin.key"),
 				},
 				"api-server": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.crt",
-					"/var/lib/rancher/k3s/server/tls/client-kube-apiserver.key",
-					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt",
-					"/var/lib/rancher/k3s/server/tls/serving-kube-apiserver.key",
+					filepath.Join(serverDir, "tls", "client-kube-apiserver.crt"),
+					filepath.Join(serverDir, "tls", "client-kube-apiserver.key"),
+					filepath.Join(serverDir, "tls", "serving-kube-apiserver.crt"),
+					filepath.Join(serverDir, "tls", "serving-kube-apiserver.key"),
 				},
 				"auth-proxy": []string{
-					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.crt",
-					"/var/lib/rancher/k3s/server/tls/client-auth-proxy.key",
+					filepath.Join(serverDir, "tls", "client-auth-proxy.crt"),
+					filepath.Join(serverDir, "tls", "client-auth-proxy.key"),
 				},
 				"cloud-controller": []string{
-					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-k3s-cloud-controller.key",
+					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.key"),
 				},
 				"controller-manager": []string{
-					"/var/lib/rancher/k3s/server/tls/client-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-controller.key",
+					filepath.Join(serverDir, "tls", "client-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-controller.key"),
 				},
 				"etcd": []string{
-					"/var/lib/rancher/k3s/server/tls/etcd/client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/client.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-client.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-server-client.key",
+					filepath.Join(serverDir, "tls", "etcd", "client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "client.key"),
+					filepath.Join(serverDir, "tls", "etcd", "server-client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "server-client.key"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.key"),
 				},
 				"scheduler": []string{
-					"/var/lib/rancher/k3s/server/tls/client-scheduler.crt",
-					"/var/lib/rancher/k3s/server/tls/client-scheduler.key",
+					filepath.Join(serverDir, "tls", "client-scheduler.crt"),
+					filepath.Join(serverDir, "tls", "client-scheduler.key"),
 				},
 				"supervisor": []string{
-					"/var/lib/rancher/k3s/server/tls/client-supervisor.crt",
-					"/var/lib/rancher/k3s/server/tls/client-supervisor.key",
+					filepath.Join(serverDir, "tls", "client-supervisor.crt"),
+					filepath.Join(serverDir, "tls", "client-supervisor.key"),
 				},
 			},
 		},
@@ -153,7 +157,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 			args: args{
 				services: Agent,
 				controlConfig: config.Control{
-					DataDir: "/var/lib/rancher/k3s/server",
+					DataDir: serverDir,
 					Runtime: &config.ControlRuntime{},
 				},
 			},
@@ -163,24 +167,24 @@ func Test_UnitFilesForServices(t *testing.T) {
 			},
 			want: map[string][]string{
 				"k3s-controller": []string{
-					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.crt",
-					"/var/lib/rancher/k3s/server/tls/client-k3s-controller.key",
-					"/var/lib/rancher/k3s/agent/client-k3s-controller.crt",
-					"/var/lib/rancher/k3s/agent/client-k3s-controller.key",
+					filepath.Join(serverDir, "tls", "client-k3s-controller.crt"),
+					filepath.Join(serverDir, "tls", "client-k3s-controller.key"),
+					filepath.Join(agentDir, "client-k3s-controller.crt"),
+					filepath.Join(agentDir, "client-k3s-controller.key"),
 				},
 				"kube-proxy": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.crt",
-					"/var/lib/rancher/k3s/server/tls/client-kube-proxy.key",
-					"/var/lib/rancher/k3s/agent/client-kube-proxy.crt",
-					"/var/lib/rancher/k3s/agent/client-kube-proxy.key",
+					filepath.Join(serverDir, "tls", "client-kube-proxy.crt"),
+					filepath.Join(serverDir, "tls", "client-kube-proxy.key"),
+					filepath.Join(agentDir, "client-kube-proxy.crt"),
+					filepath.Join(agentDir, "client-kube-proxy.key"),
 				},
 				"kubelet": []string{
-					"/var/lib/rancher/k3s/server/tls/client-kubelet.key",
-					"/var/lib/rancher/k3s/server/tls/serving-kubelet.key",
-					"/var/lib/rancher/k3s/agent/client-kubelet.crt",
-					"/var/lib/rancher/k3s/agent/client-kubelet.key",
-					"/var/lib/rancher/k3s/agent/serving-kubelet.crt",
-					"/var/lib/rancher/k3s/agent/serving-kubelet.key",
+					filepath.Join(serverDir, "tls", "client-kubelet.key"),
+					filepath.Join(serverDir, "tls", "serving-kubelet.key"),
+					filepath.Join(agentDir, "client-kubelet.crt"),
+					filepath.Join(agentDir, "client-kubelet.key"),
+					filepath.Join(agentDir, "serving-kubelet.crt"),
+					filepath.Join(agentDir, "serving-kubelet.key"),
 				},
 			},
 		},
@@ -189,7 +193,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 			args: args{
 				services: []string{CertificateAuthority},
 				controlConfig: config.Control{
-					DataDir: "/var/lib/rancher/k3s/server",
+					DataDir: serverDir,
 					Runtime: &config.ControlRuntime{},
 				},
 			},
@@ -199,16 +203,16 @@ func Test_UnitFilesForServices(t *testing.T) {
 			},
 			want: map[string][]string{
 				"certificate-authority": []string{
-					"/var/lib/rancher/k3s/server/tls/server-ca.crt",
-					"/var/lib/rancher/k3s/server/tls/server-ca.key",
-					"/var/lib/rancher/k3s/server/tls/client-ca.crt",
-					"/var/lib/rancher/k3s/server/tls/client-ca.key",
-					"/var/lib/rancher/k3s/server/tls/request-header-ca.crt",
-					"/var/lib/rancher/k3s/server/tls/request-header-ca.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-ca.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/peer-ca.key",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt",
-					"/var/lib/rancher/k3s/server/tls/etcd/server-ca.key",
+					filepath.Join(serverDir, "tls", "server-ca.crt"),
+					filepath.Join(serverDir, "tls", "server-ca.key"),
+					filepath.Join(serverDir, "tls", "client-ca.crt"),
+					filepath.Join(serverDir, "tls", "client-ca.key"),
+					filepath.Join(serverDir, "tls", "request-header-ca.crt"),
+					filepath.Join(serverDir, "tls", "request-header-ca.key"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-ca.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "peer-ca.key"),
+					filepath.Join(serverDir, "tls", "etcd", "server-ca.crt"),
+					filepath.Join(serverDir, "tls", "etcd", "server-ca.key"),
 				},
 			},
 		},
@@ -217,7 +221,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 			args: args{
 				services: []string{"foo"},
 				controlConfig: config.Control{
-					DataDir: "/var/lib/rancher/k3s/server",
+					DataDir: serverDir,
 					Runtime: &config.ControlRuntime{},
 				},
 			},
