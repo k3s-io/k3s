@@ -61,10 +61,12 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 		})
 		It("Checks that btrfs snapshots exist", func() {
 			cmd := "btrfs subvolume list /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.btrfs"
-			res, err := tc.Servers[0].RunCmdOnNode(cmd)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/active/\\d+"))
-			Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/snapshots/\\d+"))
+			Eventually(func(g Gomega) {
+				res, err := tc.Servers[0].RunCmdOnNode(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/active/\\d+"))
+				g.Expect(res).To(MatchRegexp("agent/containerd/io.containerd.snapshotter.v1.btrfs/snapshots/\\d+"))
+			}, "30s", "5s").Should(Succeed())
 		})
 	})
 })

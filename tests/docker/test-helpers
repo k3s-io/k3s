@@ -525,6 +525,20 @@ run-test() {
 }
 export -f run-test
 
+run-go-test() {
+    local delay=15
+    (
+      set +x
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-3} ]; do
+          sleep $delay
+      done
+    )
+
+    go test -timeout=45m -v "$@" &
+    pids+=($!)
+}
+export -f run-go-test
+
 # ---
 
 cleanup-test-env(){
