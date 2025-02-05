@@ -26,8 +26,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Unit Tests
+  test-unit-linux:
+    name: Unit Tests (linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -53,8 +53,8 @@ jobs:
         files: ./coverage.out
         flags: unittests # optional
         verbose: true # optional (default = false)
-  wtest:
-    name: Unit Tests (Windows 2022)
+  test-unit-windows:
+    name: Unit Tests (windows)
     runs-on: windows-2022
     timeout-minutes: 20
     steps:
@@ -75,4 +75,3 @@ jobs:
         files: ./coverage.out
         flags: unittests # optional
         verbose: true # optional (default = false)
-
