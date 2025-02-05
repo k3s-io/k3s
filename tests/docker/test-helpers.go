@@ -388,7 +388,7 @@ func (config *TestConfig) Cleanup() error {
 	}
 
 	// Stop DB if it was started
-	if config.DBType != "etcd" {
+	if config.DBType == "mysql" || config.DBType == "postgres" {
 		cmd := fmt.Sprintf("docker stop %s", config.DBType)
 		if _, err := RunCommand(cmd); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop %s: %v", config.DBType, err))
