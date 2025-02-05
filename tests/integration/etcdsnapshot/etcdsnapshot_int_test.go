@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,7 +41,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 	When("a new etcd is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "10s").Should(Succeed())
 		})
 		It("saves an etcd snapshot", func() {
@@ -130,7 +131,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			server, err = testutil.K3sStartServer(localServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 
 		})
@@ -156,7 +157,7 @@ var _ = Describe("etcd snapshots", Ordered, func() {
 			server, err = testutil.K3sStartServer(localServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 
 		})

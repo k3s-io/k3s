@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 		})
 	})
@@ -46,10 +47,10 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 			config.Token = newSecret
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func(g Gomega) {
-				nodes, err := tester.ParseNodes(config.KubeconfigFile)
+				nodes, err := tests.ParseNodes(config.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(nodes).To(HaveLen(2))
-				g.Expect(tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
+				g.Expect(tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})

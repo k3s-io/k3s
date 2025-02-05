@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,10 +36,10 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())
 			Eventually(func() error {
-				return tester.CheckDefaultDeployments(config.KubeconfigFile)
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
@@ -135,12 +136,12 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		It("Checks that all nodes and pods are ready", func() {
 			By("Fetching node status")
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "60s", "5s").Should(Succeed())
 
 			By("Fetching Pods status")
 			Eventually(func(g Gomega) {
-				pods, err := tester.ParsePods(config.KubeconfigFile)
+				pods, err := tests.ParsePods(config.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "helm-install") {
