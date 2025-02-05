@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,10 +31,10 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 			config.ServerYaml = "snapshotter: stargz"
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
-				return tester.DeploymentsReady([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
 			}, "60s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tester.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
 		})
 	})
@@ -45,7 +46,7 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 		})
 		It("should have the pod come up", func() {
 			Eventually(func() (bool, error) {
-				return tester.PodReady("stargz-snapshot-test", "default", config.KubeconfigFile)
+				return tests.PodReady("stargz-snapshot-test", "default", config.KubeconfigFile)
 			}, "30s", "5s").Should(BeTrue())
 		})
 		var topLayer string
