@@ -126,6 +126,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm", "", 1)
 				cVersion = strings.Replace(cVersion, "-", "+", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
