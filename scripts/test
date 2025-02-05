@@ -71,10 +71,9 @@ fi
 # ---
 
 if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
-  E2E_OUTPUT=$artifacts test-run-sonobuoy serial
-  echo "Did test-run-sonobuoy serial $?"
-  test-run-sonobuoy etcd serial
-  go test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -serial
+  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v
+  echo "Did go conformance sqlite serial $?"
+  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v
   echo "Did go conformance etcd serial $?"
   test-run-sonobuoy mysql serial
   echo "Did test-run-sonobuoy-mysqk serial $?"
@@ -92,9 +91,10 @@ if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
 
   E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
   echo "Did test-run-sonobuoy parallel $?"
-  go test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE"
-  echo "Did go conformance etcd parallel $?"
-  echo "Did test-run-sonobuoy-etcd parallel $?"
+  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v
+  echo "Did go conformance sqlite parallel $?"
+  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v
+  echo "Did go test conformance etcd parallel $?"
   test-run-sonobuoy mysql parallel
   echo "Did test-run-sonobuoy-mysql parallel $?"
   test-run-sonobuoy postgres parallel
