@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,7 +38,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 		It("has kine without tls", func() {
@@ -78,7 +79,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 		It("set kine to use tls", func() {
@@ -107,7 +108,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 		It("dies cleanly", func() {
@@ -124,9 +125,9 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods without traefik deployed", func() {
 			Eventually(func() error {
-				return testutil.CheckDeployments("kube-system", []string{"coredns", "local-path-provisioner", "metrics-server"})
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"}, testutil.DefaultConfig)
 			}, "90s", "10s").Should(Succeed())
-			nodes, err := testutil.ParseNodes()
+			nodes, err := tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 		})
@@ -156,10 +157,10 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the node deployed with correct IPs", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "10s").Should(Succeed())
 
-			nodes, err := testutil.ParseNodes()
+			nodes, err := tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 			Expect(nodes[0].Status.Addresses).To(ContainElements([]v1.NodeAddress{
@@ -201,9 +202,9 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
-			nodes, err := testutil.ParseNodes()
+			nodes, err := tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 		})
@@ -229,16 +230,16 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
-			nodes, err := testutil.ParseNodes()
+			nodes, err := tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 		})
 		var nodes []v1.Node
 		It("has a custom node name with id appended", func() {
 			var err error
-			nodes, err = testutil.ParseNodes()
+			nodes, err = tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 			Expect(nodes[0].Name).To(MatchRegexp(`-[0-9a-f]*`))
@@ -264,9 +265,9 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
-			nodes, err := testutil.ParseNodes()
+			nodes, err := tests.ParseNodes(testutil.DefaultConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(nodes).To(HaveLen(1))
 		})
@@ -285,7 +286,7 @@ var _ = Describe("startup tests", Ordered, func() {
 		})
 		It("has the default pods deployed", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 		It("creates a new pod", func() {
@@ -301,7 +302,7 @@ var _ = Describe("startup tests", Ordered, func() {
 			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 		})
 		It("has the dummy pod not restarted", func() {
