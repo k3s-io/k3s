@@ -7,10 +7,6 @@ on:
       type: string
       description: 'Architecture to build'
       default: 'ubuntu-latest'
-    upload-repo:
-      type: boolean
-      required: false
-      default: false
     upload-image:
       type: boolean
       required: false
@@ -23,7 +19,7 @@ jobs:
   build:
     name: Build
     runs-on: ${{ inputs.arch }} # defaults to ubuntu-latest, for arm64 use ubuntu-24.04-arm
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
     - name: Checkout K3s
       uses: actions/checkout@v4
@@ -31,25 +27,19 @@ jobs:
       run: |
         DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 make
         sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
+    - name: Build K3s binary (windows)
+      if: inputs.arch == 'ubuntu-latest'
+      run: |
+        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 GOOS=windows make
+        sha256sum dist/artifacts/k3s.exe | sed 's|dist/artifacts/||' > dist/artifacts/k3s.exe.sha256sum
     - name: Build K3s image
       if: inputs.upload-image == true
       run: make package-image
-    - name: bundle repo
-      if: inputs.upload-repo == true
-      run: |
-        tar -czvf ../k3s-repo.tar.gz .
-        mv ../k3s-repo.tar.gz .
-    - name: "Upload K3s directory"
-      if: inputs.upload-repo == true
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s-repo.tar.gz
-        path: k3s-repo.tar.gz
     - name: "Save K3s image"
       if: inputs.upload-image == true
       run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
     - name: "Upload K3s Artifacts"
-      if: inputs.upload-repo == false && inputs.arch == 'ubuntu-latest'
+      if: inputs.arch == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
         name: k3s
