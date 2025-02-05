@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,7 +36,7 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 	When("A server starts with secrets encryption", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 		})
 		It("it creates a encryption key", func() {
@@ -66,7 +67,7 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("secrets-encrypt status -d", secretsEncryptionDataDir)
@@ -91,7 +92,7 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 
 			Eventually(func() (string, error) {
@@ -128,7 +129,7 @@ var _ = Describe("secrets encryption rotation", Ordered, func() {
 			secretsEncryptionServer, err = testutil.K3sStartServer(secretsEncryptionServerArgs...)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 			time.Sleep(10 * time.Second)
 		})

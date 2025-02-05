@@ -25,11 +25,7 @@ func Test_E2ETailscale(t *testing.T) {
 	RunSpecs(t, "Tailscale Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	kubeConfigFile  string
-	serverNodeNames []string
-	agentNodeNames  []string
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -38,61 +34,59 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 	It("Starts up with no issues", func() {
 		var err error
 		if *local {
-			serverNodeNames, agentNodeNames, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
+			tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
 		} else {
-			serverNodeNames, agentNodeNames, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
+			tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
 		}
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-		fmt.Println("CLUSTER CONFIG")
-		fmt.Println("OS:", *nodeOS)
-		fmt.Println("Server Nodes:", serverNodeNames)
-		fmt.Println("Agent Nodes:", agentNodeNames)
-		kubeConfigFile, err = e2e.GenKubeConfigFile(serverNodeNames[0])
+		By("CLUSTER CONFIG")
+		By("OS: " + *nodeOS)
+		By(tc.Status())
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	// Server node needs to be ready before we continue
 	It("Checks Node Status", func() {
 		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+			nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
 		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(kubeConfigFile, true)
+		_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Change agent's config", func() {
-		nodeIPs, _ := e2e.GetNodeIPs(kubeConfigFile)
+		nodeIPs, _ := e2e.GetNodeIPs(tc.KubeConfigFile)
 		cmd := fmt.Sprintf("sudo sed -i 's/TAILSCALEIP/%s/g' /etc/rancher/k3s/config.yaml", nodeIPs[0].IPv4)
-		for _, agent := range agentNodeNames {
-			_, err := e2e.RunCmdOnNode(cmd, agent)
+		for _, agent := range tc.Agents {
+			_, err := agent.RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		}
 	})
 
 	It("Restart agents", func() {
-		err := e2e.RestartCluster(agentNodeNames)
+		err := e2e.RestartCluster(tc.Agents)
 		Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 	})
 
 	It("Checks Node Status", func() {
 		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(kubeConfigFile, false)
+			nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(len(nodes)).To(Equal(*agentCount + *serverCount))
 			for _, node := range nodes {
 				g.Expect(node.Status).Should(Equal("Ready"))
 			}
 		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(kubeConfigFile, true)
+		_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("Verifies that server and agent have a tailscale IP as nodeIP", func() {
-		nodeIPs, err := e2e.GetNodeIPs(kubeConfigFile)
+		nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
 		Expect(err).NotTo(HaveOccurred())
 		for _, node := range nodeIPs {
 			Expect(node.IPv4).Should(ContainSubstring("100."))
@@ -102,8 +96,8 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 	It("Verify routing is correct and uses tailscale0 interface for internode traffic", func() {
 		// table 52 is the one configured by tailscale
 		cmd := "ip route show table 52"
-		for _, node := range append(serverNodeNames, agentNodeNames...) {
-			output, err := e2e.RunCmdOnNode(cmd, node)
+		for _, node := range append(tc.Servers, tc.Agents...) {
+			output, err := node.RunCmdOnNode(cmd)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(output).Should(ContainSubstring("10.42."))
@@ -119,12 +113,12 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
 	} else {
-		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(kubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
 	}
 })

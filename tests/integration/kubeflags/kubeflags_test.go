@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -126,7 +127,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 
 				// Pods should not be healthy without kube-proxy
 				Consistently(func() error {
-					return testutil.K3sDefaultDeployments()
+					return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 				}, "100s", "5s").Should(HaveOccurred())
 			})
 			It("should not find kube-proxy starting", func() {
@@ -178,7 +179,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(func() error {
-					return testutil.K3sDefaultDeployments()
+					return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 				}, "180s", "5s").Should(Succeed())
 
 			})

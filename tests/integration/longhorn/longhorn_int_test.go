@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var server *testutil.K3sServer
@@ -38,7 +38,7 @@ var _ = Describe("longhorn", Ordered, func() {
 	When("a new cluster is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "120s", "5s").Should(Succeed())
 		})
 	})
@@ -57,7 +57,7 @@ var _ = Describe("longhorn", Ordered, func() {
 		})
 		It("starts the longhorn pods with no problems", func() {
 			Eventually(func() error {
-				pods, err := testutil.ParsePods("longhorn-system", metav1.ListOptions{})
+				pods, err := testutil.ParsePodsInNS("longhorn-system")
 				if err != nil {
 					return err
 				}
