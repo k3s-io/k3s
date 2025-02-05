@@ -8,6 +8,7 @@ if [ ! -e ../bin/containerd ]; then
 fi
 
 ./package-cli
+
 if [ -z "$SKIP_IMAGE" ]; then
     ./package-image
 fi
