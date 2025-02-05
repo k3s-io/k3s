@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -33,7 +34,7 @@ var _ = Describe("etcd snapshot restore", Ordered, func() {
 	When("a snapshot is restored on existing node", func() {
 		It("etcd starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "180s", "5s").Should(Succeed())
 		})
 		It("create a workload", func() {
@@ -85,7 +86,7 @@ var _ = Describe("etcd snapshot restore", Ordered, func() {
 		})
 		It("starts up with no problems", func() {
 			Eventually(func() error {
-				return testutil.K3sDefaultDeployments()
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 			}, "360s", "5s").Should(Succeed())
 		})
 		It("make sure workload 1 exists", func() {
