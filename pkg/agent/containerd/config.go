@@ -53,7 +53,7 @@ func writeContainerdHosts(cfg *config.Node, containerdConfig templates.Container
 
 	// Write out new templates
 	for host, config := range hosts {
-		hostDir := filepath.Join(cfg.Containerd.Registry, host)
+		hostDir := filepath.Join(cfg.Containerd.Registry, hostDirectory(host))
 		hostsFile := filepath.Join(hostDir, "hosts.toml")
 		hostsTemplate, err := templates.ParseHostsTemplateFromConfig(templates.HostsTomlTemplate, config)
 		if err != nil {
