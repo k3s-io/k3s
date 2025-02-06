@@ -4,8 +4,10 @@ import (
 	"context"
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/sirupsen/logrus"
 )
 
 func Run(ctx context.Context, nodeConfig *daemonconfig.Node) error {
-	panic("Netpol is not supported on windows ensure to pass --disable-network-policy")
+	logrus.Warnf("Skipping network policy controller start, netpol is not supported on windows")
+	return nil
 }
