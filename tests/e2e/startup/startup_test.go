@@ -111,26 +111,26 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"}, tc.KubeConfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"}, tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Returns pod metrics", func() {
@@ -173,14 +173,14 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -188,12 +188,12 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 		It("Kills the cluster", func() {
 			err := KillK3sCluster(append(tc.Servers, tc.Agents...))
@@ -209,14 +209,14 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -224,12 +224,12 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 		It("Kills the cluster", func() {
 			err := KillK3sCluster(append(tc.Servers, tc.Agents...))
@@ -245,14 +245,14 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -260,12 +260,12 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Returns pod metrics", func() {
@@ -317,7 +317,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeConfigFile, err = e2e.GenKubeConfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("has loaded the test container image", func() {
@@ -364,6 +364,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
