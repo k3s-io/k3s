@@ -22,11 +22,11 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.27.1+k3s2 or nil for latest commit from master
 
-func Test_E2ERootlessStartupValidation(t *testing.T) {
+func Test_E2ERootless(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Startup Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Rootless Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig

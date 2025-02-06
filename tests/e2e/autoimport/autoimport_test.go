@@ -28,7 +28,7 @@ func Test_E2EAutoImport(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Auto Import Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig
