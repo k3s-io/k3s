@@ -4,6 +4,8 @@
 package containerd
 
 import (
+	"net"
+
 	"github.com/containerd/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -12,6 +14,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/cri-client/pkg/util"
 )
+
+// hostDirectory returns the name of the host dir for a given registry.
+// Colons are not allowed in windows paths, so convert `:port` to `_port_`.
+// Ref: https://github.com/containerd/containerd/blob/v1.7.25/remotes/docker/config/hosts.go#L291-L298
+func hostDirectory(host string) string {
+	if host, port, err := net.SplitHostPort(host); err == nil && port != "" {
+		return host + "_" + port + "_"
+	}
+	return host
+}
 
 func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
