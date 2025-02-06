@@ -27,6 +27,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/apply"
@@ -352,7 +353,7 @@ func isHelmChartTraefikV1(sc *Context) bool {
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
 	if write {
-		if os.Getuid() == 0 && !rootless {
+		if permissions.IsPrivileged() == nil && !rootless {
 			return datadir.GlobalConfig, nil
 		}
 		return resolvehome.Resolve(datadir.HomeConfig)
