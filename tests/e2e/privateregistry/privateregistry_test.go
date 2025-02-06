@@ -56,17 +56,17 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "10s").Should(Succeed())
 		})
 
@@ -113,7 +113,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			var pod corev1.Pod
 			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				for _, p := range pods {
 					if strings.Contains(p.Name, "my-webpage") {
 						pod = p
@@ -148,6 +148,6 @@ var _ = AfterSuite(func() {
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })

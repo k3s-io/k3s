@@ -48,7 +48,7 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -57,10 +57,10 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "10s").Should(Succeed())
 			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
 		})
 
@@ -84,14 +84,14 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 
 		It("Wait for slight Pod to be up and running", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods -o=name -l app=wasm-slight --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
+				cmd := "kubectl get pods -o=name -l app=wasm-slight --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 				return e2e.RunCommand(cmd)
 			}, "240s", "5s").Should(ContainSubstring("pod/wasm-slight"))
 		})
 
 		It("Wait for spin Pod to be up and running", func() {
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods -o=name -l app=wasm-spin --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
+				cmd := "kubectl get pods -o=name -l app=wasm-spin --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 				return e2e.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("pod/wasm-spin"))
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 			var ingressIPs []string
 			var err error
 			Eventually(func(g Gomega) {
-				ingressIPs, err = e2e.FetchIngressIP(tc.KubeConfigFile)
+				ingressIPs, err = e2e.FetchIngressIP(tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(ingressIPs).To(HaveLen(1))
 			}, "120s", "5s").Should(Succeed())
@@ -132,6 +132,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })

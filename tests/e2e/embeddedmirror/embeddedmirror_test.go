@@ -54,7 +54,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -63,8 +63,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			By("Fetching pod status")
 			Eventually(func() error {
-				e2e.DumpPods(tc.KubeConfigFile)
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				e2e.DumpPods(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "10s").Should(Succeed())
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
@@ -138,6 +138,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })

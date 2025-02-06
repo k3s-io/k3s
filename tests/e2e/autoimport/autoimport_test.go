@@ -53,18 +53,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Create a folder in agent/images", func() {
@@ -154,7 +154,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -187,7 +187,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -218,6 +218,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
