@@ -50,25 +50,25 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
 		It("Checks Node Status", func() {
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
+			_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks pod status", func() {
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Verifies that each node has IPv4 and IPv6", func() {
-			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodeIPs {
 				Expect(node.IPv4).Should(ContainSubstring("10.10.10"))
@@ -76,7 +76,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			}
 		})
 		It("Verifies that each pod has IPv4 and IPv6", func() {
-			podIPs, err := e2e.GetPodIPs(tc.KubeConfigFile)
+			podIPs, err := e2e.GetPodIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, pod := range podIPs {
 				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10.10"), ContainSubstring("10.42.")), pod.Name)
@@ -88,18 +88,18 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			_, err := tc.DeployWorkload("dualstack_clusterip.yaml")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() (string, error) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeConfigFile
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 				return e2e.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("ds-clusterip-pod"))
 
 			// Checks both IPv4 and IPv6
-			clusterips, err := e2e.FetchClusterIP(tc.KubeConfigFile, "ds-clusterip-svc", true)
+			clusterips, err := e2e.FetchClusterIP(tc.KubeconfigFile, "ds-clusterip-svc", true)
 			Expect(err).NotTo(HaveOccurred())
 			for _, ip := range strings.Split(clusterips, ",") {
 				if strings.Contains(ip, "::") {
 					ip = "[" + ip + "]"
 				}
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if !strings.HasPrefix(pod.Name, "ds-clusterip-pod") {
@@ -118,7 +118,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			cmd := "kubectl get ingress ds-ingress -o jsonpath=\"{.spec.rules[*].host}\""
 			hostName, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
-			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 			for _, node := range nodeIPs {
 				cmd := fmt.Sprintf("curl  --header host:%s http://%s/name.html", hostName, node.IPv4)
@@ -138,7 +138,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			cmd := "kubectl get service ds-nodeport-svc --output jsonpath=\"{.spec.ports[0].nodePort}\""
 			nodeport, err := e2e.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
-			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodeIPs {
 				cmd = "curl -L --insecure http://" + node.IPv4 + ":" + nodeport + "/name.html"
@@ -189,6 +189,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
