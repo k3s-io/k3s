@@ -36,7 +36,7 @@ func VagrantSlice(v []VagrantNode) []string {
 
 type TestConfig struct {
 	Hardened       bool
-	KubeConfigFile string
+	KubeconfigFile string
 	Servers        []VagrantNode
 	Agents         []VagrantNode
 }
@@ -48,7 +48,7 @@ func (tc *TestConfig) Status() string {
 	if tc.Hardened {
 		hardened = "Hardened: true\n"
 	}
-	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", hardened, tc.KubeConfigFile, sN, aN)
+	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", hardened, tc.KubeconfigFile, sN, aN)
 }
 
 type Node struct {
@@ -165,14 +165,14 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		return nil, err
 	}
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	tc := &TestConfig{
-		KubeConfigFile: kubeConfigFile,
+		KubeconfigFile: kubeConfigFile,
 		Servers:        serverNodes,
 		Agents:         agentNodes,
 	}
@@ -262,14 +262,14 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	var err error
 	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	tc := &TestConfig{
-		KubeConfigFile: kubeConfigFile,
+		KubeconfigFile: kubeConfigFile,
 		Servers:        serverNodes,
 		Agents:         agentNodes,
 	}
@@ -291,7 +291,7 @@ func (tc TestConfig) DeployWorkload(workload string) (string, error) {
 	for _, f := range files {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {
-			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeConfigFile
+			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeconfigFile
 			return RunCommand(cmd)
 		}
 	}
@@ -367,16 +367,16 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 	return nodeip, nil
 }
 
-// GenKubeConfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
-func GenKubeConfigFile(nodeName string) (string, error) {
-	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
-	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeConfigFile)
+// GenKubeconfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
+func GenKubeconfigFile(nodeName string) (string, error) {
+	kubeconfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
+	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeconfigFile)
 	_, err := RunCommand(cmd)
 	if err != nil {
 		return "", err
 	}
 
-	kubeConfig, err := os.ReadFile(kubeConfigFile)
+	kubeConfig, err := os.ReadFile(kubeconfigFile)
 	if err != nil {
 		return "", err
 	}
@@ -389,14 +389,14 @@ func GenKubeConfigFile(nodeName string) (string, error) {
 		return "", err
 	}
 	modifiedKubeConfig = strings.Replace(modifiedKubeConfig, "127.0.0.1", nodeIP, 1)
-	if err := os.WriteFile(kubeConfigFile, []byte(modifiedKubeConfig), 0644); err != nil {
+	if err := os.WriteFile(kubeconfigFile, []byte(modifiedKubeConfig), 0644); err != nil {
 		return "", err
 	}
 
-	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+	if err := os.Setenv("E2E_KUBECONFIG", kubeconfigFile); err != nil {
 		return "", err
 	}
-	return kubeConfigFile, nil
+	return kubeconfigFile, nil
 }
 
 func GenReport(specReport ginkgo.SpecReport) {

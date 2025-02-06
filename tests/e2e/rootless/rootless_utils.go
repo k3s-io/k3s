@@ -22,7 +22,7 @@ func RunCmdOnRootlessNode(cmd string, nodename string) (string, error) {
 	return out, nil
 }
 
-func GenRootlessKubeConfigFile(serverName string) (string, error) {
+func GenRootlessKubeconfigFile(serverName string) (string, error) {
 	kubeConfig, err := RunCmdOnRootlessNode("cat /home/vagrant/.kube/k3s.yaml", serverName)
 	if err != nil {
 		return "", err

@@ -51,18 +51,18 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			e2e.ParseNodes(tc.KubeConfigFile, true)
+			e2e.ParseNodes(tc.KubeconfigFile, true)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Generates New CA Certificates", func() {
@@ -93,7 +93,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
@@ -101,9 +101,9 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			}, "420s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "420s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 	})
 })
@@ -121,6 +121,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
