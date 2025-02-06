@@ -57,8 +57,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Expect(res).To(MatchRegexp(`perage\s+<forever>\s+<never>`))
 		})
 		It("Joins an agent with the permanent token", func() {
-			// wrap in bash to handle pipe
-			cmd := fmt.Sprintf("/bin/bash -c \"echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null\"", permToken)
+			cmd := fmt.Sprintf("echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null", permToken)
 			_, err := tc.Agents[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = tc.Agents[0].RunCmdOnNode("systemctl start k3s-agent")
@@ -95,7 +94,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			Expect(res).To(MatchRegexp(`10mint\s+[0-9]m`))
 		})
 		It("Joins an agent with the 10m token", func() {
-			cmd := fmt.Sprintf("/bin/bash -c \"echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null\"", tempToken)
+			cmd := fmt.Sprintf("echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null", tempToken)
 			_, err := tc.Agents[1].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = tc.Agents[1].RunCmdOnNode("systemctl start k3s-agent")
@@ -117,7 +116,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 				To(ContainSubstring("Token rotated, restart k3s nodes with new token"))
 		})
 		It("Restarts servers with the new token", func() {
-			cmd := fmt.Sprintf("/bin/bash -c \"echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null\"", serverToken)
+			cmd := fmt.Sprintf("echo 'token: %s' | tee -a /etc/rancher/k3s/config.yaml > /dev/null", serverToken)
 			for _, node := range tc.Servers {
 				_, err := node.RunCmdOnNode(cmd)
 				Expect(err).NotTo(HaveOccurred())
