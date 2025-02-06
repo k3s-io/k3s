@@ -72,8 +72,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return err
 	}
 
-	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
-		return fmt.Errorf("server must run as root, or with --rootless and/or --disable-agent")
+	if !cfg.DisableAgent && !cfg.Rootless {
+		if err := checkPermissions(); err != nil {
+			return err
+		}
 	}
 
 	if cfg.Rootless {
