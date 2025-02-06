@@ -54,11 +54,11 @@ mkdir -p ./etc
     set -x
 )
 
-tar cvf ./build/out/data.tar ./bin ./etc
-zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data.tar -o ./build/out/data.tar.zst
-HASH=$(sha256sum ./build/out/data.tar.zst | awk '{print $1}')
+tar cvf ./build/out/data-${OS}.tar ./bin ./etc
+zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data-${OS}.tar -o ./build/out/data-${OS}.tar.zst
+HASH=$(sha256sum ./build/out/data-${OS}.tar.zst | awk '{print $1}')
 
-cp ./build/out/data.tar.zst ./build/data/${HASH}.tar.zst
+cp ./build/out/data-${OS}.tar.zst ./build/data/${HASH}.tar.zst
 
 BIN_SUFFIX="-${ARCH}"
 if [ ${ARCH} = amd64 ]; then
