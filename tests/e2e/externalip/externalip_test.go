@@ -75,40 +75,40 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 
 		It("Checks Node Status", func() {
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "620s", "5s").Should(Succeed())
-			_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
+			_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks pod status", func() {
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "10s").Should(Succeed())
 		})
 	})
 	Context("Deploy workloads to check cluster connectivity of the nodes", func() {
 		It("Verifies that each node has vagrant IP", func() {
-			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodeIPs {
 				Expect(node.IPv4).Should(ContainSubstring("10.10."))
 			}
 		})
 		It("Verifies that each pod has vagrant IP or clusterCIDR IP", func() {
-			podIPs, err := e2e.GetPodIPs(tc.KubeConfigFile)
+			podIPs, err := e2e.GetPodIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, pod := range podIPs {
 				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
 			}
 		})
 		It("Verifies that flannel added the correct annotation for the external-ip", func() {
-			nodeIPs, err := getExternalIPs(tc.KubeConfigFile)
+			nodeIPs, err := getExternalIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, annotation := range nodeIPs {
 				Expect(annotation).Should(ContainSubstring("10.100.100."))
@@ -120,11 +120,11 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 
 			// Wait for the pod_client to have an IP
 			Eventually(func() string {
-				ips, _ := getClientIPs(tc.KubeConfigFile)
+				ips, _ := getClientIPs(tc.KubeconfigFile)
 				return ips[0].IPv4
 			}, "40s", "5s").Should(ContainSubstring("10.42"), "failed getClientIPs")
 
-			clientIPs, err := getClientIPs(tc.KubeConfigFile)
+			clientIPs, err := getClientIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, ip := range clientIPs {
 				cmd := "kubectl exec svc/client-curl -- curl -m7 " + ip.IPv4 + "/name.html"
@@ -157,6 +157,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
