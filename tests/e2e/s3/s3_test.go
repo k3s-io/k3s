@@ -29,7 +29,7 @@ func Test_E2ES3(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "S3 Snapshot Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig
