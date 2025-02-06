@@ -59,21 +59,21 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		It("Checks Node Status", func() {
 			Eventually(func(g Gomega) {
 				var err error
-				nodes, err = e2e.ParseNodes(tc.KubeConfigFile, false)
+				nodes, err = e2e.ParseNodes(tc.KubeconfigFile, false)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
 					g.Expect(node.Status).Should(Equal("Ready"))
 				}
 			}, "300s", "5s").Should(Succeed())
-			_, err := e2e.ParseNodes(tc.KubeConfigFile, true)
+			_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Checks Pod Status", func() {
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "300s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 	})
 	Context("Deploy external traffic workloads to test external traffic policies", func() {
@@ -89,7 +89,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Check where the server pod is running
 			var serverNodeName string
 			Eventually(func() (string, error) {
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-ext") {
@@ -111,11 +111,11 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			lbSvc := "nginx-loadbalancer-svc"
 			lbSvcExt := "nginx-loadbalancer-svc-ext"
 			Eventually(func() ([]string, error) {
-				return e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvc)
+				return e2e.FetchExternalIPs(tc.KubeconfigFile, lbSvc)
 			}, "25s", "5s").Should(HaveLen(2), "external IP count not equal to 2")
 
 			Eventually(func(g Gomega) {
-				externalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvcExt)
+				externalIPs, _ := e2e.FetchExternalIPs(tc.KubeconfigFile, lbSvcExt)
 				g.Expect(externalIPs).To(HaveLen(1), "more than 1 exernalIP found")
 				g.Expect(externalIPs[0]).To(Equal(serverNodeIP), "external IP does not match servernodeIP")
 			}, "25s", "5s").Should(Succeed())
@@ -125,9 +125,9 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		// It also verifies that the service with external traffic policy=cluster can be accessed and the source IP is MASQ
 		It("Verify connectivity in external traffic policy=local", func() {
 			lbSvc := "nginx-loadbalancer-svc"
-			lbSvcExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvc)
+			lbSvcExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeconfigFile, lbSvc)
 			lbSvcExt := "nginx-loadbalancer-svc-ext"
-			lbSvcExtExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeConfigFile, lbSvcExt)
+			lbSvcExtExternalIPs, _ := e2e.FetchExternalIPs(tc.KubeconfigFile, lbSvcExt)
 
 			// Verify connectivity to the external IP of the lbsvc service and the IP should be the flannel interface IP because of MASQ
 			for _, externalIP := range lbSvcExternalIPs {
@@ -166,13 +166,13 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// Check that service exists
 			Eventually(func() (string, error) {
-				clusterIP, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-loadbalancer-svc-int", false)
+				clusterIP, _ := e2e.FetchClusterIP(tc.KubeconfigFile, "nginx-loadbalancer-svc-int", false)
 				return clusterIP, nil
 			}, "25s", "5s").Should(ContainSubstring("10.43"))
 
 			// Check that client pods are running
 			Eventually(func() string {
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "client-deployment") {
@@ -188,7 +188,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		It("Verify connectivity in internal traffic policy=local", func() {
 			var clientPod1, clientPod1Node, clientPod1IP, clientPod2, clientPod2Node, clientPod2IP, serverNodeName string
 			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-int") {
@@ -306,7 +306,7 @@ selector:
 			Expect(err).NotTo(HaveOccurred(), out)
 
 			Eventually(func() (string, error) {
-				clusterIP, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-loadbalancer-svc-ext-firewall", false)
+				clusterIP, _ := e2e.FetchClusterIP(tc.KubeconfigFile, "nginx-loadbalancer-svc-ext-firewall", false)
 				return clusterIP, nil
 			}, "25s", "5s").Should(ContainSubstring("10.43"))
 		})
@@ -356,6 +356,6 @@ var _ = AfterSuite(func() {
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
