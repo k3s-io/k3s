@@ -120,6 +120,9 @@ enable_keychain = true
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
   SystemdCgroup = {{ .SystemdCgroup }}
 
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runhcs-wcow-process]
+  runtime_type = "io.containerd.runhcs.v1"
+
 [plugins."io.containerd.grpc.v1.cri".registry]
   config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
 
