@@ -177,14 +177,13 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			}
 			// Write the raw YAML directly to the config.yaml on the systemd-node container
 			if config.ServerYaml != "" {
-				cmd = fmt.Sprintf("echo \"%s\" > /etc/rancher/k3s/config.yaml", config.ServerYaml)
+				cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.ServerYaml)
 				if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 					return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
 				}
 			}
 
-			// The pipe requires that we use sh -c with "" to run the command
-			cmd = fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
+			cmd = fmt.Sprintf("curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -",
 				dbConnect+" "+joinServer+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)), skipStart)
 			if _, err := newServer.RunCmdOnNode(cmd); err != nil {
 				// Attempt to dump the last few lines of the journalctl logs
@@ -247,7 +246,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 	}
 	// Wait for kubeconfig to be available
 	time.Sleep(5 * time.Second)
-	return CopyAndModifyKubeconfig(config)
+	return config.CopyAndModifyKubeconfig()
 }
 
 // setupDatabase will start the configured database if startDB is true,
@@ -333,14 +332,13 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				}
 				// Write the raw YAML directly to the config.yaml on the systemd-node container
 				if config.AgentYaml != "" {
-					cmd = fmt.Sprintf("echo \"%s\" > /etc/rancher/k3s/config.yaml", config.ServerYaml)
+					cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.AgentYaml)
 					if out, err := newAgent.RunCmdOnNode(cmd); err != nil {
 						return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
 					}
 				}
 
-				// The pipe requires that we use sh -c with "" to run the command
-				sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
+				sCmd := fmt.Sprintf("curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -",
 					os.Getenv(agentInstanceArgs), skipStart)
 				if _, err := newAgent.RunCmdOnNode(sCmd); err != nil {
 					// Attempt to dump the last few lines of the journalctl logs
@@ -476,7 +474,7 @@ func (config *TestConfig) Cleanup() error {
 
 // CopyAndModifyKubeconfig copies out kubeconfig from first control-plane server
 // and updates the port to match the external port
-func CopyAndModifyKubeconfig(config *TestConfig) error {
+func (config *TestConfig) CopyAndModifyKubeconfig() error {
 	if len(config.Servers) == 0 {
 		return fmt.Errorf("no servers available to copy kubeconfig")
 	}
@@ -506,7 +504,7 @@ func CopyAndModifyKubeconfig(config *TestConfig) error {
 
 // RunCmdOnNode runs a command on a docker container
 func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
-	dCmd := fmt.Sprintf("docker exec %s %s", node.Name, cmd)
+	dCmd := fmt.Sprintf("docker exec %s /bin/sh -c \"%s\"", node.Name, cmd)
 	out, err := RunCommand(dCmd)
 	if err != nil {
 		return out, fmt.Errorf("%v: on node %s: %s", err, node.Name, out)
