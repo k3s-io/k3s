@@ -1,9 +1,9 @@
 package datadir
 
 import (
-	"os"
 	"path/filepath"
 
+	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/resolvehome"
@@ -22,7 +22,7 @@ func Resolve(dataDir string) (string, error) {
 
 func LocalHome(dataDir string, forceLocal bool) (string, error) {
 	if dataDir == "" {
-		if os.Getuid() == 0 && !forceLocal {
+		if permissions.IsPrivileged() == nil && !forceLocal {
 			dataDir = DefaultDataDir
 		} else {
 			dataDir = DefaultHomeDataDir
