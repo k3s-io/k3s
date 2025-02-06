@@ -160,7 +160,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, token, upgrade]
         arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     env:
