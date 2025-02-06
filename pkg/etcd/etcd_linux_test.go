@@ -1,3 +1,6 @@
+//go:build linux
+// +build linux
+
 package etcd
 
 import (
@@ -80,7 +83,6 @@ func generateTestHandler() http.Handler {
 
 func Test_UnitETCD_IsInitialized(t *testing.T) {
 	type args struct {
-		ctx    context.Context
 		config *config.Control
 	}
 	tests := []struct {
@@ -94,7 +96,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory exists",
 			args: args{
-				ctx:    context.TODO(),
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -113,7 +114,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory does not exist",
 			args: args{
-				ctx:    context.TODO(),
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -160,7 +160,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 
 func Test_UnitETCD_Register(t *testing.T) {
 	type args struct {
-		ctx     context.Context
 		config  *config.Control
 		handler http.Handler
 	}
@@ -174,7 +173,6 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "standard config",
 			args: args{
-				ctx:     context.TODO(),
 				config:  generateTestConfig(),
 				handler: generateTestHandler(),
 			},
@@ -189,7 +187,6 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "with a tombstone file created",
 			args: args{
-				ctx:     context.TODO(),
 				config:  generateTestConfig(),
 				handler: generateTestHandler(),
 			},
