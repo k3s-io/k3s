@@ -50,10 +50,6 @@ if [ "$ARCH" == 'arm' ] ||  [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
 fi
 
 
-#TODO convert this to new go test framework
-. ./tests/docker/test-run-hardened
-echo "Did test-run-hardened $?"
-
 # ---
 
 [ "$ARCH" != 'amd64' ] && \
