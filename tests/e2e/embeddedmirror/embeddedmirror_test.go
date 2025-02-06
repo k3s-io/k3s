@@ -25,11 +25,11 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 // E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
 // E2E_REGISTRY: true/false (default: false)
 
-func Test_E2EPrivateRegistry(t *testing.T) {
+func Test_E2EEmbeddedMirror(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Embedded Mirror Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig
