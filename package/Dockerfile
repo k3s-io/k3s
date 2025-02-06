@@ -1,8 +1,8 @@
 FROM alpine:3.21 as base
 RUN apk add -U ca-certificates zstd tzdata
-COPY build/out/data.tar.zst /
+COPY build/out/data-linux.tar.zst /
 RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware && \
-    zstdcat -d /data.tar.zst | tar -xa -C /image && \
+    zstdcat -d /data-linux.tar.zst | tar -xa -C /image && \
     echo "root:x:0:0:root:/:/bin/sh" > /image/etc/passwd && \
     echo "root:x:0:" > /image/etc/group && \
     cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
