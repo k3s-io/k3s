@@ -86,7 +86,7 @@ enable_keychain = true
 {{end}}
 
 [plugins."io.containerd.snapshotter.v1.stargz".registry]
-  config_path = "{{ .NodeConfig.Containerd.Registry }}"
+  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
 
 {{ if .PrivateRegistryConfig }}
 {{range $k, $v := .PrivateRegistryConfig.Configs }}
@@ -104,14 +104,14 @@ enable_keychain = true
 
 {{- if not .NodeConfig.NoFlannel }}
 [plugins."io.containerd.grpc.v1.cri".cni]
-  bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
-  conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
+  bin_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIBinDir }}
+  conf_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIConfDir }}
 {{end}}
 
 {{- if or .NodeConfig.Containerd.BlockIOConfig .NodeConfig.Containerd.RDTConfig }}
 [plugins."io.containerd.service.v1.tasks-service"]
-  {{ if .NodeConfig.Containerd.BlockIOConfig }}blockio_config_file = "{{ .NodeConfig.Containerd.BlockIOConfig }}"{{end}}
-  {{ if .NodeConfig.Containerd.RDTConfig }}rdt_config_file = "{{ .NodeConfig.Containerd.RDTConfig }}"{{end}}
+  {{ if .NodeConfig.Containerd.BlockIOConfig }}blockio_config_file = {{ printf "%q" .NodeConfig.Containerd.BlockIOConfig }}{{end}}
+  {{ if .NodeConfig.Containerd.RDTConfig }}rdt_config_file = {{ printf "%q" .NodeConfig.Containerd.RDTConfig }}{{end}}
 {{end}}
 
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
@@ -120,8 +120,11 @@ enable_keychain = true
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
   SystemdCgroup = {{ .SystemdCgroup }}
 
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runhcs-wcow-process]
+  runtime_type = "io.containerd.runhcs.v1"
+
 [plugins."io.containerd.grpc.v1.cri".registry]
-  config_path = "{{ .NodeConfig.Containerd.Registry }}"
+  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
 
 {{ if .PrivateRegistryConfig }}
 {{range $k, $v := .PrivateRegistryConfig.Configs }}

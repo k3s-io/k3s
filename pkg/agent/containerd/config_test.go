@@ -1500,7 +1500,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			for host, config := range got {
 				hostsTemplate, err := templates.ParseHostsTemplateFromConfig(templates.HostsTomlTemplate, config)
 				assert.NoError(t, err, "ParseHostTemplateFromConfig for %s", host)
-				t.Logf("%s/hosts.d/%s/hosts.toml\n%s", tempDir, host, hostsTemplate)
+				t.Logf("%s/hosts.d/%s/hosts.toml\n%s", tempDir, hostDirectory(host), hostsTemplate)
 			}
 
 			// Confirm that the main containerd config.toml renders properly
