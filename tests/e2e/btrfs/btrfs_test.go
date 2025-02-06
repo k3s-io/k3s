@@ -1,4 +1,4 @@
-package rotateca
+package btrfs
 
 import (
 	"flag"
