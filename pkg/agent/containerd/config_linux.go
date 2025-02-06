@@ -27,6 +27,12 @@ const (
 	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin"
 )
 
+// hostDirectory returns the name of the host dir for a given registry.
+// This is a no-op on linux, as all possible host:port strings are valid paths.
+func hostDirectory(host string) string {
+	return host
+}
+
 func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
 		"containerd",
