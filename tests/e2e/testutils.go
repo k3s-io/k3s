@@ -348,12 +348,11 @@ func FetchIngressIP(kubeconfig string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	ingressIP := strings.Trim(res, " ")
-	ingressIPs := strings.Split(ingressIP, " ")
-	if len(ingressIPs) == 0 {
-		return nil, errors.New("no ingress IP found")
+	res = strings.TrimSpace(res)
+	if res == "" {
+		return nil, errors.New("no ingress IPs found")
 	}
-	return ingressIPs, nil
+	return strings.Split(res, " "), nil
 }
 
 func (v VagrantNode) FetchNodeExternalIP() (string, error) {
