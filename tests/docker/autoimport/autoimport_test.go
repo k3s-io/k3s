@@ -2,71 +2,42 @@ package autoimport
 
 import (
 	"flag"
-	"os"
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
-	"github.com/k3s-io/k3s/tests/e2e"
+	"github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-// Valid nodeOS:
-// bento/ubuntu-24.04, opensuse/Leap-15.6.x86_64
-// eurolinux-vagrant/rocky-8, eurolinux-vagrant/rocky-9,
-var nodeOS = flag.String("nodeOS", "bento/ubuntu-24.04", "VM operating system")
-var serverCount = flag.Int("serverCount", 1, "number of server nodes")
-var agentCount = flag.Int("agentCount", 0, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
-var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
-// Environment Variables Info:
-// E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
-// E2E_REGISTRY: true/false (default: false)
-
-func Test_E2EAutoImport(t *testing.T) {
+func Test_DockerAutoImport(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
 	RunSpecs(t, "Auto Import Test Suite", suiteConfig, reporterConfig)
 }
 
-var tc *e2e.TestConfig
-
-var _ = ReportAfterEach(e2e.GenReport)
+var tc *docker.TestConfig
 
 var _ = Describe("Verify Create", Ordered, func() {
-	Context("Cluster :", func() {
-		It("Starts up with no issues", func() {
+	Context("Setup Cluster", func() {
+		It("should provision server", func() {
 			var err error
-			if *local {
-				tc, err = e2e.CreateLocalCluster(*nodeOS, *serverCount, *agentCount)
-			} else {
-				tc, err = e2e.CreateCluster(*nodeOS, *serverCount, *agentCount)
-			}
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-			By("CLUSTER CONFIG")
-			By("OS: " + *nodeOS)
-			By(tc.Status())
-		})
-
-		It("Checks node and pod status", func() {
-			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeconfigFile)
-
+			tc, err = docker.NewTestConfig("rancher/systemd-node")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tc.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
-			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeconfigFile)
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, tc.KubeconfigFile)
+			}, "60s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, tc.GetNodeNames())
+			}, "40s", "5s").Should(Succeed())
 		})
+	})
 
+	Context("Add images that should be imported by containerd automatically", func() {
 		It("Create a folder in agent/images", func() {
 			cmd := `mkdir /var/lib/rancher/k3s/agent/images`
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
@@ -74,7 +45,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create file for auto import and search in the image store", func() {
-			cmd := `echo docker.io/library/redis:latest | sudo tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
+			cmd := `echo docker.io/library/redis:latest | tee /var/lib/rancher/k3s/agent/images/testautoimport.txt`
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
@@ -98,7 +69,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Create, remove and create again a file", func() {
-			cmd := `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
+			cmd := `echo docker.io/library/busybox:latest | tee /var/lib/rancher/k3s/agent/images/bb.txt`
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
@@ -118,7 +89,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				g.Expect(tc.Servers[0].RunCmdOnNode(cmd)).Should(ContainSubstring("io.cri-containerd.pinned=pinned"))
 			}, "620s", "5s").Should(Succeed())
 
-			cmd = `echo docker.io/library/busybox:latest | sudo tee /var/lib/rancher/k3s/agent/images/bb.txt`
+			cmd = `echo docker.io/library/busybox:latest | tee /var/lib/rancher/k3s/agent/images/bb.txt`
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
@@ -150,16 +121,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Restarts normally", func() {
-			errRestart := e2e.RestartCluster(append(tc.Servers, tc.Agents...))
-			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
-
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "620s", "5s").Should(Succeed())
+			Expect(docker.RestartCluster(tc.Servers)).To(Succeed())
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, tc.GetNodeNames())
+			}, "60s", "5s").Should(Succeed())
 		})
 
 		It("Verify bb.txt image and see if are pinned", func() {
@@ -183,16 +148,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Restarts normally", func() {
-			errRestart := e2e.RestartCluster(append(tc.Servers, tc.Agents...))
-			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
-
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "620s", "5s").Should(Succeed())
+			Expect(docker.RestartCluster(tc.Servers)).To(Succeed())
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, tc.GetNodeNames())
+			}, "60s", "5s").Should(Succeed())
 		})
 
 		It("Verify if bb.txt image is unpinned", func() {
@@ -212,12 +171,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-
-	if !failed {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
-	}
-	if !failed || *ci {
-		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
+	if *ci || (tc != nil && !failed) {
+		Expect(tc.Cleanup()).To(Succeed())
 	}
 })
