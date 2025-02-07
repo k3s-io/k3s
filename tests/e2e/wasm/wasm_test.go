@@ -59,6 +59,9 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "620s", "10s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 		})
 
 		It("Verify wasm-related containerd shims are installed", func() {
@@ -94,9 +97,13 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 		})
 
 		It("Interact with Wasm applications", func() {
-			ingressIPs, err := e2e.FetchIngressIP(tc.KubeConfigFile)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ingressIPs).To(HaveLen(1))
+			var ingressIPs []string
+			var err error
+			Eventually(func(g Gomega) {
+				ingressIPs, err = e2e.FetchIngressIP(tc.KubeConfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(ingressIPs).To(HaveLen(1))
+			}, "120s", "5s").Should(Succeed())
 
 			endpoints := []string{"slight/hello", "spin/go-hello", "spin/hello"}
 			for _, endpoint := range endpoints {
