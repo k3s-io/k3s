@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [autoimport, startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
+        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
       max-parallel: 3
     steps:
       - name: "Checkout"
@@ -153,8 +153,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, snapshotrestore, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, snapshotrestore, token, upgrade]
         arch: [amd64, arm64]
+        exclude:
+          - dtest: autoimport
+            arch: arm64
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
@@ -193,9 +196,12 @@ jobs:
         chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
         cd ./tests/docker/${{ matrix.dtest }}
+        
+        # These tests use rancher/systemd-node and have different flags.
+        CI_TESTS="autoimport hardened snapshotrestore token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -channel=$CHANNEL
-        elif [ ${{ matrix.dtest }} = "snapshotrestore" ] || [ ${{ matrix.dtest }} = "hardened" ]; then
+        elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
           ./${{ matrix.dtest }}.test -ci 
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
