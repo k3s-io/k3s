@@ -350,6 +350,9 @@ func FetchIngressIP(kubeconfig string) ([]string, error) {
 	}
 	ingressIP := strings.Trim(res, " ")
 	ingressIPs := strings.Split(ingressIP, " ")
+	if len(ingressIPs) == 0 {
+		return nil, errors.New("no ingress IP found")
+	}
 	return ingressIPs, nil
 }
 
