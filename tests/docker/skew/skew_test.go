@@ -73,6 +73,8 @@ var _ = Describe("Skew Tests", Ordered, func() {
 				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm", "", 1)
 				cVersion = strings.Replace(cVersion, "-", "+", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
@@ -100,6 +102,8 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers", func() {
+			// Since we are provisioning the first server alone, we need to explicently define the DB type
+			config.DBType = "etcd"
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			config.K3sImage = *k3sImage
 			Expect(config.ProvisionServers(3)).To(Succeed())
@@ -121,6 +125,8 @@ var _ = Describe("Skew Tests", Ordered, func() {
 				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1-amd64
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
+				cVersion = strings.Replace(cVersion, "-arm", "", 1)
 				cVersion = strings.Replace(cVersion, "-", "+", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
