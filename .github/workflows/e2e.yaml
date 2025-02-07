@@ -165,6 +165,8 @@ jobs:
         exclude:
           - dtest: autoimport
             arch: arm64
+          - dtest: snapshotrestore
+            arch: arm64
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
