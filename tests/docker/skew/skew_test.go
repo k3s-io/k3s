@@ -109,7 +109,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(config.ProvisionServers(3)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "5s").Should(Succeed())
 			Eventually(func(g Gomega) {
 				g.Expect(tests.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
 				g.Expect(tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())

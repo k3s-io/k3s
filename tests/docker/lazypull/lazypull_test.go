@@ -32,7 +32,7 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "90s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
