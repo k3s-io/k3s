@@ -296,9 +296,11 @@ func FetchIngressIP(kubeconfig string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	ingressIP := strings.Trim(res, " ")
-	ingressIPs := strings.Split(ingressIP, " ")
-	return ingressIPs, nil
+	res = strings.TrimSpace(res)
+	if res == "" {
+		return nil, errors.New("no ingress IPs found")
+	}
+	return strings.Split(res, " "), nil
 }
 
 func FetchNodeExternalIP(nodename string) (string, error) {
