@@ -59,6 +59,9 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "620s", "10s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 		})
 
 		It("Verify wasm-related containerd shims are installed", func() {
