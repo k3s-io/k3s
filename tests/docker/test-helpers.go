@@ -23,7 +23,7 @@ type TestConfig struct {
 	K3sImage       string
 	DBType         string
 	SkipStart      bool
-	Servers        []Server
+	Servers        []DockerNode
 	Agents         []DockerNode
 	ServerYaml     string
 	AgentYaml      string
@@ -32,12 +32,8 @@ type TestConfig struct {
 type DockerNode struct {
 	Name string
 	IP   string
-}
-
-type Server struct {
-	DockerNode
-	Port int
-	URL  string
+	Port int    // Not filled by agent nodes
+	URL  string // Not filled by agent nodes
 }
 
 // NewTestConfig initializes the test environment and returns the configuration
@@ -130,10 +126,8 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			}
 			joinServer = fmt.Sprintf("--server %s", config.Servers[0].URL)
 		}
-		newServer := Server{
-			DockerNode: DockerNode{
-				Name: name,
-			},
+		newServer := DockerNode{
+			Name: name,
 			Port: port,
 		}
 
@@ -542,7 +536,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 // VerifyValidVersion checks for invalid version strings
-func VerifyValidVersion(node Server, binary string) error {
+func VerifyValidVersion(node DockerNode, binary string) error {
 	output, err := node.RunCmdOnNode(binary + " version")
 	if err != nil {
 		return err
@@ -618,4 +612,15 @@ func (config TestConfig) DeployWorkload(workload string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodes []DockerNode) error {
+	for _, node := range nodes {
+		cmd := "systemctl restart k3s* --all"
+		if _, err := node.RunCmdOnNode(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
 }
