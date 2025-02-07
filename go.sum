@@ -1027,8 +1027,6 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.1-k3s1 h1:CWIU
 github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.1-k3s1/go.mod h1:Kun5c2svjAPx0nnvJKYQWhfeNW+O0EpzHgRhDcYoSY0=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.1-k3s1 h1:Il426GIs5SZE6cRBGQko4h6AeFIMHLh+j41LLyHoNIo=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.1-k3s1/go.mod h1:/vuNyuDhhSkWaqPq1t/ncDtqvlOftYgosR747XXodNM=
-github.com/k3s-io/runc v1.2.4-k3s1 h1:wCqlmxJiVUsZvdNsSUUm7Ng0kCK2wAgyBt4lcp2lLP8=
-github.com/k3s-io/runc v1.2.4-k3s1/go.mod h1:nSxcWUydXrsBZVYNSkTjoQ/N6rcyTtn+1SD5D4+kRIM=
 github.com/k3s-io/spegel v0.0.30-k3s1.32 h1:wGXIzR/RRJ1kDekZ1f2eGe9kAKJKJcLErufCA9+mSWk=
 github.com/k3s-io/spegel v0.0.30-k3s1.32/go.mod h1:WlSvFoXWYOAkHK1PDUwA2jEIBjsSs2CyBsf6dAbVGCQ=
 github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwSWoI=
@@ -1363,6 +1361,8 @@ github.com/opencontainers/image-spec v1.1.0-rc3/go.mod h1:X4pATf0uXsnn3g5aiGIsVn
 github.com/opencontainers/image-spec v1.1.0-rc5/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
 github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQb2IpWsCzug=
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
+github.com/opencontainers/runc v1.2.4 h1:yWFgLkghp71D76Fa0l349yAl5g4Gse7DPYNlvkQ9Eiw=
+github.com/opencontainers/runc v1.2.4/go.mod h1:nSxcWUydXrsBZVYNSkTjoQ/N6rcyTtn+1SD5D4+kRIM=
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.0.3-0.20220825212826-86290f6a00fb/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=

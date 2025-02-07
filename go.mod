@@ -17,7 +17,7 @@ replace (
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.51.0-k3s1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
-	github.com/opencontainers/runc => github.com/k3s-io/runc v1.2.4-k3s1
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.4
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common => github.com/prometheus/common v0.55.0
@@ -117,7 +117,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
-	github.com/opencontainers/runc v1.2.1
+	github.com/opencontainers/runc v1.2.4
 	github.com/opencontainers/selinux v1.11.1
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
