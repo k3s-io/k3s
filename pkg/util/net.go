@@ -11,7 +11,7 @@ import (
 
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	apinet "k8s.io/apimachinery/pkg/util/net"
 	netutils "k8s.io/utils/net"
 )
@@ -139,7 +139,7 @@ func JoinIP6Nets(elems []*net.IPNet) string {
 // the system hostname and primary interface addresses are returned instead.
 func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, error) {
 	ips := []net.IP{}
-	if len(nodeIPs) == 0 {
+	if len(nodeIPs.Value()) == 0 {
 		hostIP, err := apinet.ChooseHostInterface()
 		if err != nil {
 			return "", nil, err
@@ -179,7 +179,7 @@ func GetHostnameAndIPs(name string, nodeIPs cli.StringSlice) (string, []net.IP, 
 // into a single slice of net.IP, it returns error if at any point parsing failed
 func ParseStringSliceToIPs(s cli.StringSlice) ([]net.IP, error) {
 	var ips []net.IP
-	for _, unparsedIP := range s {
+	for _, unparsedIP := range s.Value() {
 		for _, v := range strings.Split(unparsedIP, ",") {
 			ip := net.ParseIP(v)
 			if ip == nil {
@@ -195,7 +195,7 @@ func ParseStringSliceToIPs(s cli.StringSlice) ([]net.IP, error) {
 // GetFirstValidIPString returns the first valid address from a list of IP address strings,
 // without preference for IP family. If no address are found, an empty string is returned.
 func GetFirstValidIPString(s cli.StringSlice) string {
-	for _, unparsedIP := range s {
+	for _, unparsedIP := range s.Value() {
 		for _, v := range strings.Split(unparsedIP, ",") {
 			if ip := net.ParseIP(v); ip != nil {
 				return v

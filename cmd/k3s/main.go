@@ -25,7 +25,7 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 var criDefaultConfigPath = "/etc/crictl.yaml"
@@ -52,7 +52,7 @@ func main() {
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
 	app.EnableBashCompletion = true
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(internalCLIAction(version.Program+"-server"+programPostfix, dataDir, os.Args)),
 		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent"+programPostfix, dataDir, os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl", dataDir)),
@@ -173,7 +173,7 @@ func runCLIs(dataDir string) bool {
 // externalCLIAction returns a function that will call an external binary, be used as the Action of a cli.Command.
 func externalCLIAction(cmd, dataDir string) func(cli *cli.Context) error {
 	return func(cli *cli.Context) error {
-		return externalCLI(cmd, dataDir, cli.Args())
+		return externalCLI(cmd, dataDir, cli.Args().Slice())
 	}
 }
 

@@ -33,7 +33,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	etcdversion "go.etcd.io/etcd/api/v3/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -87,7 +87,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		cfg.DataDir = dataDir
 		if !cfg.DisableAgent {
-			dualNode, err := utilsnet.IsDualStackIPStrings(cmds.AgentConfig.NodeIP)
+			dualNode, err := utilsnet.IsDualStackIPStrings(cmds.AgentConfig.NodeIP.Value())
 			if err != nil {
 				return err
 			}
@@ -139,17 +139,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.HelmJobImage = cfg.HelmJobImage
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
-	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan)
+	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan.Value())
 	serverConfig.ControlConfig.SANSecurity = cfg.TLSSanSecurity
 	serverConfig.ControlConfig.BindAddress = cmds.AgentConfig.BindAddress
 	serverConfig.ControlConfig.SupervisorPort = cfg.SupervisorPort
 	serverConfig.ControlConfig.HTTPSPort = cfg.HTTPSPort
 	serverConfig.ControlConfig.APIServerPort = cfg.APIServerPort
 	serverConfig.ControlConfig.APIServerBindAddress = cfg.APIServerBindAddress
-	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs
-	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs
-	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs
-	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs
+	serverConfig.ControlConfig.ExtraAPIArgs = cfg.ExtraAPIArgs.Value()
+	serverConfig.ControlConfig.ExtraControllerArgs = cfg.ExtraControllerArgs.Value()
+	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs.Value()
+	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs.Value()
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
 	serverConfig.ControlConfig.Datastore.NotifyInterval = 5 * time.Second
 	serverConfig.ControlConfig.Datastore.EmulatedETCDVersion = etcdversion.Version
@@ -164,7 +164,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
 	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
-	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs
+	serverConfig.ControlConfig.ExtraCloudControllerArgs = cfg.ExtraCloudControllerArgs.Value()
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.DisableHelmController = cfg.DisableHelmController
@@ -244,7 +244,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP.Value()) == 0 {
 		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 		if err != nil {
 			return err
@@ -252,7 +252,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
-	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
 		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 	}
 
@@ -303,12 +303,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	} else {
 
 		// if not set, try setting advertise-ip from agent node-external-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
 			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP)
 		}
 
 		// if not set, try setting advertise-ip from agent node-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
 			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
 		}
 	}
@@ -322,10 +322,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
 	_, defaultClusterCIDR, defaultServiceCIDR, _ := util.GetDefaultAddresses(nodeIPs[0])
-	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
+	if len(cmds.ServerConfig.ClusterCIDR.Value()) == 0 {
 		cmds.ServerConfig.ClusterCIDR.Set(defaultClusterCIDR)
 	}
-	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR) {
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR.Value()) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return pkgerrors.WithMessagef(err, "invalid cluster-cidr %s", cidr)
@@ -337,10 +337,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ClusterIPRange = serverConfig.ControlConfig.ClusterIPRanges[0]
 
 	// configure ServiceIPRanges. Use default 10.43.0.0/16 or fd00:43::/112 if user did not set it
-	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
+	if len(cmds.ServerConfig.ServiceCIDR.Value()) == 0 {
 		cmds.ServerConfig.ServiceCIDR.Set(defaultServiceCIDR)
 	}
-	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR) {
+	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR.Value()) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return pkgerrors.WithMessagef(err, "invalid service-cidr %s", cidr)
@@ -367,7 +367,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
 	// If there are no IPv4 ServiceCIDRs, an IPv6 ServiceCIDRs will be used.
 	// If neither of IPv4 or IPv6 are found an error is raised.
-	if len(cmds.ServerConfig.ClusterDNS) == 0 {
+	if len(cmds.ServerConfig.ClusterDNS.Value()) == 0 {
 		for _, svcCIDR := range serverConfig.ControlConfig.ServiceIPRanges {
 			clusterDNS, err := utilsnet.GetIndexedIP(svcCIDR, 10)
 			if err != nil {
@@ -376,7 +376,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, clusterDNS)
 		}
 	} else {
-		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS) {
+		for _, ip := range util.SplitStringSlice(cmds.ServerConfig.ClusterDNS.Value()) {
 			parsed := net.ParseIP(ip)
 			if parsed == nil {
 				return fmt.Errorf("invalid cluster-dns address %s", ip)
@@ -536,7 +536,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	agentConfig := cmds.AgentConfig
 	agentConfig.ContainerRuntimeReady = containerRuntimeReady
-	agentConfig.Debug = app.GlobalBool("debug")
+	agentConfig.Debug = app.Bool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url
 	agentConfig.Token = token

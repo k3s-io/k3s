@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const TokenCommand = "token"
@@ -26,22 +26,21 @@ var (
 	TokenConfig = Token{}
 	TokenFlags  = []cli.Flag{
 		DataDirFlag,
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "kubeconfig",
 			Usage:       "(cluster) Server to connect to",
-			EnvVar:      "KUBECONFIG",
+			EnvVars:     []string{"KUBECONFIG"},
 			Destination: &TokenConfig.Kubeconfig,
 		},
 	}
 )
 
-func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
+func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:            TokenCommand,
 		Usage:           "Manage tokens",
 		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:  "create",
 				Usage: "Create bootstrap tokens on the server",
@@ -64,7 +63,6 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 					Value: &TokenConfig.Usages,
 				}),
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          create,
 			},
 			{
@@ -72,7 +70,6 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 				Usage:           "Delete bootstrap tokens on the server",
 				Flags:           TokenFlags,
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          delete,
 			},
 			{
@@ -80,19 +77,18 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 				Usage:           "Generate and print a bootstrap token, but do not create it on the server",
 				Flags:           TokenFlags,
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          generate,
 			},
 			{
 				Name:  "list",
 				Usage: "List bootstrap tokens on the server",
 				Flags: append(TokenFlags, &cli.StringFlag{
-					Name:        "output,o",
+					Name:        "output",
+					Aliases:     []string{"o"},
 					Value:       "text",
 					Destination: &TokenConfig.Output,
 				}),
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          list,
 			},
 			{
@@ -100,16 +96,18 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 				Usage: "Rotate original server token with a new server token",
 				Flags: append(TokenFlags,
 					&cli.StringFlag{
-						Name:        "token,t",
+						Name:        "token",
+						Aliases:     []string{"t"},
 						Usage:       "Existing token used to join a server or agent to a cluster",
 						Destination: &TokenConfig.Token,
-						EnvVar:      version.ProgramUpper + "_TOKEN",
+						EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
 					},
 					&cli.StringFlag{
-						Name:        "server, s",
+						Name:        "server",
+						Aliases:     []string{"s"},
 						Usage:       "(cluster) Server to connect to",
 						Destination: &TokenConfig.ServerURL,
-						EnvVar:      version.ProgramUpper + "_URL",
+						EnvVars:     []string{version.ProgramUpper + "_URL"},
 						Value:       "https://127.0.0.1:6443",
 					},
 					&cli.StringFlag{
@@ -118,7 +116,6 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 						Destination: &TokenConfig.NewToken,
 					}),
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          rotate,
 			},
 		},

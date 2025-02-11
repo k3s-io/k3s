@@ -311,7 +311,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 	}
 
 	if cfg.Rootless && !cfg.RootlessAlreadyUnshared {
-		dualNode, err := utilsnet.IsDualStackIPStrings(cfg.NodeIP)
+		dualNode, err := utilsnet.IsDualStackIPStrings(cfg.NodeIP.Value())
 		if err != nil {
 			return err
 		}

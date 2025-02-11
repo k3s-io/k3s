@@ -5,13 +5,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func Test_UnitParseStringSliceToIPs(t *testing.T) {
 	tests := []struct {
 		name    string
-		arg     cli.StringSlice
+		arg     *cli.StringSlice
 		want    []net.IP
 		wantErr bool
 	}{
@@ -22,17 +22,17 @@ func Test_UnitParseStringSliceToIPs(t *testing.T) {
 		},
 		{
 			name: "empty string slice must return no errors",
-			arg:  cli.StringSlice{},
+			arg:  cli.NewStringSlice(),
 			want: nil,
 		},
 		{
 			name: "single element slice with correct IP must succeed",
-			arg:  cli.StringSlice{"10.10.10.10"},
+			arg:  cli.NewStringSlice("10.10.10.10"),
 			want: []net.IP{net.ParseIP("10.10.10.10")},
 		},
 		{
 			name: "single element slice with correct IP list must succeed",
-			arg:  cli.StringSlice{"10.10.10.10,10.10.10.11"},
+			arg:  cli.NewStringSlice("10.10.10.10,10.10.10.11"),
 			want: []net.IP{
 				net.ParseIP("10.10.10.10"),
 				net.ParseIP("10.10.10.11"),
@@ -40,7 +40,7 @@ func Test_UnitParseStringSliceToIPs(t *testing.T) {
 		},
 		{
 			name: "multi element slice with correct IP list must succeed",
-			arg:  cli.StringSlice{"10.10.10.10,10.10.10.11", "10.10.10.12,10.10.10.13"},
+			arg:  cli.NewStringSlice("10.10.10.10,10.10.10.11", "10.10.10.12,10.10.10.13"),
 			want: []net.IP{
 				net.ParseIP("10.10.10.10"),
 				net.ParseIP("10.10.10.11"),
@@ -50,19 +50,19 @@ func Test_UnitParseStringSliceToIPs(t *testing.T) {
 		},
 		{
 			name:    "single element slice with correct IP list with trailing comma must fail",
-			arg:     cli.StringSlice{"10.10.10.10,"},
+			arg:     cli.NewStringSlice("10.10.10.10,"),
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "single element slice with incorrect IP (overflow) must fail",
-			arg:     cli.StringSlice{"10.10.10.256"},
+			arg:     cli.NewStringSlice("10.10.10.256"),
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "single element slice with incorrect IP (foreign symbols) must fail",
-			arg:     cli.StringSlice{"xxx.yyy.zzz.www"},
+			arg:     cli.NewStringSlice("xxx.yyy.zzz.www"),
 			want:    nil,
 			wantErr: true,
 		},
@@ -70,7 +70,7 @@ func Test_UnitParseStringSliceToIPs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(
 			tt.name, func(t *testing.T) {
-				got, err := ParseStringSliceToIPs(tt.arg)
+				got, err := ParseStringSliceToIPs(*tt.arg)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("ParseStringSliceToIPs() error = %v, wantErr %v", err, tt.wantErr)
 					return
