@@ -1471,14 +1471,24 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				t.Fatalf("failed to parse %s: %v\n", registriesFile, err)
 			}
 
+			// This is an odd mishmash of linux and windows stuff just to excercise all the template bits
 			nodeConfig := &config.Node{
+				DefaultRuntime: "runhcs-wcow-process",
 				Containerd: config.Containerd{
 					Registry: tempDir + "/hosts.d",
+					Config:   tempDir + "/config.toml",
+					Template: tempDir,
+					Address:  "/run/k3s/containerd/containerd.sock",
+					Root:     "/var/lib/rancher/k3s/agent/containerd",
+					Opt:      "/var/lib/rancher/k3s/agent/containerd",
+					State:    "/run/k3s/containerd",
 				},
 				AgentConfig: config.Agent{
 					ImageServiceSocket: "containerd-stargz-grpc.sock",
 					Registry:           registry.Registry,
 					Snapshotter:        "stargz",
+					CNIBinDir:          "/var/lib/rancher/k3s/data/cni",
+					CNIConfDir:         "/var/lib/rancher/k3s/agent/etc/cni/net.d",
 				},
 			}
 
@@ -1498,20 +1508,36 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 
 			// Confirm that hosts.toml renders properly for all registries
 			for host, config := range got {
-				hostsTemplate, err := templates.ParseHostsTemplateFromConfig(templates.HostsTomlTemplate, config)
+				hostsToml, err := templates.ParseHostsTemplateFromConfig(templates.HostsTomlTemplate, config)
 				assert.NoError(t, err, "ParseHostTemplateFromConfig for %s", host)
-				t.Logf("%s/hosts.d/%s/hosts.toml\n%s", tempDir, host, hostsTemplate)
+				t.Logf("%s/hosts.d/%s/hosts.toml\n%s", tempDir, hostDirectory(host), hostsToml)
 			}
 
-			// Confirm that the main containerd config.toml renders properly
-			containerdConfig := templates.ContainerdConfig{
-				NodeConfig:            nodeConfig,
-				PrivateRegistryConfig: registry.Registry,
-				Program:               "k3s",
+			for _, template := range []string{"config.toml.tmpl", "config-v3.toml.tmpl"} {
+				t.Run(template, func(t *testing.T) {
+					templateFile := filepath.Join(tempDir, template)
+					err = os.WriteFile(templateFile, []byte(`{{ template "base" . }}`), 0600)
+					assert.NoError(t, err, "Write Template")
+
+					// Confirm that the main containerd config.toml renders properly
+					containerdConfig := templates.ContainerdConfig{
+						NodeConfig:            nodeConfig,
+						PrivateRegistryConfig: registry.Registry,
+						Program:               "k3s",
+						ExtraRuntimes: map[string]templates.ContainerdRuntimeConfig{
+							"wasmtime": templates.ContainerdRuntimeConfig{
+								RuntimeType: "io.containerd.wasmtime.v1",
+								BinaryName:  "containerd-shim-wasmtime-v1",
+							},
+						},
+					}
+					err = writeContainerdConfig(nodeConfig, containerdConfig)
+					assert.NoError(t, err, "ParseTemplateFromConfig")
+					configToml, err := os.ReadFile(nodeConfig.Containerd.Config)
+					assert.NoError(t, err, "ReadFile "+nodeConfig.Containerd.Config)
+					t.Logf("%s\n%s", nodeConfig.Containerd.Config, configToml)
+				})
 			}
-			configTemplate, err := templates.ParseTemplateFromConfig(templates.ContainerdConfigTemplate, containerdConfig)
-			assert.NoError(t, err, "ParseTemplateFromConfig")
-			t.Logf("%s/config.toml\n%s", tempDir, configTemplate)
 		})
 	}
 }

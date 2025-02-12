@@ -23,8 +23,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/rootlessports"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
+	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"
@@ -35,7 +37,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func ResolveDataDir(dataDir string) (string, error) {
@@ -59,7 +60,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(config.StartupHooks))
 
-	config.ControlConfig.Runtime.Handler = router(ctx, config, cfg)
+	config.ControlConfig.Runtime.Handler = handlers.NewHandler(ctx, &config.ControlConfig, cfg)
 	config.ControlConfig.Runtime.StartupHooksWg = wg
 
 	shArgs := cmds.StartupHookArgs{
@@ -113,6 +114,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		controlConfig.Runtime.NodePasswdFile); err != nil {
 		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
 	}
+	controlConfig.Runtime.K8s = sc.K8s
 	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
 	controlConfig.Runtime.Core = sc.Core
@@ -208,7 +210,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	if !config.ControlConfig.DisableHelmController {
-		restConfig, err := clientcmd.BuildConfigFromFlags("", config.ControlConfig.Runtime.KubeConfigSupervisor)
+		restConfig, err := util.GetRESTConfig(config.ControlConfig.Runtime.KubeConfigSupervisor)
 		if err != nil {
 			return err
 		}
@@ -285,7 +287,7 @@ func stageFiles(ctx context.Context, sc *Context, controlConfig *config.Control)
 		return err
 	}
 
-	restConfig, err := clientcmd.BuildConfigFromFlags("", controlConfig.Runtime.KubeConfigSupervisor)
+	restConfig, err := util.GetRESTConfig(controlConfig.Runtime.KubeConfigSupervisor)
 	if err != nil {
 		return err
 	}
@@ -329,7 +331,7 @@ func addrTypesPrioTemplate(flannelExternal bool) string {
 
 func HomeKubeConfig(write, rootless bool) (string, error) {
 	if write {
-		if os.Getuid() == 0 && !rootless {
+		if permissions.IsPrivileged() == nil && !rootless {
 			return datadir.GlobalConfig, nil
 		}
 		return resolvehome.Resolve(datadir.HomeConfig)
@@ -346,7 +348,7 @@ func printTokens(config *config.Control) error {
 	var serverTokenFile string
 	if config.Runtime.ServerToken != "" {
 		serverTokenFile = filepath.Join(config.DataDir, "token")
-		if err := writeToken(config.Runtime.ServerToken, serverTokenFile, config.Runtime.ServerCA); err != nil {
+		if err := handlers.WriteToken(config.Runtime.ServerToken, serverTokenFile, config.Runtime.ServerCA); err != nil {
 			return err
 		}
 
@@ -374,7 +376,7 @@ func printTokens(config *config.Control) error {
 					return err
 				}
 			}
-			if err := writeToken(config.Runtime.AgentToken, agentTokenFile, config.Runtime.ServerCA); err != nil {
+			if err := handlers.WriteToken(config.Runtime.AgentToken, agentTokenFile, config.Runtime.ServerCA); err != nil {
 				return err
 			}
 		} else if serverTokenFile != "" {
@@ -488,18 +490,6 @@ func setupDataDirAndChdir(config *config.Control) error {
 
 func printToken(httpsPort int, advertiseIP, prefix, cmd, varName string) {
 	logrus.Infof("%s %s %s -s https://%s:%d -t ${%s}", prefix, version.Program, cmd, advertiseIP, httpsPort, varName)
-}
-
-func writeToken(token, file, certs string) error {
-	if len(token) == 0 {
-		return nil
-	}
-
-	token, err := clientaccess.FormatToken(token, certs)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(file, []byte(token+"\n"), 0600)
 }
 
 func setNoProxyEnv(config *config.Control) error {

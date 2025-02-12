@@ -19,9 +19,9 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 
-	v1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3scattleiov1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
 	scheme "github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type AddonsGetter interface {
 
 // AddonInterface has methods to work with Addon resources.
 type AddonInterface interface {
-	Create(ctx context.Context, addon *v1.Addon, opts metav1.CreateOptions) (*v1.Addon, error)
-	Update(ctx context.Context, addon *v1.Addon, opts metav1.UpdateOptions) (*v1.Addon, error)
+	Create(ctx context.Context, addon *k3scattleiov1.Addon, opts metav1.CreateOptions) (*k3scattleiov1.Addon, error)
+	Update(ctx context.Context, addon *k3scattleiov1.Addon, opts metav1.UpdateOptions) (*k3scattleiov1.Addon, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Addon, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.AddonList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*k3scattleiov1.Addon, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*k3scattleiov1.AddonList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Addon, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *k3scattleiov1.Addon, err error)
 	AddonExpansion
 }
 
 // addons implements AddonInterface
 type addons struct {
-	*gentype.ClientWithList[*v1.Addon, *v1.AddonList]
+	*gentype.ClientWithList[*k3scattleiov1.Addon, *k3scattleiov1.AddonList]
 }
 
 // newAddons returns a Addons
 func newAddons(c *K3sV1Client, namespace string) *addons {
 	return &addons{
-		gentype.NewClientWithList[*v1.Addon, *v1.AddonList](
+		gentype.NewClientWithList[*k3scattleiov1.Addon, *k3scattleiov1.AddonList](
 			"addons",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1.Addon { return &v1.Addon{} },
-			func() *v1.AddonList { return &v1.AddonList{} }),
+			func() *k3scattleiov1.Addon { return &k3scattleiov1.Addon{} },
+			func() *k3scattleiov1.AddonList { return &k3scattleiov1.AddonList{} },
+		),
 	}
 }

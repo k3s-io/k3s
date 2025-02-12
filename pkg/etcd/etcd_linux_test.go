@@ -1,9 +1,14 @@
+//go:build linux
+// +build linux
+
 package etcd
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sync"
@@ -27,6 +32,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func init() {
@@ -77,7 +83,6 @@ func generateTestHandler() http.Handler {
 
 func Test_UnitETCD_IsInitialized(t *testing.T) {
 	type args struct {
-		ctx    context.Context
 		config *config.Control
 	}
 	tests := []struct {
@@ -91,7 +96,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory exists",
 			args: args{
-				ctx:    context.TODO(),
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -110,7 +114,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory does not exist",
 			args: args{
-				ctx:    context.TODO(),
 				config: generateTestConfig(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -157,7 +160,6 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 
 func Test_UnitETCD_Register(t *testing.T) {
 	type args struct {
-		ctx     context.Context
 		config  *config.Control
 		handler http.Handler
 	}
@@ -171,7 +173,6 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "standard config",
 			args: args{
-				ctx:     context.TODO(),
 				config:  generateTestConfig(),
 				handler: generateTestHandler(),
 			},
@@ -186,7 +187,6 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "with a tombstone file created",
 			args: args{
-				ctx:     context.TODO(),
 				config:  generateTestConfig(),
 				handler: generateTestHandler(),
 			},
@@ -234,6 +234,22 @@ func Test_UnitETCD_Register(t *testing.T) {
 }
 
 func Test_UnitETCD_Start(t *testing.T) {
+	// dummy supervisor API for testing
+	var memberAddr string
+	server := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/db/info" {
+			members := []*etcdserverpb.Member{{
+				ClientURLs: []string{"https://" + net.JoinHostPort(memberAddr, "2379")},
+				PeerURLs:   []string{"https://" + net.JoinHostPort(memberAddr, "2380")},
+			}}
+			resp.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(resp).Encode(&Members{
+				Members: members,
+			})
+		}
+	}))
+	defer server.Close()
+
 	type contextInfo struct {
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -265,9 +281,6 @@ func Test_UnitETCD_Start(t *testing.T) {
 				address: mustGetAddress(),
 				name:    "default",
 			},
-			args: args{
-				clientAccessInfo: nil,
-			},
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
 				e.config.EtcdDisableSnapshots = true
@@ -294,8 +307,37 @@ func Test_UnitETCD_Start(t *testing.T) {
 				name:    "default",
 				cron:    cron.New(),
 			},
+			setup: func(e *ETCD, ctxInfo *contextInfo) error {
+				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
+				testutil.GenerateRuntime(e.config)
+				return nil
+			},
+			teardown: func(e *ETCD, ctxInfo *contextInfo) error {
+				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
+				err := e.RemoveSelf(ctxInfo.ctx)
+				ctxInfo.cancel()
+				time.Sleep(5 * time.Second)
+				testutil.CleanupDataDir(e.config)
+				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			name: "valid clientAccessInfo",
+			fields: fields{
+				config:  generateTestConfig(),
+				address: mustGetAddress(),
+				name:    "default",
+				cron:    cron.New(),
+			},
 			args: args{
-				clientAccessInfo: nil,
+				clientAccessInfo: &clientaccess.Info{
+					BaseURL:  "http://" + server.Listener.Addr().String(),
+					Username: "server",
+					Password: "token",
+				},
 			},
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
@@ -321,9 +363,6 @@ func Test_UnitETCD_Start(t *testing.T) {
 				address: mustGetAddress(),
 				name:    "default",
 				cron:    cron.New(),
-			},
-			args: args{
-				clientAccessInfo: nil,
 			},
 			setup: func(e *ETCD, ctxInfo *contextInfo) error {
 				ctxInfo.ctx, ctxInfo.cancel = context.WithCancel(context.Background())
@@ -363,6 +402,18 @@ func Test_UnitETCD_Start(t *testing.T) {
 			}
 			if err := e.Start(tt.fields.context.ctx, tt.args.clientAccessInfo); (err != nil) != tt.wantErr {
 				t.Errorf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				memberAddr = e.address
+				if err := wait.PollUntilContextTimeout(tt.fields.context.ctx, time.Second, time.Minute, true, func(ctx context.Context) (bool, error) {
+					if _, err := e.getETCDStatus(tt.fields.context.ctx, ""); err != nil {
+						t.Logf("Waiting to get etcd status: %v", err)
+						return false, nil
+					}
+					return true, nil
+				}); err != nil {
+					t.Errorf("Failed to get etcd status: %v", err)
+				}
 			}
 			if err := tt.teardown(e, &tt.fields.context); err != nil {
 				t.Errorf("Teardown for ETCD.Start() failed = %v", err)

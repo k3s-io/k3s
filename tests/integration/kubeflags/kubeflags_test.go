@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -126,7 +127,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 
 				// Pods should not be healthy without kube-proxy
 				Consistently(func() error {
-					return testutil.K3sDefaultDeployments()
+					return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 				}, "100s", "5s").Should(HaveOccurred())
 			})
 			It("should not find kube-proxy starting", func() {
@@ -153,7 +154,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 						"--authorization-kubeconfig=/var/lib/rancher/k3s/server/cred/cloud-controller.kubeconfig --bind-address=127.0.0.1 "+
 						"--cloud-config=/var/lib/rancher/k3s/server/etc/cloud-config.yaml --cloud-provider=k3s --cluster-cidr=10.42.0.0/16 "+
 						"--configure-cloud-routes=false --controllers=*,-route,-cloud-node,-cloud-node-lifecycle "+
-						"--feature-gates=CloudDualStackNodeIPs=true --kubeconfig=/var/lib/rancher/k3s/server/cred/cloud-controller.kubeconfig "+
+						"--kubeconfig=/var/lib/rancher/k3s/server/cred/cloud-controller.kubeconfig "+
 						"--leader-elect-resource-name=k3s-cloud-controller-manager --node-status-update-frequency=1m0s --profiling=false --secure-port=0")
 					if err != nil {
 						return err
@@ -178,7 +179,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(func() error {
-					return testutil.K3sDefaultDeployments()
+					return tests.CheckDefaultDeployments(testutil.DefaultConfig)
 				}, "180s", "5s").Should(Succeed())
 
 			})

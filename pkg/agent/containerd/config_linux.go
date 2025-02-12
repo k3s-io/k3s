@@ -6,16 +6,16 @@ package containerd
 import (
 	"os"
 
-	"github.com/containerd/containerd"
-	overlayutils "github.com/containerd/containerd/snapshots/overlay/overlayutils"
-	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
+	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter/v2"
 	stargz "github.com/containerd/stargz-snapshotter/service"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/opencontainers/runc/libcontainer/userns"
+	"github.com/moby/sys/userns"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -27,13 +27,27 @@ const (
 	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin"
 )
 
+// hostDirectory returns the name of the host dir for a given registry.
+// This is a no-op on linux, as all possible host:port strings are valid paths.
+func hostDirectory(host string) string {
+	return host
+}
+
 func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
 		"containerd",
 		"-c", cfg.Containerd.Config,
-		"-a", cfg.Containerd.Address,
-		"--state", cfg.Containerd.State,
-		"--root", cfg.Containerd.Root,
+	}
+
+	// Historically the linux containerd config template did not include
+	// address/state/root settings, so they need to be passed on the command line
+	// in case the user-provided template still lacks them.
+	if cfg.Containerd.ConfigVersion < 3 {
+		args = append(args,
+			"-a", cfg.Containerd.Address,
+			"--state", cfg.Containerd.State,
+			"--root", cfg.Containerd.Root,
+		)
 	}
 	return args
 }

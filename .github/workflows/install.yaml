@@ -105,3 +105,29 @@ jobs:
         with:
           ## If no one connects after 5 minutes, shut down server.
           wait-timeout-minutes: 5
+  test-windows:
+    name: "Smoke Test (windows)"
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - name: "Download k3s binary"
+        uses: actions/download-artifact@v4
+        with:
+          name: k3s-windows
+          path: dist/artifacts/
+      - name: "Run K3s"
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $true
+          $Server = Start-Job -ScriptBlock { ./dist/artifacts/k3s.exe server --token=token --embedded-registry --disable=metrics-server }
+          Start-Sleep -Seconds 15
+          D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl get node -o wide
+          D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl get pod -A -o wide
+          Stop-Job -Job $Server
+          Receive-Job -Wait -Job $Server
+          Remove-Job -Job $Server

@@ -39,7 +39,11 @@ Follow the OS specific guides to install libvirt/qemu on your host:
 - ubuntu 22.04: 
   ```bash
   sudo apt install ruby-libvirt qemu libvirt-daemon-system libvirt-clients ebtables dnsmasq-base libxslt-dev libxml2-dev libvirt-dev zlib1g-dev ruby-dev libguestfs-tools
-  ```  
+  ```
+- ubuntu 24.04:
+  ```bash
+  sudo apt install ruby-libvirt qemu-kvm libvirt-daemon-system libvirt-clients ebtables dnsmasq-base libxslt-dev libxml2-dev libvirt-dev zlib1g-dev ruby-dev libguestfs-tools
+  ```
 - [debian](https://wiki.debian.org/KVM#Installation)  
 - [fedora](https://developer.fedoraproject.org/tools/virtualization/installing-libvirt-and-virt-install-on-fedora-linux.html)
 

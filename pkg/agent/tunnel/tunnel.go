@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	agentconfig "github.com/k3s-io/k3s/pkg/agent/config"
+	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
+	"github.com/k3s-io/k3s/pkg/clientaccess"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -26,12 +27,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	toolswatch "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/cluster/ports"
 )
@@ -69,7 +70,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		return err
 	}
 
-	nodeRestConfig, err := clientcmd.BuildConfigFromFlags("", config.AgentConfig.KubeConfigKubelet)
+	nodeRestConfig, err := util.GetRESTConfig(config.AgentConfig.KubeConfigKubelet)
 	if err != nil {
 		return err
 	}
@@ -138,17 +139,18 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		// connecting to. If that fails, fall back to querying the endpoints list from Kubernetes. This
 		// fallback requires that the server we're joining be running an apiserver, but is the only safe
 		// thing to do if its supervisor is down-level and can't provide us with an endpoint list.
-		addresses := agentconfig.APIServers(ctx, config, proxy)
-		logrus.Infof("Got apiserver addresses from supervisor: %v", addresses)
-
+		addresses := agentconfig.WaitForAPIServers(ctx, config, proxy)
 		if len(addresses) > 0 {
+			logrus.Infof("Got apiserver addresses from supervisor: %v", addresses)
 			if localSupervisorDefault {
 				proxy.SetSupervisorDefault(addresses[0])
 			}
 			proxy.Update(addresses)
 		} else {
-			if endpoint, _ := client.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{}); endpoint != nil {
-				addresses = util.GetAddresses(endpoint)
+			if endpoint, err := client.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{}); err != nil {
+				logrus.Errorf("Failed to get apiserver addresses from kubernetes endpoints: %v", err)
+			} else {
+				addresses := util.GetAddresses(endpoint)
 				logrus.Infof("Got apiserver addresses from kubernetes endpoints: %v", addresses)
 				if len(addresses) > 0 {
 					proxy.Update(addresses)
@@ -159,7 +161,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 
 	wg := &sync.WaitGroup{}
 
-	go tunnel.watchEndpoints(ctx, apiServerReady, wg, tlsConfig, proxy)
+	go tunnel.watchEndpoints(ctx, apiServerReady, wg, tlsConfig, config, proxy)
 
 	wait := make(chan int, 1)
 	go func() {
@@ -302,23 +304,21 @@ func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struc
 // WatchEndpoints attempts to create tunnels to all supervisor addresses.  Once the
 // apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
 // and go from the cluster.
-func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan struct{}, wg *sync.WaitGroup, tlsConfig *tls.Config, proxy proxy.Proxy) {
-	// Attempt to connect to supervisors, storing their cancellation function for later when we
-	// need to disconnect.
-	disconnect := map[string]context.CancelFunc{}
-	for _, address := range proxy.SupervisorAddresses() {
-		if _, ok := disconnect[address]; !ok {
-			conn := a.connect(ctx, wg, address, tlsConfig)
-			disconnect[address] = conn.cancel
-			proxy.SetHealthCheck(address, conn.connected)
-		}
-	}
+func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan struct{}, wg *sync.WaitGroup, tlsConfig *tls.Config, node *daemonconfig.Node, proxy proxy.Proxy) {
+	syncProxyAddresses := a.getProxySyncer(ctx, wg, tlsConfig, proxy)
+	refreshFromSupervisor := getAPIServersRequester(node, proxy, syncProxyAddresses)
 
 	<-apiServerReady
+
 	endpoints := a.client.CoreV1().Endpoints(metav1.NamespaceDefault)
 	fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
+			// if we're being called to re-list, then likely there was an
+			// interruption to the apiserver connection and the listwatch is retrying
+			// its connection. This is a good suggestion that it might be necessary
+			// to refresh the apiserver address from the supervisor.
+			go refreshFromSupervisor(ctx)
 			options.FieldSelector = fieldSelector
 			return endpoints.List(ctx, options)
 		},
@@ -364,38 +364,7 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan 
 			// goroutine that sleeps for a short period before checking for changes and updating
 			// the proxy addresses.  If another update occurs, the previous update operation
 			// will be cancelled and a new one queued.
-			go func() {
-				select {
-				case <-time.After(endpointDebounceDelay):
-				case <-debounceCtx.Done():
-					return
-				}
-
-				newAddresses := util.GetAddresses(endpoint)
-				if reflect.DeepEqual(newAddresses, proxy.SupervisorAddresses()) {
-					return
-				}
-				proxy.Update(newAddresses)
-
-				validEndpoint := map[string]bool{}
-
-				for _, address := range proxy.SupervisorAddresses() {
-					validEndpoint[address] = true
-					if _, ok := disconnect[address]; !ok {
-						conn := a.connect(ctx, nil, address, tlsConfig)
-						disconnect[address] = conn.cancel
-						proxy.SetHealthCheck(address, conn.connected)
-					}
-				}
-
-				for address, cancel := range disconnect {
-					if !validEndpoint[address] {
-						cancel()
-						delete(disconnect, address)
-						logrus.Infof("Stopped tunnel to %s", address)
-					}
-				}
-			}()
+			go syncProxyAddresses(debounceCtx, util.GetAddresses(endpoint))
 		}
 	}
 }
@@ -427,21 +396,19 @@ func (a *agentTunnel) authorized(ctx context.Context, proto, address string) boo
 }
 
 type agentConnection struct {
-	cancel    context.CancelFunc
-	connected func() bool
+	cancel      context.CancelFunc
+	healthCheck loadbalancer.HealthCheckFunc
 }
 
 // connect initiates a connection to the remotedialer server. Incoming dial requests from
 // the server will be checked by the authorizer function prior to being fulfilled.
 func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup, address string, tlsConfig *tls.Config) agentConnection {
+	var status loadbalancer.HealthCheckResult
+
 	wsURL := fmt.Sprintf("wss://%s/v1-"+version.Program+"/connect", address)
 	ws := &websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 	}
-
-	// Assume that the connection to the server will succeed, to avoid failing health checks while attempting to connect.
-	// If we cannot connect, connected will be set to false when the initial connection attempt fails.
-	connected := true
 
 	once := sync.Once{}
 	if waitGroup != nil {
@@ -454,7 +421,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}
 
 	onConnect := func(_ context.Context, _ *remotedialer.Session) error {
-		connected = true
+		status = loadbalancer.HealthCheckResultOK
 		logrus.WithField("url", wsURL).Info("Remotedialer connected to proxy")
 		if waitGroup != nil {
 			once.Do(waitGroup.Done)
@@ -467,7 +434,7 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 		for {
 			// ConnectToProxy blocks until error or context cancellation
 			err := remotedialer.ConnectToProxyWithDialer(ctx, wsURL, nil, auth, ws, a.dialContext, onConnect)
-			connected = false
+			status = loadbalancer.HealthCheckResultFailed
 			if err != nil && !errors.Is(err, context.Canceled) {
 				logrus.WithField("url", wsURL).WithError(err).Error("Remotedialer proxy error; reconnecting...")
 				// wait between reconnection attempts to avoid hammering the server
@@ -484,8 +451,10 @@ func (a *agentTunnel) connect(rootCtx context.Context, waitGroup *sync.WaitGroup
 	}()
 
 	return agentConnection{
-		cancel:    cancel,
-		connected: func() bool { return connected },
+		cancel: cancel,
+		healthCheck: func() loadbalancer.HealthCheckResult {
+			return status
+		},
 	}
 }
 
@@ -506,4 +475,85 @@ func (a *agentTunnel) dialContext(ctx context.Context, network, address string) 
 		address = net.JoinHostPort(a.kubeletAddr, port)
 	}
 	return defaultDialer.DialContext(ctx, network, address)
+}
+
+// proxySyncer is a common signature for functions that sync the proxy address list with a context
+type proxySyncer func(ctx context.Context, addresses []string)
+
+// getProxySyncer returns a function that can be called to update the list of supervisors.
+// This function is responsible for connecting to or disconnecting websocket tunnels,
+// as well as updating the proxy loadbalancer server list.
+func (a *agentTunnel) getProxySyncer(ctx context.Context, wg *sync.WaitGroup, tlsConfig *tls.Config, proxy proxy.Proxy) proxySyncer {
+	disconnect := map[string]context.CancelFunc{}
+	// Attempt to connect to supervisors, storing their cancellation function for later when we
+	// need to disconnect.
+	for _, address := range proxy.SupervisorAddresses() {
+		if _, ok := disconnect[address]; !ok {
+			conn := a.connect(ctx, wg, address, tlsConfig)
+			disconnect[address] = conn.cancel
+			proxy.SetHealthCheck(address, conn.healthCheck)
+		}
+	}
+
+	// return a function that can be called to update the address list.
+	// servers will be connected to or disconnected from as necessary,
+	// and the proxy addresses updated.
+	return func(debounceCtx context.Context, addresses []string) {
+		select {
+		case <-time.After(endpointDebounceDelay):
+		case <-debounceCtx.Done():
+			return
+		}
+
+		// Compare list of supervisor addresses before and after syncing apiserver
+		// endpoints into the proxy to figure out which supervisors we need to connect to
+		// or disconnect from. Note that the addresses we were passed will not match
+		// the supervisor addresses if the supervisor and apiserver are on different ports -
+		// they must be round-tripped through proxy.Update before comparing.
+		curAddresses := sets.New(proxy.SupervisorAddresses()...)
+		proxy.Update(addresses)
+		newAddresses := sets.New(proxy.SupervisorAddresses()...)
+
+		// add new servers
+		for address := range newAddresses.Difference(curAddresses) {
+			if _, ok := disconnect[address]; !ok {
+				conn := a.connect(ctx, nil, address, tlsConfig)
+				logrus.Infof("Started tunnel to %s", address)
+				disconnect[address] = conn.cancel
+				proxy.SetHealthCheck(address, conn.healthCheck)
+			}
+		}
+
+		// remove old servers
+		for address := range curAddresses.Difference(newAddresses) {
+			if cancel, ok := disconnect[address]; ok {
+				cancel()
+				delete(disconnect, address)
+				logrus.Infof("Stopped tunnel to %s", address)
+			}
+		}
+	}
+}
+
+// getAPIServersRequester returns a function that can be called to update the
+// proxy apiserver endpoints with addresses retrieved from the supervisor.
+func getAPIServersRequester(node *daemonconfig.Node, proxy proxy.Proxy, syncProxyAddresses proxySyncer) func(ctx context.Context) {
+	var info *clientaccess.Info
+	return func(ctx context.Context) {
+		if info == nil {
+			var err error
+			withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
+			info, err = clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
+			if err != nil {
+				logrus.Warnf("Failed to validate server token: %v", err)
+				return
+			}
+		}
+
+		if addresses, err := agentconfig.GetAPIServers(ctx, info); err != nil {
+			logrus.Warnf("Failed to get apiserver addresses from supervisor: %v", err)
+		} else {
+			syncProxyAddresses(ctx, addresses)
+		}
+	}
 }

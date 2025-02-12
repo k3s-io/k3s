@@ -1,7 +1,7 @@
 package config
 
 import (
-	"crypto/tls"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	utilsnet "k8s.io/utils/net"
 )
@@ -56,7 +57,6 @@ type Node struct {
 	Images                   string
 	AgentConfig              Agent
 	Token                    string
-	Certificate              *tls.Certificate
 	ServerHTTPSPort          int
 	SupervisorPort           int
 	DefaultRuntime           string
@@ -72,6 +72,7 @@ type EtcdS3 struct {
 	Proxy         string          `json:"proxy,omitempty"`
 	Region        string          `json:"region,omitempty"`
 	SecretKey     string          `json:"secretKey,omitempty"`
+	SessionToken  string          `json:"sessionToken,omitempty"`
 	Insecure      bool            `json:"insecure,omitempty"`
 	SkipSSLVerify bool            `json:"skipSSLVerify,omitempty"`
 	Timeout       metav1.Duration `json:"timeout,omitempty"`
@@ -92,6 +93,7 @@ type Containerd struct {
 	NonrootDevices bool
 	SELinux        bool
 	Debug          bool
+	ConfigVersion  int
 }
 
 type CRIDockerd struct {
@@ -117,6 +119,7 @@ type Agent struct {
 	ClusterDomain           string
 	ResolvConf              string
 	RootDir                 string
+	KubeletConfigDir        string
 	KubeConfigKubelet       string
 	KubeConfigKubeProxy     string
 	KubeConfigK3sController string
@@ -371,10 +374,17 @@ type ControlRuntime struct {
 	ClientETCDCert           string
 	ClientETCDKey            string
 
+	K8s        kubernetes.Interface
 	K3s        *k3s.Factory
-	Core       *core.Factory
+	Core       CoreFactory
 	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
+}
+
+type CoreFactory interface {
+	Core() core.Interface
+	Sync(ctx context.Context) error
+	Start(ctx context.Context, defaultThreadiness int) error
 }
 
 func NewRuntime(containerRuntimeReady <-chan struct{}) *ControlRuntime {

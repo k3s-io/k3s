@@ -7,8 +7,18 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/util"
 )
 
+// lbConfig stores loadbalancer state that should be persisted across restarts.
+type lbConfig struct {
+	ServerURL       string   `json:"ServerURL"`
+	ServerAddresses []string `json:"ServerAddresses"`
+}
+
 func (lb *LoadBalancer) writeConfig() error {
-	configOut, err := json.MarshalIndent(lb, "", "  ")
+	config := &lbConfig{
+		ServerURL:       lb.scheme + "://" + lb.servers.getDefaultAddress(),
+		ServerAddresses: lb.servers.getAddresses(),
+	}
+	configOut, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -16,20 +26,17 @@ func (lb *LoadBalancer) writeConfig() error {
 }
 
 func (lb *LoadBalancer) updateConfig() error {
-	writeConfig := true
 	if configBytes, err := os.ReadFile(lb.configFile); err == nil {
-		config := &LoadBalancer{}
+		config := &lbConfig{}
 		if err := json.Unmarshal(configBytes, config); err == nil {
-			if config.ServerURL == lb.ServerURL {
-				writeConfig = false
-				lb.setServers(config.ServerAddresses)
+			// if the default server from the config matches our current default,
+			// load the rest of the addresses as well.
+			if config.ServerURL == lb.scheme+"://"+lb.servers.getDefaultAddress() {
+				lb.Update(config.ServerAddresses)
+				return nil
 			}
 		}
 	}
-	if writeConfig {
-		if err := lb.writeConfig(); err != nil {
-			return err
-		}
-	}
-	return nil
+	// config didn't exist or used a different default server, write the current config to disk.
+	return lb.writeConfig()
 }

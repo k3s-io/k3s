@@ -95,7 +95,7 @@ set -o noglob
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
 
-GITHUB_URL=https://github.com/k3s-io/k3s/releases
+GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
 GITHUB_PR_URL=""
 STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
@@ -423,22 +423,34 @@ get_k3s_selinux_version() {
 # --- download from github url ---
 download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
+
+    # Disable exit-on-error so we can do custom error messages on failure
     set +e
+
+    # Default to a failure status
+    status=1
+
     case $DOWNLOADER in
         curl)
             curl -o $1 -sfL $2
+            status=$?
             ;;
         wget)
             wget -qO $1 $2
+            status=$?
             ;;
         *)
+	    # Enable exit-on-error for fatal to execute
+	    set -e
             fatal "Incorrect executable '$DOWNLOADER'"
             ;;
     esac
 
-    # Abort if download command failed
-    [ $? -eq 0 ] || fatal 'Download failed'
+    # Re-enable exit-on-error
     set -e
+
+    # Abort if download command failed
+    [ $status -eq 0 ] || fatal 'Download failed'
 }
 
 # --- download hash from github url ---
@@ -498,18 +510,12 @@ get_pr_artifact_url() {
     if [ -z "${commit_id}" ]; then
         fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
-    
-    # GET request to the GitHub API to retrieve the Build workflow associated with the commit
-    wf_raw=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs")
-    build_workflow=$(printf "%s" "${wf_raw}" | jq -r '.check_runs[] |  select(.name == "build / Build")')
-    
-    # Extract the Run ID from the build workflow and lookup artifacts associated with the run
-    run_id=$(echo "${build_workflow}" | jq -r ' .details_url' | awk -F'/' '{print $(NF-2)}' | sort -rn | head -1)
 
-    # Extract the artifact ID for the "k3s" artifact    
-    artifacts=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts")
-    artifacts_url=$(echo "${artifacts}" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
-    GITHUB_PR_URL="${artifacts_url}"
+    # GET request to the GitHub API to retrieve the Build workflow associated with the commit
+    run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
+
+    # Extract the artifact ID for the "k3s" artifact
+    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
 }
 
 # --- download binary from github url ---
@@ -620,7 +626,7 @@ setup_selinux() {
     install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
 
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] || 
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] ||
        [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = iot ]; then
         policy_error=warn
     fi
@@ -640,7 +646,7 @@ setup_selinux() {
 }
 
 install_selinux_rpm() {
-    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || 
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] ||
        [ -r /etc/fedora-release ] || [ -r /etc/system-release ] || [ "${ID_LIKE%%[ ]*}" = "suse" ]; then
         repodir=/etc/yum.repos.d
         if [ -d /etc/zypp/repos.d ]; then
@@ -769,7 +775,7 @@ create_killall() {
     info "Creating killall script ${KILLALL_K3S_SH}"
     $SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
 #!/bin/sh
-[ $(id -u) -eq 0 ] || exec sudo $0 $@
+[ $(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR $0 $@
 
 K3S_DATA_DIR=${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 
@@ -871,7 +877,7 @@ create_uninstall() {
     $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
 #!/bin/sh
 set -x
-[ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
+[ \$(id -u) -eq 0 ] || exec sudo --preserve-env=K3S_DATA_DIR \$0 \$@
 
 K3S_DATA_DIR=\${K3S_DATA_DIR:-/var/lib/rancher/k3s}
 

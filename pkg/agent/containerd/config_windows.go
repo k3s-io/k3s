@@ -4,7 +4,9 @@
 package containerd
 
 import (
-	"github.com/containerd/containerd"
+	"net"
+
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	util3 "github.com/k3s-io/k3s/pkg/util"
@@ -13,11 +15,23 @@ import (
 	"k8s.io/cri-client/pkg/util"
 )
 
+// hostDirectory returns the name of the host dir for a given registry.
+// Colons are not allowed in windows paths, so convert `:port` to `_port_`.
+// Ref: https://github.com/containerd/containerd/blob/v1.7.25/remotes/docker/config/hosts.go#L291-L298
+func hostDirectory(host string) string {
+	if host, port, err := net.SplitHostPort(host); err == nil && port != "" {
+		return host + "_" + port + "_"
+	}
+	return host
+}
+
 func getContainerdArgs(cfg *config.Node) []string {
 	args := []string{
 		"containerd",
 		"-c", cfg.Containerd.Config,
 	}
+	// The legacy version 2 windows containerd config template did include
+	// address/state/root settings, so they do not need to be passed on the command line.
 	return args
 }
 
@@ -28,11 +42,11 @@ func SetupContainerdConfig(cfg *config.Node) error {
 		logrus.Warn("SELinux isn't supported on windows")
 	}
 
+	cfg.DefaultRuntime = "runhcs-wcow-process"
+	cfg.AgentConfig.Snapshotter = "windows"
 	containerdConfig := templates.ContainerdConfig{
 		NodeConfig:            cfg,
 		DisableCgroup:         true,
-		SystemdCgroup:         false,
-		IsRunningInUserNS:     false,
 		PrivateRegistryConfig: cfg.AgentConfig.Registry,
 		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
 	}

@@ -31,8 +31,8 @@ get-module-path(){
   go list -m -f '{{if .Replace}}{{.Replace.Path}}{{else}}{{.Path}}{{end}}' $1
 }
 
-PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd)
-VERSION_CONTAINERD=$(get-module-version github.com/containerd/containerd)
+PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd/v2)
+VERSION_CONTAINERD=$(get-module-version github.com/containerd/containerd/v2)
 if [ -z "$VERSION_CONTAINERD" ]; then
     VERSION_CONTAINERD="v0.0.0"
 fi
@@ -76,7 +76,7 @@ if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.14.0"
+VERSION_ROOT="v0.14.1"
 
 DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
 VERSION_GOLANG="go"$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)

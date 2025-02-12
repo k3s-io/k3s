@@ -8,7 +8,7 @@ cd $(dirname $0)/..
 GO=${GO-go}
 
 PKG="github.com/k3s-io/k3s"
-PKG_CONTAINERD="github.com/containerd/containerd"
+PKG_CONTAINERD="github.com/containerd/containerd/v2"
 PKG_CRICTL="sigs.k8s.io/cri-tools/pkg"
 PKG_K8S_BASE="k8s.io/component-base"
 PKG_K8S_CLIENT="k8s.io/client-go/pkg"
@@ -60,29 +60,42 @@ else
   LDFLAGS="-w -s"
 fi
 
-STATIC="
-    -extldflags '-static -lm -ldl -lz -lpthread'
-"
-TAGS="ctrd apparmor seccomp netcgo osusergo providerless urfave_cli_no_docs"
-RUNC_TAGS="apparmor seccomp"
-RUNC_STATIC="static"
+STATIC=""
+TAGS="ctrd netcgo osusergo providerless urfave_cli_no_docs sqlite_omit_load_extension"
+RUNC_STATIC=""
+RUNC_TAGS=""
 
-if [ ${OS} = windows ]; then
-    TAGS="ctrd netcgo osusergo providerless"
-fi
+case ${OS} in
+  linux)
+    TAGS="$TAGS apparmor seccomp"
+    RUNC_TAGS="$RUNC_TAGS apparmor seccomp"
 
-if [ "$SELINUX" = "true" ]; then
-    TAGS="$TAGS selinux"
-    RUNC_TAGS="$RUNC_TAGS selinux"
-fi
+    if [ "$STATIC_BUILD" == "true" ]; then
+      STATIC=$'\n-extldflags \'-static -lm -ldl -lz -lpthread\'\n'
+      TAGS="static_build libsqlite3 $TAGS"
+      RUNC_STATIC="static"
+    fi
+    if [ "$SELINUX" = "true" ]; then
+      TAGS="$TAGS selinux"
+      RUNC_TAGS="$RUNC_TAGS selinux"
+    fi
+    ;;
+  windows)
+    TAGS="$TAGS no_cri_dockerd"
 
-if [ "$STATIC_BUILD" != "true" ]; then
-    STATIC="
-"
-    RUNC_STATIC=""
-else
-    TAGS="static_build libsqlite3 $TAGS"
-fi
+    if [ "$STATIC_BUILD" == "true" ]; then
+      STATIC=$'\n-extldflags \'-static -lpthread\'\n'
+      TAGS="static_build $TAGS"
+    fi
+
+    export CXX="x86_64-w64-mingw32-g++"
+    export CC="x86_64-w64-mingw32-gcc"
+    ;;
+  *)
+    echo "[ERROR] unrecognized opertaing system: ${OS}"
+    exit 1
+    ;;
+esac
 
 if [ -n "${GOCOVER}" ]; then
     BLDFLAGS="-cover"

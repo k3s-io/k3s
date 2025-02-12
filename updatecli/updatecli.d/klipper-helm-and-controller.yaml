@@ -46,8 +46,8 @@ sources:
       repository: "{{ .helm_controller.repo }}"
       branch: "{{ .helm_controller.branch }}"
       token: "{{ requiredEnv .github.token }}"
-      versionfilter:
-        kind: "latest"
+      typefilter:
+        latest: true
   klipper-helm:
     name: "Get Klipper Helm latest release version"
     kind: "githubrelease"
@@ -56,8 +56,8 @@ sources:
       repository: "{{ .klipper_helm.repo }}"
       branch: "{{ .klipper_helm.branch }}"
       token: "{{ requiredEnv .github.token }}"
-      versionfilter:
-        kind: "latest"
+      typefilter:
+        latest: true
   get-pwd:
     name: "Run Updatecli execution directory"
     kind: "shell"

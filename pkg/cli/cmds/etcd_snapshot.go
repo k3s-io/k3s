@@ -34,7 +34,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
-		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
+		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/server/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
 	&cli.StringFlag{
@@ -86,6 +86,12 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Usage:       "(db) S3 secret key",
 		EnvVar:      "AWS_SECRET_ACCESS_KEY",
 		Destination: &ServerConfig.EtcdS3SecretKey,
+	},
+	&cli.StringFlag{
+		Name:        "s3-session-token,etcd-s3-session-token",
+		Usage:       "(db) S3 session token",
+		EnvVar:      "AWS_SESSION_TOKEN",
+		Destination: &ServerConfig.EtcdS3SessionToken,
 	},
 	&cli.StringFlag{
 		Name:        "s3-bucket,etcd-s3-bucket",

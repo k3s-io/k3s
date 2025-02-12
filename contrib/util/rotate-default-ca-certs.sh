@@ -131,4 +131,4 @@ echo "Updated server token:    ${SERVER_TOKEN}"
 echo "Updated agent token:     ${AGENT_TOKEN}"
 echo
 echo "To update certificates, you may now run:"
-echo "    k3s certificate rotate-ca --path=${TEMP_DIR}"
+echo "    ${PRODUCT} certificate rotate-ca --path=${TEMP_DIR}"

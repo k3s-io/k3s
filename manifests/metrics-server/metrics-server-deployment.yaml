@@ -38,6 +38,8 @@ spec:
         - key: "node-role.kubernetes.io/master"
           operator: "Exists"
           effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/os: linux
       volumes:
       # mount in tmp so we can safely use from-scratch images and/or read-only containers
       - name: tmp-dir

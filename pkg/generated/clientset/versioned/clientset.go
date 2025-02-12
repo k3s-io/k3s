@@ -19,8 +19,8 @@ limitations under the License.
 package versioned
 
 import (
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	http "net/http"
 
 	k3sv1 "github.com/k3s-io/k3s/pkg/generated/clientset/versioned/typed/k3s.cattle.io/v1"
 	discovery "k8s.io/client-go/discovery"

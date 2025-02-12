@@ -26,6 +26,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/pkg/errors"
@@ -72,8 +73,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return err
 	}
 
-	if !cfg.DisableAgent && os.Getuid() != 0 && !cfg.Rootless {
-		return fmt.Errorf("server must run as root, or with --rootless and/or --disable-agent")
+	if !cfg.DisableAgent && !cfg.Rootless {
+		if err := permissions.IsPrivileged(); err != nil {
+			return errors.Wrap(err, "server requires additional privilege when not run with --rootless and/or --disable-agent")
+		}
 	}
 
 	if cfg.Rootless {
@@ -197,6 +200,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 				Proxy:         cfg.EtcdS3Proxy,
 				Region:        cfg.EtcdS3Region,
 				SecretKey:     cfg.EtcdS3SecretKey,
+				SessionToken:  cfg.EtcdS3SessionToken,
 				SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
 				Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
 			}

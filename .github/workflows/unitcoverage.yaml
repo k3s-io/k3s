@@ -26,8 +26,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Unit Tests
+  test-unit-linux:
+    name: Unit Tests (linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -38,8 +38,8 @@ jobs:
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Run Unit Tests
-      run: | 
-        go test -coverpkg=./... -coverprofile=coverage.out ./pkg/... -run Unit
+      run: |
+        go test -coverpkg ./pkg/... -coverprofile coverage.out ./pkg/... -run Unit
         go tool cover -func coverage.out
     - name: On Failure, Launch Debug Session
       if: ${{ failure() }}
@@ -47,7 +47,31 @@ jobs:
       with:
         wait-timeout-minutes: 5
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.out
+        flags: unittests # optional
+        verbose: true # optional (default = false)
+  test-unit-windows:
+    name: Unit Tests (windows)
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        cache: false
+    - name: Run Unit Tests
+      run: |
+        go test -coverpkg ./pkg/... -coverprofile coverage.out ./pkg/... -run Unit
+        go tool cover -func coverage.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.out

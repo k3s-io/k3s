@@ -101,6 +101,7 @@ type Server struct {
 	EtcdS3SkipSSLVerify      bool
 	EtcdS3AccessKey          string
 	EtcdS3SecretKey          string
+	EtcdS3SessionToken       string
 	EtcdS3BucketName         string
 	EtcdS3Region             string
 	EtcdS3Folder             string
@@ -143,7 +144,7 @@ var (
 	}
 	ClusterDNS = &cli.StringSliceFlag{
 		Name:  "cluster-dns",
-		Usage: "(networking) IPv4 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+		Usage: "(networking) IPv4/IPv6 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
 		Value: &ServerConfig.ClusterDNS,
 	}
 	ClusterDomain = &cli.StringFlag{
@@ -188,6 +189,27 @@ var ServerFlags = []cli.Flag{
 		Value:       6443,
 		Destination: &ServerConfig.HTTPSPort,
 	},
+	&cli.IntFlag{
+		Name:        "supervisor-port",
+		EnvVar:      version.ProgramUpper + "_SUPERVISOR_PORT",
+		Usage:       "(experimental) Supervisor listen port override",
+		Hidden:      true,
+		Destination: &ServerConfig.SupervisorPort,
+	},
+	&cli.IntFlag{
+		Name:        "apiserver-port",
+		EnvVar:      version.ProgramUpper + "_APISERVER_PORT",
+		Usage:       "(experimental) apiserver internal listen port override",
+		Hidden:      true,
+		Destination: &ServerConfig.APIServerPort,
+	},
+	&cli.StringFlag{
+		Name:        "apiserver-bind-address",
+		EnvVar:      version.ProgramUpper + "_APISERVER_BIND_ADDRESS",
+		Usage:       "(experimental) apiserver internal bind address override",
+		Hidden:      true,
+		Destination: &ServerConfig.APIServerBindAddress,
+	},
 	&cli.StringFlag{
 		Name:        "advertise-address",
 		Usage:       "(listener) IPv4/IPv6 address that apiserver uses to advertise to members of the cluster (default: node-external-ip/node-ip)",
@@ -195,7 +217,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.IntFlag{
 		Name:        "advertise-port",
-		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: listen-port)",
+		Usage:       "(listener) Port that apiserver uses to advertise to members of the cluster (default: https-listen-port)",
 		Destination: &ServerConfig.AdvertisePort,
 	},
 	&cli.StringSliceFlag{
@@ -376,7 +398,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "etcd-snapshot-dir",
-		Usage:       "(db) Directory to save db snapshots. (default: ${data-dir}/db/snapshots)",
+		Usage:       "(db) Directory to save db snapshots. (default: ${data-dir}/server/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
 	&cli.BoolFlag{
@@ -416,6 +438,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(db) S3 secret key",
 		EnvVar:      "AWS_SECRET_ACCESS_KEY",
 		Destination: &ServerConfig.EtcdS3SecretKey,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-s3-session-token",
+		Usage:       "(db) S3 session token",
+		EnvVar:      "AWS_SESSION_TOKEN",
+		Destination: &ServerConfig.EtcdS3SessionToken,
 	},
 	&cli.StringFlag{
 		Name:        "etcd-s3-bucket",
@@ -508,7 +536,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "embedded-registry",
-		Usage:       "(experimental/components) Enable embedded distributed container registry; requires use of embedded containerd; when enabled agents will also listen on the supervisor port",
+		Usage:       "(components) Enable embedded distributed container registry; requires use of embedded containerd; when enabled agents will also listen on the supervisor port",
 		Destination: &ServerConfig.EmbeddedRegistry,
 	},
 	&cli.BoolFlag{
