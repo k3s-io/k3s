@@ -123,7 +123,9 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	//setup forward rules
 	trafficMngr.SetupAndEnsureForwardRules(ctx, config.Network, config.IPv6Network, 50)
 
-	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, !flannelIPv4NoMasq, bn, netMode); err != nil {
+	//ipMask argument MUST stay hardcoded to true otherwise, the underlying bridge will apply MASQ rules
+	//for IPv4 and IPv6 as documented in https://github.com/flannel-io/cni-plugin/blob/main/README.md
+	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, netMode); err != nil {
 		// Continue, even though it failed.
 		logrus.Warningf("Failed to write flannel subnet file: %s", err)
 	} else {
