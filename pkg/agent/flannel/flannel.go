@@ -50,7 +50,7 @@ var (
 	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
 )
 
-func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
+func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv4NoMasq bool, flannelIPv6Masq bool, netMode int) error {
 	extIface, err := LookupExtInterface(flannelIface, netMode)
 	if err != nil {
 		return errors.Wrap(err, "failed to find the interface")
@@ -101,12 +101,21 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 
 	prevIPv6Network := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_NETWORK")
 	prevIPv6Subnet := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_SUBNET")
-	if flannelIPv6Masq {
-		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, config.IPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
-	} else {
-		//set empty flannel ipv6 Network to prevent masquerading
-		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
+
+	masqNetwork := &config.Network
+	masqIPv6Network := &ip.IP6Net{}
+
+	if flannelIPv4NoMasq {
+		//disable nat rules for IPv4
+		masqNetwork = &ip.IP4Net{}
 	}
+
+	if flannelIPv6Masq {
+		//enable nat rules for IPv6
+		masqIPv6Network = &config.IPv6Network
+	}
+
+	err = trafficMngr.SetupAndEnsureMasqRules(ctx, *masqNetwork, prevSubnet, prevNetwork, *masqIPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup masq rules")
 	}
@@ -114,7 +123,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	//setup forward rules
 	trafficMngr.SetupAndEnsureForwardRules(ctx, config.Network, config.IPv6Network, 50)
 
-	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, netMode); err != nil {
+	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, !flannelIPv4NoMasq, bn, netMode); err != nil {
 		// Continue, even though it failed.
 		logrus.Warningf("Failed to write flannel subnet file: %s", err)
 	} else {
@@ -263,7 +272,6 @@ func ReadCIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP4Net {
 	}
 	return prevCIDRs
 }
-
 
 // ReadIP6CIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv6 network CIDRKey
 func ReadIP6CIDRFromSubnetFile(path string, CIDRKey string) ip.IP6Net {

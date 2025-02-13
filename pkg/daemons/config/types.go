@@ -49,6 +49,7 @@ type Node struct {
 	FlannelConfFile          string
 	FlannelConfOverride      bool
 	FlannelIface             *net.Interface
+	FlannelIPv4NoMasq        bool
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
 	EgressSelectorMode       string
@@ -180,6 +181,7 @@ type CriticalControlArgs struct {
 	EncryptSecrets        bool         `cli:"secrets-encryption"`
 	EmbeddedRegistry      bool         `cli:"embedded-registry"`
 	FlannelBackend        string       `cli:"flannel-backend"`
+	FlannelIPv4NoMasq     bool         `cli:"flannel-ipv4-no-masq"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
 	EgressSelectorMode    string       `cli:"egress-selector-mode"`
