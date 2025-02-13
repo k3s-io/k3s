@@ -97,7 +97,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return errors.Wrap(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, netMode)
+		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv4NoMasq, nodeConfig.FlannelIPv6Masq, netMode)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("flannel exited: %v", err)
 			os.Exit(1)
