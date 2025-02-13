@@ -48,8 +48,7 @@ const (
 
 	wireguardNativeBackend = `{
 	"Type": "wireguard",
-	"PersistentKeepaliveInterval": %PersistentKeepaliveInterval%,
-	"Mode": "%Mode%"
+	"PersistentKeepaliveInterval": 25
 }`
 
 	emptyIPv6Network = "::/0"
@@ -210,7 +209,6 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	}
 
 	var backendConf string
-	backendOptions := make(map[string]string)
 
 	// precheck and error out unsupported flannel backends.
 	switch nodeConfig.FlannelBackend {
@@ -241,16 +239,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 		backendConf = strings.ReplaceAll(tailscaledBackend, "%Routes%", routes)
 	case config.FlannelBackendWireguardNative:
-		mode, ok := backendOptions["Mode"]
-		if !ok {
-			mode = "separate"
-		}
-		keepalive, ok := backendOptions["PersistentKeepaliveInterval"]
-		if !ok {
-			keepalive = "25"
-		}
-		backendConf = strings.ReplaceAll(wireguardNativeBackend, "%Mode%", mode)
-		backendConf = strings.ReplaceAll(backendConf, "%PersistentKeepaliveInterval%", keepalive)
+		backendConf = wireguardNativeBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
 	}
