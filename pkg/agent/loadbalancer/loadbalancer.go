@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/inetaf/tcpproxy"
+	"github.com/k3s-io/k3s/pkg/util/metrics"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 )
@@ -99,13 +100,8 @@ func New(ctx context.Context, dataDir, serviceName, defaultServerURL string, lbS
 		OnDialError: onDialError,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 			start := time.Now()
-			status := "success"
 			conn, err := lb.servers.dialContext(ctx, network, address)
-			latency := time.Since(start)
-			if err != nil {
-				status = "error"
-			}
-			loadbalancerDials.WithLabelValues(serviceName, status).Observe(latency.Seconds())
+			metrics.ObserveWithStatus(loadbalancerDials, start, err, serviceName)
 			return conn, err
 		},
 	})
