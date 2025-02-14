@@ -8,6 +8,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	lassometrics "github.com/rancher/lasso/pkg/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
@@ -35,6 +36,8 @@ func init() {
 	lassometrics.MustRegister(DefaultRegisterer)
 	// same for loadbalancer metrics
 	loadbalancer.MustRegister(DefaultRegisterer)
+	// and etcd snapshot metrics
+	etcd.MustRegister(DefaultRegisterer)
 }
 
 // Config holds fields for the metrics listener
