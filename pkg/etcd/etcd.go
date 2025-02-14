@@ -27,6 +27,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd/s3"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
+	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -661,8 +662,11 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 		}
 	}
 
-	// Tombstone file checking is unnecessary if we're not running etcd.
 	if !e.config.DisableETCD {
+		// register metrics
+		metrics.DefaultRegisterer.MustRegister(snapshotResourceCount, snapshotSaveCount, snapshotSaveTime, snapshotS3Count, snapshotS3Time)
+
+		// tombstone file checking is unnecessary if we're not running etcd.
 		tombstoneFile := filepath.Join(dbDir(e.config), "tombstone")
 		if _, err := os.Stat(tombstoneFile); err == nil {
 			logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
@@ -671,6 +675,7 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 			}
 		}
 
+		// ensure that the name file exists
 		if err := e.setName(false); err != nil {
 			return nil, err
 		}
