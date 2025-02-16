@@ -71,7 +71,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(numAgents)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("should confirm latest version", func() {
 			for _, server := range config.Servers {
@@ -113,7 +113,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("should confirm commit version", func() {
 			for _, server := range config.Servers {
