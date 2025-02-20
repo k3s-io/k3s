@@ -109,7 +109,7 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 			for _, endpoint := range endpoints {
 				url := fmt.Sprintf("http://%s/%s", ingressIPs[0], endpoint)
 				fmt.Printf("Connecting to Wasm web application at: %s\n", url)
-				cmd := "curl -sfv " + url
+				cmd := "curl -m 5 -s -f -v " + url
 
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
