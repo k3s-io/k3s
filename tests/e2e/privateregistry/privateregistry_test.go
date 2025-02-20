@@ -123,7 +123,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				g.Expect(string(pod.Status.Phase)).Should(Equal("Running"))
 			}, "60s", "5s").Should(Succeed())
 
-			cmd := "curl " + pod.Status.PodIP
+			cmd := "curl -m 5 -s -f http://" + pod.Status.PodIP
 			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
 		})
 
