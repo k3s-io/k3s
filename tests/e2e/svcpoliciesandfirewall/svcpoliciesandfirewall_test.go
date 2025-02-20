@@ -132,14 +132,14 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Verify connectivity to the external IP of the lbsvc service and the IP should be the flannel interface IP because of MASQ
 			for _, externalIP := range lbSvcExternalIPs {
 				Eventually(func() (string, error) {
-					cmd := "curl -s " + externalIP + ":81/ip"
+					cmd := "curl -m 5 -s -f http://" + externalIP + ":81/ip"
 					return e2e.RunCommand(cmd)
 				}, "25s", "5s").Should(ContainSubstring("10.42"))
 			}
 
 			// Verify connectivity to the external IP of the lbsvcExt service and the IP should not be the flannel interface IP
 			Eventually(func() (string, error) {
-				cmd := "curl -s " + lbSvcExtExternalIPs[0] + ":82/ip"
+				cmd := "curl -m 5 -s -f http://" + lbSvcExtExternalIPs[0] + ":82/ip"
 				return e2e.RunCommand(cmd)
 			}, "25s", "5s").ShouldNot(ContainSubstring("10.42"))
 
@@ -150,7 +150,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 					continue
 				}
 				Eventually(func() error {
-					cmd := "curl -s --max-time 5 " + externalIP + ":82/ip"
+					cmd := "curl -m 5 -s -f http://" + externalIP + ":82/ip"
 					_, err := e2e.RunCommand(cmd)
 					return err
 				}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
@@ -221,12 +221,12 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			var workingCmd, nonWorkingCmd string
 			if serverNodeName == clientPod1Node {
-				workingCmd = "kubectl exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
-				nonWorkingCmd = "kubectl exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+				workingCmd = "kubectl exec " + clientPod1 + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip"
+				nonWorkingCmd = "kubectl exec " + clientPod2 + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip"
 			}
 			if serverNodeName == clientPod2Node {
-				workingCmd = "kubectl exec " + clientPod2 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
-				nonWorkingCmd = "kubectl exec " + clientPod1 + " -- curl -s --max-time 5 nginx-loadbalancer-svc-int:83/ip"
+				workingCmd = "kubectl exec " + clientPod2 + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip"
+				nonWorkingCmd = "kubectl exec " + clientPod1 + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip"
 			}
 
 			Eventually(func() (string, error) {
@@ -249,7 +249,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// curling a service with internal traffic policy=cluster. It should work on both pods
 			for _, pod := range []string{clientPod1, clientPod2} {
-				cmd := "kubectl exec " + pod + " -- curl -s --max-time 5 nginx-loadbalancer-svc:81/ip"
+				cmd := "kubectl exec " + pod + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc:81/ip"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "20s", "5s").Should(SatisfyAny(
@@ -328,13 +328,13 @@ selector:
 
 				// Verify connectivity from nodes[0] works because we passed its IP to the loadBalancerSourceRanges
 				Eventually(func() (string, error) {
-					cmd := "curl -s --max-time 5 " + node.InternalIP + ":82"
+					cmd := "curl -m 5 -s -f http://" + node.InternalIP + ":82"
 					return sNode.RunCmdOnNode(cmd)
 				}, "40s", "5s").Should(ContainSubstring("Welcome to nginx"))
 
 				// Verify connectivity from nodes[1] fails because we did not pass its IP to the loadBalancerSourceRanges
 				Eventually(func(g Gomega) error {
-					cmd := "curl -s --max-time 5 " + node.InternalIP + ":82"
+					cmd := "curl -m 5 -s -f http:// " + node.InternalIP + ":82"
 					_, err := aNode.RunCmdOnNode(cmd)
 					return err
 				}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
