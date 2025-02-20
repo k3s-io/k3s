@@ -41,6 +41,10 @@ type TestConfig struct {
 	Agents         []VagrantNode
 }
 
+func (tc *TestConfig) AllNodes() []VagrantNode {
+	return tc.AllNodes()
+}
+
 func (tc *TestConfig) Status() string {
 	sN := strings.Join(VagrantSlice(tc.Servers), " ")
 	aN := strings.Join(VagrantSlice(tc.Agents), " ")
