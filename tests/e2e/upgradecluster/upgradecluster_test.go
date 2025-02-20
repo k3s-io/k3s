@@ -80,7 +80,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 			}, "240s", "5s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
 
 			clusterip, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-clusterip-svc", false)
-			cmd = "curl -L --insecure http://" + clusterip + "/name.html"
+			cmd = "curl -m 5 -s -f http://" + clusterip + "/name.html"
 			for _, node := range tc.Servers {
 				Eventually(func() (string, error) {
 					return node.RunCmdOnNode(cmd)
@@ -103,7 +103,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 
-				cmd = "curl -L --insecure http://" + nodeExternalIP + ":" + nodeport + "/name.html"
+				cmd = "curl -m 5 -s -f http://" + nodeExternalIP + ":" + nodeport + "/name.html"
 				fmt.Println(cmd)
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
@@ -125,7 +125,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"))
 
-				cmd = "curl -L --insecure http://" + ip + ":" + port + "/name.html"
+				cmd = "curl -m 5 -s -f http://" + ip + ":" + port + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"), "failed cmd: "+cmd)
@@ -138,7 +138,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
+				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-ingress"), "failed cmd: "+cmd)
@@ -260,7 +260,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 			}, "420s", "5s").Should(ContainSubstring("test-clusterip"))
 
 			clusterip, _ := e2e.FetchClusterIP(tc.KubeConfigFile, "nginx-clusterip-svc", false)
-			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
+			cmd := "curl -m 5 -s -f http://" + clusterip + "/name.html"
 			fmt.Println(cmd)
 			for _, node := range tc.Servers {
 				Eventually(func() (string, error) {
@@ -282,7 +282,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 
-				cmd = "curl -L --insecure http://" + nodeExternalIP + ":" + nodeport + "/name.html"
+				cmd = "curl -m 5 -s -f http://" + nodeExternalIP + ":" + nodeport + "/name.html"
 				fmt.Println(cmd)
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
@@ -297,7 +297,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 				port, err := e2e.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(func() (string, error) {
-					cmd := "curl -L --insecure http://" + ip + ":" + port + "/name.html"
+					cmd := "curl -m 5 -s -f http://" + ip + ":" + port + "/name.html"
 					return e2e.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"))
 
@@ -311,7 +311,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		It("After upgrade verifies Ingress", func() {
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
+				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
 				fmt.Println(cmd)
 
 				Eventually(func() (string, error) {
