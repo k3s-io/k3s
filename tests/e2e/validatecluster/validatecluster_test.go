@@ -86,7 +86,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "240s", "5s").Should(Succeed())
 
 			clusterip, _ := e2e.FetchClusterIP(tc.KubeconfigFile, "nginx-clusterip-svc", false)
-			cmd := "curl -L --insecure http://" + clusterip + "/name.html"
+			cmd := "curl -m 5 -s -f http://" + clusterip + "/name.html"
 			for _, node := range tc.Servers {
 				Eventually(func(g Gomega) {
 					res, err := node.RunCmdOnNode(cmd)
@@ -113,7 +113,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 					g.Expect(res).Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 				}, "240s", "5s").Should(Succeed())
 
-				cmd = "curl -L --insecure http://" + nodeExternalIP + ":" + nodeport + "/name.html"
+				cmd = "curl -m 5 -s -f http://" + nodeExternalIP + ":" + nodeport + "/name.html"
 
 				Eventually(func(g Gomega) {
 					res, err := e2e.RunCommand(cmd)
@@ -142,7 +142,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				}, "240s", "5s").Should(Succeed())
 
 				Eventually(func(g Gomega) {
-					cmd = "curl -L --insecure http://" + ip + ":" + port + "/name.html"
+					cmd = "curl -m 5 -s -f http://" + ip + ":" + port + "/name.html"
 					res, err := e2e.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 					g.Expect(res).Should(ContainSubstring("test-loadbalancer"))
@@ -156,7 +156,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl  --header host:foo1.bar.com" + " http://" + ip + "/name.html"
+				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
 				fmt.Println(cmd)
 
 				Eventually(func(g Gomega) {

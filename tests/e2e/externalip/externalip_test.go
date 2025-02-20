@@ -127,7 +127,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			clientIPs, err := getClientIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, ip := range clientIPs {
-				cmd := "kubectl exec svc/client-curl -- curl -m7 " + ip.IPv4 + "/name.html"
+				cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "20s", "3s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
