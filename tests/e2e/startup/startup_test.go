@@ -127,6 +127,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server"}, tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
@@ -193,6 +196,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
@@ -234,6 +240,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 		It("Kills the cluster", func() {
@@ -267,6 +276,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 		It("Kills the cluster", func() {
@@ -300,6 +312,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
+			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
 
