@@ -105,7 +105,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 					if !strings.HasPrefix(pod.Name, "ds-clusterip-pod") {
 						continue
 					}
-					cmd := fmt.Sprintf("curl -L --insecure http://%s", ip)
+					cmd := fmt.Sprintf("curl -m 5 -s -f http://%s", ip)
 					Eventually(func() (string, error) {
 						return tc.Servers[0].RunCmdOnNode(cmd)
 					}, "60s", "5s").Should(ContainSubstring("Welcome to nginx!"), "failed cmd: "+cmd)
@@ -121,11 +121,11 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 			for _, node := range nodeIPs {
-				cmd := fmt.Sprintf("curl  --header host:%s http://%s/name.html", hostName, node.IPv4)
+				cmd := fmt.Sprintf("curl --header host:%s -m 5 -s -f http://%s/name.html", hostName, node.IPv4)
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "10s", "2s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
-				cmd = fmt.Sprintf("curl  --header host:%s http://[%s]/name.html", hostName, node.IPv6)
+				cmd = fmt.Sprintf("curl --header host:%s -m 5 -s -f http://[%s]/name.html", hostName, node.IPv6)
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "5s", "1s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
@@ -141,11 +141,11 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			nodeIPs, err := e2e.GetNodeIPs(tc.KubeConfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodeIPs {
-				cmd = "curl -L --insecure http://" + node.IPv4 + ":" + nodeport + "/name.html"
+				cmd = "curl -m 5 -s -f http://" + node.IPv4 + ":" + nodeport + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "10s", "1s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
-				cmd = "curl -L --insecure http://[" + node.IPv6 + "]:" + nodeport + "/name.html"
+				cmd = "curl -m 5 -s -f http://[" + node.IPv6 + "]:" + nodeport + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
 				}, "10s", "1s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
@@ -154,13 +154,13 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 		It("Verifies podSelector Network Policy", func() {
 			_, err := tc.DeployWorkload("pod_client.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd := "kubectl exec svc/client-curl -- curl -m7 ds-clusterip-svc/name.html"
+			cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
 			_, err = tc.DeployWorkload("netpol-fail.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd = "kubectl exec svc/client-curl -- curl -m7 ds-clusterip-svc/name.html"
+			cmd = "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
 			Eventually(func() error {
 				_, err = e2e.RunCommand(cmd)
 				Expect(err).To(HaveOccurred())
@@ -168,7 +168,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			}, "20s", "3s")
 			_, err = tc.DeployWorkload("netpol-work.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd = "kubectl exec svc/client-curl -- curl -m7 ds-clusterip-svc/name.html"
+			cmd = "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
 			Eventually(func() (string, error) {
 				return e2e.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
