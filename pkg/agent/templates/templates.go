@@ -114,8 +114,10 @@ snapshotter = "nix"
 {{end}}
 {{end}}
 
-{{- if not .NodeConfig.NoFlannel }}
+{{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins."io.containerd.grpc.v1.cri".cni]
+  {{ if .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIBinDir }}{{end}}
+  {{ if .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIConfDir }}{{end}}
   bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
   conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 {{end}}
@@ -200,9 +202,12 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
   sandbox = "{{ . }}"
 {{ end }}
 
+[plugins.'io.containerd.cri.v1.images'.registry]
+  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
+
 {{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins.'io.containerd.cri.v1.runtime'.cni]
-  {{ with .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" . }}{{ end }}
+  {{ with .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" . }}{{ end }}
   {{ with .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" . }}{{ end }}
 {{ end }}
 
