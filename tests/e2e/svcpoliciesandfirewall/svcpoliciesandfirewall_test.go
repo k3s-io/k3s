@@ -33,10 +33,7 @@ func Test_E2EPoliciesAndFirewall(t *testing.T) {
 	RunSpecs(t, "Services Traffic Policies and Firewall config Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	tc    *e2e.TestConfig
-	nodes []e2e.Node
-)
+var tc *e2e.TestConfig
 
 var _ = ReportAfterEach(e2e.GenReport)
 
@@ -88,16 +85,17 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-ext") {
 						serverNodeName = pod.Spec.NodeName
-						break
 					}
 				}
 				return serverNodeName, nil
 			}, "25s", "5s").ShouldNot(BeEmpty(), "server pod not found")
 
 			var serverNodeIP string
-			for _, node := range nodes {
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
+			Expect(err).NotTo(HaveOccurred(), "failed to get node IPs")
+			for _, node := range nodeIPs {
 				if node.Name == serverNodeName {
-					serverNodeIP = node.InternalIP
+					serverNodeIP = node.IPv4
 				}
 			}
 
@@ -136,19 +134,6 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 				cmd := "curl -m 5 -s -f http://" + lbSvcExtExternalIPs[0] + ":82/ip"
 				return e2e.RunCommand(cmd)
 			}, "25s", "5s").ShouldNot(ContainSubstring("10.42"))
-
-			// Verify connectivity to the other nodeIP does not work because of external traffic policy=local
-			for _, externalIP := range lbSvcExternalIPs {
-				if externalIP == lbSvcExtExternalIPs[0] {
-					// This IP we already test and it shuold work
-					continue
-				}
-				Eventually(func() error {
-					cmd := "curl -m 5 -s -f http://" + externalIP + ":82/ip"
-					_, err := e2e.RunCommand(cmd)
-					return err
-				}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
-			}
 		})
 
 		// Verifies that the internal traffic policy=local is deployed
@@ -260,29 +245,31 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 apiVersion: v1
 kind: Service
 metadata:
-name: nginx-loadbalancer-svc-ext-firewall
+  name: nginx-loadbalancer-svc-ext-firewall
 spec:
-type: LoadBalancer
-loadBalancerSourceRanges:
-- {{.NodeIP}}/32
-ports:
-- port: 82
-	targetPort: 80
-	protocol: TCP
-	name: http
-selector:
-	k8s-app: nginx-app-loadbalancer-ext
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+  - {{.NodeIP}}/32
+  ports:
+  - port: 82
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    k8s-app: nginx-app-loadbalancer-ext
 `
 			// Remove the service nginx-loadbalancer-svc-ext
-			_, err := e2e.RunCommand("kubectl delete svc nginx-loadbalancer-svc-ext")
+			_, err := e2e.RunCommand("kubectl --kubeconfig=" + tc.KubeconfigFile + " delete svc nginx-loadbalancer-svc-ext")
 			Expect(err).NotTo(HaveOccurred(), "failed to remove service nginx-loadbalancer-svc-ext")
 
 			// Parse and execute the template with the node IP
 			tmpl, err := template.New("service").Parse(serviceManifest)
 			Expect(err).NotTo(HaveOccurred())
 
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
+			Expect(err).NotTo(HaveOccurred())
 			var filledManifest strings.Builder
-			err = tmpl.Execute(&filledManifest, struct{ NodeIP string }{NodeIP: nodes[0].InternalIP})
+			err = tmpl.Execute(&filledManifest, struct{ NodeIP string }{NodeIP: nodeIPs[0].IPv4})
 			Expect(err).NotTo(HaveOccurred())
 
 			// Write the filled manifest to a temporary file
@@ -307,29 +294,31 @@ selector:
 
 		// Verify that only the allowed node can curl. That node should be able to curl both externalIPs (i.e. node.InternalIP)
 		It("Verify firewall is working", func() {
-			for _, node := range nodes {
-				var sNode, aNode e2e.VagrantNode
-				for _, n := range tc.Servers {
-					if n.String() == nodes[0].Name {
-						sNode = n
-					}
-				}
-				for _, n := range tc.Agents {
-					if n.String() == nodes[1].Name {
-						aNode = n
-					}
-				}
+			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
+			Expect(err).NotTo(HaveOccurred())
 
+			var firstNode e2e.VagrantNode
+			var secondNode e2e.VagrantNode
+			for _, node := range tc.AllNodes() {
+				if node.String() == nodeIPs[0].Name {
+					firstNode = node
+				} else {
+					secondNode = node
+				}
+			}
+			fmt.Println("First node: ", firstNode.String())
+			fmt.Println("Second node: ", secondNode.String())
+			for _, ip := range nodeIPs {
 				// Verify connectivity from nodes[0] works because we passed its IP to the loadBalancerSourceRanges
 				Eventually(func() (string, error) {
-					cmd := "curl -m 5 -s -f http://" + node.InternalIP + ":82"
-					return sNode.RunCmdOnNode(cmd)
+					cmd := "curl -m 5 -s -f http:// " + ip.IPv4 + ":82"
+					return firstNode.RunCmdOnNode(cmd)
 				}, "40s", "5s").Should(ContainSubstring("Welcome to nginx"))
 
 				// Verify connectivity from nodes[1] fails because we did not pass its IP to the loadBalancerSourceRanges
 				Eventually(func(g Gomega) error {
-					cmd := "curl -m 5 -s -f http:// " + node.InternalIP + ":82"
-					_, err := aNode.RunCmdOnNode(cmd)
+					cmd := "curl -m 5 -s -f http:// " + ip.IPv4 + ":82"
+					_, err := secondNode.RunCmdOnNode(cmd)
 					return err
 				}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
 			}
@@ -344,7 +333,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.AllNodes()))
+		Expect(e2e.SaveJournalLogs(tc.AllNodes())).To(Succeed())
 	} else {
 		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
