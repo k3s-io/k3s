@@ -9,54 +9,55 @@ import (
 )
 
 type Agent struct {
-	Token                    string
-	TokenFile                string
-	ClusterSecret            string
-	ServerURL                string
-	APIAddressCh             chan []string
-	DisableLoadBalancer      bool
-	DisableServiceLB         bool
-	ETCDAgent                bool
-	LBServerPort             int
-	ResolvConf               string
-	DataDir                  string
-	BindAddress              string
-	NodeIP                   cli.StringSlice
-	NodeExternalIP           cli.StringSlice
-	NodeInternalDNS          cli.StringSlice
-	NodeExternalDNS          cli.StringSlice
-	NodeName                 string
-	PauseImage               string
-	Snapshotter              string
-	Docker                   bool
-	ContainerdNoDefault      bool
-	ContainerdNonrootDevices bool
-	ContainerRuntimeEndpoint string
-	DefaultRuntime           string
-	ImageServiceEndpoint     string
-	FlannelIface             string
-	FlannelConf              string
-	FlannelCniConfFile       string
-	VPNAuth                  string
-	VPNAuthFile              string
-	Debug                    bool
-	EnablePProf              bool
-	Rootless                 bool
-	RootlessAlreadyUnshared  bool
-	WithNodeID               bool
-	EnableSELinux            bool
-	ProtectKernelDefaults    bool
-	ClusterReset             bool
-	PrivateRegistry          string
-	SystemDefaultRegistry    string
-	AirgapExtraRegistry      cli.StringSlice
-	ExtraKubeletArgs         cli.StringSlice
-	ExtraKubeProxyArgs       cli.StringSlice
-	Labels                   cli.StringSlice
-	Taints                   cli.StringSlice
-	ImageCredProvBinDir      string
-	ImageCredProvConfig      string
-	ContainerRuntimeReady    chan<- struct{}
+	Token                                  string
+	TokenFile                              string
+	ClusterSecret                          string
+	ServerURL                              string
+	APIAddressCh                           chan []string
+	DisableLoadBalancer                    bool
+	DisableServiceLB                       bool
+	ETCDAgent                              bool
+	LBServerPort                           int
+	ResolvConf                             string
+	DataDir                                string
+	BindAddress                            string
+	NodeIP                                 cli.StringSlice
+	NodeExternalIP                         cli.StringSlice
+	NodeInternalDNS                        cli.StringSlice
+	NodeExternalDNS                        cli.StringSlice
+	NodeName                               string
+	PauseImage                             string
+	Snapshotter                            string
+	Docker                                 bool
+	ContainerdNoDefault                    bool
+	ContainerdNonrootDevices               bool
+	ContainerdPrivilegedWithoutHostDevices bool
+	ContainerRuntimeEndpoint               string
+	DefaultRuntime                         string
+	ImageServiceEndpoint                   string
+	FlannelIface                           string
+	FlannelConf                            string
+	FlannelCniConfFile                     string
+	VPNAuth                                string
+	VPNAuthFile                            string
+	Debug                                  bool
+	EnablePProf                            bool
+	Rootless                               bool
+	RootlessAlreadyUnshared                bool
+	WithNodeID                             bool
+	EnableSELinux                          bool
+	ProtectKernelDefaults                  bool
+	ClusterReset                           bool
+	PrivateRegistry                        string
+	SystemDefaultRegistry                  string
+	AirgapExtraRegistry                    cli.StringSlice
+	ExtraKubeletArgs                       cli.StringSlice
+	ExtraKubeProxyArgs                     cli.StringSlice
+	Labels                                 cli.StringSlice
+	Taints                                 cli.StringSlice
+	ImageCredProvBinDir                    string
+	ImageCredProvConfig                    string
+	ContainerRuntimeReady                  chan<- struct{}
 	AgentShared
 }
 
@@ -245,6 +246,11 @@ var (
 		Name:        "nonroot-devices",
 		Usage:       "(agent/containerd) Allows non-root pods to access devices by setting device_ownership_from_security_context=true in the containerd CRI config",
 		Destination: &AgentConfig.ContainerdNonrootDevices,
+	}
+	PrivilegedWithoutHostDevicesFlag = &cli.BoolFlag{
+		Name:        "privileged-without-host-devices",
+		Usage:       "(agent/containerd) Allows privileged containers to access devices by setting privileged_without_host_devices=true in the containerd CRI config",
+		Destination: &AgentConfig.ContainerdPrivilegedWithoutHostDevices,
 	}
 	EnablePProfFlag = &cli.BoolFlag{
 		Name:        "enable-pprof",

@@ -82,16 +82,17 @@ func SetupContainerdConfig(cfg *config.Node) error {
 	}
 
 	containerdConfig := templates.ContainerdConfig{
-		NodeConfig:            cfg,
-		DisableCgroup:         disableCgroup,
-		SystemdCgroup:         cfg.AgentConfig.Systemd,
-		IsRunningInUserNS:     isRunningInUserNS,
-		EnableUnprivileged:    kernel.CheckKernelVersion(4, 11, 0),
-		NonrootDevices:        cfg.Containerd.NonrootDevices,
-		PrivateRegistryConfig: cfg.AgentConfig.Registry,
-		ExtraRuntimes:         extraRuntimes,
-		Program:               version.Program,
-		NoDefaultEndpoint:     cfg.Containerd.NoDefault,
+		NodeConfig:                   cfg,
+		DisableCgroup:                disableCgroup,
+		SystemdCgroup:                cfg.AgentConfig.Systemd,
+		IsRunningInUserNS:            isRunningInUserNS,
+		EnableUnprivileged:           kernel.CheckKernelVersion(4, 11, 0),
+		NonrootDevices:               cfg.Containerd.NonrootDevices,
+		PrivilegedWithoutHostDevices: cfg.Containerd.PrivilegedWithoutHostDevices,
+		PrivateRegistryConfig:        cfg.AgentConfig.Registry,
+		ExtraRuntimes:                extraRuntimes,
+		Program:                      version.Program,
+		NoDefaultEndpoint:            cfg.Containerd.NoDefault,
 	}
 
 	selEnabled, selConfigured, err := selinuxStatus()

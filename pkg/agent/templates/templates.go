@@ -20,16 +20,17 @@ type ContainerdRuntimeConfig struct {
 }
 
 type ContainerdConfig struct {
-	NodeConfig            *config.Node
-	DisableCgroup         bool
-	SystemdCgroup         bool
-	IsRunningInUserNS     bool
-	EnableUnprivileged    bool
-	NoDefaultEndpoint     bool
-	NonrootDevices        bool
-	PrivateRegistryConfig *registries.Registry
-	ExtraRuntimes         map[string]ContainerdRuntimeConfig
-	Program               string
+	NodeConfig                   *config.Node
+	DisableCgroup                bool
+	SystemdCgroup                bool
+	IsRunningInUserNS            bool
+	EnableUnprivileged           bool
+	NoDefaultEndpoint            bool
+	NonrootDevices               bool
+	PrivilegedWithoutHostDevices bool
+	PrivateRegistryConfig        *registries.Registry
+	ExtraRuntimes                map[string]ContainerdRuntimeConfig
+	Program                      string
 }
 
 type RegistryEndpoint struct {
@@ -123,6 +124,9 @@ enable_keychain = true
 
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
   runtime_type = "io.containerd.runc.v2"
+  {{- if .PrivilegedWithoutHostDevices }}
+  privileged_without_host_devices = true
+  {{- end }}
 
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
   SystemdCgroup = {{ .SystemdCgroup }}
@@ -148,6 +152,9 @@ enable_keychain = true
 {{range $k, $v := .ExtraRuntimes}}
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes."{{$k}}"]
   runtime_type = "{{$v.RuntimeType}}"
+  {{- if $.PrivilegedWithoutHostDevices }}
+  privileged_without_host_devices = true
+  {{- end }}
 [plugins."io.containerd.grpc.v1.cri".containerd.runtimes."{{$k}}".options]
   BinaryName = "{{$v.BinaryName}}"
   SystemdCgroup = {{ $.SystemdCgroup }}
@@ -217,6 +224,9 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 
 [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
   runtime_type = "io.containerd.runc.v2"
+  {{- if .PrivilegedWithoutHostDevices }}
+  privileged_without_host_devices = true
+  {{- end }}
 
 [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
   SystemdCgroup = {{ .SystemdCgroup }}
@@ -227,6 +237,9 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{ range $k, $v := .ExtraRuntimes }}
 [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.'{{ $k }}']
   runtime_type = "{{$v.RuntimeType}}"
+  {{- if $.PrivilegedWithoutHostDevices }}
+  privileged_without_host_devices = true 
+  {{- end }}
 {{ with $v.BinaryName}}
 [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.'{{ $k }}'.options]
   BinaryName = {{ printf "%q" . }}
@@ -325,7 +338,7 @@ skip_verify = true
 {{ end -}}
 `
 
-func ParseTemplateFromConfig(userTemplate, baseTemplate string, config interface{}) (string, error) {
+func ParseTemplateFromConfig(userTemplate, baseTemplate string, config ContainerdConfig) (string, error) {
 	out := new(bytes.Buffer)
 	t := template.Must(template.New("compiled_template").Funcs(templateFuncs).Parse(userTemplate))
 	template.Must(t.New("base").Parse(baseTemplate))
