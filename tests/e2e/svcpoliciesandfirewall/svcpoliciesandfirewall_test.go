@@ -57,16 +57,10 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		})
 
 		It("Checks Node Status", func() {
-			Eventually(func(g Gomega) {
-				var err error
-				nodes, err = e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "300s", "5s").Should(Succeed())
-			_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
+			}, "360s", "5s").Should(Succeed())
+			e2e.DumpNodes(tc.KubeconfigFile)
 		})
 
 		It("Checks Pod Status", func() {
