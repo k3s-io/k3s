@@ -9,7 +9,7 @@ replace (
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.2.1
 	github.com/containerd/containerd => github.com/k3s-io/containerd v1.7.23-k3s2
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.8.0
-	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.2-k3s1
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.2-k3s2
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/distribution/reference => github.com/distribution/reference v0.5.0
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
@@ -222,7 +222,7 @@ require (
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
-	github.com/containerd/go-cni v1.1.11 // indirect
+	github.com/containerd/go-cni v1.1.12 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/imgcrypt/v2 v2.0.0-rc.1 // indirect
 	github.com/containerd/log v0.1.0 // indirect
@@ -399,6 +399,7 @@ require (
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
+	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v2 v2.2.12 // indirect
@@ -428,6 +429,7 @@ require (
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
 	github.com/shengdoushi/base58 v1.0.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
