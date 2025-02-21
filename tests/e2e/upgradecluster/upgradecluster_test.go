@@ -230,8 +230,8 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 		It("Upgrades with no issues", func() {
 			var err error
-			Expect(e2e.UpgradeCluster(append(tc.Servers, tc.Agents...), *local)).To(Succeed())
-			Expect(e2e.RestartCluster(append(tc.Servers, tc.Agents...))).To(Succeed())
+			Expect(e2e.UpgradeCluster(tc.AllNodes(), *local)).To(Succeed())
+			Expect(e2e.RestartCluster(tc.AllNodes())).To(Succeed())
 			fmt.Println("CLUSTER UPGRADED")
 			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
@@ -352,9 +352,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.AllNodes()))
 	} else {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
