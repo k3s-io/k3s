@@ -198,9 +198,6 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
   sandbox = "{{ . }}"
 {{ end }}
 
-[plugins.'io.containerd.cri.v1.images'.registry]
-  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
-
 {{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins.'io.containerd.cri.v1.runtime'.cni]
   {{ with .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" . }}{{ end }}
@@ -237,10 +234,13 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{ end }}
 {{ end }}
 
+[plugins.'io.containerd.cri.v1.images'.registry]
+  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
+
 {{ if .PrivateRegistryConfig }}
 {{ range $k, $v := .PrivateRegistryConfig.Configs }}
 {{ with $v.Auth }}
-[plugins.'io.containerd.grpc.v1.cri'.registry.configs.'{{ $k }}'.auth]
+[plugins.'io.containerd.cri.v1.images'.registry.configs.'{{ $k }}'.auth]
   {{ with .Username }}username = {{ printf "%q" . }}{{ end }}
   {{ with .Password }}password = {{ printf "%q" . }}{{ end }}
   {{ with .Auth }}auth = {{ printf "%q" . }}{{ end }}
