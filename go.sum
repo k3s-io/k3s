@@ -974,6 +974,8 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
+github.com/k3s-io/api v0.1.0-k3s1.30 h1:JHjmeYaXciWnOqL5fz/Yc+L21AonLvZGJsdiHnZIBe0=
+github.com/k3s-io/api v0.1.0-k3s1.30/go.mod h1:PgSMkvAOeDd0ohsqnY7bx7Zrco6KZwzIwf/YXd+9jaY=
 github.com/k3s-io/containerd v1.7.23-k3s2 h1:QPS588RkyWooj/M+C64EAd1wDeqLmW/RB0DNW08x7ls=
 github.com/k3s-io/containerd v1.7.23-k3s2/go.mod h1:+vNritUoqQTlFedsBErSkyu1yqf3eYikE3oGbEICi+g=
 github.com/k3s-io/cri-dockerd v0.3.12-k3s1.30-3 h1:lmvoMmpiprwTdQFW5p3f+Y1ZRnx2YDKENSsUZsUCszc=
@@ -1022,8 +1024,6 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.30.10-k3s1 h1:
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.30.10-k3s1/go.mod h1:xi+XvU2vbnQtFkiU1pqn+dxcXwQADYeC1is21ciK2ss=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.30.10-k3s1 h1:36bmMSEIxYQHYPuo3JZ9/QtymmVOHWK853hTq9U3fFM=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.30.10-k3s1/go.mod h1:UQkCN/yAyK9GkwLx9OvIewMG++WMMmqM1ol0dZeih0Q=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.30.10-k3s1 h1:+ZKkAWOlEJVHjPPiNy730jtvNDHV5JmrPQAATs7Nk4Y=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/code-generator v1.30.10-k3s1/go.mod h1:qScwQGpXISa51dfNhWqVbb+fquwFK6WPdwcvGWR2hyI=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.30.10-k3s1 h1:xtdyfhfUr8lgSMZ6GEJaIrnJbWXgQ/R3txIVj7difss=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.30.10-k3s1/go.mod h1:z0h1kSKwTKBb7mekPRApPIiQKjQ/97LEewIX0U2fTco=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.30.10-k3s1 h1:8UN3T6G9aDret1AHYIurVTqxHtC84PptRgCT1nQqH/4=
@@ -2383,15 +2383,11 @@ honnef.co/go/tools v0.0.1-2020.1.3/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9
 honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
 honnef.co/go/tools v0.1.3/go.mod h1:NgwopIslSNH47DimFoV78dnkksY2EFtX0ajyb3K/las=
 k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAEV2be7d5xI0vBa/VySYy3E=
-k8s.io/gengo v0.0.0-20240826214909-a7b603a56eb7 h1:HCbtr1pVu/ElMcTTs18KdMtH5y6f7PQvrjh1QZj3qCI=
-k8s.io/gengo v0.0.0-20240826214909-a7b603a56eb7/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAEV2be7d5xI0vBa/VySYy3E=
 k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70/go.mod h1:VH3AT8AaQOqiGjMF9p0/IM1Dj+82ZwjfxUP1IxaHE+8=
-k8s.io/gengo/v2 v2.0.0-20240826214909-a7b603a56eb7 h1:cErOOTkQ3JW19o4lo91fFurouhP8NcoBvb7CkvhZZpk=
-k8s.io/gengo/v2 v2.0.0-20240826214909-a7b603a56eb7/go.mod h1:EJykeLsmFC60UQbYJezXkEsG2FLrt0GPNkU5iK5GWxU=
 k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9/go.mod h1:wZK2AVp1uHCp4VamDVgBP2COHZjqD1T68Rf0CM3YjSM=
 k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340/go.mod h1:yD4MZYeKMBwQKVht279WycxKyM84kkAx2DPrTXaeb98=
-k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38 h1:1dWzkmJrrprYvjGwh9kEUxmcUV/CtNU8QM7h1FLWQOo=
-k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38/go.mod h1:coRQXBK9NxO98XUv3ZD6AK3xzHCxV6+b7lrquKwaKzA=
+k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f h1:GA7//TjRY9yWGy1poLzYYJJ4JRdzg3+O6e8I+e+8T5Y=
+k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f/go.mod h1:R/HEjbvWI0qdfb8viZUeVZm0X6IZnxAydC7YU42CMw4=
 k8s.io/utils v0.0.0-20210802155522-efc7438f0176/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20230406110748-d93618cff8a2/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
@@ -2450,7 +2446,6 @@ sigs.k8s.io/kustomize/kustomize/v5 v5.0.4-0.20230601165947-6ce0bf390ce3 h1:vq2Tt
 sigs.k8s.io/kustomize/kustomize/v5 v5.0.4-0.20230601165947-6ce0bf390ce3/go.mod h1:/d88dHCvoy7d0AKFT0yytezSGZKjsZBVs9YTkBHSGFk=
 sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3 h1:W6cLQc5pnqM7vh3b7HvGNfXrJ/xL6BDMS0v1V/HHg5U=
 sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3/go.mod h1:JWP1Fj0VWGHyw3YUPjXSQnRnrwezrZSrApfX5S0nIag=
-sigs.k8s.io/structured-merge-diff/v4 v4.2.3/go.mod h1:qjx8mGObPmV2aSZepjQjbmb2ihdVs8cGKBraizNC69E=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1 h1:150L+0vs/8DA78h1u02ooW1/fFq/Lwr+sGiqlzvrtq4=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1/go.mod h1:N8hJocpFajUSSeSJ9bOZ77VzejKZaXsTtZo4/u7Io08=
 sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
