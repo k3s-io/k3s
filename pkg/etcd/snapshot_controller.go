@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	apisv1 "github.com/k3s-io/api/k3s.cattle.io/v1"
+	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
-	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	controllersv1 "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
