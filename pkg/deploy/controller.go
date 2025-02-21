@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
-	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
+	apisv1 "github.com/k3s-io/api/k3s.cattle.io/v1"
+	controllersv1 "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
 	pkgutil "github.com/k3s-io/k3s/pkg/util"
 	errors2 "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"

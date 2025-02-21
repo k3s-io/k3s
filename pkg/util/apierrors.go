@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"net/http"
 
-	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
+	"github.com/k3s-io/api/pkg/generated/clientset/versioned/scheme"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
