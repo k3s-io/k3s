@@ -96,7 +96,7 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 	It("Verify routing is correct and uses tailscale0 interface for internode traffic", func() {
 		// table 52 is the one configured by tailscale
 		cmd := "ip route show table 52"
-		for _, node := range append(tc.Servers, tc.Agents...) {
+		for _, node := range tc.AllNodes() {
 			output, err := node.RunCmdOnNode(cmd)
 			fmt.Println(err)
 			Expect(err).NotTo(HaveOccurred())
@@ -113,9 +113,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.AllNodes()))
 	} else {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
