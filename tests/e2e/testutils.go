@@ -161,13 +161,12 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		return nil, err
 	}
 
-	// For startup test, we don't start the cluster, so check first before
-	// generating the kubeconfig file
+	// For startup test, we don't start the cluster, so check first before generating the kubeconfig file.
+	// Systemctl returns a exit code of 3 when the service is inactive, so we don't check for errors
+	// on the command itself.
 	var kubeConfigFile string
-	res, err := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
 		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
 		if err != nil {
@@ -491,37 +490,10 @@ func GetVagrantLog(cErr error) string {
 	return string(bytes) + nodeJournal
 }
 
-func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
-	nodes := make([]Node, 0, 10)
-	nodeList := ""
-
+func DumpNodes(kubeConfig string) {
 	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
-	res, err := RunCommand(cmd)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get nodes: %s: %v", res, err)
-	}
-	nodeList = strings.TrimSpace(res)
-	split := strings.Split(nodeList, "\n")
-	for _, rec := range split {
-		if strings.TrimSpace(rec) != "" {
-			fields := strings.Fields(rec)
-			node := Node{
-				Name:       fields[0],
-				Status:     fields[1],
-				Roles:      fields[2],
-				InternalIP: fields[5],
-			}
-			if len(fields) > 6 {
-				node.ExternalIP = fields[6]
-			}
-			nodes = append(nodes, node)
-		}
-	}
-	if print {
-		fmt.Println(nodeList)
-	}
-	return nodes, nil
+	res, _ := RunCommand(cmd)
+	fmt.Println(strings.TrimSpace(res))
 }
 
 func DumpPods(kubeConfig string) {
