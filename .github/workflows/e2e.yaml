@@ -45,8 +45,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
-      max-parallel: 3
+        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
+      max-parallel: 5
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
