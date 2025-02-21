@@ -45,12 +45,8 @@ var _ = Describe("Verify that btrfs based servers work", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Valid nodeOS:
@@ -58,14 +59,10 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			fmt.Printf("\nFetching node status\n")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "620s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(tc.KubeconfigFile, true)
+			e2e.DumpNodes(tc.KubeconfigFile)
 
 			fmt.Printf("\nFetching Pods status\n")
 			Eventually(func() error {
@@ -171,8 +168,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err := tc.DeployWorkload("daemonset.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
-			nodes, _ := e2e.ParseNodes(tc.KubeconfigFile, false)
-
+			nodes, _ := tests.ParseNodes(tc.KubeconfigFile)
 			Eventually(func(g Gomega) {
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -262,10 +258,14 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(errRestart).NotTo(HaveOccurred(), "Restart Nodes not happened correctly")
 
 			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
+				nodes, err := tests.ParseNodes(tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
+					for _, condition := range node.Status.Conditions {
+						if condition.Type == corev1.NodeReady {
+							g.Expect(condition.Status).Should(Equal(corev1.ConditionTrue))
+						}
+					}
 				}
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
