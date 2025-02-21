@@ -183,9 +183,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
+		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.AllNodes()))
 	} else {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())

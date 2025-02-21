@@ -66,7 +66,7 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 
 		It("Verify wasm-related containerd shims are installed", func() {
 			expected_shims := []string{"containerd-shim-spin-v2", "containerd-shim-slight-v1"}
-			for _, node := range append(tc.Servers, tc.Agents...) {
+			for _, node := range tc.AllNodes() {
 				for _, shim := range expected_shims {
 					cmd := fmt.Sprintf("which %s", shim)
 					_, err := node.RunCmdOnNode(cmd)
@@ -126,9 +126,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(tc.AllNodes())).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
