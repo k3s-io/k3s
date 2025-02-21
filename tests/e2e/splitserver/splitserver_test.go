@@ -126,6 +126,7 @@ var (
 	etcdNodes  []e2e.VagrantNode
 	cpNodes    []e2e.VagrantNode
 	agentNodes []e2e.VagrantNode
+	allNodes   []e2e.VagrantNode
 )
 
 var _ = ReportAfterEach(e2e.GenReport)
@@ -150,13 +151,11 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 
 		It("Checks node and pod status", func() {
+			allNodes = append(cpNodes, etcdNodes...)
+			allNodes = append(allNodes, agentNodes...)
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(allNodes))
 			}, "620s", "5s").Should(Succeed())
 
 			Eventually(func() error {
@@ -248,7 +247,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(cpNodes).To(HaveLen(count), "Daemonset pod count does not match cp node count")
+				g.Expect(cpNodes).To(HaveLen(count), "Daemonset pod count does not match node count")
 			}, "240s", "10s").Should(Succeed())
 		})
 
@@ -275,8 +274,6 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	allNodes := append(cpNodes, etcdNodes...)
-	allNodes = append(allNodes, agentNodes...)
 	if failed {
 		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, allNodes))
 	} else {

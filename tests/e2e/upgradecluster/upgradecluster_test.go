@@ -55,12 +55,8 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "620s", "5s").Should(Succeed())
 
 			Eventually(func() error {
@@ -149,8 +145,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 			_, err := tc.DeployWorkload("daemonset.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
-			nodes, _ := e2e.ParseNodes(tc.KubeconfigFile, false)
-
+			nodes, _ := tests.ParseNodes(tc.KubeconfigFile)
 			Eventually(func(g Gomega) {
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -239,14 +234,10 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 		It("After upgrade Checks Node and Pod Status", func() {
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
-			}, "420s", "5s").Should(Succeed())
-			e2e.ParseNodes(tc.KubeconfigFile, true)
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
+			}, "360s", "5s").Should(Succeed())
+			e2e.DumpNodes(tc.KubeconfigFile)
 
 			By("Fetching Pod status")
 			tests.AllPodsUp(tc.KubeconfigFile)
@@ -321,8 +312,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		})
 
 		It("After upgrade verifies Daemonset", func() {
-			nodes, _ := e2e.ParseNodes(tc.KubeconfigFile, false)
-
+			nodes, _ := tests.ParseNodes(tc.KubeconfigFile)
 			Eventually(func(g Gomega) {
 				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())

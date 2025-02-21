@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/e2e"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -46,16 +47,11 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 	})
 
 	// Server node needs to be ready before we continue
-	It("Checks Node Status", func() {
-		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			for _, node := range nodes {
-				g.Expect(node.Status).Should(Equal("Ready"))
-			}
-		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
-		Expect(err).NotTo(HaveOccurred())
+	It("Checks Server Status", func() {
+		Eventually(func() error {
+			return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.Servers))
+		}, "360s", "5s").Should(Succeed())
+		e2e.DumpNodes(tc.KubeconfigFile)
 	})
 
 	It("Change agent's config", func() {
@@ -73,16 +69,10 @@ var _ = Describe("Verify Tailscale Configuration", Ordered, func() {
 	})
 
 	It("Checks Node Status", func() {
-		Eventually(func(g Gomega) {
-			nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(len(nodes)).To(Equal(*agentCount + *serverCount))
-			for _, node := range nodes {
-				g.Expect(node.Status).Should(Equal("Ready"))
-			}
-		}, "300s", "5s").Should(Succeed())
-		_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
-		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() error {
+			return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
+		}, "360s", "5s").Should(Succeed())
+		e2e.DumpNodes(tc.KubeconfigFile)
 	})
 
 	It("Verifies that server and agent have a tailscale IP as nodeIP", func() {
