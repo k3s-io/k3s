@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
+	"github.com/k3s-io/api/pkg/generated/clientset/versioned/scheme"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"k8s.io/apiserver/pkg/apis/apiserver"
