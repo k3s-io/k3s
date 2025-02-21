@@ -202,9 +202,6 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
   sandbox = "{{ . }}"
 {{ end }}
 
-[plugins.'io.containerd.cri.v1.images'.registry]
-  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
-
 {{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins.'io.containerd.cri.v1.runtime'.cni]
   {{ with .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" . }}{{ end }}
