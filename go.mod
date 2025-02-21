@@ -112,6 +112,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
+	github.com/k3s-io/api v0.1.0
 	github.com/k3s-io/helm-controller v0.16.6
 	github.com/k3s-io/kine v0.13.9
 	github.com/klauspost/compress v1.17.11
@@ -485,14 +486,11 @@ require (
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.32.2 // indirect
-	k8s.io/code-generator v0.32.2 // indirect
 	k8s.io/controller-manager v0.25.4 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
 	k8s.io/endpointslice v0.0.0 // indirect
 	k8s.io/externaljwt v1.32.0 // indirect
-	k8s.io/gengo v0.0.0-20240911193312-2b36238f13e9 // indirect
-	k8s.io/gengo/v2 v2.0.0-20240911193312-2b36238f13e9 // indirect
 	k8s.io/kms v0.0.0 // indirect
 	k8s.io/kube-aggregator v0.32.2 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect
