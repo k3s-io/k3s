@@ -117,12 +117,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching node status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeconfigFile)
@@ -186,12 +182,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching node status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeconfigFile)
@@ -229,12 +221,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching node status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
@@ -265,12 +253,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching node status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
@@ -301,12 +285,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Checks node and pod status", func() {
 			By("Fetching node status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.Agents))
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {

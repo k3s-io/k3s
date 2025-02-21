@@ -74,15 +74,10 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 		})
 
 		It("Checks Node Status", func() {
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeconfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "620s", "5s").Should(Succeed())
-			_, err := e2e.ParseNodes(tc.KubeconfigFile, true)
-			Expect(err).NotTo(HaveOccurred())
+			e2e.DumpNodes(tc.KubeconfigFile)
 		})
 
 		It("Checks pod status", func() {
