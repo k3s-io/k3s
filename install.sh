@@ -1112,8 +1112,7 @@ has_working_xtables() {
 
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
-    if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ];
-    then
+    if ! grep -qs memory /sys/fs/cgroup/cgroup.controllers && ! [ "$(grep -s memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" == "0" ]; then
         info 'Failed to find memory cgroup, you may need to add "cgroup_memory=1 cgroup_enable=memory" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)'
     fi
 
