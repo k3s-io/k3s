@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -606,6 +607,34 @@ func (config TestConfig) DeployWorkload(workload string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+type svcExternalIP struct {
+	IP     string `json:"ip"`
+	IPMode string `json:"ipMode"`
+}
+
+// FetchExternalIPs fetches the external IPs of a service
+func FetchExternalIPs(kubeconfig string, servicename string) ([]string, error) {
+	var externalIPs []string
+	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.status.loadBalancer.ingress}' --kubeconfig=" + kubeconfig
+	output, err := RunCommand(cmd)
+	if err != nil {
+		return externalIPs, err
+	}
+
+	var svcExternalIPs []svcExternalIP
+	err = json.Unmarshal([]byte(output), &svcExternalIPs)
+	if err != nil {
+		return externalIPs, fmt.Errorf("error unmarshalling JSON: %v", err)
+	}
+
+	// Iterate over externalIPs and append each IP to the ips slice
+	for _, ipEntry := range svcExternalIPs {
+		externalIPs = append(externalIPs, ipEntry.IP)
+	}
+
+	return externalIPs, nil
 }
 
 // RestartCluster restarts the k3s service on each node given
