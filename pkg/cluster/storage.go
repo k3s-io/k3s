@@ -246,6 +246,25 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 	})
 }
 
+// getBootstrapData makes a single attempt to retrieve and decrypt bootstrap data from the datastore.
+func (c *Cluster) getBootstrapData(ctx context.Context, token string) ([]byte, error) {
+	storageClient, err := client.New(c.config.Runtime.EtcdConfig)
+	if err != nil {
+		return nil, err
+	}
+	defer storageClient.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	value, err := storageClient.Get(ctx, storageKey(token))
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypt(token, value.Data)
+}
+
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is
 // hashed with empty string and will check for any key that is hashed by different token than the one
 // passed to it, it will return error if it finds a key that is hashed with different token and will return
