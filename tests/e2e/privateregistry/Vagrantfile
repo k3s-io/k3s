@@ -37,7 +37,7 @@ def provision(vm, role, role_num, node_num)
       endpoint:
         - http://%{net}.100:5000
       rewrite:
-        "^library/(.*)$": "docker-io-library/$1"
+        "^library/(.*)$": "ghcr-io-library/$1"
   ' > /etc/rancher/k3s/registries.yaml
   SCRIPT
 
