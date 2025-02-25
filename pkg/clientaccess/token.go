@@ -67,8 +67,29 @@ type Info struct {
 // ValidationOption is a callback to mutate the token prior to use
 type ValidationOption func(*Info)
 
+// WithCACertificate overrides the CA cert and hash with certs loaded from the
+// provided file. It is not an error if the file doesn't exist; the client
+// will just follow the normal hash validation steps if so.
+func WithCACertificate(certFile string) ValidationOption {
+	return func(i *Info) {
+		cacerts, err := os.ReadFile(certFile)
+		if err != nil {
+			return
+		}
+
+		digest, _ := hashCA(cacerts)
+		if i.caHash != "" && i.caHash != digest {
+			return
+		}
+
+		i.caHash = digest
+		i.CACerts = cacerts
+	}
+}
+
 // WithClientCertificate configures certs and keys to be used
-// to authenticate the request.
+// to authenticate the request. It is not an error if the files do not
+// exist, client cert auth will not be attempted if so.
 func WithClientCertificate(certFile, keyFile string) ValidationOption {
 	return func(i *Info) {
 		i.CertFile = certFile
@@ -338,7 +359,8 @@ func (i *Info) Post(path string, body []byte, options ...any) ([]byte, error) {
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
-// and storing the CA bundle.
+// and storing the CA bundle. If CACerts has already been set via ValidationOption,
+// retrieval is skipped.
 func (i *Info) setServer(server string) error {
 	url, err := url.Parse(server)
 	if err != nil {
@@ -353,13 +375,15 @@ func (i *Info) setServer(server string) error {
 		url.Path = url.Path[:len(url.Path)-1]
 	}
 
-	cacerts, err := getCACerts(*url)
-	if err != nil {
-		return err
+	if len(i.CACerts) == 0 {
+		cacerts, err := getCACerts(*url)
+		if err != nil {
+			return err
+		}
+		i.CACerts = cacerts
 	}
 
 	i.BaseURL = url.String()
-	i.CACerts = cacerts
 	return nil
 }
 

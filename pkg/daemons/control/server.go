@@ -287,17 +287,16 @@ func defaults(config *config.Control) {
 }
 
 func prepare(ctx context.Context, config *config.Control) error {
-	var err error
-
 	defaults(config)
 
 	if err := os.MkdirAll(config.DataDir, 0700); err != nil {
 		return err
 	}
 
-	config.DataDir, err = filepath.Abs(config.DataDir)
-	if err != nil {
+	if dataDir, err := filepath.Abs(config.DataDir); err != nil {
 		return err
+	} else {
+		config.DataDir = dataDir
 	}
 
 	os.MkdirAll(filepath.Join(config.DataDir, "etc"), 0700)
@@ -308,19 +307,19 @@ func prepare(ctx context.Context, config *config.Control) error {
 
 	cluster := cluster.New(config)
 	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
-		return err
+		return errors.Wrap(err, "failed to bootstrap cluster data")
 	}
 
 	if err := deps.GenServerDeps(config); err != nil {
-		return err
+		return errors.Wrap(err, "failed to generate server dependencies")
 	}
 
-	ready, err := cluster.Start(ctx)
-	if err != nil {
-		return err
+	if ready, err := cluster.Start(ctx); err != nil {
+		return errors.Wrap(err, "failed to start cluster")
+	} else {
+		config.Runtime.ETCDReady = ready
 	}
 
-	config.Runtime.ETCDReady = ready
 	return nil
 }
 
