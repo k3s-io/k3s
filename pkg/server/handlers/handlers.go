@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
@@ -199,8 +198,8 @@ func Readyz(control *config.Control) http.Handler {
 }
 
 func Bootstrap(control *config.Control) http.Handler {
-	if control.Runtime.HTTPBootstrap {
-		return bootstrap.Handler(&control.Runtime.ControlRuntimeBootstrap)
+	if control.Runtime.HTTPBootstrap != nil {
+		return control.Runtime.HTTPBootstrap
 	}
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		logrus.Warnf("Received HTTP bootstrap request from %s, but embedded etcd is not enabled.", req.RemoteAddr)

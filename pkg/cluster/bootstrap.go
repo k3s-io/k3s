@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -81,7 +82,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
-		c.config.Runtime.HTTPBootstrap = true
+		c.config.Runtime.HTTPBootstrap = c.serveBootstrap()
 
 		isInitialized, err := c.managedDB.IsInitialized()
 		if err != nil {
@@ -387,11 +388,30 @@ func isNewerFile(path string, file bootstrap.File) (updated bool, newerOnDisk bo
 	return true, false, nil
 }
 
+// serveBootstrap sends bootstrap data to the client, a server that is joining the cluster and
+// has only a server token, and cannot use CA certs/keys to access the datastore directly.
+func (c *Cluster) serveBootstrap() http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		// Try getting data from the datastore first. Token has already been validated by the request handler.
+		_, token, _ := req.BasicAuth()
+		data, err := c.getBootstrapData(req.Context(), token)
+		if err != nil {
+			// If we failed to read data from the datastore, just send data from disk.
+			logrus.Warnf("Failed to retrieve HTTP bootstrap data from datastore; falling back to disk for %s: %v", req.RemoteAddr, err)
+			bootstrap.ReadFromDisk(rw, &c.config.Runtime.ControlRuntimeBootstrap)
+			return
+		}
+		logrus.Infof("Serving HTTP bootstrap from datastore for %s", req.RemoteAddr)
+		rw.Write(data)
+	})
+}
+
 // httpBootstrap retrieves bootstrap data (certs and keys, etc) from the remote server via HTTP
 // and loads it into the ControlRuntimeBootstrap struct. Unlike the storage bootstrap path,
 // this data does not need to be decrypted since it is generated on-demand by an existing server.
 func (c *Cluster) httpBootstrap(ctx context.Context) error {
-	content, err := c.clientAccessInfo.Get("/v1-" + version.Program + "/server-bootstrap")
+	content, err := c.clientAccessInfo.Get("/v1-"+version.Program+"/server-bootstrap", clientaccess.WithTimeout(15*time.Second))
 	if err != nil {
 		return err
 	}
@@ -399,7 +419,8 @@ func (c *Cluster) httpBootstrap(ctx context.Context) error {
 	return c.ReconcileBootstrapData(ctx, bytes.NewReader(content), &c.config.Runtime.ControlRuntimeBootstrap, true)
 }
 
-func (c *Cluster) retrieveInitializedDBdata(ctx context.Context) (*bytes.Buffer, error) {
+// readBootstrapFromDisk returns a buffer holding the JSON-serialized bootstrap data read from disk.
+func (c *Cluster) readBootstrapFromDisk() (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	if err := bootstrap.ReadFromDisk(&buf, &c.config.Runtime.ControlRuntimeBootstrap); err != nil {
 		return nil, err
@@ -408,13 +429,16 @@ func (c *Cluster) retrieveInitializedDBdata(ctx context.Context) (*bytes.Buffer,
 	return &buf, nil
 }
 
-// bootstrap performs cluster bootstrapping, either via HTTP (for managed databases) or direct load from datastore.
+// bootstrap retrieves cluster bootstrap data: CA certs and other common config. This uses HTTP
+// for etcd (as this node does not yet have CA data available), and direct load from datastore
+// when using kine.
 func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
-	// bootstrap managed database via HTTPS
-	if c.config.Runtime.HTTPBootstrap {
-		// Assuming we should just compare on managed databases
+	if c.config.Runtime.HTTPBootstrap != nil {
+		// We can only compare config when we have a server URL that we are joining against -
+		// if loading directly from the datastore we do not have any way to get the config
+		// from another server for comparison.
 		if err := c.compareConfig(); err != nil {
 			return errors.Wrap(err, "failed to validate server configuration")
 		}
@@ -517,7 +541,7 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 		}
 	}
 
-	data, err := c.retrieveInitializedDBdata(reconcileCtx)
+	data, err := c.readBootstrapFromDisk()
 	if err != nil {
 		return err
 	}
