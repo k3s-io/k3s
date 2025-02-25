@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"encoding/json"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,13 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Header().Set("Content-Type", "application/json")
-		ReadFromDisk(rw, bootstrap)
-	})
-}
 
 // ReadFromDisk reads the bootstrap data from the files on disk and
 // writes their content in JSON form to the given io.Writer.
