@@ -75,25 +75,25 @@ var (
 		Destination: &AgentConfig.Token,
 	}
 	NodeIPFlag = &cli.StringSliceFlag{
-		Name:    "node-ip",
-		Aliases: []string{"i"},
-		Usage:   "(agent/networking) IPv4/IPv6 addresses to advertise for node",
-		Value:   &AgentConfig.NodeIP,
+		Name:        "node-ip",
+		Aliases:     []string{"i"},
+		Usage:       "(agent/networking) IPv4/IPv6 addresses to advertise for node",
+		Destination: &AgentConfig.NodeIP,
 	}
 	NodeExternalIPFlag = &cli.StringSliceFlag{
-		Name:  "node-external-ip",
-		Usage: "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
-		Value: &AgentConfig.NodeExternalIP,
+		Name:        "node-external-ip",
+		Usage:       "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
+		Destination: &AgentConfig.NodeExternalIP,
 	}
 	NodeInternalDNSFlag = &cli.StringSliceFlag{
-		Name:  "node-internal-dns",
-		Usage: "(agent/networking) internal DNS addresses to advertise for node",
-		Value: &AgentConfig.NodeInternalDNS,
+		Name:        "node-internal-dns",
+		Usage:       "(agent/networking) internal DNS addresses to advertise for node",
+		Destination: &AgentConfig.NodeInternalDNS,
 	}
 	NodeExternalDNSFlag = &cli.StringSliceFlag{
-		Name:  "node-external-dns",
-		Usage: "(agent/networking) external DNS addresses to advertise for node",
-		Value: &AgentConfig.NodeExternalDNS,
+		Name:        "node-external-dns",
+		Usage:       "(agent/networking) external DNS addresses to advertise for node",
+		Destination: &AgentConfig.NodeExternalDNS,
 	}
 	NodeNameFlag = &cli.StringFlag{
 		Name:        "node-name",
@@ -202,24 +202,24 @@ var (
 		Destination: &AgentConfig.ResolvConf,
 	}
 	ExtraKubeletArgs = &cli.StringSliceFlag{
-		Name:  "kubelet-arg",
-		Usage: "(agent/flags) Customized flag for kubelet process",
-		Value: &AgentConfig.ExtraKubeletArgs,
+		Name:        "kubelet-arg",
+		Usage:       "(agent/flags) Customized flag for kubelet process",
+		Destination: &AgentConfig.ExtraKubeletArgs,
 	}
 	ExtraKubeProxyArgs = &cli.StringSliceFlag{
-		Name:  "kube-proxy-arg",
-		Usage: "(agent/flags) Customized flag for kube-proxy process",
-		Value: &AgentConfig.ExtraKubeProxyArgs,
+		Name:        "kube-proxy-arg",
+		Usage:       "(agent/flags) Customized flag for kube-proxy process",
+		Destination: &AgentConfig.ExtraKubeProxyArgs,
 	}
 	NodeTaints = &cli.StringSliceFlag{
-		Name:  "node-taint",
-		Usage: "(agent/node) Registering kubelet with set of taints",
-		Value: &AgentConfig.Taints,
+		Name:        "node-taint",
+		Usage:       "(agent/node) Registering kubelet with set of taints",
+		Destination: &AgentConfig.Taints,
 	}
 	NodeLabels = &cli.StringSliceFlag{
-		Name:  "node-label",
-		Usage: "(agent/node) Registering and starting kubelet with set of labels",
-		Value: &AgentConfig.Labels,
+		Name:        "node-label",
+		Usage:       "(agent/node) Registering and starting kubelet with set of labels",
+		Destination: &AgentConfig.Labels,
 	}
 	ImageCredProvBinDirFlag = &cli.StringFlag{
 		Name:        "image-credential-provider-bin-dir",

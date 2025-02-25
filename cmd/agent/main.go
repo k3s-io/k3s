@@ -14,6 +14,7 @@ import (
 
 func main() {
 	app := cmds.NewApp()
+	app.DisableSliceFlagSeparator = true
 	app.Commands = []*cli.Command{
 		cmds.NewAgentCommand(agent.Run),
 	}

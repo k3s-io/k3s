@@ -43,6 +43,7 @@ func main() {
 	os.Args[0] = cmd
 
 	app := cmds.NewApp()
+	app.DisableSliceFlagSeparator = true
 	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(server.Run),
 		cmds.NewAgentCommand(agent.Run),

@@ -52,6 +52,7 @@ func main() {
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
 	app.EnableBashCompletion = true
+	app.DisableSliceFlagSeparator = true
 	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(internalCLIAction(version.Program+"-server"+programPostfix, dataDir, os.Args)),
 		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent"+programPostfix, dataDir, os.Args)),

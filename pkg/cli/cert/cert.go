@@ -80,10 +80,10 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 				return err
 			}
 			logrus.Infof("Agent detected, checking agent certificates")
-			cmds.ServicesList = cli.NewStringSlice(services.Agent...)
+			cmds.ServicesList = *cli.NewStringSlice(services.Agent...)
 		} else {
 			logrus.Infof("Server detected, checking agent and server certificates")
-			cmds.ServicesList = cli.NewStringSlice(services.All...)
+			cmds.ServicesList = *cli.NewStringSlice(services.All...)
 		}
 	}
 
@@ -180,10 +180,10 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 				return err
 			}
 			logrus.Infof("Agent detected, rotating agent certificates")
-			cmds.ServicesList = cli.NewStringSlice(services.Agent...)
+			cmds.ServicesList = *cli.NewStringSlice(services.Agent...)
 		} else {
 			logrus.Infof("Server detected, rotating agent and server certificates")
-			cmds.ServicesList = cli.NewStringSlice(services.All...)
+			cmds.ServicesList = *cli.NewStringSlice(services.All...)
 		}
 	}
 

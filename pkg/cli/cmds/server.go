@@ -129,14 +129,14 @@ var (
 		EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
 	}
 	ClusterCIDR = &cli.StringSliceFlag{
-		Name:  "cluster-cidr",
-		Usage: "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
-		Value: &ServerConfig.ClusterCIDR,
+		Name:        "cluster-cidr",
+		Usage:       "(networking) IPv4/IPv6 network CIDRs to use for pod IPs (default: 10.42.0.0/16)",
+		Destination: &ServerConfig.ClusterCIDR,
 	}
 	ServiceCIDR = &cli.StringSliceFlag{
-		Name:  "service-cidr",
-		Usage: "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
-		Value: &ServerConfig.ServiceCIDR,
+		Name:        "service-cidr",
+		Usage:       "(networking) IPv4/IPv6 network CIDRs to use for service IPs (default: 10.43.0.0/16)",
+		Destination: &ServerConfig.ServiceCIDR,
 	}
 	ServiceNodePortRange = &cli.StringFlag{
 		Name:        "service-node-port-range",
@@ -145,9 +145,9 @@ var (
 		Value:       "30000-32767",
 	}
 	ClusterDNS = &cli.StringSliceFlag{
-		Name:  "cluster-dns",
-		Usage: "(networking) IPv4/IPv6 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
-		Value: &ServerConfig.ClusterDNS,
+		Name:        "cluster-dns",
+		Usage:       "(networking) IPv4/IPv6 Cluster IP for coredns service. Should be in your service-cidr range (default: 10.43.0.10)",
+		Destination: &ServerConfig.ClusterDNS,
 	}
 	ClusterDomain = &cli.StringFlag{
 		Name:        "cluster-domain",
@@ -156,24 +156,24 @@ var (
 		Value:       "cluster.local",
 	}
 	ExtraAPIArgs = &cli.StringSliceFlag{
-		Name:  "kube-apiserver-arg",
-		Usage: "(flags) Customized flag for kube-apiserver process",
-		Value: &ServerConfig.ExtraAPIArgs,
+		Name:        "kube-apiserver-arg",
+		Usage:       "(flags) Customized flag for kube-apiserver process",
+		Destination: &ServerConfig.ExtraAPIArgs,
 	}
 	ExtraEtcdArgs = &cli.StringSliceFlag{
-		Name:  "etcd-arg",
-		Usage: "(flags) Customized flag for etcd process",
-		Value: &ServerConfig.ExtraEtcdArgs,
+		Name:        "etcd-arg",
+		Usage:       "(flags) Customized flag for etcd process",
+		Destination: &ServerConfig.ExtraEtcdArgs,
 	}
 	ExtraSchedulerArgs = &cli.StringSliceFlag{
-		Name:  "kube-scheduler-arg",
-		Usage: "(flags) Customized flag for kube-scheduler process",
-		Value: &ServerConfig.ExtraSchedulerArgs,
+		Name:        "kube-scheduler-arg",
+		Usage:       "(flags) Customized flag for kube-scheduler process",
+		Destination: &ServerConfig.ExtraSchedulerArgs,
 	}
 	ExtraControllerArgs = &cli.StringSliceFlag{
-		Name:  "kube-controller-manager-arg",
-		Usage: "(flags) Customized flag for kube-controller-manager process",
-		Value: &ServerConfig.ExtraControllerArgs,
+		Name:        "kube-controller-manager-arg",
+		Usage:       "(flags) Customized flag for kube-controller-manager process",
+		Destination: &ServerConfig.ExtraControllerArgs,
 	}
 )
 
@@ -223,9 +223,9 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.AdvertisePort,
 	},
 	&cli.StringSliceFlag{
-		Name:  "tls-san",
-		Usage: "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
-		Value: &ServerConfig.TLSSan,
+		Name:        "tls-san",
+		Usage:       "(listener) Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert",
+		Destination: &ServerConfig.TLSSan,
 	},
 	&cli.BoolFlag{
 		Name:        "tls-san-security",
@@ -339,9 +339,9 @@ var ServerFlags = []cli.Flag{
 	ExtraControllerArgs,
 	ExtraSchedulerArgs,
 	&cli.StringSliceFlag{
-		Name:  "kube-cloud-controller-manager-arg",
-		Usage: "(flags) Customized flag for kube-cloud-controller-manager process",
-		Value: &ServerConfig.ExtraCloudControllerArgs,
+		Name:        "kube-cloud-controller-manager-arg",
+		Usage:       "(flags) Customized flag for kube-cloud-controller-manager process",
+		Destination: &ServerConfig.ExtraCloudControllerArgs,
 	},
 	&cli.BoolFlag{
 		Name:        "kine-tls",
@@ -609,16 +609,16 @@ var ServerFlags = []cli.Flag{
 		Destination: &ServerConfig.DisableAgent,
 	},
 	&cli.StringSliceFlag{
-		Hidden: true,
-		Name:   "kube-controller-arg",
-		Usage:  "(flags) Customized flag for kube-controller-manager process",
-		Value:  &ServerConfig.ExtraControllerArgs,
+		Hidden:      true,
+		Name:        "kube-controller-arg",
+		Usage:       "(flags) Customized flag for kube-controller-manager process",
+		Destination: &ServerConfig.ExtraControllerArgs,
 	},
 	&cli.StringSliceFlag{
-		Hidden: true,
-		Name:   "kube-cloud-controller-arg",
-		Usage:  "(flags) Customized flag for kube-cloud-controller-manager process",
-		Value:  &ServerConfig.ExtraCloudControllerArgs,
+		Hidden:      true,
+		Name:        "kube-cloud-controller-arg",
+		Usage:       "(flags) Customized flag for kube-cloud-controller-manager process",
+		Destination: &ServerConfig.ExtraCloudControllerArgs,
 	},
 }
 

@@ -442,7 +442,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP)))
+		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP.Value())))
 		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, isIPv6); err != nil {
 			return nil, pkgerrors.WithMessagef(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
 		}
@@ -483,7 +483,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +537,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
+	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP.Value())
 	if err != nil {
 		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
 	}
