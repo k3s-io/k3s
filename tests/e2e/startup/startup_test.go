@@ -331,9 +331,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 	})
 	Context("Verify server picks up preloaded images on start", func() {
 		It("Downloads and preloads images", func() {
-			_, err := tc.Servers[0].RunCmdOnNode("docker pull ranchertest/mytestcontainer:latest")
+			_, err := tc.Servers[0].RunCmdOnNode("docker pull rancher/shell:v0.1.28")
 			Expect(err).NotTo(HaveOccurred())
-			_, err = tc.Servers[0].RunCmdOnNode("docker save ranchertest/mytestcontainer:latest -o /tmp/mytestcontainer.tar")
+			_, err = tc.Servers[0].RunCmdOnNode("docker save rancher/shell:v0.1.28 -o /tmp/mytestcontainer.tar")
 			Expect(err).NotTo(HaveOccurred())
 			_, err = tc.Servers[0].RunCmdOnNode("mkdir -p /var/lib/rancher/k3s/agent/images/")
 			Expect(err).NotTo(HaveOccurred())
@@ -352,9 +352,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 		It("has loaded the test container image", func() {
 			Eventually(func() (string, error) {
-				cmd := "k3s crictl images | grep ranchertest/mytestcontainer"
+				cmd := "k3s crictl images | grep rancher/shell"
 				return tc.Servers[0].RunCmdOnNode(cmd)
-			}, "120s", "5s").Should(ContainSubstring("ranchertest/mytestcontainer"))
+			}, "120s", "5s").Should(ContainSubstring("rancher/shell"))
 		})
 		It("Kills the cluster", func() {
 			err := KillK3sCluster(tc.AllNodes())
