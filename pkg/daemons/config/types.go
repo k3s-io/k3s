@@ -310,7 +310,6 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	HTTPBootstrap                        bool
 	APIServerReady                       <-chan struct{}
 	ContainerRuntimeReady                <-chan struct{}
 	ETCDReady                            <-chan struct{}
@@ -340,6 +339,7 @@ type ControlRuntime struct {
 	AgentToken         string
 	APIServer          http.Handler
 	Handler            http.Handler
+	HTTPBootstrap      http.Handler
 	Tunnel             http.Handler
 	Authenticator      authenticator.Request
 
