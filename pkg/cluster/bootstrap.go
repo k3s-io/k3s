@@ -34,12 +34,12 @@ import (
 // ControlRuntimeBootstrap struct, either via HTTP or from the datastore.
 func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "failed to set datastore driver")
 	}
 
 	shouldBootstrap, isInitialized, err := c.shouldBootstrapLoad(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to check if bootstrap data has been initialized")
 	}
 	c.shouldBootstrap = shouldBootstrap
 
@@ -80,6 +80,11 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 // indicating that the server has or has not been initialized, if etcd. This is controlled by a stamp file on
 // disk that records successful bootstrap using a hash of the join token.
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
+	opts := []clientaccess.ValidationOption{
+		clientaccess.WithUser("server"),
+		clientaccess.WithCACertificate(c.config.Runtime.ServerCA),
+	}
+
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
 		c.config.Runtime.HTTPBootstrap = c.serveBootstrap()
@@ -96,7 +101,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			// etcd is promoted from learner. Odds are we won't need this info, and we don't want to fail startup
 			// due to failure to retrieve it as this will break cold cluster restart, so we ignore any errors.
 			if c.config.JoinURL != "" && c.config.Token != "" {
-				c.clientAccessInfo, _ = clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
+				c.clientAccessInfo, _ = clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, opts...)
 			}
 			return false, true, nil
 		} else if c.config.JoinURL == "" {
@@ -105,15 +110,16 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			return false, false, nil
 		} else {
 			// Not initialized, but have a Join URL - fail if there's no token; if there is then validate it.
+			// Note that this is the path taken by control-plane-only nodes every startup, as they have a non-nil managedDB that is never initialized.
 			if c.config.Token == "" {
-				return false, false, errors.New(version.ProgramUpper + "_TOKEN is required to join a cluster")
+				return false, false, errors.New("token is required to join a cluster")
 			}
 
 			// Fail if the token isn't syntactically valid, or if the CA hash on the remote server doesn't match
 			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
-			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, clientaccess.WithUser("server"))
+			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, opts...)
 			if err != nil {
-				return false, false, err
+				return false, false, errors.Wrap(err, "failed to validate token")
 			}
 
 			logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
@@ -451,11 +457,16 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 
 // compareConfig verifies that the config of the joining control plane node coincides with the cluster's config
 func (c *Cluster) compareConfig() error {
+	opts := []clientaccess.ValidationOption{
+		clientaccess.WithUser("node"),
+		clientaccess.WithCACertificate(c.config.Runtime.ServerCA),
+	}
+
 	token := c.config.AgentToken
 	if token == "" {
 		token = c.config.Token
 	}
-	agentClientAccessInfo, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, token, clientaccess.WithUser("node"))
+	agentClientAccessInfo, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, token, opts...)
 	if err != nil {
 		return err
 	}
