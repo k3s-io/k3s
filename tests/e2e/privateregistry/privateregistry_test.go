@@ -78,32 +78,32 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 		})
-		// Mirror the image as NODEIP:5000/docker-io-library/nginx:1.27.3, but reference it as my-registry.local/library/nginx:1.27.3 -
+		// Mirror the image as NODEIP:5000/ghcr-io-library/nginx:1.26.2, but reference it as my-registry.local/library/nginx:1.26.2 -
 		// the rewrite in registries.yaml's entry for my-registry.local should ensure that it is rewritten properly when pulling from
 		// NODEIP:5000 as a mirror.
-		It("Should pull and image from dockerhub and send it to private registry", func() {
-			cmd := "docker pull docker.io/library/nginx:1.27.3"
+		It("Should pull and image from ghcr and send it to private registry", func() {
+			cmd := "docker pull ghcr.io/linuxserver/nginx:1.26.2"
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			nodeIP, err := tc.Servers[0].FetchNodeExternalIP()
 			Expect(err).NotTo(HaveOccurred())
 
-			cmd = "docker tag docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker tag ghcr.io/linuxserver/nginx:1.26.2 " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker push " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker push " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker image remove docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker image remove ghcr.io/linuxserver/nginx:1.26.2 " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := tc.Servers[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.27.3")
+			res, err := tc.Servers[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.26.2")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -120,7 +120,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 
 			cmd := "curl -m 5 -s -f http://" + pod.Status.PodIP
-			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
+			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to our server"))
 		})
 
 	})
