@@ -649,6 +649,13 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 	// is being removed from the cluster.
 	if !e.config.DisableAPIServer {
 		e.config.Runtime.LeaderElectedClusterControllerStarts[version.Program+"-etcd"] = func(ctx context.Context) {
+			// ensure client is started, as etcd startup may not have handled this if this is a control-plane-only node
+			if e.client == nil {
+				if err := e.startClient(ctx); err != nil {
+					panic(errors.Wrap(err, "failed to start etcd client"))
+				}
+			}
+
 			registerEndpointsHandlers(ctx, e)
 			registerMemberHandlers(ctx, e)
 			registerSnapshotHandlers(ctx, e)
@@ -1648,6 +1655,12 @@ func GetAPIServerURLsFromETCD(ctx context.Context, cfg *config.Control) ([]strin
 // GetMembersClientURLs will list through the member lists in etcd and return
 // back a combined list of client urls for each member in the cluster
 func (e *ETCD) GetMembersClientURLs(ctx context.Context) ([]string, error) {
+	if e.client == nil {
+		if err := e.startClient(ctx); err != nil {
+			return nil, err
+		}
+	}
+
 	members, err := e.client.MemberList(ctx)
 	if err != nil {
 		return nil, err
