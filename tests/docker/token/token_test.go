@@ -155,6 +155,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if failed {
+		AddReportEntry("journald-logs", docker.TailJournalLogs(1000, append(tc.Servers, tc.Agents...)))
+	}
 	if *ci || (tc != nil && !failed) {
 		Expect(tc.Cleanup()).To(Succeed())
 	}
