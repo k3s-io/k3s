@@ -37,48 +37,53 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 		return errors.Wrap(err, "failed to set datastore driver")
 	}
 
+	// Check if we need to bootstrap, and whether or not the managed database has already
+	// been initialized (created or joined an existing cluster). Note that nodes without
+	// a local datastore always need to bootstrap and never count as initialized.
+	// This also sets c.clientAccessInfo if c.config.JoinURL and c.config.Token are set.
 	shouldBootstrap, isInitialized, err := c.shouldBootstrapLoad(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if bootstrap data has been initialized")
 	}
-	c.shouldBootstrap = shouldBootstrap
 
 	if c.managedDB != nil {
-		if !clusterReset {
-			isHTTP := c.config.JoinURL != "" && c.config.Token != ""
-			// For secondary servers, we attempt to connect and reconcile with the datastore.
-			// If that fails we fallback to the local etcd cluster start
-			if isInitialized && isHTTP && c.clientAccessInfo != nil {
-				if err := c.httpBootstrap(ctx); err == nil {
-					logrus.Info("Successfully reconciled with datastore")
+		if c.config.DisableETCD {
+			// secondary server with etcd disabled, start the etcd proxy so that we can attempt to use it
+			// when reconciling.
+			if err := c.startEtcdProxy(ctx); err != nil {
+				return errors.Wrap(err, "failed to start etcd proxy")
+			}
+		} else if isInitialized && !clusterReset {
+			// For secondary servers with etcd, first attempt to connect and reconcile using the join URL.
+			// This saves on having to start up a temporary etcd just to extract bootstrap data.
+			if c.clientAccessInfo != nil {
+				if err := c.httpBootstrap(ctx); err != nil {
+					logrus.Warnf("Unable to reconcile with remote datastore: %v", err)
+				} else {
+					logrus.Info("Successfully reconciled with remote datastore")
 					return nil
 				}
-				logrus.Warnf("Unable to reconcile with datastore: %v", err)
 			}
-			// In the case of etcd, if the database has been initialized, it doesn't
-			// need to be bootstrapped however we still need to check the database
-			// and reconcile the bootstrap data. Below we're starting a temporary
-			// instance of etcd in the event that etcd certificates are unavailable,
-			// reading the data, and comparing that to the data on disk, all the while
-			// starting normal etcd.
-			if isInitialized {
-				if err := c.reconcileEtcd(ctx); err != nil {
-					logrus.Fatalf("Failed to reconcile with temporary etcd: %v", err)
-				}
+			// Not a secondary server or failed to reconcile via join URL, start up a temporary etcd
+			// with the local datastore and use that to reconcile.
+			if err := c.reconcileEtcd(ctx); err != nil {
+				logrus.Fatalf("Failed to reconcile with temporary etcd: %v", err)
 			}
 		}
 	}
 
-	if c.shouldBootstrap {
+	if shouldBootstrap {
 		return c.bootstrap(ctx)
 	}
 
 	return nil
 }
 
-// shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again and a second boolean
-// indicating that the server has or has not been initialized, if etcd. This is controlled by a stamp file on
-// disk that records successful bootstrap using a hash of the join token.
+// shouldBootstrapLoad returns true if we need to load ControlRuntimeBootstrap data again and a
+// second boolean indicating that the server has or has not been initialized, if etcd. This is
+// controlled by a stamp file on disk that records successful bootstrap using a hash of the join
+// token. This function also sets up the HTTP Bootstrap request handler and sets
+// c.clientAccessInfo if join url and token are set.
 func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	opts := []clientaccess.ValidationOption{
 		clientaccess.WithUser("server"),
@@ -88,7 +93,6 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 	// Non-nil managedDB indicates that the database is either initialized, initializing, or joining
 	if c.managedDB != nil {
 		c.config.Runtime.HTTPBootstrap = c.serveBootstrap()
-
 		isInitialized, err := c.managedDB.IsInitialized()
 		if err != nil {
 			return false, false, err
@@ -121,9 +125,13 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			if err != nil {
 				return false, false, errors.Wrap(err, "failed to validate token")
 			}
-
-			logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
 			c.clientAccessInfo = info
+
+			if c.config.DisableETCD {
+				logrus.Infof("Managed %s disabled on this node", c.managedDB.EndpointName())
+			} else {
+				logrus.Infof("Managed %s cluster not yet initialized", c.managedDB.EndpointName())
+			}
 		}
 	}
 
@@ -441,13 +449,22 @@ func (c *Cluster) readBootstrapFromDisk() (*bytes.Buffer, error) {
 func (c *Cluster) bootstrap(ctx context.Context) error {
 	c.joining = true
 
-	if c.config.Runtime.HTTPBootstrap != nil {
-		// We can only compare config when we have a server URL that we are joining against -
-		// if loading directly from the datastore we do not have any way to get the config
-		// from another server for comparison.
+	if c.managedDB != nil {
+		// Try to compare local config against the server we're joining.
 		if err := c.compareConfig(); err != nil {
 			return errors.Wrap(err, "failed to validate server configuration")
 		}
+		// Try to bootstrap from the datastore using the local etcd proxy.
+		if data, err := c.getBootstrapData(ctx, c.clientAccessInfo.Password); err != nil {
+			logrus.Debugf("Failed to get bootstrap data from etcd proxy: %v", err)
+		} else {
+			if err := c.ReconcileBootstrapData(ctx, bytes.NewReader(data), &c.config.Runtime.ControlRuntimeBootstrap, false); err != nil {
+				logrus.Debugf("Failed to reconcile bootstrap data from etcd proxy: %v", err)
+			} else {
+				return nil
+			}
+		}
+		// fall back to bootstrapping from the join URL
 		return c.httpBootstrap(ctx)
 	}
 
@@ -472,7 +489,8 @@ func (c *Cluster) compareConfig() error {
 	}
 	serverConfig, err := agentClientAccessInfo.Get("/v1-" + version.Program + "/config")
 	if err != nil {
-		return err
+		logrus.Warnf("Skipping cluster configuration validation: %v", err)
+		return nil
 	}
 	clusterControl := &config.Control{}
 	if err := json.Unmarshal(serverConfig, clusterControl); err != nil {
