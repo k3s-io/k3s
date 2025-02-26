@@ -79,6 +79,10 @@ func EncryptionStatus(control *config.Control) http.Handler {
 
 func encryptionStatus(control *config.Control) (EncryptionState, error) {
 	state := EncryptionState{}
+	if control.Runtime.Core == nil {
+		return state, util.ErrCoreNotReady
+	}
+
 	providers, err := secretsencrypt.GetEncryptionProviders(control.Runtime)
 	if os.IsNotExist(err) {
 		return state, nil
