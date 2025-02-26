@@ -25,7 +25,6 @@ type Cluster struct {
 	joining          bool
 	storageStarted   bool
 	saveBootstrap    bool
-	shouldBootstrap  bool
 	cnFilterFunc     func(...string) []string
 }
 
@@ -42,48 +41,6 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	if c.config.DisableETCD {
 		ready := make(chan struct{})
 		defer close(ready)
-
-		// try to get /db/info urls first, for a current list of etcd cluster member client URLs
-		clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.PrivateIP)
-		if err != nil {
-			return nil, err
-		}
-		// If we somehow got no error but also no client URLs, just use the address of the server we're joining
-		if len(clientURLs) == 0 {
-			clientURL, err := url.Parse(c.config.JoinURL)
-			if err != nil {
-				return nil, err
-			}
-			clientURL.Host = clientURL.Hostname() + ":2379"
-			clientURLs = append(clientURLs, clientURL.String())
-			logrus.Warnf("Got empty etcd ClientURL list; using server URL %s", clientURL)
-		}
-		etcdProxy, err := etcd.NewETCDProxy(ctx, c.config.SupervisorPort, c.config.DataDir, clientURLs[0], utilsnet.IsIPv6CIDR(c.config.ServiceIPRanges[0]))
-		if err != nil {
-			return nil, err
-		}
-		// immediately update the load balancer with all etcd addresses
-		// client URLs are a full URI, but the proxy only wants host:port
-		for i, c := range clientURLs {
-			u, err := url.Parse(c)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse etcd ClientURL")
-			}
-			clientURLs[i] = u.Host
-		}
-		etcdProxy.Update(clientURLs)
-
-		// start periodic endpoint sync goroutine
-		c.setupEtcdProxy(ctx, etcdProxy)
-
-		// remove etcd member if it exists
-		if err := c.managedDB.RemoveSelf(ctx); err != nil {
-			logrus.Warnf("Failed to remove this node from etcd members")
-		}
-
-		c.config.Runtime.EtcdConfig.Endpoints = strings.Split(c.config.Datastore.Endpoint, ",")
-		c.config.Runtime.EtcdConfig.TLSConfig = c.config.Datastore.BackendTLSConfig
-
 		return ready, nil
 	}
 
@@ -140,6 +97,49 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	}
 
 	return ready, nil
+}
+
+// startEtcdProxy starts an etcd load-balancer proxy, for control-plane-only nodes
+// without a local datastore.
+func (c *Cluster) startEtcdProxy(ctx context.Context) error {
+	defaultURL, err := url.Parse(c.config.JoinURL)
+	if err != nil {
+		return err
+	}
+	defaultURL.Host = defaultURL.Hostname() + ":2379"
+	etcdProxy, err := etcd.NewETCDProxy(ctx, c.config.SupervisorPort, c.config.DataDir, defaultURL.String(), utilsnet.IsIPv6CIDR(c.config.ServiceIPRanges[0]))
+	if err != nil {
+		return err
+	}
+
+	// immediately update the load balancer with all etcd addresses
+	// from /db/info, for a current list of etcd cluster member client URLs.
+	// client URLs are a full URI, but the proxy only wants host:port
+	if clientURLs, _, err := etcd.ClientURLs(ctx, c.clientAccessInfo, c.config.PrivateIP); err != nil || len(clientURLs) == 0 {
+		logrus.Warnf("Failed to get etcd ClientURLs: %v", err)
+	} else {
+		for i, c := range clientURLs {
+			u, err := url.Parse(c)
+			if err != nil {
+				return errors.Wrap(err, "failed to parse etcd ClientURL")
+			}
+			clientURLs[i] = u.Host
+		}
+		etcdProxy.Update(clientURLs)
+	}
+
+	// start periodic endpoint sync goroutine
+	c.setupEtcdProxy(ctx, etcdProxy)
+
+	// remove etcd member if it exists
+	if err := c.managedDB.RemoveSelf(ctx); err != nil {
+		logrus.Warnf("Failed to remove this node from etcd members: %v", err)
+	}
+
+	c.config.Runtime.EtcdConfig.Endpoints = strings.Split(c.config.Datastore.Endpoint, ",")
+	c.config.Runtime.EtcdConfig.TLSConfig = c.config.Datastore.BackendTLSConfig
+
+	return nil
 }
 
 // startStorage starts the kine listener and configures the endpoints, if necessary.
