@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -168,6 +169,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if failed {
+		AddReportEntry("journald-logs", docker.TailJournalLogs(1000, append(config.Servers, config.Agents...)))
+	}
 	if *ci || (config != nil && !failed) {
 		Expect(config.Cleanup()).To(Succeed())
 	}
