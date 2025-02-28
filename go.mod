@@ -9,7 +9,11 @@ replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.2.1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.8.0
+<<<<<<< HEAD
 	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.4-k3s2
+=======
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.3-k3s1
+>>>>>>> d091ac463 (Bump to containerd v2.0.3/runc v1.2.5)
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/distribution/reference => github.com/distribution/reference v0.5.0
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
@@ -518,9 +522,15 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
+<<<<<<< HEAD
 	go.etcd.io/etcd/client/v2 v2.305.19 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.19 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.19 // indirect
+=======
+	go.etcd.io/etcd/client/v2 v2.305.18 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.5.18 // indirect
+	go.etcd.io/etcd/raft/v3 v3.5.18 // indirect
+>>>>>>> d091ac463 (Bump to containerd v2.0.3/runc v1.2.5)
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.42.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.56.0 // indirect
