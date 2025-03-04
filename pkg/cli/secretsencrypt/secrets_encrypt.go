@@ -17,7 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"k8s.io/utils/ptr"
 )
@@ -44,7 +44,7 @@ func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 }
 
 func wrapServerError(err error) error {
-	return errors.Wrap(err, "see server log for details")
+	return pkgerrors.WithMessage(err, "see server log for details")
 }
 
 func Enable(app *cli.Context) error {

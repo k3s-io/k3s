@@ -3,6 +3,7 @@ package spegel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -30,7 +31,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/metrics"
 	"github.com/spegel-org/spegel/pkg/oci"
@@ -141,33 +142,33 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	ociOpts := []oci.Option{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
 	ociClient, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create OCI client")
+		return pkgerrors.WithMessage(err, "failed to create OCI client")
 	}
 
 	// create or load persistent private key
 	keyFile := filepath.Join(nodeConfig.Containerd.Opt, "peer.key")
 	keyBytes, _, err := cert.LoadOrGenerateKeyFile(keyFile, false)
 	if err != nil {
-		return errors.Wrap(err, "failed to load or generate p2p private key")
+		return pkgerrors.WithMessage(err, "failed to load or generate p2p private key")
 	}
 	privKey, err := cert.ParsePrivateKeyPEM(keyBytes)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse p2p private key")
+		return pkgerrors.WithMessage(err, "failed to parse p2p private key")
 	}
 	p2pKey, _, err := crypto.KeyPairFromStdKey(privKey)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert p2p private key")
+		return pkgerrors.WithMessage(err, "failed to convert p2p private key")
 	}
 
 	// create a peerstore to allow persisting nodes across restarts
 	peerFile := filepath.Join(nodeConfig.Containerd.Opt, "peerstore.db")
 	ds, err := leveldb.NewDatastore(peerFile, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to create peerstore datastore")
+		return pkgerrors.WithMessage(err, "failed to create peerstore datastore")
 	}
 	ps, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
 	if err != nil {
-		return errors.Wrap(err, "failed to create peerstore")
+		return pkgerrors.WithMessage(err, "failed to create peerstore")
 	}
 
 	// get latest tag configuration override
@@ -198,13 +199,13 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	}
 	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create P2P router")
+		return pkgerrors.WithMessage(err, "failed to create P2P router")
 	}
 	go router.Run(ctx)
 
 	caCert, err := os.ReadFile(c.ServerCAFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to read server CA")
+		return pkgerrors.WithMessage(err, "failed to read server CA")
 	}
 	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
@@ -219,7 +220,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	reg := registry.NewRegistry(ociClient, router, registryOpts...)
 	regSvr, err := reg.Server(":" + c.RegistryPort)
 	if err != nil {
-		return errors.Wrap(err, "failed to create embedded registry server")
+		return pkgerrors.WithMessage(err, "failed to create embedded registry server")
 	}
 
 	// Track images available in containerd and publish via p2p router

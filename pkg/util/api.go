@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
@@ -83,7 +84,7 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 		healthStatus := 0
 		result := restClient.Get().AbsPath("/readyz").Do(ctx).StatusCode(&healthStatus)
 		if rerr := result.Error(); rerr != nil {
-			lastErr = errors.Wrap(rerr, "failed to get apiserver /readyz status")
+			lastErr = pkgerrors.WithMessage(rerr, "failed to get apiserver /readyz status")
 			return false, nil
 		}
 		if healthStatus != http.StatusOK {
