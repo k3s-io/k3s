@@ -8,7 +8,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/permissions/pkg/access"
 	"github.com/rancher/permissions/pkg/acl"
 	"github.com/rancher/permissions/pkg/sid"
@@ -46,7 +46,7 @@ func configureACL(file string) error {
 		access.GrantSid(windows.GENERIC_ALL, sid.LocalSystem()),
 		access.GrantSid(windows.GENERIC_ALL, sid.BuiltinAdministrators()),
 	}...); err != nil {
-		return errors.Wrapf(err, "failed to configure Access Control List For %s", file)
+		return pkgerrors.WithMessagef(err, "failed to configure Access Control List For %s", file)
 	}
 
 	return nil

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/nodepassword"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
@@ -72,7 +72,7 @@ func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error)
 	}
 	if removed {
 		if err := h.removeNodePassword(nodeName); err != nil {
-			logrus.Warn(errors.Wrap(err, "Unable to remove node password"))
+			logrus.Warn(pkgerrors.WithMessage(err, "Unable to remove node password"))
 		}
 	}
 	if h.modCoreDNS {
@@ -99,7 +99,7 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 
 	configMap, err := h.configMaps.Get("kube-system", "coredns", metav1.GetOptions{})
 	if err != nil || configMap == nil {
-		logrus.Warn(errors.Wrap(err, "Unable to fetch coredns config map"))
+		logrus.Warn(pkgerrors.WithMessage(err, "Unable to fetch coredns config map"))
 		return nil
 	}
 

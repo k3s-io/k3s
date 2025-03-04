@@ -2,22 +2,22 @@ package cloudprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
 var (
-	InternalIPKey = version.Program + ".io/internal-ip"
-	ExternalIPKey = version.Program + ".io/external-ip"
+	InternalIPKey  = version.Program + ".io/internal-ip"
+	ExternalIPKey  = version.Program + ".io/external-ip"
 	InternalDNSKey = version.Program + ".io/internal-dns"
 	ExternalDNSKey = version.Program + ".io/external-dns"
-	HostnameKey   = version.Program + ".io/hostname"
+	HostnameKey    = version.Program + ".io/hostname"
 )
 
 var _ cloudprovider.InstancesV2 = &k3s{}

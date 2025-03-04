@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -34,7 +35,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -57,20 +58,20 @@ import (
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig, err := config.Get(ctx, cfg, proxy)
 	if err != nil {
-		return errors.Wrap(err, "failed to retrieve agent configuration")
+		return pkgerrors.WithMessage(err, "failed to retrieve agent configuration")
 	}
 
 	dualCluster, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
-		return errors.Wrap(err, "failed to validate cluster-cidr")
+		return pkgerrors.WithMessage(err, "failed to validate cluster-cidr")
 	}
 	dualService, err := utilsnet.IsDualStackCIDRs(nodeConfig.AgentConfig.ServiceCIDRs)
 	if err != nil {
-		return errors.Wrap(err, "failed to validate service-cidr")
+		return pkgerrors.WithMessage(err, "failed to validate service-cidr")
 	}
 	dualNode, err := utilsnet.IsDualStackIPs(nodeConfig.AgentConfig.NodeIPs)
 	if err != nil {
-		return errors.Wrap(err, "failed to validate node-ip")
+		return pkgerrors.WithMessage(err, "failed to validate node-ip")
 	}
 	serviceIPv4 := utilsnet.IsIPv4CIDR(nodeConfig.AgentConfig.ServiceCIDR)
 	clusterIPv4 := utilsnet.IsIPv4CIDR(nodeConfig.AgentConfig.ClusterCIDR)
@@ -99,7 +100,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 	conntrackConfig, err := getConntrackConfig(nodeConfig)
 	if err != nil {
-		return errors.Wrap(err, "failed to validate kube-proxy conntrack configuration")
+		return pkgerrors.WithMessage(err, "failed to validate kube-proxy conntrack configuration")
 	}
 	syssetup.Configure(enableIPv6, conntrackConfig)
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
@@ -111,19 +112,19 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 
 		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig); err != nil {
-			return errors.Wrap(err, "failed to start embedded registry")
+			return pkgerrors.WithMessage(err, "failed to start embedded registry")
 		}
 	}
 
 	if nodeConfig.SupervisorMetrics {
 		if err := metrics.DefaultMetrics.Start(ctx, nodeConfig); err != nil {
-			return errors.Wrap(err, "failed to serve metrics")
+			return pkgerrors.WithMessage(err, "failed to serve metrics")
 		}
 	}
 
 	if nodeConfig.EnablePProf {
 		if err := profile.DefaultProfiler.Start(ctx, nodeConfig); err != nil {
-			return errors.Wrap(err, "failed to serve pprof")
+			return pkgerrors.WithMessage(err, "failed to serve pprof")
 		}
 	}
 
@@ -174,7 +175,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	}
 
 	if err := util.WaitForAPIServerReady(ctx, nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
-		return errors.Wrap(err, "failed to wait for apiserver ready")
+		return pkgerrors.WithMessage(err, "failed to wait for apiserver ready")
 	}
 
 	// Use the kubelet kubeconfig to update annotations on the local node
@@ -267,7 +268,7 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 
 	nodeConfig, err := config.Get(ctx, cfg, proxy)
 	if err != nil {
-		return errors.Wrap(err, "failed to retrieve agent configuration")
+		return pkgerrors.WithMessage(err, "failed to retrieve agent configuration")
 	}
 
 	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
@@ -287,13 +288,13 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 
 	if nodeConfig.SupervisorMetrics {
 		if err := metrics.DefaultMetrics.Start(ctx, nodeConfig); err != nil {
-			return errors.Wrap(err, "failed to serve metrics")
+			return pkgerrors.WithMessage(err, "failed to serve metrics")
 		}
 	}
 
 	if nodeConfig.EnablePProf {
 		if err := profile.DefaultProfiler.Start(ctx, nodeConfig); err != nil {
-			return errors.Wrap(err, "failed to serve pprof")
+			return pkgerrors.WithMessage(err, "failed to serve pprof")
 		}
 	}
 
@@ -429,7 +430,7 @@ func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typ
 	}
 
 	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
-		return errors.Wrap(err, "failed to configure node")
+		return pkgerrors.WithMessage(err, "failed to configure node")
 	}
 	return nil
 }

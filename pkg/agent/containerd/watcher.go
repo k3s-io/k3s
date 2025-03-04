@@ -13,7 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
@@ -52,7 +52,7 @@ func isFileSupported(path string) bool {
 
 func (w *Watcher) HandleWatch(path string) error {
 	if err := w.watcher.Add(path); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to watch from %s directory: %v", path, err))
+		return pkgerrors.WithMessage(err, fmt.Sprintf("failed to watch from %s directory: %v", path, err))
 	}
 
 	return nil

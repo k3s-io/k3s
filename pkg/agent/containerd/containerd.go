@@ -3,6 +3,7 @@ package containerd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
@@ -137,12 +138,12 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 
 	// At startup all leases from k3s are cleared; we no longer use leases to lock content
 	if err := clearLeases(ctx, client); err != nil {
-		return errors.Wrap(err, "failed to clear leases")
+		return pkgerrors.WithMessage(err, "failed to clear leases")
 	}
 
 	// Clear the pinned labels on all images previously pinned by k3s
 	if err := clearLabels(ctx, client); err != nil {
-		return errors.Wrap(err, "failed to clear pinned labels")
+		return pkgerrors.WithMessage(err, "failed to clear pinned labels")
 	}
 
 	go watchImages(ctx, cfg)
@@ -199,7 +200,7 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		logrus.Infof("Pulling images from %s", filePath)
 		images, err = prePullImages(ctx, client, imageClient, file)
 		if err != nil {
-			return errors.Wrap(err, "failed to pull images from "+filePath)
+			return pkgerrors.WithMessage(err, "failed to pull images from "+filePath)
 		}
 	} else {
 		opener, err := tarfile.GetOpener(filePath)
@@ -216,15 +217,15 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 		logrus.Infof("Importing images from %s", filePath)
 		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true), containerd.WithSkipMissing())
 		if err != nil {
-			return errors.Wrap(err, "failed to import images from "+filePath)
+			return pkgerrors.WithMessage(err, "failed to import images from "+filePath)
 		}
 	}
 
 	if err := labelImages(ctx, client, images, filepath.Base(filePath)); err != nil {
-		return errors.Wrap(err, "failed to add pinned label to images")
+		return pkgerrors.WithMessage(err, "failed to add pinned label to images")
 	}
 	if err := retagImages(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
-		return errors.Wrap(err, "failed to retag images")
+		return pkgerrors.WithMessage(err, "failed to retag images")
 	}
 
 	for _, image := range images {
@@ -263,7 +264,7 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 		delete(image.Labels, k3sPinnedImageLabelKey)
 		delete(image.Labels, labels.PinnedImageLabelKey)
 		if _, err := imageService.Update(ctx, image, "labels"); err != nil {
-			errs = append(errs, errors.Wrap(err, "failed to delete labels from image "+image.Name))
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to delete labels from image "+image.Name))
 		}
 	}
 	return merr.NewErrors(errs...)
@@ -288,7 +289,7 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 		image.Labels[labels.PinnedImageLabelKey] = labels.PinnedImageLabelValue
 		updatedImage, err := imageService.Update(ctx, image, "labels")
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "failed to add labels to image "+image.Name))
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to add labels to image "+image.Name))
 		} else {
 			images[i] = updatedImage
 		}
@@ -305,7 +306,7 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 	for _, image := range images {
 		name, err := parseNamedTagged(image.Name)
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "failed to parse tags for image "+image.Name))
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to parse tags for image "+image.Name))
 			continue
 		}
 		for _, registry := range registries {
@@ -317,15 +318,15 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 			if _, err = imageService.Create(ctx, image); err != nil {
 				if errdefs.IsAlreadyExists(err) {
 					if err = imageService.Delete(ctx, image.Name); err != nil {
-						errs = append(errs, errors.Wrap(err, "failed to delete existing image "+image.Name))
+						errs = append(errs, pkgerrors.WithMessage(err, "failed to delete existing image "+image.Name))
 						continue
 					}
 					if _, err = imageService.Create(ctx, image); err != nil {
-						errs = append(errs, errors.Wrap(err, "failed to tag after deleting existing image "+image.Name))
+						errs = append(errs, pkgerrors.WithMessage(err, "failed to tag after deleting existing image "+image.Name))
 						continue
 					}
 				} else {
-					errs = append(errs, errors.Wrap(err, "failed to tag image "+image.Name))
+					errs = append(errs, pkgerrors.WithMessage(err, "failed to tag image "+image.Name))
 					continue
 				}
 			}
