@@ -418,6 +418,8 @@ github.com/containerd/go-runc v1.1.0 h1:OX4f+/i2y5sUT7LhmcJH7GYrjjhHa1QI4e8yO0gG
 github.com/containerd/go-runc v1.1.0/go.mod h1:xJv2hFF7GvHtTJd9JqTS2UVxMkULUYw4JN5XAUZqH5U=
 github.com/containerd/imgcrypt/v2 v2.0.0 h1:vd2ByN6cXeearzXCQljH1eYe77FgFO5/B9+dK14mng0=
 github.com/containerd/imgcrypt/v2 v2.0.0/go.mod h1:S4kOVvPZRerVueZULagcwkJK7sKc/wQI/ixcmyj26uY=
+github.com/containerd/imgcrypt/v2 v2.0.0 h1:vd2ByN6cXeearzXCQljH1eYe77FgFO5/B9+dK14mng0=
+github.com/containerd/imgcrypt/v2 v2.0.0/go.mod h1:S4kOVvPZRerVueZULagcwkJK7sKc/wQI/ixcmyj26uY=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
 <<<<<<< HEAD
@@ -470,6 +472,8 @@ github.com/containernetworking/plugins v1.5.1 h1:T5ji+LPYjjgW0QM+KyrigZbLsZ8jaX+
 github.com/containernetworking/plugins v1.5.1/go.mod h1:MIQfgMayGuHYs0XdNudf31cLLAC+i242hNm6KuDGqCM=
 github.com/containers/ocicrypt v1.2.1 h1:0qIOTT9DoYwcKmxSt8QJt+VzMY18onl9jUXsxpVhSmM=
 github.com/containers/ocicrypt v1.2.1/go.mod h1:aD0AAqfMp0MtwqWgHM1bUwe1anx0VazI108CRrSKINQ=
+github.com/containers/ocicrypt v1.2.1 h1:0qIOTT9DoYwcKmxSt8QJt+VzMY18onl9jUXsxpVhSmM=
+github.com/containers/ocicrypt v1.2.1/go.mod h1:aD0AAqfMp0MtwqWgHM1bUwe1anx0VazI108CRrSKINQ=
 github.com/coreos/go-iptables v0.8.0 h1:MPc2P89IhuVpLI7ETL/2tx3XZ61VeICZjYqDEgNsPRc=
 github.com/coreos/go-iptables v0.8.0/go.mod h1:Qe8Bv2Xik5FyTXwgIbLAnv2sWSBmvWdFETJConOQ//Q=
 github.com/coreos/go-oidc v2.2.1+incompatible h1:mh48q/BqXqgjVHpy2ZY7WnWAbenxRjsz9N1i1YxjHAk=
@@ -493,6 +497,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.5/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
+github.com/cyphar/filepath-securejoin v0.4.1 h1:JyxxyPEaktOD+GAnqIqTf9A8tHyAG22rowi7HkoSU1s=
+github.com/cyphar/filepath-securejoin v0.4.1/go.mod h1:Sdj7gXlvMcPZsbhwhQ33GguGLDGQL7h7bg04C/+u9jI=
 github.com/cyphar/filepath-securejoin v0.4.1 h1:JyxxyPEaktOD+GAnqIqTf9A8tHyAG22rowi7HkoSU1s=
 github.com/cyphar/filepath-securejoin v0.4.1/go.mod h1:Sdj7gXlvMcPZsbhwhQ33GguGLDGQL7h7bg04C/+u9jI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -931,7 +937,6 @@ github.com/k3s-io/api v0.1.0 h1:YxLb/SXPqcZ/rffxrXwK3x4TfuSDxaapADZJDx3BQ50=
 github.com/k3s-io/api v0.1.0/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
 github.com/k3s-io/cadvisor v0.51.0-k3s1 h1:g44OgQMVywt+UlcLOu7OW0H32h8XVkc0pm12EPn4bvo=
 github.com/k3s-io/cadvisor v0.51.0-k3s1/go.mod h1:WmF2AKcyCdI0ERO3oSvLnHmiMOjRvfd2iwvoPc6urHE=
-<<<<<<< HEAD
 github.com/k3s-io/containerd/v2 v2.0.4-k3s2 h1:JYUwCHGgR4jXSbjM5mtAbW03hhNyPVhnfxLwqdyBTVw=
 github.com/k3s-io/containerd/v2 v2.0.4-k3s2/go.mod h1:thbfN8ab4MS+pe+p4/mQncBlQJ1oAPNZGO95RO3/Sxs=
 =======
@@ -940,10 +945,6 @@ github.com/k3s-io/cadvisor v0.51.0-k3s1/go.mod h1:WmF2AKcyCdI0ERO3oSvLnHmiMOjRvf
 github.com/k3s-io/containerd v1.7.23-k3s2 h1:QPS588RkyWooj/M+C64EAd1wDeqLmW/RB0DNW08x7ls=
 github.com/k3s-io/containerd v1.7.23-k3s2/go.mod h1:+vNritUoqQTlFedsBErSkyu1yqf3eYikE3oGbEICi+g=
 >>>>>>> b9a8f1147 (V1.32.0+k3s1 (#11478))
-=======
-github.com/k3s-io/containerd/v2 v2.0.3-k3s1 h1:GMvofLdcJPaDnWmG5Eg7n7USjfkIie7cJ1Voj9haqBQ=
-github.com/k3s-io/containerd/v2 v2.0.3-k3s1/go.mod h1:thbfN8ab4MS+pe+p4/mQncBlQJ1oAPNZGO95RO3/Sxs=
->>>>>>> d091ac463 (Bump to containerd v2.0.3/runc v1.2.5)
 github.com/k3s-io/cri-dockerd v0.3.15-k3s1.32-1 h1:xyuMjIBHgQCCbolaKTqr1vEOuDnAC04QbhhNDw1Syaw=
 github.com/k3s-io/cri-dockerd v0.3.15-k3s1.32-1/go.mod h1:izqOMGO29EdlBCGLKNc+Q3GwsJ/j4HZ0C2mlp0oHMC8=
 github.com/k3s-io/cri-tools v1.31.0-k3s2 h1:nekOdJe5Hecm+C5eswg688uXTI0enUZOJYadmyU9pYw=
@@ -995,7 +996,6 @@ github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsao
 github.com/k3s-io/klog/v2 v2.120.1-k3s1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
 github.com/k3s-io/kube-router/v2 v2.2.1 h1:LrU6l4khFt67+QCIvgok9B/C9JY/U2/TaF9TCVUw0vw=
 github.com/k3s-io/kube-router/v2 v2.2.1/go.mod h1:OWqBKftzZRXF79mDv1MLiYbvD7RP/kzrk5X5NupAawM=
-<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 github.com/k3s-io/kubernetes v1.32.3-k3s2 h1:OFGgUNfDDbT2i7JjGj8ZsNC8IECRb/tkawJE+8J0NSU=
@@ -1052,62 +1052,6 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.3-k3s2 h1:5lJF
 github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.3-k3s2/go.mod h1:Kun5c2svjAPx0nnvJKYQWhfeNW+O0EpzHgRhDcYoSY0=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.3-k3s2 h1:XxiLlzYAeBgdkCHTco5XMlpzF0R9KyPNDZlk4TAQOT8=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.3-k3s2/go.mod h1:/vuNyuDhhSkWaqPq1t/ncDtqvlOftYgosR747XXodNM=
-=======
-github.com/k3s-io/kubernetes v1.32.2-k3s1 h1:wCSVfKgJXtZ3CrhGzYEIDI+8jS585msCU0Lk85p9v68=
-github.com/k3s-io/kubernetes v1.32.2-k3s1/go.mod h1:tiIKO63GcdPRBHW2WiUFm3C0eoLczl3f7qi56Dm1W8I=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.32.2-k3s1 h1:srivWqHKEOeTlXWq6eaXde/qKZVa38sqzA17KeqI2q4=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.32.2-k3s1/go.mod h1:vKJXKjyFYDhWQE2afjETi78+4UiMrEpwnNUpbvg6zSk=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.32.2-k3s1 h1:2dFTpErStKIPHUCxHikgf7dJaG+TUPfq0vfd8i/ICLs=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.32.2-k3s1/go.mod h1:+tOHzx9uNZxkhGBOTf1fZFmgmWAMXGevN9zBMJqqRQ4=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.32.2-k3s1 h1:mtNYhK+36+X4jtEspBhDNweXKz1kXpZddu0KCAGKtL0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.32.2-k3s1/go.mod h1:GpHVgxoKlTxClKcteaeuF1Ul/lDVb74KpZcxcmLDElE=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.32.2-k3s1 h1:pJUIVfE0swcgZE583nP3ok+CqKQjSLsct9Gtd26Fseg=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/apiserver v1.32.2-k3s1/go.mod h1:MVY96XWrhCTCvl7PSygR3D+kPbzETQdu4ktXlz4aqBk=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.32.2-k3s1 h1:Fax8FMIPhK5/yIj56T7I6CAHXOkLZyUJoVayflSDpik=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cli-runtime v1.32.2-k3s1/go.mod h1:vTvHqSWTRe0tboDhNgRdyw0mB0X1uV4eYDyHaxn7SxI=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/client-go v1.32.2-k3s1 h1:Iufkob38K+ri9dMGa3HtNwyp77ll09JE7kyAAYTbwV0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/client-go v1.32.2-k3s1/go.mod h1:uWPkcncG8DFAbmGKfnqXNkCLdPVCy43PGZScGpAsZCM=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.32.2-k3s1 h1:tjAO8M22uXlazrajxIM+UxjwTe63C8FND0mCCD7yRv4=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cloud-provider v1.32.2-k3s1/go.mod h1:i00dTyZ/eHO4M5eRCmAewmLJt3ong9wQSgq0aI8Xct0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.32.2-k3s1 h1:lEN/lz9K1yw6NqqFmJeosTqZJdrBt0FNQgyOAgcFTUc=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cluster-bootstrap v1.32.2-k3s1/go.mod h1:suQZratbRPwI8BzyTERpJ65OJ5iBV3sJtVmMZjvz1Vs=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.32.2-k3s1 h1:QYGSL6kmK664A213+aFzVSV/HrSu+/DMmZsPbusLyXI=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/component-base v1.32.2-k3s1/go.mod h1:CChOHQrvYZHMljmATes9GcQEp4gpzeP+xWlwpf21QC8=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.32.2-k3s1 h1:r2d+m8njXtjVc4EBFO4iDWErcSEEcTNrSsXqUk9gyNs=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.32.2-k3s1/go.mod h1:yFk5zoNDWfW5oNSX36n720eSblGJkD9pnrN/xvoUwk0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.32.2-k3s1 h1:BAQywEJNzzK6fClPuHEYU/I37XwTJniYwwu6/aoPiWE=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.32.2-k3s1/go.mod h1:ajziIix2QgMhkaUbPWYjSPj4wJd0ERqw4uCZJE65My8=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.32.2-k3s1 h1:cBhLWAHWr3ggDPr1UPmyHXiheJGeTXtNOeKbAseQKqk=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.32.2-k3s1/go.mod h1:DCzMuTh2padoinefWME0G678Mc3QFbLMF2vEweGzBAI=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.32.2-k3s1 h1:MZwQ+1oRDdKdFF2G/jJYoaHlSH+f0jTzSPmugNtv/Bs=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.32.2-k3s1/go.mod h1:hRSxBJl9uCtPM7XvHtgBv1pJT1eruiFzDUf+XQaa0Yw=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/dynamic-resource-allocation v1.32.2-k3s1 h1:shfPpe3qk7U3e/25nN6Oy9RNSW/cRtSrV2oU8OSN4CY=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/dynamic-resource-allocation v1.32.2-k3s1/go.mod h1:kqCr0j5GJEralgIb9hh+ICADrbNm+aXsce3c6Unm11A=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/endpointslice v1.32.2-k3s1 h1:8bBFNWMP9HdvDL/g4ZpBkSOJ5wKSHZ+SykX8O6/2Dsw=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/endpointslice v1.32.2-k3s1/go.mod h1:LqC6PRpxIS9/p0UcpqeA2AYsdgwlaUcZVI5UobSkctE=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/externaljwt v1.32.2-k3s1 h1:DdGlPlGxzphPoQbwbhR3WW7llcWevewYaG0vL7J+DY4=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/externaljwt v1.32.2-k3s1/go.mod h1:P9TZ/u+o3CG//KNc/2HJmKgnuvawWS75IosS9dlGlxI=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kms v1.32.2-k3s1 h1:CYOzL0RlKGf+6YzqQuEkXQwhEEX4Gf0s+sZgiVVSvxQ=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kms v1.32.2-k3s1/go.mod h1:Bk2evz/Yvk0oVrvm4MvZbgq8BD34Ksxs2SRHn4/UiOM=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.32.2-k3s1 h1:crpm6z4kU0rBCyEpBZLOdF02Z9J1HKxqtEcRb0rdC5w=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-aggregator v1.32.2-k3s1/go.mod h1:SSzCOyvkZI2ZZdjDsn68bZPpsoSk0ZTmzKtR/3MfrOQ=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-controller-manager v1.32.2-k3s1 h1:iz+FEK4BUcbjle4DD2ccIxQ+HoYYs+vjrYnA6efKr5U=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-controller-manager v1.32.2-k3s1/go.mod h1:8uvEOHDgDoDcq02bQ7ze5GE6twP1aowUHUwxIKql164=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-proxy v1.32.2-k3s1 h1:ttYLKCkBGrqLJ6AofzTkO44Mkrp7SwJ6CZq87r1mBNA=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-proxy v1.32.2-k3s1/go.mod h1:58yvXdPvUEh4bwjABVgtOvOLQ6NmWMawYmFvk42efeU=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-scheduler v1.32.2-k3s1 h1:X7vncol6dES6/BnBXVFcyR88To/HxanvMcgpT4UtkOw=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kube-scheduler v1.32.2-k3s1/go.mod h1:gSz1TkkJbJwI4mHmFXtH6YHSxB/0MkQ4Av0u6y8t5L0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kubectl v1.32.2-k3s1 h1:oplggfxAFUEfA8n8583HC8BE+B4/OtBf6OTEu6cDgJA=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kubectl v1.32.2-k3s1/go.mod h1:RYSjv1ai4SICGmg9CyivbcfdIHOqNzrtc6DKhcwJF3U=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kubelet v1.32.2-k3s1 h1:beosN+aW4vZj0V80mGzGXxtSbRBInJPbaL65w6/PSsE=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/kubelet v1.32.2-k3s1/go.mod h1:O0aZ7B8Wbtw7aHHypj8qCg5uGeBtCXHMKMuOuTMjmEM=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/metrics v1.32.2-k3s1 h1:ZNN47zqS4i411wFvui7wTXFgn2SYbR+3EFPGV2map0w=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/metrics v1.32.2-k3s1/go.mod h1:ymBMOJdtOBxU5SN67KWAoMC9D84uItKWfI4xUuqB9bA=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.2-k3s1 h1:hXnU6gm9SDjUdMeoJfm8cXqSPBrwBOJZuaiadAh0cKA=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.32.2-k3s1/go.mod h1:Kun5c2svjAPx0nnvJKYQWhfeNW+O0EpzHgRhDcYoSY0=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.2-k3s1 h1:HOqdVpgyU5Ix9UXhq0F1NnnsTTVFZ6e4v2f6m0laRxY=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.32.2-k3s1/go.mod h1:/vuNyuDhhSkWaqPq1t/ncDtqvlOftYgosR747XXodNM=
->>>>>>> d091ac463 (Bump to containerd v2.0.3/runc v1.2.5)
 github.com/k3s-io/spegel v0.0.30-k3s1 h1:PhlGG9zVWwzS78lOq9rG6NGNDQGxVtbVtSXn17VqegE=
 github.com/k3s-io/spegel v0.0.30-k3s1/go.mod h1:0xYA9kLNYnfN8Hyc6hrwmKGCYBML5WGkoTrDgvz/NUk=
 =======
@@ -1554,6 +1498,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/opencontainers/runc v1.2.5 h1:8KAkq3Wrem8bApgOHyhRI/8IeLXIfmZ6Qaw6DNSLnA4=
 github.com/opencontainers/runc v1.2.5/go.mod h1:dOQeFo29xZKBNeRBI0B19mJtfHv68YgCTh1X+YphA+4=
+github.com/opencontainers/runc v1.2.5 h1:8KAkq3Wrem8bApgOHyhRI/8IeLXIfmZ6Qaw6DNSLnA4=
+github.com/opencontainers/runc v1.2.5/go.mod h1:dOQeFo29xZKBNeRBI0B19mJtfHv68YgCTh1X+YphA+4=
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.0.3-0.20220825212826-86290f6a00fb/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE7dzrbT927iTk=
@@ -1757,6 +1703,8 @@ github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
+github.com/smallstep/pkcs7 v0.1.1 h1:x+rPdt2W088V9Vkjho4KtoggyktZJlMduZAtRHm68LU=
+github.com/smallstep/pkcs7 v0.1.1/go.mod h1:dL6j5AIz9GHjVEBTXtW+QliALcgM19RtXaTeyxI+AfA=
 github.com/smallstep/pkcs7 v0.1.1 h1:x+rPdt2W088V9Vkjho4KtoggyktZJlMduZAtRHm68LU=
 github.com/smallstep/pkcs7 v0.1.1/go.mod h1:dL6j5AIz9GHjVEBTXtW+QliALcgM19RtXaTeyxI+AfA=
 github.com/smartystreets/assertions v1.2.0 h1:42S6lae5dvLc7BrLu/0ugRtcFVjoJNMC/N3yZFZkDFs=
@@ -2637,6 +2585,8 @@ sigs.k8s.io/yaml v1.3.0/go.mod h1:GeOyir5tyXNByN85N/dRIT9es5UQNerPYEKK56eTBm8=
 >>>>>>> b9a8f1147 (V1.32.0+k3s1 (#11478))
 sigs.k8s.io/yaml v1.4.0 h1:Mk1wCc2gy/F0THH0TAp1QYyJNzRm2KCLy3o5ASXVI5E=
 sigs.k8s.io/yaml v1.4.0/go.mod h1:Ejl7/uTz7PSA4eKMyQCUTnhZYNmLIl+5c2lQPGR2BPY=
+tags.cncf.io/container-device-interface v0.8.1 h1:c0jN4Mt6781jD67NdPajmZlD1qrqQyov/Xfoab37lj0=
+tags.cncf.io/container-device-interface v0.8.1/go.mod h1:Apb7N4VdILW0EVdEMRYXIDVRZfNJZ+kmEUss2kRRQ6Y=
 tags.cncf.io/container-device-interface v0.8.1 h1:c0jN4Mt6781jD67NdPajmZlD1qrqQyov/Xfoab37lj0=
 tags.cncf.io/container-device-interface v0.8.1/go.mod h1:Apb7N4VdILW0EVdEMRYXIDVRZfNJZ+kmEUss2kRRQ6Y=
 tags.cncf.io/container-device-interface/specs-go v0.8.0 h1:QYGFzGxvYK/ZLMrjhvY0RjpUavIn4KcmRmVP/JjdBTA=

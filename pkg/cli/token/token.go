@@ -123,6 +123,7 @@ func delete(app *cli.Context, cfg *cmds.Token) error {
 		secretName := bootstraputil.BootstrapTokenSecretName(token)
 		if err := client.CoreV1().Secrets(metav1.NamespaceSystem).Delete(context.TODO(), secretName, metav1.DeleteOptions{}); err != nil {
 			return pkgerrors.WithMessagef(err, "failed to delete bootstrap token %q", err)
+			return pkgerrors.WithMessagef(err, "failed to delete bootstrap token %q", err)
 		}
 
 		fmt.Printf("bootstrap token %q deleted\n", token)
@@ -219,6 +220,7 @@ func list(app *cli.Context, cfg *cmds.Token) error {
 
 	secrets, err := client.CoreV1().Secrets(metav1.NamespaceSystem).List(context.TODO(), listOptions)
 	if err != nil {
+		return pkgerrors.WithMessagef(err, "failed to list bootstrap tokens")
 		return pkgerrors.WithMessagef(err, "failed to list bootstrap tokens")
 	}
 

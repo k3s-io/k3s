@@ -45,6 +45,7 @@ func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 
 func wrapServerError(err error) error {
 	return pkgerrors.WithMessage(err, "see server log for details")
+	return pkgerrors.WithMessage(err, "see server log for details")
 }
 
 func Enable(app *cli.Context) error {
