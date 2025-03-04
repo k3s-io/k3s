@@ -2,6 +2,7 @@ package flannel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -12,7 +13,7 @@ import (
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
@@ -74,11 +75,11 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	// Compatibility code for AuthorizeNodeWithSelectors feature-gate.
 	// If the kubelet cannot list nodes, then wait for the k3s-controller RBAC to become ready, and use that kubeconfig instead.
 	if canListNodes, err := util.CheckRBAC(ctx, kubeConfig, resourceAttrs, ""); err != nil {
-		return errors.Wrap(err, "failed to check if RBAC allows node list")
+		return pkgerrors.WithMessage(err, "failed to check if RBAC allows node list")
 	} else if !canListNodes {
 		kubeConfig = nodeConfig.AgentConfig.KubeConfigK3sController
 		if err := util.WaitForRBACReady(ctx, kubeConfig, util.DefaultAPIServerReadyTimeout, resourceAttrs, ""); err != nil {
-			return errors.Wrap(err, "flannel failed to wait for RBAC")
+			return pkgerrors.WithMessage(err, "flannel failed to wait for RBAC")
 		}
 	}
 
@@ -88,12 +89,12 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	}
 
 	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient.CoreV1().Nodes()); err != nil {
-		return errors.Wrap(err, "flannel failed to wait for PodCIDR assignment")
+		return pkgerrors.WithMessage(err, "flannel failed to wait for PodCIDR assignment")
 	}
 
 	netMode, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
-		return errors.Wrap(err, "failed to check netMode for flannel")
+		return pkgerrors.WithMessage(err, "failed to check netMode for flannel")
 	}
 	go func() {
 		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, netMode)
@@ -128,7 +129,7 @@ func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.Node
 	}
 
 	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
-		return errors.Wrap(err, "failed to wait for PodCIDR assignment")
+		return pkgerrors.WithMessage(err, "failed to wait for PodCIDR assignment")
 	}
 
 	logrus.Info("Flannel found PodCIDR assigned for node " + nodeName)

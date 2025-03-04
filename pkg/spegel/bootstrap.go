@@ -3,6 +3,7 @@ package spegel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/routing"
@@ -81,14 +82,14 @@ func (c *agentBootstrapper) Run(ctx context.Context, id string) error {
 		withCert := clientaccess.WithClientCertificate(c.clientCert, c.clientKey)
 		info, err := clientaccess.ParseAndValidateToken(c.server, c.token, withCert)
 		if err != nil {
-			return errors.Wrap(err, "failed to validate join token")
+			return pkgerrors.WithMessage(err, "failed to validate join token")
 		}
 		c.info = info
 	}
 
 	client, err := util.GetClientSet(c.kubeConfig)
 	if err != nil {
-		return errors.Wrap(err, "failed to create kubernetes client")
+		return pkgerrors.WithMessage(err, "failed to create kubernetes client")
 	}
 	nodes := client.CoreV1().Nodes()
 

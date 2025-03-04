@@ -2,6 +2,7 @@ package nodepassword
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path"
@@ -13,7 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -149,16 +150,16 @@ func verifyLocalPassword(ctx context.Context, control *config.Control, mu *sync.
 
 	passBytes, err := os.ReadFile(nodePasswordFile)
 	if err != nil {
-		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to read node password file")
+		return "", http.StatusInternalServerError, pkgerrors.WithMessage(err, "unable to read node password file")
 	}
 
 	passHash, err := Hasher.CreateHash(strings.TrimSpace(string(passBytes)))
 	if err != nil {
-		return "", http.StatusInternalServerError, errors.Wrap(err, "unable to hash node password file")
+		return "", http.StatusInternalServerError, pkgerrors.WithMessage(err, "unable to hash node password file")
 	}
 
 	if err := Hasher.VerifyHash(passHash, node.Password); err != nil {
-		return "", http.StatusForbidden, errors.Wrap(err, "unable to verify local node password")
+		return "", http.StatusForbidden, pkgerrors.WithMessage(err, "unable to verify local node password")
 	}
 
 	mu.Lock()
@@ -193,7 +194,7 @@ func verifyRemotePassword(ctx context.Context, control *config.Control, mu *sync
 func verifyNode(ctx context.Context, nodeClient coreclient.NodeController, node *nodeInfo) error {
 	if nodeName, isNodeAuth := identifier.NodeIdentity(node.User); isNodeAuth {
 		if _, err := nodeClient.Cache().Get(nodeName); err != nil {
-			return errors.Wrap(err, "unable to verify node identity")
+			return pkgerrors.WithMessage(err, "unable to verify node identity")
 		}
 	}
 	return nil
