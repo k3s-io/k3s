@@ -234,17 +234,18 @@ type Control struct {
 	ClusterResetRestorePath  string
 	MinTLSVersion            string
 	CipherSuites             []string
-	TLSMinVersion            uint16   `json:"-"`
-	TLSCipherSuites          []uint16 `json:"-"`
-	EtcdSnapshotName         string   `json:"-"`
-	EtcdDisableSnapshots     bool     `json:"-"`
-	EtcdExposeMetrics        bool     `json:"-"`
-	EtcdSnapshotDir          string   `json:"-"`
-	EtcdSnapshotCron         string   `json:"-"`
-	EtcdSnapshotRetention    int      `json:"-"`
-	EtcdSnapshotCompress     bool     `json:"-"`
-	EtcdListFormat           string   `json:"-"`
-	EtcdS3                   *EtcdS3  `json:"-"`
+	TLSMinVersion            uint16          `json:"-"`
+	TLSCipherSuites          []uint16        `json:"-"`
+	EtcdSnapshotName         string          `json:"-"`
+	EtcdDisableSnapshots     bool            `json:"-"`
+	EtcdExposeMetrics        bool            `json:"-"`
+	EtcdSnapshotDir          string          `json:"-"`
+	EtcdSnapshotCron         string          `json:"-"`
+	EtcdSnapshotReconcile    metav1.Duration `json:"-"`
+	EtcdSnapshotRetention    int             `json:"-"`
+	EtcdSnapshotCompress     bool            `json:"-"`
+	EtcdListFormat           string          `json:"-"`
+	EtcdS3                   *EtcdS3         `json:"-"`
 	ServerNodeName           string
 	VLevel                   int
 	VModule                  string

@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"net/url"
-	"runtime"
 	"strings"
 	"time"
 
@@ -44,53 +43,61 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		return ready, nil
 	}
 
-	// start managed database (if necessary)
+	// start managed etcd database; when kine is in use this is a no-op.
 	if err := c.start(ctx); err != nil {
 		return nil, pkgerrors.WithMessage(err, "start managed database")
 	}
 
-	// get the wait channel for testing managed database readiness
-	ready, err := c.testClusterDB(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// get the wait channel for testing etcd server readiness; when kine is in
+	// use the channel is closed immediately.
+	ready := c.testClusterDB(ctx)
 
+	// set c.config.Datastore and c.config.Runtime.EtcdConfig with values
+	// necessary to build etcd clients, and start kine listener if necessary.
 	if err := c.startStorage(ctx, false); err != nil {
 		return nil, err
 	}
 
-	// if necessary, store bootstrap data to datastore
+	// if necessary, store bootstrap data to datastore. saveBootstrap is only set
+	// when using kine, so this can be done before the ready channel has been closed.
 	if c.saveBootstrap {
 		if err := Save(ctx, c.config, false); err != nil {
 			return nil, err
 		}
 	}
 
-	// at this point, if etcd is in use, it's bootstrapping is complete
-	// so save the bootstrap data. We will need for etcd to be up. If
-	// the save call returns an error, we panic since subsequent etcd
-	// snapshots will be empty.
 	if c.managedDB != nil {
 		go func() {
 			for {
 				select {
 				case <-ready:
+					// always save to managed etcd, to ensure that any file modified locally are in sync with the datastore.
+					// this will panic if multiple keys exist, to prevent nodes from running with different bootstrap data.
 					if err := Save(ctx, c.config, false); err != nil {
 						panic(err)
 					}
 
 					if !c.config.EtcdDisableSnapshots {
-						_ = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
-							err := c.managedDB.ReconcileSnapshotData(ctx)
-							if err != nil {
+						// do an initial reconcile of snapshots with a fast retry until it succeeds
+						wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+							if err := c.managedDB.ReconcileSnapshotData(ctx); err != nil {
+								logrus.Errorf("Failed to record snapshots for cluster: %v", err)
+								return false, nil
+							}
+							return true, nil
+						})
+
+						// continue reconciling snapshots in the background at the configured interval.
+						// the interval is jittered by 5% to avoid all nodes reconciling at the same time.
+						wait.JitterUntilWithContext(ctx, func(ctx context.Context) {
+							if err := c.managedDB.ReconcileSnapshotData(ctx); err != nil {
 								logrus.Errorf("Failed to record snapshots for cluster: %v", err)
 							}
-							return err == nil, nil
-						})
+						}, c.config.EtcdSnapshotReconcile.Duration, 0.05, false)
 					}
 					return
-				default:
-					runtime.Gosched()
+				case <-ctx.Done():
+					return
 				}
 			}
 		}()
