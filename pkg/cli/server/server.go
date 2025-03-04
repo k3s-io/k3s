@@ -184,12 +184,19 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.VModule = cmds.LogConfig.VModule
 
 	if !cfg.EtcdDisableSnapshots || cfg.ClusterReset {
+		if cfg.EtcdSnapshotReconcile <= 0 {
+			return errors.New("etcd-snapshot-reconcile-interval must be greater than 0s")
+		}
 		serverConfig.ControlConfig.EtcdSnapshotCompress = cfg.EtcdSnapshotCompress
 		serverConfig.ControlConfig.EtcdSnapshotName = cfg.EtcdSnapshotName
 		serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 		serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
+		serverConfig.ControlConfig.EtcdSnapshotReconcile = metav1.Duration{Duration: cfg.EtcdSnapshotReconcile}
 		serverConfig.ControlConfig.EtcdSnapshotRetention = cfg.EtcdSnapshotRetention
 		if cfg.EtcdS3 {
+			if cfg.EtcdS3Timeout <= 0 {
+				return errors.New("etcd-s3-timeout must be greater than 0s")
+			}
 			serverConfig.ControlConfig.EtcdS3 = &config.EtcdS3{
 				AccessKey:     cfg.EtcdS3AccessKey,
 				Bucket:        cfg.EtcdS3BucketName,
