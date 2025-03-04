@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/agent/util"
 	apisv1 "github.com/k3s-io/api/k3s.cattle.io/v1"
 	controllersv1 "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
+	"github.com/k3s-io/k3s/pkg/agent/util"
 	pkgutil "github.com/k3s-io/k3s/pkg/util"
-	errors2 "github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	"github.com/rancher/wrangler/v3/pkg/kv"
 	"github.com/rancher/wrangler/v3/pkg/merr"
@@ -165,7 +165,7 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		// Disabled files are not just skipped, but actively deleted from the filesystem
 		if shouldDisableFile(base, path, w.disables) {
 			if err := w.delete(path); err != nil {
-				errs = append(errs, errors2.Wrapf(err, "failed to delete %s", path))
+				errs = append(errs, pkgerrors.WithMessagef(err, "failed to delete %s", path))
 			}
 			continue
 		}
@@ -178,7 +178,7 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 			continue
 		}
 		if err := w.deploy(path, !force); err != nil {
-			errs = append(errs, errors2.Wrapf(err, "failed to process %s", path))
+			errs = append(errs, pkgerrors.WithMessagef(err, "failed to process %s", path))
 		} else {
 			w.modTime[path] = modTime
 		}

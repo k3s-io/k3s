@@ -21,7 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -48,7 +48,7 @@ func Run(ctx *cli.Context) error {
 
 	if !cmds.AgentConfig.Rootless {
 		if err := permissions.IsPrivileged(); err != nil {
-			return errors.Wrap(err, "agent requires additional privilege if not run with --rootless")
+			return pkgerrors.WithMessage(err, "agent requires additional privilege if not run with --rootless")
 		}
 	}
 
