@@ -14,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -46,7 +46,7 @@ func forkIfLoggingOrReaping() error {
 
 		pwd, err := os.Getwd()
 		if err != nil {
-			return errors.Wrap(err, "failed to get working directory")
+			return pkgerrors.WithMessage(err, "failed to get working directory")
 		}
 
 		if enableReaping {

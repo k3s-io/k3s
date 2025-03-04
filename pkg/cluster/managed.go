@@ -5,13 +5,12 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"

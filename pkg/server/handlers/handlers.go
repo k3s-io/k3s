@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -19,7 +20,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,7 +134,7 @@ func File(fileName ...string) http.Handler {
 		for _, f := range fileName {
 			bytes, err := os.ReadFile(f)
 			if err != nil {
-				util.SendError(errors.Wrapf(err, "failed to read %s", f), resp, req, http.StatusInternalServerError)
+				util.SendError(pkgerrors.WithMessagef(err, "failed to read %s", f), resp, req, http.StatusInternalServerError)
 				return
 			}
 			resp.Write(bytes)
@@ -164,7 +165,7 @@ func APIServers(control *config.Control) http.Handler {
 		endpoints := collectAddresses(ctx)
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(endpoints); err != nil {
-			util.SendError(errors.Wrap(err, "failed to encode apiserver endpoints"), resp, req, http.StatusInternalServerError)
+			util.SendError(pkgerrors.WithMessage(err, "failed to encode apiserver endpoints"), resp, req, http.StatusInternalServerError)
 		}
 	})
 }
@@ -178,7 +179,7 @@ func Config(control *config.Control, cfg *cmds.Server) http.Handler {
 		control.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(control); err != nil {
-			util.SendError(errors.Wrap(err, "failed to encode agent config"), resp, req, http.StatusInternalServerError)
+			util.SendError(pkgerrors.WithMessage(err, "failed to encode agent config"), resp, req, http.StatusInternalServerError)
 		}
 	})
 }
