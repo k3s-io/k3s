@@ -26,11 +26,11 @@ import (
 
 // testClusterDB returns a channel that will be closed when the datastore connection is available.
 // The datastore is tested for readiness every 5 seconds until the test succeeds.
-func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
+func (c *Cluster) testClusterDB(ctx context.Context) <-chan struct{} {
 	result := make(chan struct{})
 	if c.managedDB == nil {
 		close(result)
-		return result, nil
+		return result
 	}
 
 	go func() {
@@ -51,7 +51,7 @@ func (c *Cluster) testClusterDB(ctx context.Context) (<-chan struct{}, error) {
 		}
 	}()
 
-	return result, nil
+	return result
 }
 
 // start starts the database, unless a cluster reset has been requested, in which case
