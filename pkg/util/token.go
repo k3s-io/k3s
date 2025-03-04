@@ -5,12 +5,12 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/pkg/errors"
 )
 
 func Random(size int) (string, error) {

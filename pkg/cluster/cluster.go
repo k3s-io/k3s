@@ -12,7 +12,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/kine/pkg/endpoint"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilsnet "k8s.io/utils/net"
@@ -35,7 +35,7 @@ type Cluster struct {
 func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 	// Set up the dynamiclistener and http request handlers
 	if err := c.initClusterAndHTTPS(ctx); err != nil {
-		return nil, errors.Wrap(err, "init cluster datastore and https")
+		return nil, pkgerrors.WithMessage(err, "init cluster datastore and https")
 	}
 
 	if c.config.DisableETCD {
@@ -46,7 +46,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 
 	// start managed database (if necessary)
 	if err := c.start(ctx); err != nil {
-		return nil, errors.Wrap(err, "start managed database")
+		return nil, pkgerrors.WithMessage(err, "start managed database")
 	}
 
 	// get the wait channel for testing managed database readiness
@@ -121,7 +121,7 @@ func (c *Cluster) startEtcdProxy(ctx context.Context) error {
 		for i, c := range clientURLs {
 			u, err := url.Parse(c)
 			if err != nil {
-				return errors.Wrap(err, "failed to parse etcd ClientURL")
+				return pkgerrors.WithMessage(err, "failed to parse etcd ClientURL")
 			}
 			clientURLs[i] = u.Host
 		}
@@ -162,7 +162,7 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 	// start listening on the kine socket as an etcd endpoint, or return the external etcd endpoints
 	etcdConfig, err := endpoint.Listen(ctx, c.config.Datastore)
 	if err != nil {
-		return errors.Wrap(err, "creating storage endpoint")
+		return pkgerrors.WithMessage(err, "creating storage endpoint")
 	}
 
 	// Persist the returned etcd configuration. We decide if we're doing leader election for embedded controllers

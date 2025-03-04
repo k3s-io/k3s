@@ -10,6 +10,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
 	logsapi "k8s.io/component-base/logs/api/v1"
@@ -24,7 +25,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	defer logs.FlushLogs()
 
 	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
-		return err
+		return pkgerrors.WithMessage(err, "failed to start kubelet")
 	}
 
 	go func() {

@@ -15,6 +15,7 @@
 package flannel
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -28,7 +29,7 @@ import (
 	"github.com/flannel-io/flannel/pkg/subnet/kube"
 	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
 	"github.com/joho/godotenv"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
@@ -53,7 +54,7 @@ var (
 func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
 	extIface, err := LookupExtInterface(flannelIface, netMode)
 	if err != nil {
-		return errors.Wrap(err, "failed to find the interface")
+		return pkgerrors.WithMessage(err, "failed to find the interface")
 	}
 
 	sm, err := kube.NewSubnetManager(ctx,
@@ -63,12 +64,12 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		flannelConf,
 		false)
 	if err != nil {
-		return errors.Wrap(err, "failed to create the SubnetManager")
+		return pkgerrors.WithMessage(err, "failed to create the SubnetManager")
 	}
 
 	config, err := sm.GetNetworkConfig(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to get the network config")
+		return pkgerrors.WithMessage(err, "failed to get the network config")
 	}
 
 	// Create a backend manager then use it to create the backend and register the network with it.
@@ -76,17 +77,17 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 
 	be, err := bm.GetBackend(config.BackendType)
 	if err != nil {
-		return errors.Wrap(err, "failed to create the flannel backend")
+		return pkgerrors.WithMessage(err, "failed to create the flannel backend")
 	}
 
 	bn, err := be.RegisterNetwork(ctx, &sync.WaitGroup{}, config)
 	if err != nil {
-		return errors.Wrap(err, "failed to register flannel network")
+		return pkgerrors.WithMessage(err, "failed to register flannel network")
 	}
 	trafficMngr := &iptables.IPTablesManager{}
 	err = trafficMngr.Init(ctx, &sync.WaitGroup{})
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize flannel ipTables manager")
+		return pkgerrors.WithMessage(err, "failed to initialize flannel ipTables manager")
 	}
 
 	if netMode == (ipv4+ipv6) || netMode == ipv4 {
@@ -108,7 +109,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
 	}
 	if err != nil {
-		return errors.Wrap(err, "failed to setup masq rules")
+		return pkgerrors.WithMessage(err, "failed to setup masq rules")
 	}
 
 	//setup forward rules
@@ -136,11 +137,11 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 		logrus.Debug("No interface defined for flannel in the config. Fetching the default gateway interface")
 		if netMode == ipv4 || netMode == (ipv4+ipv6) {
 			if iface, err = ip.GetDefaultGatewayInterface(); err != nil {
-				return nil, errors.Wrap(err, "failed to get default interface")
+				return nil, pkgerrors.WithMessage(err, "failed to get default interface")
 			}
 		} else {
 			if iface, err = ip.GetDefaultV6GatewayInterface(); err != nil {
-				return nil, errors.Wrap(err, "failed to get default interface")
+				return nil, pkgerrors.WithMessage(err, "failed to get default interface")
 			}
 		}
 	}
@@ -150,14 +151,14 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	case ipv4:
 		ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to find IPv4 address for interface")
+			return nil, pkgerrors.WithMessage(err, "failed to find IPv4 address for interface")
 		}
 		logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr[0])
 		ifacev6Addr = append(ifacev6Addr, nil)
 	case ipv6:
 		ifacev6Addr, err = ip.GetInterfaceIP6Addrs(iface)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to find IPv6 address for interface")
+			return nil, pkgerrors.WithMessage(err, "failed to find IPv6 address for interface")
 		}
 		logrus.Infof("The interface %s with ipv6 address %s will be used by flannel", iface.Name, ifacev6Addr[0])
 		ifaceAddr = append(ifaceAddr, nil)
@@ -263,7 +264,6 @@ func ReadCIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP4Net {
 	}
 	return prevCIDRs
 }
-
 
 // ReadIP6CIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv6 network CIDRKey
 func ReadIP6CIDRFromSubnetFile(path string, CIDRKey string) ip.IP6Net {

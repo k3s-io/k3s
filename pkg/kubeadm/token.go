@@ -1,9 +1,10 @@
 package kubeadm
 
 import (
+	"errors"
+
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
