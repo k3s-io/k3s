@@ -31,6 +31,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -67,6 +68,7 @@ func generateTestConfig() *config.Control {
 		DataDir:               "/tmp/k3s/", // Different than the default value
 		EtcdSnapshotName:      "etcd-snapshot",
 		EtcdSnapshotCron:      "0 */12 * * *",
+		EtcdSnapshotReconcile: metav1.Duration{Duration: 10 * time.Minute},
 		EtcdSnapshotRetention: 5,
 		EtcdS3: &config.EtcdS3{
 			Endpoint: "s3.amazonaws.com",
