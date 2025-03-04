@@ -92,6 +92,7 @@ type Server struct {
 	EtcdExposeMetrics        bool
 	EtcdSnapshotDir          string
 	EtcdSnapshotCron         string
+	EtcdSnapshotReconcile    time.Duration
 	EtcdSnapshotRetention    int
 	EtcdSnapshotCompress     bool
 	EtcdListFormat           string
@@ -389,6 +390,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(db) Snapshot interval time in cron spec. eg. every 5 hours '0 */5 * * *'",
 		Destination: &ServerConfig.EtcdSnapshotCron,
 		Value:       "0 */12 * * *",
+	},
+	&cli.DurationFlag{
+		Name:        "etcd-snapshot-reconcile-interval",
+		Usage:       "(db) Snapshot reconcile interval",
+		Destination: &ServerConfig.EtcdSnapshotReconcile,
+		Value:       10 * time.Minute,
 	},
 	&cli.IntFlag{
 		Name:        "etcd-snapshot-retention",
