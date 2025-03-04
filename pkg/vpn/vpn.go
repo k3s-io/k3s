@@ -2,6 +2,7 @@ package vpn
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -60,7 +61,7 @@ func StartVPN(vpnAuthConfigFile string) error {
 		logrus.Debugf("Flags passed to tailscale up: %v", args)
 		output, err := util.ExecCommand("tailscale", args)
 		if err != nil {
-			return errors.Wrap(err, "tailscale up failed: "+output)
+			return pkgerrors.WithMessage(err, "tailscale up failed: "+output)
 		}
 		logrus.Debugf("Output from tailscale up: %v", output)
 		return nil

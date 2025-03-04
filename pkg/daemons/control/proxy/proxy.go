@@ -1,9 +1,10 @@
 package proxy
 
 import (
+	"errors"
 	"io"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,12 +44,12 @@ func (p *proxy) pipe(src, dst io.ReadWriter) {
 	for {
 		n, err := src.Read(buff)
 		if err != nil {
-			p.err(errors.Wrap(err, "read failed"))
+			p.err(pkgerrors.WithMessage(err, "read failed"))
 			return
 		}
 		_, err = dst.Write(buff[:n])
 		if err != nil {
-			p.err(errors.Wrap(err, "write failed"))
+			p.err(pkgerrors.WithMessage(err, "write failed"))
 			return
 		}
 	}

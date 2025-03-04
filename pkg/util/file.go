@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
