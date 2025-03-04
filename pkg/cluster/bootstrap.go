@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -25,7 +26,7 @@ import (
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,7 +35,7 @@ import (
 // ControlRuntimeBootstrap struct, either via HTTP or from the datastore.
 func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	if err := c.assignManagedDriver(ctx); err != nil {
-		return errors.Wrap(err, "failed to set datastore driver")
+		return pkgerrors.WithMessage(err, "failed to set datastore driver")
 	}
 
 	// Check if we need to bootstrap, and whether or not the managed database has already
@@ -43,7 +44,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 	// This also sets c.clientAccessInfo if c.config.JoinURL and c.config.Token are set.
 	shouldBootstrap, isInitialized, err := c.shouldBootstrapLoad(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to check if bootstrap data has been initialized")
+		return pkgerrors.WithMessage(err, "failed to check if bootstrap data has been initialized")
 	}
 
 	if c.managedDB != nil {
@@ -51,7 +52,7 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 			// secondary server with etcd disabled, start the etcd proxy so that we can attempt to use it
 			// when reconciling.
 			if err := c.startEtcdProxy(ctx); err != nil {
-				return errors.Wrap(err, "failed to start etcd proxy")
+				return pkgerrors.WithMessage(err, "failed to start etcd proxy")
 			}
 		} else if isInitialized && !clusterReset {
 			// For secondary servers with etcd, first attempt to connect and reconcile using the join URL.
@@ -123,7 +124,7 @@ func (c *Cluster) shouldBootstrapLoad(ctx context.Context) (bool, bool, error) {
 			// the hash in the token. The password isn't actually checked until later when actually bootstrapping.
 			info, err := clientaccess.ParseAndValidateToken(c.config.JoinURL, c.config.Token, opts...)
 			if err != nil {
-				return false, false, errors.Wrap(err, "failed to validate token")
+				return false, false, pkgerrors.WithMessage(err, "failed to validate token")
 			}
 			c.clientAccessInfo = info
 
@@ -333,7 +334,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 		updated, newer, err := isNewerFile(path, fileData)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get update status of %s", pathKey)
+			return pkgerrors.WithMessagef(err, "failed to get update status of %s", pathKey)
 		}
 		if newer {
 			newerOnDisk = append(newerOnDisk, path)
@@ -350,10 +351,10 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
 
 		if _, err := os.Stat(serverTLSDir); err != nil {
-			return errors.Wrap(err, "cluster reset failed to stat server TLS dir")
+			return pkgerrors.WithMessage(err, "cluster reset failed to stat server TLS dir")
 		}
 		if err := copy.Copy(serverTLSDir, tlsBackupDir); err != nil {
-			return errors.Wrap(err, "cluster reset failed to back up server TLS dir")
+			return pkgerrors.WithMessage(err, "cluster reset failed to back up server TLS dir")
 		}
 	} else if len(newerOnDisk) > 0 {
 		logrus.Fatal(strings.Join(newerOnDisk, ", ") + " newer than datastore and could cause a cluster outage. Remove the file(s) from disk and restart to be recreated from datastore.")
@@ -376,13 +377,13 @@ func isNewerFile(path string, file bootstrap.File) (updated bool, newerOnDisk bo
 			logrus.Warn(path + " doesn't exist. continuing...")
 			return true, false, nil
 		}
-		return false, false, errors.Wrapf(err, "reconcile failed to open")
+		return false, false, pkgerrors.WithMessagef(err, "reconcile failed to open")
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return false, false, errors.Wrapf(err, "reconcile failed to read")
+		return false, false, pkgerrors.WithMessagef(err, "reconcile failed to read")
 	}
 
 	if bytes.Equal(file.Content, data) {
@@ -391,7 +392,7 @@ func isNewerFile(path string, file bootstrap.File) (updated bool, newerOnDisk bo
 
 	info, err := f.Stat()
 	if err != nil {
-		return false, false, errors.Wrapf(err, "reconcile failed to stat")
+		return false, false, pkgerrors.WithMessagef(err, "reconcile failed to stat")
 	}
 
 	if info.ModTime().Unix()-file.Timestamp.Unix() >= systemTimeSkew {
@@ -452,7 +453,7 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 	if c.managedDB != nil {
 		// Try to compare local config against the server we're joining.
 		if err := c.compareConfig(); err != nil {
-			return errors.Wrap(err, "failed to validate server configuration")
+			return pkgerrors.WithMessage(err, "failed to validate server configuration")
 		}
 		// Try to bootstrap from the datastore using the local etcd proxy.
 		if data, err := c.getBootstrapData(ctx, c.clientAccessInfo.Password); err != nil {

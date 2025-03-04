@@ -28,7 +28,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	v1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/leader"
@@ -54,7 +54,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	}
 
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
-		return errors.Wrap(err, "starting kubernetes")
+		return pkgerrors.WithMessage(err, "starting kubernetes")
 	}
 
 	wg := &sync.WaitGroup{}
@@ -71,7 +71,7 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	}
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, wg, shArgs); err != nil {
-			return errors.Wrap(err, "startup hook")
+			return pkgerrors.WithMessage(err, "startup hook")
 		}
 	}
 	go startOnAPIServerReady(ctx, config)
@@ -99,12 +99,12 @@ func runControllers(ctx context.Context, config *Config) error {
 
 	sc, err := NewContext(ctx, config, true)
 	if err != nil {
-		return errors.Wrap(err, "failed to create new server context")
+		return pkgerrors.WithMessage(err, "failed to create new server context")
 	}
 
 	controlConfig.Runtime.StartupHooksWg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
-		return errors.Wrap(err, "failed to stage files")
+		return pkgerrors.WithMessage(err, "failed to stage files")
 	}
 
 	// run migration before we set controlConfig.Runtime.Core
@@ -112,7 +112,7 @@ func runControllers(ctx context.Context, config *Config) error {
 		sc.Core.Core().V1().Secret(),
 		sc.Core.Core().V1().Node(),
 		controlConfig.Runtime.NodePasswdFile); err != nil {
-		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
+		logrus.Warn(pkgerrors.WithMessage(err, "error migrating node-password file"))
 	}
 	controlConfig.Runtime.K8s = sc.K8s
 	controlConfig.Runtime.K3s = sc.K3s
@@ -125,12 +125,12 @@ func runControllers(ctx context.Context, config *Config) error {
 
 	for _, controller := range config.Controllers {
 		if err := controller(ctx, sc); err != nil {
-			return errors.Wrapf(err, "failed to start %s controller", util.GetFunctionName(controller))
+			return pkgerrors.WithMessagef(err, "failed to start %s controller", util.GetFunctionName(controller))
 		}
 	}
 
 	if err := sc.Start(ctx); err != nil {
-		return errors.Wrap(err, "failed to start wranger controllers")
+		return pkgerrors.WithMessage(err, "failed to start wranger controllers")
 	}
 
 	if !controlConfig.DisableAPIServer {
@@ -164,14 +164,14 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 	}
 	for _, controller := range config.LeaderControllers {
 		if err := controller(ctx, sc); err != nil {
-			panic(errors.Wrapf(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
+			panic(pkgerrors.WithMessagef(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 		}
 	}
 
 	// Re-run informer factory startup after core and leader-elected controllers have started.
 	// Additional caches may need to start for the newly added OnChange/OnRemove callbacks.
 	if err := sc.Start(ctx); err != nil {
-		panic(errors.Wrap(err, "failed to start wranger controllers"))
+		panic(pkgerrors.WithMessage(err, "failed to start wranger controllers"))
 	}
 }
 
@@ -478,11 +478,11 @@ func setupDataDirAndChdir(config *config.Control) error {
 	dataDir := config.DataDir
 
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
-		return errors.Wrapf(err, "can not mkdir %s", dataDir)
+		return pkgerrors.WithMessagef(err, "can not mkdir %s", dataDir)
 	}
 
 	if err := os.Chdir(dataDir); err != nil {
-		return errors.Wrapf(err, "can not chdir %s", dataDir)
+		return pkgerrors.WithMessagef(err, "can not chdir %s", dataDir)
 	}
 
 	return nil
