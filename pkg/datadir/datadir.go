@@ -5,7 +5,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 )
 
@@ -31,7 +31,7 @@ func LocalHome(dataDir string, forceLocal bool) (string, error) {
 
 	dataDir, err := resolvehome.Resolve(dataDir)
 	if err != nil {
-		return "", errors.Wrapf(err, "resolving %s", dataDir)
+		return "", pkgerrors.WithMessagef(err, "resolving %s", dataDir)
 	}
 
 	return filepath.Abs(dataDir)

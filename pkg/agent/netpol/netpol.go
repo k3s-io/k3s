@@ -27,7 +27,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1core "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
@@ -86,7 +86,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		}
 		return true, nil
 	}); err != nil {
-		return errors.Wrapf(err, "network policy controller failed to wait for %s taint to be removed from Node %s", cloudproviderapi.TaintExternalCloudProvider, nodeConfig.AgentConfig.NodeName)
+		return pkgerrors.WithMessagef(err, "network policy controller failed to wait for %s taint to be removed from Node %s", cloudproviderapi.TaintExternalCloudProvider, nodeConfig.AgentConfig.NodeName)
 	}
 
 	krConfig := options.NewKubeRouterConfig()
@@ -123,13 +123,13 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	if nodeConfig.AgentConfig.EnableIPv4 {
 		iptHandler, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
 		if err != nil {
-			return errors.Wrap(err, "failed to create iptables handler")
+			return pkgerrors.WithMessage(err, "failed to create iptables handler")
 		}
 		iptablesCmdHandlers[v1core.IPv4Protocol] = iptHandler
 
 		ipset, err := utils.NewIPSet(false)
 		if err != nil {
-			return errors.Wrap(err, "failed to create ipset handler")
+			return pkgerrors.WithMessage(err, "failed to create ipset handler")
 		}
 		ipSetHandlers[v1core.IPv4Protocol] = ipset
 	}
@@ -137,13 +137,13 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	if nodeConfig.AgentConfig.EnableIPv6 {
 		ipt6Handler, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
 		if err != nil {
-			return errors.Wrap(err, "failed to create iptables handler")
+			return pkgerrors.WithMessage(err, "failed to create iptables handler")
 		}
 		iptablesCmdHandlers[v1core.IPv6Protocol] = ipt6Handler
 
 		ipset, err := utils.NewIPSet(true)
 		if err != nil {
-			return errors.Wrap(err, "failed to create ipset handler")
+			return pkgerrors.WithMessage(err, "failed to create ipset handler")
 		}
 		ipSetHandlers[v1core.IPv6Protocol] = ipset
 	}
@@ -172,7 +172,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{},
 		iptablesCmdHandlers, ipSetHandlers)
 	if err != nil {
-		return errors.Wrap(err, "unable to initialize network policy controller")
+		return pkgerrors.WithMessage(err, "unable to initialize network policy controller")
 	}
 
 	podInformer.AddEventHandler(npc.PodEventHandler)

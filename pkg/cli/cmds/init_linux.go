@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/moby/sys/userns"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil"
 )
 
@@ -17,7 +17,7 @@ func EvacuateCgroup2() error {
 		// The root cgroup has to be empty to enable subtree_control, so evacuate it by placing
 		// ourselves in the init cgroup.
 		if err := cgrouputil.EvacuateCgroup2("init"); err != nil {
-			return errors.Wrap(err, "failed to evacuate root cgroup")
+			return pkgerrors.WithMessage(err, "failed to evacuate root cgroup")
 		}
 	}
 	return nil

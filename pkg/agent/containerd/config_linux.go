@@ -4,6 +4,7 @@
 package containerd
 
 import (
+	"fmt"
 	"os"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -16,7 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/moby/sys/userns"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/cri-client/pkg/util"
@@ -78,7 +79,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 
 	// Verifies if the DefaultRuntime can be found
 	if _, ok := extraRuntimes[cfg.DefaultRuntime]; !ok && cfg.DefaultRuntime != "" {
-		return errors.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
+		return fmt.Errorf("default runtime %s was not found", cfg.DefaultRuntime)
 	}
 
 	containerdConfig := templates.ContainerdConfig{
@@ -96,7 +97,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 
 	selEnabled, selConfigured, err := selinuxStatus()
 	if err != nil {
-		return errors.Wrap(err, "failed to detect selinux")
+		return pkgerrors.WithMessage(err, "failed to detect selinux")
 	}
 	switch {
 	case !cfg.SELinux && selEnabled:

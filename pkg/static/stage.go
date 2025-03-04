@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,7 +20,7 @@ func Stage(dataDir string) error {
 		logrus.Info("Writing static file: ", p)
 		os.MkdirAll(filepath.Dir(p), 0700)
 		if err := os.WriteFile(p, content, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write to %s", name)
+			return pkgerrors.WithMessagef(err, "failed to write to %s", name)
 		}
 	}
 
