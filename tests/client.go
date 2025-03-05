@@ -62,6 +62,23 @@ func ParseNodes(kubeconfigFile string) ([]corev1.Node, error) {
 	return nodes.Items, nil
 }
 
+// Returns all internal IPs of the nodes in the cluster as map[node][ip]
+func GetInternalIPs(kubeconfigFile string) (map[string]string, error) {
+	nodes, err := ParseNodes(kubeconfigFile)
+	if err != nil {
+		return nil, err
+	}
+	ips := make(map[string]string)
+	for _, node := range nodes {
+		for _, address := range node.Status.Addresses {
+			if address.Type == corev1.NodeInternalIP {
+				ips[node.Name] = address.Address
+			}
+		}
+	}
+	return ips, nil
+}
+
 func ParsePods(kubeconfigFile string) ([]corev1.Pod, error) {
 	clientSet, err := K8sClient(kubeconfigFile)
 	if err != nil {

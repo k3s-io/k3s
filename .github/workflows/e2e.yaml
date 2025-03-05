@@ -45,8 +45,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [autoimport, startup, s3, btrfs, externalip, privateregistry, embeddedmirror, wasm]
-      max-parallel: 3
+        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
+      max-parallel: 5
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -54,15 +54,22 @@ jobs:
       
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
-      - name: "Vagrant Cache"
+      - name: Vagrant R/W Cache
+        if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/master'
         uses: actions/cache@v4
         with:
           path: |
              ~/.vagrant.d/boxes
-          key: vagrant-box-ubuntu-2404
+          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
+      - name: Vagrant Read Cache
+        if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/master'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
-      
       - name: Install Go
         uses: actions/setup-go@v5
         with: 
@@ -153,8 +160,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, etcd, lazypull, skew, snapshotrestore, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
+        exclude:
+          - dtest: autoimport
+            arch: arm64
+          - dtest: secretsencryption
+            arch: arm64
+          - dtest: snapshotrestore
+            arch: arm64
+          - dtest: svcpoliciesandfirewall
+            arch: arm64
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
@@ -193,9 +209,12 @@ jobs:
         chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
         cd ./tests/docker/${{ matrix.dtest }}
+        
+        # These tests use rancher/systemd-node and have different flags.
+        CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -channel=$CHANNEL
-        elif [ ${{ matrix.dtest }} = "snapshotrestore" ]; then
+        elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
           ./${{ matrix.dtest }}.test -ci 
         else
           ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE

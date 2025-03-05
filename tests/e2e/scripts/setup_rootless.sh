@@ -26,8 +26,10 @@ fi
 
 # Enable IPv4 forwarding
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+# Disable Ubuntu Restricted unprivileged user namespaces
+echo "kernel.apparmor_restrict_unprivileged_unconfined=0" >> /etc/sysctl.conf
+echo "kernel.apparmor_restrict_unprivileged_userns=0" >> /etc/sysctl.conf
 sysctl --system
-
 
 # Check if the string is already in GRUB_CMDLINE_LINUX
 if grep -qxF "GRUB_CMDLINE_LINUX=\"systemd.unified_cgroup_hierarchy=1 \"" /etc/default/grub; then

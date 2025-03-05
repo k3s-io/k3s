@@ -60,10 +60,10 @@ Vagrant.configure("2") do |config|
     NODE_BOXES = NODE_BOXES.split(" ", -1)
   end
 
-  NODE_ROLES.each_with_index do |name, i|
+  NODE_ROLES.each_with_index do |role, i|
     role_num = role.split("-", -1).pop.to_i
     config.vm.define role do |node|
-      provision(node.vm, name, role_num, i)
+      provision(node.vm, role, role_num, i)
     end
   end
 end

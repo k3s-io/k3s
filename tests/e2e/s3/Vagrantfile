@@ -29,7 +29,7 @@ def provision(vm, role, role_num, node_num)
 
 
   runS3mock = <<~'SCRIPT'
-    docker run -p 9090:9090 -p 9191:9191 -d -e initialBuckets=test-bucket -e debug=true -t adobe/s3mock
+    docker run -p 9090:9090 -p 9191:9191 -d -e initialBuckets=test-bucket -e debug=true -t mirror.gcr.io/adobe/s3mock
   SCRIPT
 
 

@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -22,7 +23,8 @@ type TestConfig struct {
 	Token          string
 	K3sImage       string
 	DBType         string
-	Servers        []Server
+	SkipStart      bool
+	Servers        []DockerNode
 	Agents         []DockerNode
 	ServerYaml     string
 	AgentYaml      string
@@ -31,12 +33,8 @@ type TestConfig struct {
 type DockerNode struct {
 	Name string
 	IP   string
-}
-
-type Server struct {
-	DockerNode
-	Port int
-	URL  string
+	Port int    // Not filled by agent nodes
+	URL  string // Not filled by agent nodes
 }
 
 // NewTestConfig initializes the test environment and returns the configuration
@@ -101,19 +99,9 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		testID := filepath.Base(config.TestDir)
 		name := fmt.Sprintf("server-%d-%s", i, strings.ToLower(testID))
-
 		port := getPort()
 		if port == -1 {
 			return fmt.Errorf("failed to find an available port")
-		}
-
-		// Write the server yaml to a tmp file and mount it into the container
-		var yamlMount string
-		if config.ServerYaml != "" {
-			if err := os.WriteFile(filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)), []byte(config.ServerYaml), 0644); err != nil {
-				return fmt.Errorf("failed to write server yaml: %v", err)
-			}
-			yamlMount = fmt.Sprintf("--mount type=bind,src=%s,dst=/etc/rancher/k3s/config.yaml", filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)))
 		}
 
 		var joinServer string
@@ -139,11 +127,14 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			}
 			joinServer = fmt.Sprintf("--server %s", config.Servers[0].URL)
 		}
-		newServer := Server{
-			DockerNode: DockerNode{
-				Name: name,
-			},
+		newServer := DockerNode{
+			Name: name,
 			Port: port,
+		}
+
+		var skipStart string
+		if config.SkipStart {
+			skipStart = "INSTALL_K3S_SKIP_START=true"
 		}
 
 		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
@@ -162,7 +153,6 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-v", "/lib/modules:/lib/modules",
 				"-v", "/var/run/docker.sock:/var/run/docker.sock",
 				"-v", "/var/lib/docker:/var/lib/docker",
-				yamlMount,
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
 				fmt.Sprintf("%s:v0.0.5", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
@@ -174,13 +164,37 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 				return fmt.Errorf("failed to create coverage directory: %s: %v", out, err)
 			}
-			// The pipe requires that we use sh -c with "" to run the command
-			cmd = fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
-				dbConnect+" "+joinServer+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)))
+
+			// Create empty config.yaml for later use
+			cmd = "mkdir -p /etc/rancher/k3s; touch /etc/rancher/k3s/config.yaml"
 			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
-				return fmt.Errorf("failed to start server: %s: %v", out, err)
+				return fmt.Errorf("failed to create empty config.yaml: %s: %v", out, err)
+			}
+			// Write the raw YAML directly to the config.yaml on the systemd-node container
+			if config.ServerYaml != "" {
+				cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.ServerYaml)
+				if out, err := newServer.RunCmdOnNode(cmd); err != nil {
+					return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
+				}
+			}
+
+			cmd = fmt.Sprintf("curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='%s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -",
+				dbConnect+" "+joinServer+" "+os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i)), skipStart)
+			if _, err := newServer.RunCmdOnNode(cmd); err != nil {
+				// Attempt to dump the last few lines of the journalctl logs
+				logs, _ := newServer.DumpServiceLogs(10)
+				return fmt.Errorf("failed to start server: %s: %v", logs, err)
 			}
 		} else {
+			// Write the server yaml to the testing directory and mount it into the container
+			var yamlMount string
+			if config.ServerYaml != "" {
+				if err := os.WriteFile(filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)), []byte(config.ServerYaml), 0644); err != nil {
+					return fmt.Errorf("failed to write server yaml: %v", err)
+				}
+				yamlMount = fmt.Sprintf("--mount type=bind,src=%s,dst=/etc/rancher/k3s/config.yaml", filepath.Join(config.TestDir, fmt.Sprintf("server-%d.yaml", i)))
+			}
+
 			// Assemble all the Docker args
 			dRun := strings.Join([]string{"docker run -d",
 				"--name", name,
@@ -222,9 +236,12 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 	}
 
+	if config.SkipStart {
+		return nil
+	}
 	// Wait for kubeconfig to be available
 	time.Sleep(5 * time.Second)
-	return copyAndModifyKubeconfig(config)
+	return config.CopyAndModifyKubeconfig()
 }
 
 // setupDatabase will start the configured database if startDB is true,
@@ -279,6 +296,10 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				Name: name,
 			}
 
+			var skipStart string
+			if config.SkipStart {
+				skipStart = "INSTALL_K3S_SKIP_START=true"
+			}
 			if config.K3sImage == "rancher/systemd-node" {
 				dRun := strings.Join([]string{"docker run -d",
 					"--name", name,
@@ -298,12 +319,26 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
 				}
 				time.Sleep(5 * time.Second)
-				// The pipe requires that we use sh -c with "" to run the command
-				sCmd := fmt.Sprintf("/bin/sh -c \"curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' INSTALL_K3S_SKIP_DOWNLOAD=true sh -\"",
-					os.Getenv(agentInstanceArgs))
 
-				if out, err := newAgent.RunCmdOnNode(sCmd); err != nil {
-					return fmt.Errorf("failed to start server: %s: %v", out, err)
+				// Create empty config.yaml for later use
+				cmd := "mkdir -p /etc/rancher/k3s; touch /etc/rancher/k3s/config.yaml"
+				if out, err := newAgent.RunCmdOnNode(cmd); err != nil {
+					return fmt.Errorf("failed to create empty config.yaml: %s: %v", out, err)
+				}
+				// Write the raw YAML directly to the config.yaml on the systemd-node container
+				if config.AgentYaml != "" {
+					cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.AgentYaml)
+					if out, err := newAgent.RunCmdOnNode(cmd); err != nil {
+						return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
+					}
+				}
+
+				sCmd := fmt.Sprintf("curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='agent %s' %s INSTALL_K3S_SKIP_DOWNLOAD=true sh -",
+					os.Getenv(agentInstanceArgs), skipStart)
+				if _, err := newAgent.RunCmdOnNode(sCmd); err != nil {
+					// Attempt to dump the last few lines of the journalctl logs
+					logs, _ := newAgent.DumpServiceLogs(10)
+					return fmt.Errorf("failed to start server: %s: %v", logs, err)
 				}
 			} else {
 				// Assemble all the Docker args
@@ -358,15 +393,29 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	return nil
 }
 
+// Returns a list of all server names
+func (config *TestConfig) GetServerNames() []string {
+	var serverNames []string
+	for _, server := range config.Servers {
+		serverNames = append(serverNames, server.Name)
+	}
+	return serverNames
+}
+
+// Returns a list of all agent names
+func (config *TestConfig) GetAgentNames() []string {
+	var agentNames []string
+	for _, agent := range config.Agents {
+		agentNames = append(agentNames, agent.Name)
+	}
+	return agentNames
+}
+
 // Returns a list of all node names
 func (config *TestConfig) GetNodeNames() []string {
 	var nodeNames []string
-	for _, server := range config.Servers {
-		nodeNames = append(nodeNames, server.Name)
-	}
-	for _, agent := range config.Agents {
-		nodeNames = append(nodeNames, agent.Name)
-	}
+	nodeNames = append(nodeNames, config.GetServerNames()...)
+	nodeNames = append(nodeNames, config.GetAgentNames()...)
 	return nodeNames
 }
 
@@ -412,9 +461,9 @@ func (config *TestConfig) Cleanup() error {
 	return nil
 }
 
-// copyAndModifyKubeconfig copies out kubeconfig from first control-plane server
+// CopyAndModifyKubeconfig copies out kubeconfig from first control-plane server
 // and updates the port to match the external port
-func copyAndModifyKubeconfig(config *TestConfig) error {
+func (config *TestConfig) CopyAndModifyKubeconfig() error {
 	if len(config.Servers) == 0 {
 		return fmt.Errorf("no servers available to copy kubeconfig")
 	}
@@ -444,7 +493,7 @@ func copyAndModifyKubeconfig(config *TestConfig) error {
 
 // RunCmdOnNode runs a command on a docker container
 func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
-	dCmd := fmt.Sprintf("docker exec %s %s", node.Name, cmd)
+	dCmd := fmt.Sprintf("docker exec %s /bin/sh -c \"%s\"", node.Name, cmd)
 	out, err := RunCommand(dCmd)
 	if err != nil {
 		return out, fmt.Errorf("%v: on node %s: %s", err, node.Name, out)
@@ -482,7 +531,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 // VerifyValidVersion checks for invalid version strings
-func VerifyValidVersion(node Server, binary string) error {
+func VerifyValidVersion(node DockerNode, binary string) error {
 	output, err := node.RunCmdOnNode(binary + " version")
 	if err != nil {
 		return err
@@ -497,6 +546,21 @@ func VerifyValidVersion(node Server, binary string) error {
 	}
 
 	return nil
+}
+
+// Dump the journalctl logs for the k3s service
+func (node DockerNode) DumpServiceLogs(lines int) (string, error) {
+	var cmd string
+	if strings.Contains(node.Name, "agent") {
+		cmd = fmt.Sprintf("journalctl -u k3s-agent -n %d", lines)
+	} else {
+		cmd = fmt.Sprintf("journalctl -u k3s -n %d", lines)
+	}
+	res, err := node.RunCmdOnNode(cmd)
+	if strings.Contains(res, "No entries") {
+		return "", fmt.Errorf("no logs found")
+	}
+	return res, err
 }
 
 // Returns the latest version from the update channel
@@ -543,4 +607,43 @@ func (config TestConfig) DeployWorkload(workload string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+type svcExternalIP struct {
+	IP     string `json:"ip"`
+	IPMode string `json:"ipMode"`
+}
+
+// FetchExternalIPs fetches the external IPs of a service
+func FetchExternalIPs(kubeconfig string, servicename string) ([]string, error) {
+	var externalIPs []string
+	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.status.loadBalancer.ingress}' --kubeconfig=" + kubeconfig
+	output, err := RunCommand(cmd)
+	if err != nil {
+		return externalIPs, err
+	}
+
+	var svcExternalIPs []svcExternalIP
+	err = json.Unmarshal([]byte(output), &svcExternalIPs)
+	if err != nil {
+		return externalIPs, fmt.Errorf("error unmarshalling JSON: %v", err)
+	}
+
+	// Iterate over externalIPs and append each IP to the ips slice
+	for _, ipEntry := range svcExternalIPs {
+		externalIPs = append(externalIPs, ipEntry.IP)
+	}
+
+	return externalIPs, nil
+}
+
+// RestartCluster restarts the k3s service on each node given
+func RestartCluster(nodes []DockerNode) error {
+	for _, node := range nodes {
+		cmd := "systemctl restart k3s* --all"
+		if _, err := node.RunCmdOnNode(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -13,7 +13,6 @@ import (
 	"k8s.io/utils/set"
 )
 
-var k3sImage = flag.String("k3sImage", "rancher/systemd-node", "The image used to provision containers")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -31,7 +30,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = tester.NewTestConfig("rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())

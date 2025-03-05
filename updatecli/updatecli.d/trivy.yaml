@@ -35,7 +35,8 @@ sources:
       repository: "trivy"
       token: "{{ requiredEnv .github.token }}"
       versionfilter:
-        kind: "latest"
+        kind: "regex"
+        pattern: "^v\\d+\\.\\d+$" # Matches "vMajor.Minor" only, skip patch
     transformers:
       - trimprefix: "v"
 
