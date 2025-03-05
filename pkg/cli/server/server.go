@@ -18,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	k3smetrics "github.com/k3s-io/k3s/pkg/metrics"
@@ -513,27 +514,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	ctx := signals.SetupSignalContext()
 
-	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
+	if err := server.PrepareServer(ctx, &serverConfig, cfg); err != nil {
 		return err
 	}
-
-	go cmds.WriteCoverage(ctx)
-
-	go func() {
-		if !serverConfig.ControlConfig.DisableAPIServer {
-			<-serverConfig.ControlConfig.Runtime.APIServerReady
-			logrus.Info("Kube API server is now running")
-			serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
-		}
-		if !serverConfig.ControlConfig.DisableETCD {
-			<-serverConfig.ControlConfig.Runtime.ETCDReady
-			logrus.Info("ETCD server is now running")
-		}
-
-		logrus.Info(version.Program + " is up and running")
-		os.Setenv("NOTIFY_SOCKET", notifySocket)
-		systemd.SdNotify(true, "READY=1\n")
-	}()
 
 	url := fmt.Sprintf("https://%s:%d", serverConfig.ControlConfig.BindAddressOrLoopback(false, true), serverConfig.ControlConfig.SupervisorPort)
 	token, err := clientaccess.FormatToken(serverConfig.ControlConfig.Runtime.AgentToken, serverConfig.ControlConfig.Runtime.ServerCA)
@@ -604,10 +587,38 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if cfg.DisableAgent {
 		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
-		return agent.RunStandalone(ctx, agentConfig)
+		if err := agent.RunStandalone(ctx, agentConfig); err != nil {
+			return err
+		}
+	} else {
+		if err := agent.Run(ctx, agentConfig); err != nil {
+			return err
+		}
 	}
 
-	return agent.Run(ctx, agentConfig)
+	go cmds.WriteCoverage(ctx)
+
+	go func() {
+		if !serverConfig.ControlConfig.DisableETCD {
+			<-serverConfig.ControlConfig.Runtime.ETCDReady
+			logrus.Info("ETCD server is now running")
+		}
+		if !serverConfig.ControlConfig.DisableAPIServer {
+			<-executor.APIServerReadyChan()
+			logrus.Info("Kube API server is now running")
+			serverConfig.ControlConfig.Runtime.StartupHooksWg.Wait()
+		}
+		logrus.Info(version.Program + " is up and running")
+		os.Setenv("NOTIFY_SOCKET", notifySocket)
+		systemd.SdNotify(true, "READY=1\n")
+	}()
+
+	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.

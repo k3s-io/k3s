@@ -130,5 +130,10 @@ func Run(ctx *cli.Context) error {
 		return https.Start(ctx, nodeConfig, nil)
 	}
 
-	return agent.Run(contextCtx, cfg)
+	if err := agent.Run(contextCtx, cfg); err != nil {
+		return err
+	}
+
+	<-contextCtx.Done()
+	return contextCtx.Err()
 }
