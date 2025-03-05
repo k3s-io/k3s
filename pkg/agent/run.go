@@ -174,10 +174,27 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if err := util.WaitForAPIServerReady(ctx, nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
-		return pkgerrors.WithMessage(err, "failed to wait for apiserver ready")
-	}
+	go func() {
+		<-executor.APIServerReadyChan()
+		if err := startNetwork(ctx, nodeConfig); err != nil {
+			logrus.Fatalf("Failed to start networking: %v", err)
+		}
 
+		// By default, the server is responsible for notifying systemd
+		// On agent-only nodes, the agent will notify systemd
+		if notifySocket != "" {
+			logrus.Info(version.Program + " agent is up and running")
+			os.Setenv("NOTIFY_SOCKET", notifySocket)
+			systemd.SdNotify(true, "READY=1\n")
+		}
+	}()
+
+	return nil
+}
+
+// startNetwork updates the network annotations on the node, and starts flannel
+// and the kube-router netpol controller, if enabled.
+func startNetwork(ctx context.Context, nodeConfig *daemonconfig.Node) error {
 	// Use the kubelet kubeconfig to update annotations on the local node
 	kubeletClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
@@ -200,16 +217,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 		}
 	}
 
-	// By default, the server is responsible for notifying systemd
-	// On agent-only nodes, the agent will notify systemd
-	if notifySocket != "" {
-		logrus.Info(version.Program + " agent is up and running")
-		os.Setenv("NOTIFY_SOCKET", notifySocket)
-		systemd.SdNotify(true, "READY=1\n")
-	}
-
-	<-ctx.Done()
-	return ctx.Err()
+	return nil
 }
 
 // getConntrackConfig uses the kube-proxy code to parse the user-provided kube-proxy-arg values, and
@@ -258,8 +266,7 @@ func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubePro
 
 // RunStandalone bootstraps the executor, but does not run the kubelet or containerd.
 // This allows other bits of code that expect the executor to be set up properly to function
-// even when the agent is disabled. It will only return in case of error or context
-// cancellation.
+// even when the agent is disabled.
 func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 	proxy, err := createProxyAndValidateToken(ctx, &cfg)
 	if err != nil {
@@ -298,13 +305,11 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 		}
 	}
 
-	<-ctx.Done()
-	return ctx.Err()
+	return nil
 }
 
 // Run sets up cgroups, configures the LB proxy, and triggers startup
-// of containerd and kubelet. It will only return in case of error or context
-// cancellation.
+// of containerd and kubelet.
 func Run(ctx context.Context, cfg cmds.Agent) error {
 	if err := cgroups.Validate(); err != nil {
 		return err

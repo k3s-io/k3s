@@ -17,6 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/remotedialer"
@@ -94,11 +95,9 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 		startTime:   time.Now().Truncate(time.Second),
 	}
 
-	apiServerReady := make(chan struct{})
+	rbacReady := make(chan struct{})
 	go func() {
-		if err := util.WaitForAPIServerReady(ctx, config.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
-			logrus.Fatalf("Tunnel watches failed to wait for apiserver ready: %v", err)
-		}
+		<-executor.APIServerReadyChan()
 		if err := util.WaitForRBACReady(ctx, config.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout, authorizationv1.ResourceAttributes{
 			Namespace: metav1.NamespaceDefault,
 			Verb:      "list",
@@ -107,14 +106,14 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 			logrus.Fatalf("Tunnel watches failed to wait for RBAC: %v", err)
 		}
 
-		close(apiServerReady)
+		close(rbacReady)
 	}()
 
 	// We don't need to run the tunnel authorizer if the container runtime endpoint is /dev/null,
 	// signifying that this is an agentless server that will not register a node.
 	if config.ContainerRuntimeEndpoint != "/dev/null" {
 		// Allow the kubelet port, as published via our node object.
-		go tunnel.setKubeletPort(ctx, apiServerReady)
+		go tunnel.setKubeletPort(ctx, rbacReady)
 
 		switch tunnel.mode {
 		case daemonconfig.EgressSelectorModeCluster:
@@ -122,7 +121,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 			tunnel.clusterAuth(config)
 		case daemonconfig.EgressSelectorModePod:
 			// In Pod mode, we watch pods assigned to this node, and allow their addresses, as well as ports used by containers with host network.
-			go tunnel.watchPods(ctx, apiServerReady, config)
+			go tunnel.watchPods(ctx, rbacReady, config)
 		}
 	}
 
@@ -165,7 +164,7 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 
 	wg := &sync.WaitGroup{}
 
-	go tunnel.watchEndpoints(ctx, apiServerReady, wg, tlsConfig, config, proxy)
+	go tunnel.watchEndpoints(ctx, rbacReady, wg, tlsConfig, config, proxy)
 
 	wait := make(chan int, 1)
 	go func() {
@@ -184,8 +183,8 @@ func Setup(ctx context.Context, config *daemonconfig.Node, proxy proxy.Proxy) er
 }
 
 // setKubeletPort retrieves the configured kubelet port from our node object
-func (a *agentTunnel) setKubeletPort(ctx context.Context, apiServerReady <-chan struct{}) {
-	<-apiServerReady
+func (a *agentTunnel) setKubeletPort(ctx context.Context, rbacReady <-chan struct{}) {
+	<-rbacReady
 
 	wait.PollUntilContextTimeout(ctx, time.Second, util.DefaultAPIServerReadyTimeout, true, func(ctx context.Context) (bool, error) {
 		var readyTime metav1.Time
@@ -231,7 +230,7 @@ func (a *agentTunnel) clusterAuth(config *daemonconfig.Node) {
 
 // watchPods watches for pods assigned to this node, adding their IPs to the CIDR list.
 // If the pod uses host network, we instead add the
-func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struct{}, config *daemonconfig.Node) {
+func (a *agentTunnel) watchPods(ctx context.Context, rbacReady <-chan struct{}, config *daemonconfig.Node) {
 	for _, ip := range config.AgentConfig.NodeIPs {
 		if cidr, err := util.IPToIPNet(ip); err == nil {
 			logrus.Infof("Tunnel authorizer adding Node IP %s", cidr)
@@ -239,7 +238,7 @@ func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struc
 		}
 	}
 
-	<-apiServerReady
+	<-rbacReady
 
 	nodeName := os.Getenv("NODE_NAME")
 	pods := a.client.CoreV1().Pods(metav1.NamespaceNone)
@@ -308,11 +307,11 @@ func (a *agentTunnel) watchPods(ctx context.Context, apiServerReady <-chan struc
 // WatchEndpoints attempts to create tunnels to all supervisor addresses.  Once the
 // apiserver is up, go into a watch loop, adding and removing tunnels as endpoints come
 // and go from the cluster.
-func (a *agentTunnel) watchEndpoints(ctx context.Context, apiServerReady <-chan struct{}, wg *sync.WaitGroup, tlsConfig *tls.Config, node *daemonconfig.Node, proxy proxy.Proxy) {
+func (a *agentTunnel) watchEndpoints(ctx context.Context, rbacReady <-chan struct{}, wg *sync.WaitGroup, tlsConfig *tls.Config, node *daemonconfig.Node, proxy proxy.Proxy) {
 	syncProxyAddresses := a.getProxySyncer(ctx, wg, tlsConfig, proxy)
 	refreshFromSupervisor := getAPIServersRequester(node, proxy, syncProxyAddresses)
 
-	<-apiServerReady
+	<-rbacReady
 
 	endpoints := a.client.CoreV1().Endpoints(metav1.NamespaceDefault)
 	fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
