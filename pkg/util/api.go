@@ -104,6 +104,22 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 	return nil
 }
 
+// APIServerReadyChan wraps WaitForAPIServerReady, returning a channel that
+// is closed when the apiserver is ready.  If the apiserver does not become
+// ready within the expected duration, a fatal error is raised.
+func APIServerReadyChan(ctx context.Context, kubeConfig string, timeout time.Duration) <-chan struct{} {
+	ready := make(chan struct{})
+
+	go func() {
+		defer close(ready)
+		if err := WaitForAPIServerReady(ctx, kubeConfig, timeout); err != nil {
+			logrus.Fatalf("Failed to wait for API server to become ready: %v", err)
+		}
+	}()
+
+	return ready
+}
+
 type genericAccessReviewRequest func(context.Context) (*authorizationv1.SubjectAccessReviewStatus, error)
 
 // WaitForRBACReady polls an AccessReview request until it returns an allowed response. If the user

@@ -26,13 +26,14 @@ type Executor interface {
 	KubeProxy(ctx context.Context, args []string) error
 	APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error)
 	APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error
-	Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error
-	ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error
+	Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error
+	ControllerManager(ctx context.Context, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
 	ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error
 	CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error
 	Containerd(ctx context.Context, node *daemonconfig.Node) error
 	Docker(ctx context.Context, node *daemonconfig.Node) error
+	APIServerReadyChan() <-chan struct{}
 }
 
 type ETCDConfig struct {
@@ -154,12 +155,12 @@ func APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) er
 	return executor.APIServer(ctx, etcdReady, args)
 }
 
-func Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error {
-	return executor.Scheduler(ctx, apiReady, args)
+func Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
+	return executor.Scheduler(ctx, nodeReady, args)
 }
 
-func ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error {
-	return executor.ControllerManager(ctx, apiReady, args)
+func ControllerManager(ctx context.Context, args []string) error {
+	return executor.ControllerManager(ctx, args)
 }
 
 func CurrentETCDOptions() (InitialOptions, error) {
@@ -180,4 +181,8 @@ func Containerd(ctx context.Context, config *daemonconfig.Node) error {
 
 func Docker(ctx context.Context, config *daemonconfig.Node) error {
 	return executor.Docker(ctx, config)
+}
+
+func APIServerReadyChan() <-chan struct{} {
+	return executor.APIServerReadyChan()
 }
