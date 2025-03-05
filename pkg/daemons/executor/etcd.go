@@ -13,8 +13,11 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 )
 
+// Embedded is defined here so that we can use embedded.ETCD even when the rest
+// of the embedded execututor is disabled by build flags
 type Embedded struct {
-	nodeConfig *daemonconfig.Node
+	apiServerReady <-chan struct{}
+	nodeConfig     *daemonconfig.Node
 }
 
 func (e *Embedded) ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
