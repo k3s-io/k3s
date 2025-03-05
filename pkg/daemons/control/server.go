@@ -36,7 +36,9 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
 )
 
-func Server(ctx context.Context, cfg *config.Control) error {
+// Prepare loads bootstrap data from the datastore and sets up the initial
+// tunnel server request handler and stub authenticator.
+func Prepare(ctx context.Context, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
@@ -62,18 +64,24 @@ func Server(ctx context.Context, cfg *config.Control) error {
 	}
 	cfg.Runtime.Authenticator = auth
 
+	return nil
+}
+
+// Server starts the apiserver and whatever other control-plane components are
+// not disabled on this node.
+func Server(ctx context.Context, cfg *config.Control) error {
+	if ready, err := cfg.Cluster.Start(ctx); err != nil {
+		return pkgerrors.WithMessage(err, "failed to start cluster")
+	} else {
+		cfg.Runtime.ETCDReady = ready
+	}
+
 	if !cfg.DisableAPIServer {
 		go waitForAPIServerHandlers(ctx, cfg.Runtime)
 
 		if err := apiServer(ctx, cfg); err != nil {
 			return err
 		}
-	}
-
-	// Wait for an apiserver to become available before starting additional controllers,
-	// even if we're not running an apiserver locally.
-	if err := waitForAPIServerInBackground(ctx, cfg.Runtime); err != nil {
-		return err
 	}
 
 	if !cfg.DisableScheduler {
@@ -139,7 +147,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
-	return executor.ControllerManager(ctx, cfg.Runtime.APIServerReady, args)
+	return executor.ControllerManager(ctx, args)
 }
 
 func scheduler(ctx context.Context, cfg *config.Control) error {
@@ -165,22 +173,12 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 
 	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
-	schedulerNodeReady := make(chan struct{})
+	nodeReady := make(chan struct{})
 
 	go func() {
-		defer close(schedulerNodeReady)
+		defer close(nodeReady)
 
-	apiReadyLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-cfg.Runtime.APIServerReady:
-				break apiReadyLoop
-			case <-time.After(30 * time.Second):
-				logrus.Infof("Waiting for API server to become available to start kube-scheduler")
-			}
-		}
+		<-executor.APIServerReadyChan()
 
 		// If we're running the embedded cloud controller, wait for it to untaint at least one
 		// node (usually, the local node) before starting the scheduler to ensure that it
@@ -194,7 +192,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 	}()
 
 	logrus.Infof("Running kube-scheduler %s", config.ArgString(args))
-	return executor.Scheduler(ctx, schedulerNodeReady, args)
+	return executor.Scheduler(ctx, nodeReady, args)
 }
 
 func apiServer(ctx context.Context, cfg *config.Control) error {
@@ -287,6 +285,9 @@ func defaults(config *config.Control) {
 	}
 }
 
+// prepare sets up the server data-dir, calls deps.GenServerDeps to
+// set paths, extracts the cluster bootstrap data to the
+// configured paths, and starts the supervisor listener.
 func prepare(ctx context.Context, config *config.Control) error {
 	defaults(config)
 
@@ -306,8 +307,8 @@ func prepare(ctx context.Context, config *config.Control) error {
 
 	deps.CreateRuntimeCertFiles(config)
 
-	cluster := cluster.New(config)
-	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
+	config.Cluster = cluster.New(config)
+	if err := config.Cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
 		return pkgerrors.WithMessage(err, "failed to bootstrap cluster data")
 	}
 
@@ -315,10 +316,8 @@ func prepare(ctx context.Context, config *config.Control) error {
 		return pkgerrors.WithMessage(err, "failed to generate server dependencies")
 	}
 
-	if ready, err := cluster.Start(ctx); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start cluster")
-	} else {
-		config.Runtime.ETCDReady = ready
+	if err := config.Cluster.ListenAndServe(ctx); err != nil {
+		return pkgerrors.WithMessage(err, "failed to start supervisor listener")
 	}
 
 	return nil
@@ -385,17 +384,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 	go func() {
 		defer close(ccmRBACReady)
 
-	apiReadyLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-cfg.Runtime.APIServerReady:
-				break apiReadyLoop
-			case <-time.After(30 * time.Second):
-				logrus.Infof("Waiting for API server to become available to start cloud-controller-manager")
-			}
-		}
+		<-executor.APIServerReadyChan()
 
 		logrus.Infof("Waiting for cloud-controller-manager privileges to become available")
 		for {
@@ -438,43 +427,6 @@ func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntim
 	runtime.APIServer = handler
 }
 
-func waitForAPIServerInBackground(ctx context.Context, runtime *config.ControlRuntime) error {
-	done := make(chan struct{})
-	runtime.APIServerReady = done
-
-	go func() {
-		defer close(done)
-
-	etcdLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-runtime.ETCDReady:
-				break etcdLoop
-			case <-time.After(30 * time.Second):
-				logrus.Infof("Waiting for etcd server to become available")
-			}
-		}
-
-		logrus.Infof("Waiting for API server to become available")
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case err := <-promise(func() error { return util.WaitForAPIServerReady(ctx, runtime.KubeConfigSupervisor, 30*time.Second) }):
-				if err != nil {
-					logrus.Infof("Waiting for API server to become available")
-					continue
-				}
-				return
-			}
-		}
-	}()
-
-	return nil
-}
-
 func promise(f func() error) <-chan error {
 	c := make(chan error, 1)
 	go func() {
@@ -487,7 +439,6 @@ func promise(f func() error) <-chan error {
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as
 // uninitialized by the external cloud provider.
 func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
-
 	restConfig, err := util.GetRESTConfig(kubeConfig)
 	if err != nil {
 		return err

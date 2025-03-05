@@ -255,6 +255,7 @@ type Control struct {
 	SANSecurity bool
 	PrivateIP   string
 	Runtime     *ControlRuntime `json:"-"`
+	Cluster     Cluster         `json:"-"`
 }
 
 // BindAddressOrLoopback returns an IPv4 or IPv6 address suitable for embedding in
@@ -312,7 +313,6 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	APIServerReady                       <-chan struct{}
 	ContainerRuntimeReady                <-chan struct{}
 	ETCDReady                            <-chan struct{}
 	StartupHooksWg                       *sync.WaitGroup
@@ -379,6 +379,12 @@ type ControlRuntime struct {
 	Core       CoreFactory
 	Event      record.EventRecorder
 	EtcdConfig endpoint.ETCDConfig
+}
+
+type Cluster interface {
+	Bootstrap(ctx context.Context, reset bool) error
+	ListenAndServe(ctx context.Context) error
+	Start(ctx context.Context) (<-chan struct{}, error)
 }
 
 type CoreFactory interface {
