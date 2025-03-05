@@ -313,7 +313,6 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	APIServerReady                       <-chan struct{}
 	ContainerRuntimeReady                <-chan struct{}
 	ETCDReady                            <-chan struct{}
 	StartupHooksWg                       *sync.WaitGroup
