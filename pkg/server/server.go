@@ -18,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/deploy"
 	"github.com/k3s-io/k3s/pkg/node"
@@ -45,7 +46,10 @@ func ResolveDataDir(dataDir string) (string, error) {
 	return filepath.Join(dataDir, "server"), err
 }
 
-func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
+// PrepareServer prepares the server for operation. This includes setting paths
+// in ControlConfig, creating any certificates not extracted from the bootstrap
+// data, and binding request handlers.
+func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
 	}
@@ -54,6 +58,19 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 		return err
 	}
 
+	if err := control.Prepare(ctx, &config.ControlConfig); err != nil {
+		return err
+	}
+
+	config.ControlConfig.Runtime.Handler = handlers.NewHandler(ctx, &config.ControlConfig, cfg)
+
+	return nil
+}
+
+// StartServer starts whatever control-plane and etcd components are enabled by
+// the current server configuration, runs startup hooks, starts controllers,
+// and writes the admin kubeconfig.
+func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := control.Server(ctx, &config.ControlConfig); err != nil {
 		return pkgerrors.WithMessage(err, "starting kubernetes")
 	}
@@ -61,11 +78,10 @@ func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(config.StartupHooks))
 
-	config.ControlConfig.Runtime.Handler = handlers.NewHandler(ctx, &config.ControlConfig, cfg)
 	config.ControlConfig.Runtime.StartupHooksWg = wg
 
 	shArgs := cmds.StartupHookArgs{
-		APIServerReady:       config.ControlConfig.Runtime.APIServerReady,
+		APIServerReady:       executor.APIServerReadyChan(),
 		KubeConfigSupervisor: config.ControlConfig.Runtime.KubeConfigSupervisor,
 		Skips:                config.ControlConfig.Skips,
 		Disables:             config.ControlConfig.Disables,
@@ -88,7 +104,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 	select {
 	case <-ctx.Done():
 		return
-	case <-config.ControlConfig.Runtime.APIServerReady:
+	case <-executor.APIServerReadyChan():
 		if err := runControllers(ctx, config); err != nil {
 			logrus.Fatalf("failed to start controllers: %v", err)
 		}
