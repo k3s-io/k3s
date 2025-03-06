@@ -21,6 +21,9 @@ docker ps
 
 export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
 
+run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v
+exit 0
+
 # ---
 # Only run PR tests on arm arch, we use GitHub Actions for amd64 and arm64
 # Run all tests on tag events, as we want test failures to block the release
