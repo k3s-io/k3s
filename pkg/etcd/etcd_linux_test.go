@@ -61,7 +61,7 @@ func generateTestConfig() *config.Control {
 	}
 	return &config.Control{
 		ServerNodeName:        hostname,
-		Runtime:               config.NewRuntime(containerRuntimeReady),
+		Runtime:               config.NewRuntime(),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
