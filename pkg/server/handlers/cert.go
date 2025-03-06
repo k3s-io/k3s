@@ -56,7 +56,7 @@ func caCertReplace(control *config.Control, buf io.ReadCloser, force bool) error
 	}
 	defer os.RemoveAll(tmpdir)
 
-	runtime := config.NewRuntime(nil)
+	runtime := config.NewRuntime()
 	runtime.EtcdConfig = control.Runtime.EtcdConfig
 	runtime.ServerToken = control.Runtime.ServerToken
 

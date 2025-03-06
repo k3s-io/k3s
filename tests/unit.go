@@ -44,11 +44,7 @@ func CleanupDataDir(cnf *config.Control) {
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
 	// reuse ready channel from existing runtime if set
-	var readyCh <-chan struct{}
-	if cnf.Runtime != nil {
-		readyCh = cnf.Runtime.ContainerRuntimeReady
-	}
-	cnf.Runtime = config.NewRuntime(readyCh)
+	cnf.Runtime = config.NewRuntime()
 	if err := GenerateDataDir(cnf); err != nil {
 		return err
 	}

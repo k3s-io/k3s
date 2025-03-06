@@ -343,7 +343,7 @@ func (e *ETCD) IsInitialized() (bool, error) {
 func (e *ETCD) Reset(ctx context.Context, rebootstrap func() error) error {
 	// Wait for etcd to come up as a new single-node cluster, then exit
 	go func() {
-		<-e.config.Runtime.ContainerRuntimeReady
+		<-executor.CRIReadyChan()
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
 		for range t.C {
@@ -497,7 +497,7 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 			select {
 			case <-time.After(30 * time.Second):
 				logrus.Infof("Waiting for container runtime to become ready before joining etcd cluster")
-			case <-e.config.Runtime.ContainerRuntimeReady:
+			case <-executor.CRIReadyChan():
 				if err := wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 					if err := e.join(ctx, clientAccessInfo); err != nil {
 						// Retry the join if waiting for another member to be promoted, or waiting for peers to connect after promotion
@@ -726,11 +726,15 @@ func (e *ETCD) handler(next http.Handler) http.Handler {
 }
 
 // infoHandler returns etcd cluster information. This is used by new members when joining the cluster.
-// If we can't retrieve an actual MemberList from etcd, we return a canned response with only the local node listed.
 func (e *ETCD) infoHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			util.SendError(fmt.Errorf("method not allowed"), rw, req, http.StatusMethodNotAllowed)
+			return
+		}
+
+		if e.client == nil {
+			util.SendError(errors.New("failed to get etcd MemberList: etcd not started"), rw, req, http.StatusInternalServerError)
 			return
 		}
 
@@ -1157,7 +1161,7 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 // being promoted to full voting member. The checks only run on the cluster member that is
 // the etcd leader.
 func (e *ETCD) manageLearners(ctx context.Context) {
-	<-e.config.Runtime.ContainerRuntimeReady
+	<-executor.CRIReadyChan()
 	t := time.NewTicker(manageTickerTime)
 	defer t.Stop()
 
