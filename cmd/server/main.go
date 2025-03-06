@@ -23,7 +23,7 @@ import (
 	ctr2 "github.com/k3s-io/k3s/pkg/ctr"
 	kubectl2 "github.com/k3s-io/k3s/pkg/kubectl"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	crictl2 "sigs.k8s.io/cri-tools/cmd/crictl"
 )
 
@@ -43,7 +43,8 @@ func main() {
 	os.Args[0] = cmd
 
 	app := cmds.NewApp()
-	app.Commands = []cli.Command{
+	app.DisableSliceFlagSeparator = true
+	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(server.Run),
 		cmds.NewAgentCommand(agent.Run),
 		cmds.NewKubectlCommand(kubectl.Run),

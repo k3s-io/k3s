@@ -1,15 +1,14 @@
 package cmds
 
 import (
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-func NewCRICTL(action func(*cli.Context) error) cli.Command {
-	return cli.Command{
+func NewCRICTL(action func(*cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:            "crictl",
 		Usage:           "Run crictl",
 		SkipFlagParsing: true,
-		SkipArgReorder:  true,
 		Action:          action,
 	}
 }
