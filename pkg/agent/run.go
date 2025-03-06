@@ -351,7 +351,7 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 	for {
 		newToken, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), cfg.Token, options...)
 		if err != nil {
-			logrus.Error(err)
+			logrus.Errorf("Failed to validate connection to cluster at %s: %v", cfg.ServerURL, err)
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
