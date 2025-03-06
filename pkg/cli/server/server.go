@@ -113,11 +113,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	containerRuntimeReady := make(chan struct{})
-
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
-	serverConfig.ControlConfig.Runtime = config.NewRuntime(containerRuntimeReady)
+	serverConfig.ControlConfig.Runtime = config.NewRuntime()
 	serverConfig.ControlConfig.Token = cfg.Token
 	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
 	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
@@ -525,7 +523,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	agentConfig := cmds.AgentConfig
-	agentConfig.ContainerRuntimeReady = containerRuntimeReady
 	agentConfig.Debug = app.GlobalBool("debug")
 	agentConfig.DataDir = filepath.Dir(serverConfig.ControlConfig.DataDir)
 	agentConfig.ServerURL = url

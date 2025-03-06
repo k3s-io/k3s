@@ -17,6 +17,7 @@ import (
 // of the embedded execututor is disabled by build flags
 type Embedded struct {
 	apiServerReady <-chan struct{}
+	criReady       chan struct{}
 	nodeConfig     *daemonconfig.Node
 }
 
