@@ -46,7 +46,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string
 		cfg.Token = string(bytes.TrimRight(tokenByte, "\n"))
 	}
 	sc.ControlConfig.Token = cfg.Token
-	sc.ControlConfig.Runtime = config.NewRuntime(nil)
+	sc.ControlConfig.Runtime = config.NewRuntime()
 
 	return dataDir, nil
 }
@@ -287,7 +287,7 @@ func rotateCA(app *cli.Context, cfg *cmds.Server, sync *cmds.CertRotateCA) error
 
 	// Set up dummy server config for reading new bootstrap data from disk.
 	tmpServer := &config.Control{
-		Runtime: config.NewRuntime(nil),
+		Runtime: config.NewRuntime(),
 		DataDir: sync.CACertPath,
 	}
 	deps.CreateRuntimeCertFiles(tmpServer)

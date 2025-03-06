@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
+	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -44,6 +45,7 @@ func init() {
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
 	e.apiServerReady = util.APIServerReadyChan(ctx, nodeConfig.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout)
+	e.criReady = make(chan struct{})
 	e.nodeConfig = nodeConfig
 
 	go func() {
@@ -235,11 +237,22 @@ func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
 	return containerd.Run(ctx, cfg)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
 	return cridockerd.Run(ctx, cfg)
+}
+
+func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
+	// agentless sets cri socket path to /dev/null to indicate no CRI is needed
+	if cfg.ContainerRuntimeEndpoint != "/dev/null" {
+		return cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI")
+	}
+	return nil
 }
 
 func (e *Embedded) APIServerReadyChan() <-chan struct{} {
@@ -247,4 +260,11 @@ func (e *Embedded) APIServerReadyChan() <-chan struct{} {
 		panic("executor not bootstrapped")
 	}
 	return e.apiServerReady
+}
+
+func (e *Embedded) CRIReadyChan() <-chan struct{} {
+	if e.criReady == nil {
+		panic("executor not bootstrapped")
+	}
+	return e.criReady
 }
