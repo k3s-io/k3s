@@ -312,7 +312,6 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	ContainerRuntimeReady                <-chan struct{}
 	ETCDReady                            <-chan struct{}
 	StartupHooksWg                       *sync.WaitGroup
 	ClusterControllerStarts              map[string]leader.Callback
@@ -392,9 +391,8 @@ type CoreFactory interface {
 	Start(ctx context.Context, defaultThreadiness int) error
 }
 
-func NewRuntime(containerRuntimeReady <-chan struct{}) *ControlRuntime {
+func NewRuntime() *ControlRuntime {
 	return &ControlRuntime{
-		ContainerRuntimeReady:                containerRuntimeReady,
 		ClusterControllerStarts:              map[string]leader.Callback{},
 		LeaderElectedClusterControllerStarts: map[string]leader.Callback{},
 	}
