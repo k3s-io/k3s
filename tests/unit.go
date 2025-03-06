@@ -1,12 +1,18 @@
 package tests
 
 import (
+	"context"
+	"errors"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
 // GenerateDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
@@ -43,6 +49,9 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
+	// use mock executor that does not actually start things
+	executor.Set(&mockExecutor{})
+
 	// reuse ready channel from existing runtime if set
 	cnf.Runtime = config.NewRuntime()
 	if err := GenerateDataDir(cnf); err != nil {
@@ -70,4 +79,73 @@ func ClusterIPNet() *net.IPNet {
 func ServiceIPNet() *net.IPNet {
 	_, serviceIPNet, _ := net.ParseCIDR("10.43.0.0/16")
 	return serviceIPNet
+}
+
+// mock executor that does not actually start anything
+
+type mockExecutor struct{}
+
+func (m *mockExecutor) Bootstrap(ctx context.Context, nodeConfig *config.Node, cfg cmds.Agent) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) Kubelet(ctx context.Context, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) KubeProxy(ctx context.Context, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
+func (m *mockExecutor) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) ControllerManager(ctx context.Context, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) CurrentETCDOptions() (executor.InitialOptions, error) {
+	return executor.InitialOptions{}, nil
+}
+
+func (m *mockExecutor) ETCD(ctx context.Context, args executor.ETCDConfig, extraArgs []string) error {
+	embed := &executor.Embedded{}
+	return embed.ETCD(ctx, args, extraArgs)
+}
+
+func (m *mockExecutor) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) Containerd(ctx context.Context, node *config.Node) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) Docker(ctx context.Context, node *config.Node) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) CRI(ctx context.Context, node *config.Node) error {
+	return errors.New("not implemented")
+}
+
+func (m *mockExecutor) APIServerReadyChan() <-chan struct{} {
+	c := make(chan struct{})
+	close(c)
+	return c
+}
+
+func (m *mockExecutor) CRIReadyChan() <-chan struct{} {
+	c := make(chan struct{})
+	close(c)
+	return c
 }

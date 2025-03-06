@@ -399,11 +399,10 @@ func Test_UnitETCD_Start(t *testing.T) {
 			}
 
 			if err := tt.setup(e, &tt.fields.context); err != nil {
-				t.Errorf("Setup for ETCD.Start() failed = %v", err)
-				return
+				t.Fatalf("Setup for ETCD.Start() failed = %v", err)
 			}
 			if err := e.Start(tt.fields.context.ctx, tt.args.clientAccessInfo); (err != nil) != tt.wantErr {
-				t.Errorf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
 				memberAddr = e.address
