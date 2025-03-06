@@ -22,6 +22,22 @@ docker ps
 export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
 
 run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v
+echo "Did go conformance sqlite serial $?"
+run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v
+echo "Did go conformance etcd serial $?"
+
+# Wait until all serial tests have finished
+delay=15
+(
+set +x
+while [ $(count-running-tests) -ge 1 ]; do
+    sleep $delay
+done
+)
+
+run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v
+echo "Did go conformance sqlite parallel $?"
+
 exit 0
 
 # ---
