@@ -111,7 +111,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			_, _ = e2e.ParseNodes(tc.KubeConfigFile, false)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeConfigFile)
 			}, "360s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeConfigFile)
 		})
