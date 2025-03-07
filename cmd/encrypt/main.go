@@ -9,12 +9,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
 	app := cmds.NewApp()
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		cmds.NewSecretsEncryptCommands(
 			secretsencrypt.Status,
 			secretsencrypt.Enable,

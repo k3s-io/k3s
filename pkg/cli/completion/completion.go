@@ -6,14 +6,14 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/version"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func Run(ctx *cli.Context) error {
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("must provide a valid SHELL argument")
 	}
-	shell := ctx.Args()[0]
+	shell := ctx.Args().Get(0)
 	completetionScript, err := genCompletionScript(shell)
 	if err != nil {
 		return err

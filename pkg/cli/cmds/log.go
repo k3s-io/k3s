@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 type Log struct {
@@ -30,7 +30,8 @@ var (
 		Destination: &LogConfig.VModule,
 	}
 	LogFile = &cli.StringFlag{
-		Name:        "log,l",
+		Name:        "log",
+		Aliases:     []string{"l"},
 		Usage:       "(logging) Log to file",
 		Destination: &LogConfig.LogFile,
 	}

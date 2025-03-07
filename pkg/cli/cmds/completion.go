@@ -1,11 +1,11 @@
 package cmds
 
 import (
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-func NewCompletionCommand(action func(*cli.Context) error) cli.Command {
-	return cli.Command{
+func NewCompletionCommand(action func(*cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:      "completion",
 		Usage:     "Install shell completion script",
 		UsageText: appName + " completion [SHELL] (valid shells: bash, zsh)",

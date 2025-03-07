@@ -21,7 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -70,8 +70,8 @@ func create(app *cli.Context, cfg *cmds.Token) error {
 		Token:       bts,
 		Description: cfg.Description,
 		TTL:         &metav1.Duration{Duration: cfg.TTL},
-		Usages:      cfg.Usages,
-		Groups:      cfg.Groups,
+		Usages:      cfg.Usages.Value(),
+		Groups:      cfg.Groups.Value(),
 	}
 
 	secretName := bootstraputil.BootstrapTokenSecretName(bt.Token.ID)
@@ -102,7 +102,7 @@ func Delete(app *cli.Context) error {
 
 func delete(app *cli.Context, cfg *cmds.Token) error {
 	args := app.Args()
-	if len(args) < 1 {
+	if args.Len() < 1 {
 		return errors.New("missing argument; 'token delete' is missing token")
 	}
 
@@ -112,7 +112,7 @@ func delete(app *cli.Context, cfg *cmds.Token) error {
 		return err
 	}
 
-	for _, token := range args {
+	for _, token := range args.Slice() {
 		if !bootstraputil.IsValidBootstrapTokenID(token) {
 			bts, err := kubeadm.NewBootstrapTokenString(cfg.Token)
 			if err != nil {
