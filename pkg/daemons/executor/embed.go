@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
+	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -43,6 +44,8 @@ func init() {
 }
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	e.apiServerReady = util.APIServerReadyChan(ctx, nodeConfig.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout)
+	e.criReady = make(chan struct{})
 	e.nodeConfig = nodeConfig
 
 	go func() {
@@ -72,17 +75,12 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 	command.SetArgs(args)
 
 	go func() {
+		<-e.apiServerReady
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("kubelet panic: %v", err)
 			}
 		}()
-		// The embedded executor doesn't need the kubelet to come up to host any components, and
-		// having it come up on servers before the apiserver is available causes a lot of log spew.
-		// Agents don't have access to the server's apiReady channel, so just wait directly.
-		if err := util.WaitForAPIServerReady(ctx, e.nodeConfig.AgentConfig.KubeConfigKubelet, util.DefaultAPIServerReadyTimeout); err != nil {
-			logrus.Fatalf("Kubelet failed to wait for apiserver ready: %v", err)
-		}
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("kubelet exited: %v", err)
@@ -99,6 +97,7 @@ func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 	command.SetArgs(daemonconfig.GetArgs(platformKubeProxyArgs(e.nodeConfig), args))
 
 	go func() {
+		<-e.apiServerReady
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("kube-proxy panic: %v", err)
@@ -142,12 +141,13 @@ func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args 
 	return nil
 }
 
-func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args []string) error {
+func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
 	command := sapp.NewSchedulerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
-		<-apiReady
+		<-e.apiServerReady
+		<-nodeReady
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("scheduler panic: %v", err)
@@ -164,12 +164,12 @@ func (e *Embedded) Scheduler(ctx context.Context, apiReady <-chan struct{}, args
 	return nil
 }
 
-func (*Embedded) ControllerManager(ctx context.Context, apiReady <-chan struct{}, args []string) error {
+func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
 	command := cmapp.NewControllerManagerCommand()
 	command.SetArgs(args)
 
 	go func() {
-		<-apiReady
+		<-e.apiServerReady
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("controller-manager panic: %v", err)
@@ -237,9 +237,34 @@ func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
 	return containerd.Run(ctx, cfg)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
 	return cridockerd.Run(ctx, cfg)
+}
+
+func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
+	defer close(e.criReady)
+	// agentless sets cri socket path to /dev/null to indicate no CRI is needed
+	if cfg.ContainerRuntimeEndpoint != "/dev/null" {
+		return cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI")
+	}
+	return nil
+}
+
+func (e *Embedded) APIServerReadyChan() <-chan struct{} {
+	if e.apiServerReady == nil {
+		panic("executor not bootstrapped")
+	}
+	return e.apiServerReady
+}
+
+func (e *Embedded) CRIReadyChan() <-chan struct{} {
+	if e.criReady == nil {
+		panic("executor not bootstrapped")
+	}
+	return e.criReady
 }

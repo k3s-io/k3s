@@ -27,16 +27,17 @@ type Cluster struct {
 	cnFilterFunc     func(...string) []string
 }
 
-// Start creates the dynamic tls listener, http request handler,
-// handles starting and writing/reading bootstrap data, and returns a channel
+// ListenAndServe creates the dynamic tls listener, registers http request
+// handlers, and starts the supervisor API server loop.
+func (c *Cluster) ListenAndServe(ctx context.Context) error {
+	// Set up the dynamiclistener and http request handlers
+	return c.initClusterAndHTTPS(ctx)
+}
+
+// Start handles writing/reading bootstrap data, and returns a channel
 // that will be closed when datastore is ready. If embedded etcd is in use,
 // a secondary call to Cluster.save is made.
 func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
-	// Set up the dynamiclistener and http request handlers
-	if err := c.initClusterAndHTTPS(ctx); err != nil {
-		return nil, pkgerrors.WithMessage(err, "init cluster datastore and https")
-	}
-
 	if c.config.DisableETCD {
 		ready := make(chan struct{})
 		defer close(ready)
