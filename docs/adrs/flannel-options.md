@@ -47,7 +47,7 @@ K3s prepares both flannel flags, subnet, and backend configuration before starti
 | `--iface (string)`| Yes | `--flannel-iface` |
 | `--iface-can-reach (string)` | No** | N/A |
 | `--iface-regex (string)` | No** | N/A |
-| `--ip-masq (bool)` | Yes/Hardcoded | ipv4 hardcoded to true. ipv6 configurable by k3s server flag `--flannel-ipv6-masq ` |
+| `--ip-masq (bool)` | Yes | ipv4 and ipv6 configurable by k3s server flags `--flannel-ipv4-no-masq `/`--flannel-ipv6-masq ` |
 | `--iptables-forward-rules (bool)` | Hardcoded | True |
 | `--public-ip (string)` | Hardcoded | `--external-ip` when it is of IPv4 nature if k3s server flag `--flannel-external-ip` is true |
 | `--public-ipv6 (string)`| hardcoded | `--external-ip` when it is of IPv6 nature if k3s server flag `--flannel-external-ip` is true |
@@ -73,7 +73,8 @@ To wrap up the context, k3s includes the following flannel options:
 | Server Flag | Type | Description |
 | --- | --- | --- |
 | `--flannel-backend` | string | Sets the encapsulation technology that will allow inter-node traffic to work. It matches part of the Backend parameter in the subnet&backend configuration |
-| `--flannel-ipv6-masq` | bool | Enables masquerading traffic for IPv6. Note that IPv4 traffic is always masqueraded. It matches the ipv6 part of the `--ip-masq` flag |
+| `--flannel-ipv4-no-masq` | bool | Disable masquerading traffic for IPv4. It matches the ipv4 part of the `--ip-masq` flag |
+| `--flannel-ipv6-masq` | bool | Enables masquerading traffic for IPv6. It matches the ipv6 part of the `--ip-masq` flag |
 | `--flannel-external-ip` | bool | Enables using node external IP addresses for flannel traffic. It sort of matches on `--public-ip` and `--public-ipv6` flag. In this case, k3s selects the external-ips for those flags |
 
 ### Design suggestion
@@ -95,6 +96,7 @@ Flannel-opt would have the following values:
 
 | Value | Old Flag |
 | --- | --- |
+| `ipv4-masq` | `--flannel-ipv4-no-masq` |
 | `ipv6-masq` | `--flannel-ipv6-masq` |
 | `external-ip` | `--flannel-external-ip` |
 
@@ -102,6 +104,7 @@ Similar to how we handle `--kubelet-arg`, both comma separated lists and repeate
 
 Examples of usage:  
 `--flannel-opt=ipv6-masq,external-ip` (assumes true)  
+`--flannel-opt=ipv4-masq=true`  
 `--flannel-opt=ipv6-masq=true`  
 `--flannel-opt=ipv6-masq=true,external-ip=false`  
 `--flannel-opt=ipv6-masq --flannel-opt=external-ip`

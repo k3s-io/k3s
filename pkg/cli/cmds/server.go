@@ -65,6 +65,7 @@ type Server struct {
 	DisableScheduler         bool
 	ServerURL                string
 	FlannelBackend           string
+	FlannelIPv4NoMasq        bool
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
 	EgressSelectorMode       string
@@ -242,6 +243,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) Backend (valid values: 'none', 'vxlan', 'host-gw', 'wireguard-native'",
 		Destination: &ServerConfig.FlannelBackend,
 		Value:       "vxlan",
+	},
+	&cli.BoolFlag{
+		Name:        "flannel-ipv4-no-masq",
+		Usage:       "(networking) Disable IPv4 masquerading for pod",
+		Destination: &ServerConfig.FlannelIPv4NoMasq,
 	},
 	&cli.BoolFlag{
 		Name:        "flannel-ipv6-masq",
