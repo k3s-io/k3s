@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/kubeadm"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -67,8 +68,29 @@ type Info struct {
 // ValidationOption is a callback to mutate the token prior to use
 type ValidationOption func(*Info)
 
+// WithCACertificate overrides the CA cert and hash with certs loaded from the
+// provided file. It is not an error if the file doesn't exist; the client
+// will just follow the normal hash validation steps if so.
+func WithCACertificate(certFile string) ValidationOption {
+	return func(i *Info) {
+		cacerts, err := os.ReadFile(certFile)
+		if err != nil {
+			return
+		}
+
+		digest, _ := hashCA(cacerts)
+		if i.caHash != "" && i.caHash != digest {
+			return
+		}
+
+		i.caHash = digest
+		i.CACerts = cacerts
+	}
+}
+
 // WithClientCertificate configures certs and keys to be used
-// to authenticate the request.
+// to authenticate the request. It is not an error if the files do not
+// exist, client cert auth will not be attempted if so.
 func WithClientCertificate(certFile, keyFile string) ValidationOption {
 	return func(i *Info) {
 		i.CertFile = certFile
@@ -338,11 +360,12 @@ func (i *Info) Post(path string, body []byte, options ...any) ([]byte, error) {
 }
 
 // setServer sets the BaseURL and CACerts fields of the Info by connecting to the server
-// and storing the CA bundle.
+// and storing the CA bundle. If CACerts has already been set via ValidationOption,
+// retrieval is skipped.
 func (i *Info) setServer(server string) error {
 	url, err := url.Parse(server)
 	if err != nil {
-		return errors.Wrapf(err, "Invalid server url, failed to parse: %s", server)
+		return pkgerrors.WithMessagef(err, "Invalid server url, failed to parse: %s", server)
 	}
 
 	if url.Scheme != "https" {
@@ -353,13 +376,15 @@ func (i *Info) setServer(server string) error {
 		url.Path = url.Path[:len(url.Path)-1]
 	}
 
-	cacerts, err := getCACerts(*url)
-	if err != nil {
-		return err
+	if len(i.CACerts) == 0 {
+		cacerts, err := getCACerts(*url)
+		if err != nil {
+			return err
+		}
+		i.CACerts = cacerts
 	}
 
 	i.BaseURL = url.String()
-	i.CACerts = cacerts
 	return nil
 }
 
@@ -400,7 +425,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// Download the CA bundle using a client that does not validate certs.
 	cacerts, err := get(url, insecureClient, "", "", "")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get CA certs")
+		return nil, pkgerrors.WithMessage(err, "failed to get CA certs")
 	}
 
 	// Request the CA bundle again, validating that the CA bundle can be loaded
@@ -408,7 +433,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// get an empty CA bundle. or if the dynamiclistener cert is incorrectly signed.
 	_, err = get(url, GetHTTPClient(cacerts, "", ""), "", "", "")
 	if err != nil {
-		return nil, errors.Wrap(err, "CA cert validation failed")
+		return nil, pkgerrors.WithMessage(err, "CA cert validation failed")
 	}
 
 	return cacerts, nil

@@ -3,22 +3,14 @@ package bootstrap
 import (
 	"encoding/json"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Header().Set("Content-Type", "application/json")
-		ReadFromDisk(rw, bootstrap)
-	})
-}
 
 // ReadFromDisk reads the bootstrap data from the files on disk and
 // writes their content in JSON form to the given io.Writer.
@@ -79,13 +71,13 @@ func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRunt
 		}
 
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
+			return pkgerrors.WithMessagef(err, "failed to mkdir %s", filepath.Dir(path))
 		}
 		if err := os.WriteFile(path, bsf.Content, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write to %s", path)
+			return pkgerrors.WithMessagef(err, "failed to write to %s", path)
 		}
 		if err := os.Chtimes(path, bsf.Timestamp, bsf.Timestamp); err != nil {
-			return errors.Wrapf(err, "failed to update modified time on %s", path)
+			return pkgerrors.WithMessagef(err, "failed to update modified time on %s", path)
 		}
 	}
 

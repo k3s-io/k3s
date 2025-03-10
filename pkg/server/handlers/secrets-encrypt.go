@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -79,6 +79,10 @@ func EncryptionStatus(control *config.Control) http.Handler {
 
 func encryptionStatus(control *config.Control) (EncryptionState, error) {
 	state := EncryptionState{}
+	if control.Runtime.Core == nil {
+		return state, util.ErrCoreNotReady
+	}
+
 	providers, err := secretsencrypt.GetEncryptionProviders(control.Runtime)
 	if os.IsNotExist(err) {
 		return state, nil

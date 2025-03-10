@@ -1,13 +1,13 @@
 package auth
 
 import (
+	"errors"
 	"net"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/endpoints/request"
 )

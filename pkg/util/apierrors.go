@@ -2,12 +2,12 @@ package util
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 
-	"github.com/k3s-io/k3s/pkg/generated/clientset/versioned/scheme"
-	"github.com/pkg/errors"
+	"github.com/k3s-io/api/pkg/generated/clientset/versioned/scheme"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

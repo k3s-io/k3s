@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
@@ -40,12 +41,12 @@ func Server(ctx context.Context, cfg *config.Control) error {
 
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	if err := prepare(ctx, cfg); err != nil {
-		return errors.Wrap(err, "preparing server")
+		return pkgerrors.WithMessage(err, "preparing server")
 	}
 
 	tunnel, err := setupTunnel(ctx, cfg)
 	if err != nil {
-		return errors.Wrap(err, "setup tunnel server")
+		return pkgerrors.WithMessage(err, "setup tunnel server")
 	}
 	cfg.Runtime.Tunnel = tunnel
 
@@ -287,17 +288,16 @@ func defaults(config *config.Control) {
 }
 
 func prepare(ctx context.Context, config *config.Control) error {
-	var err error
-
 	defaults(config)
 
 	if err := os.MkdirAll(config.DataDir, 0700); err != nil {
 		return err
 	}
 
-	config.DataDir, err = filepath.Abs(config.DataDir)
-	if err != nil {
+	if dataDir, err := filepath.Abs(config.DataDir); err != nil {
 		return err
+	} else {
+		config.DataDir = dataDir
 	}
 
 	os.MkdirAll(filepath.Join(config.DataDir, "etc"), 0700)
@@ -308,19 +308,19 @@ func prepare(ctx context.Context, config *config.Control) error {
 
 	cluster := cluster.New(config)
 	if err := cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
-		return err
+		return pkgerrors.WithMessage(err, "failed to bootstrap cluster data")
 	}
 
 	if err := deps.GenServerDeps(config); err != nil {
-		return err
+		return pkgerrors.WithMessage(err, "failed to generate server dependencies")
 	}
 
-	ready, err := cluster.Start(ctx)
-	if err != nil {
-		return err
+	if ready, err := cluster.Start(ctx); err != nil {
+		return pkgerrors.WithMessage(err, "failed to start cluster")
+	} else {
+		config.Runtime.ETCDReady = ready
 	}
 
-	config.Runtime.ETCDReady = ready
 	return nil
 }
 
@@ -515,7 +515,7 @@ func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
 	}
 
 	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
-		return errors.Wrap(err, "failed to wait for untainted node")
+		return pkgerrors.WithMessage(err, "failed to wait for untainted node")
 	}
 	return nil
 }

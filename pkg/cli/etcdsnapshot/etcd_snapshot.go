@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
@@ -21,7 +22,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
 	util2 "github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,7 +93,7 @@ func wrapServerError(err error) error {
 		// since the operation may have actualy succeeded despite the client timing out the request.
 		return err
 	}
-	return errors.Wrap(err, "see server log for details")
+	return pkgerrors.WithMessage(err, "see server log for details")
 }
 
 // Save triggers an on-demand etcd snapshot operation

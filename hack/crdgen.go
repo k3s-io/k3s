@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
+	_ "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
 	k3scrd "github.com/k3s-io/k3s/pkg/crd"
-	_ "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/rancher/wrangler/pkg/crd"
 )
 

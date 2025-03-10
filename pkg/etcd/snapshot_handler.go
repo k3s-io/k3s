@@ -7,11 +7,11 @@ import (
 	"io"
 	"net/http"
 
-	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,7 +70,7 @@ func (e *ETCD) snapshotHandler() http.Handler {
 func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
-			err = errors.Wrap(err, "failed to initialize S3 client")
+			err = pkgerrors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
 			return nil
 		}
@@ -87,7 +87,7 @@ func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
 func (e *ETCD) handleSave(rw http.ResponseWriter, req *http.Request) error {
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
-			err = errors.Wrap(err, "failed to initialize S3 client")
+			err = pkgerrors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
 			return nil
 		}
@@ -104,7 +104,7 @@ func (e *ETCD) handleSave(rw http.ResponseWriter, req *http.Request) error {
 func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
-			err = errors.Wrap(err, "failed to initialize S3 client")
+			err = pkgerrors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
 			return nil
 		}
@@ -121,7 +121,7 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
-			err = errors.Wrap(err, "failed to initialize S3 client")
+			err = pkgerrors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
 			return nil
 		}
