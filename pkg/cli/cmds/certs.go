@@ -2,7 +2,7 @@ package cmds
 
 import (
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const CertCommand = "certificate"
@@ -22,27 +22,29 @@ var (
 		AlsoLogToStderr,
 		DataDirFlag,
 		&cli.StringSliceFlag{
-			Name:  "service,s",
-			Usage: "List of services to manage certificates for. Options include (admin, api-server, controller-manager, scheduler, supervisor, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
-			Value: &ServicesList,
+			Name:        "service",
+			Aliases:     []string{"s"},
+			Usage:       "List of services to manage certificates for. Options include (admin, api-server, controller-manager, scheduler, supervisor, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
+			Destination: &ServicesList,
 		},
 	}
 	CertRotateCACommandFlags = []cli.Flag{
 		DataDirFlag,
-		cli.StringFlag{
-			Name:        "server,s",
+		&cli.StringFlag{
+			Name:        "server",
+			Aliases:     []string{"s"},
 			Usage:       "(cluster) Server to connect to",
-			EnvVar:      version.ProgramUpper + "_URL",
+			EnvVars:     []string{version.ProgramUpper + "_URL"},
 			Value:       "https://127.0.0.1:6443",
 			Destination: &ServerConfig.ServerURL,
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:        "path",
 			Usage:       "Path to directory containing new CA certificates",
 			Destination: &CertRotateCAConfig.CACertPath,
 			Required:    true,
 		},
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:        "force",
 			Usage:       "Force certificate replacement, even if consistency checks fail",
 			Destination: &CertRotateCAConfig.Force,
@@ -50,30 +52,28 @@ var (
 	}
 )
 
-func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
+func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:            CertCommand,
 		Usage:           "Manage K3s certificates",
 		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:            "check",
 				Usage:           "Check " + version.Program + " component certificates on disk",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          check,
 				Flags: append(CertRotateCommandFlags, &cli.StringFlag{
-					Name:  "output,o",
-					Usage: "Format output. Options: text, table",
-					Value: "text",
+					Name:    "output",
+					Aliases: []string{"o"},
+					Usage:   "Format output. Options: text, table",
+					Value:   "text",
 				}),
 			},
 			{
 				Name:            "rotate",
 				Usage:           "Rotate " + version.Program + " component certificates on disk",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          rotate,
 				Flags:           CertRotateCommandFlags,
 			},
@@ -81,7 +81,6 @@ func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) cli.C
 				Name:            "rotate-ca",
 				Usage:           "Write updated " + version.Program + " CA certificates to the datastore",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          rotateCA,
 				Flags:           CertRotateCACommandFlags,
 			},

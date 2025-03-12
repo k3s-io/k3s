@@ -14,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/v3/pkg/data/convert"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -76,7 +76,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 	validFlags := make(map[string]bool, len(cmdFlags))
 	for _, f := range cmdFlags {
 		//split flags with aliases into 2 entries
-		for _, s := range strings.Split(f.GetName(), ",") {
+		for _, s := range f.Names() {
 			validFlags[s] = true
 		}
 	}

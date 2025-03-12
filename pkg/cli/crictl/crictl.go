@@ -4,7 +4,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"sigs.k8s.io/cri-tools/cmd/crictl"
 )
 
