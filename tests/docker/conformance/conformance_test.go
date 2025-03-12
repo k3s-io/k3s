@@ -94,7 +94,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			if !*serial {
 				Skip("Skipping serial conformance tests")
 			}
-			cmd := fmt.Sprintf("%s --focus=\"Serial\" --skip=\"Flaky\"  -v 2 --kubeconfig %s",
+			cmd := fmt.Sprintf("%s --focus=\"\\[Serial\\].*\\[Conformance\\]\" --skip=\"Flaky\" -v 2 --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
@@ -104,10 +104,10 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 				cmd := fmt.Sprintf("kubectl exec -n=conformance e2e-conformance-test -c output-container --kubeconfig=%s -- cat /tmp/results/e2e.log | grep -o \"•\" | wc -l",
 					config.KubeconfigFile)
 				for i := 1; ; i++ {
-					time.Sleep(120 * time.Second)
 					if hc.ProcessState != nil {
 						break
 					}
+					time.Sleep(120 * time.Second)
 					res, _ := tester.RunCommand(cmd)
 					res = strings.TrimSpace(res)
 					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
