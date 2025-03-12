@@ -24,7 +24,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func Run(ctx *cli.Context) error {
@@ -72,7 +72,7 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("--server is required")
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP.Value()) == 0 {
 		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 		if err != nil {
 			return err
@@ -88,7 +88,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
-	cfg.Debug = ctx.GlobalBool("debug")
+	cfg.Debug = ctx.Bool("debug")
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalContext()
