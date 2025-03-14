@@ -45,6 +45,7 @@ func init() {
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
 	e.apiServerReady = util.APIServerReadyChan(ctx, nodeConfig.AgentConfig.KubeConfigK3sController, util.DefaultAPIServerReadyTimeout)
+	e.etcdReady = make(chan struct{})
 	e.criReady = make(chan struct{})
 	e.nodeConfig = nodeConfig
 
@@ -119,12 +120,12 @@ func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, 
 	return startupConfig.Authenticator, startupConfig.Handler, nil
 }
 
-func (*Embedded) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
+func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
 	go func() {
-		<-etcdReady
+		<-e.ETCDReadyChan()
 		defer func() {
 			if err := recover(); err != nil {
 				logrus.WithField("stack", string(debug.Stack())).Fatalf("apiserver panic: %v", err)
@@ -260,6 +261,13 @@ func (e *Embedded) APIServerReadyChan() <-chan struct{} {
 		panic("executor not bootstrapped")
 	}
 	return e.apiServerReady
+}
+
+func (e *Embedded) ETCDReadyChan() <-chan struct{} {
+	if e.etcdReady == nil {
+		panic("executor not bootstrapped")
+	}
+	return e.etcdReady
 }
 
 func (e *Embedded) CRIReadyChan() <-chan struct{} {
