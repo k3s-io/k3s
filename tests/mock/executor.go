@@ -30,7 +30,7 @@ func (e *Executor) APIServerHandlers(ctx context.Context) (authenticator.Request
 	return nil, nil, errors.New("not implemented")
 }
 
-func (e *Executor) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
+func (e *Executor) APIServer(ctx context.Context, args []string) error {
 	return errors.New("not implemented")
 }
 
@@ -46,9 +46,9 @@ func (e *Executor) CurrentETCDOptions() (executor.InitialOptions, error) {
 	return executor.InitialOptions{}, nil
 }
 
-func (e *Executor) ETCD(ctx context.Context, args executor.ETCDConfig, extraArgs []string) error {
+func (e *Executor) ETCD(ctx context.Context, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
 	embed := &executor.Embedded{}
-	return embed.ETCD(ctx, args, extraArgs)
+	return embed.ETCD(ctx, args, extraArgs, test)
 }
 
 func (e *Executor) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
@@ -68,6 +68,12 @@ func (e *Executor) CRI(ctx context.Context, node *config.Node) error {
 }
 
 func (e *Executor) APIServerReadyChan() <-chan struct{} {
+	c := make(chan struct{})
+	close(c)
+	return c
+}
+
+func (e *Executor) ETCDReadyChan() <-chan struct{} {
 	c := make(chan struct{})
 	close(c)
 	return c
