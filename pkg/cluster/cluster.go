@@ -9,6 +9,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	pkgerrors "github.com/pkg/errors"
@@ -34,36 +35,36 @@ func (c *Cluster) ListenAndServe(ctx context.Context) error {
 	return c.initClusterAndHTTPS(ctx)
 }
 
-// Start handles writing/reading bootstrap data, and returns a channel
-// that will be closed when datastore is ready. If embedded etcd is in use,
+// Start handles writing/reading bootstrap data. If embedded etcd is in use,
 // a secondary call to Cluster.save is made.
-func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
+func (c *Cluster) Start(ctx context.Context) error {
+	if c.config.DisableETCD || c.managedDB == nil {
+		// if etcd is disabled or we're using kine, perform a no-op start of etcd
+		// to close the etcd ready channel. When etcd is in use, this is handled by
+		// c.start() -> c.managedDB.Start() -> etcd.Start() -> executor.ETCD()
+		executor.ETCD(ctx, nil, nil, func(context.Context) error { return nil })
+	}
+
 	if c.config.DisableETCD {
-		ready := make(chan struct{})
-		defer close(ready)
-		return ready, nil
+		return nil
 	}
 
 	// start managed etcd database; when kine is in use this is a no-op.
 	if err := c.start(ctx); err != nil {
-		return nil, pkgerrors.WithMessage(err, "start managed database")
+		return pkgerrors.WithMessage(err, "start managed database")
 	}
-
-	// get the wait channel for testing etcd server readiness; when kine is in
-	// use the channel is closed immediately.
-	ready := c.testClusterDB(ctx)
 
 	// set c.config.Datastore and c.config.Runtime.EtcdConfig with values
 	// necessary to build etcd clients, and start kine listener if necessary.
 	if err := c.startStorage(ctx, false); err != nil {
-		return nil, err
+		return err
 	}
 
 	// if necessary, store bootstrap data to datastore. saveBootstrap is only set
 	// when using kine, so this can be done before the ready channel has been closed.
 	if c.saveBootstrap {
 		if err := Save(ctx, c.config, false); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -71,7 +72,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		go func() {
 			for {
 				select {
-				case <-ready:
+				case <-executor.ETCDReadyChan():
 					// always save to managed etcd, to ensure that any file modified locally are in sync with the datastore.
 					// this will panic if multiple keys exist, to prevent nodes from running with different bootstrap data.
 					if err := Save(ctx, c.config, false); err != nil {
@@ -104,7 +105,7 @@ func (c *Cluster) Start(ctx context.Context) (<-chan struct{}, error) {
 		}()
 	}
 
-	return ready, nil
+	return nil
 }
 
 // startEtcdProxy starts an etcd load-balancer proxy, for control-plane-only nodes
