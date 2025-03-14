@@ -597,7 +597,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	go func() {
 		if !serverConfig.ControlConfig.DisableETCD {
-			<-serverConfig.ControlConfig.Runtime.ETCDReady
+			<-executor.ETCDReadyChan()
 			logrus.Info("ETCD server is now running")
 		}
 		if !serverConfig.ControlConfig.DisableAPIServer {

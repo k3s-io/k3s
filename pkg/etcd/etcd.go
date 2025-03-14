@@ -1009,7 +1009,7 @@ func (e *ETCD) listenClientHTTPURLs() string {
 // cluster calls the executor to start etcd running with the provided configuration.
 func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.InitialOptions) error {
 	ctx, e.cancel = context.WithCancel(ctx)
-	return executor.ETCD(ctx, executor.ETCDConfig{
+	return executor.ETCD(ctx, &executor.ETCDConfig{
 		Name:                e.name,
 		InitialOptions:      options,
 		ForceNewCluster:     reset,
@@ -1039,7 +1039,7 @@ func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.Initial
 
 		ExperimentalInitialCorruptCheck:         true,
 		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,
-	}, e.config.ExtraEtcdArgs)
+	}, e.config.ExtraEtcdArgs, e.Test)
 }
 
 func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
@@ -1089,7 +1089,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 
 	embedded := executor.Embedded{}
 	ctx, e.cancel = context.WithCancel(ctx)
-	return embedded.ETCD(ctx, executor.ETCDConfig{
+	return embedded.ETCD(ctx, &executor.ETCDConfig{
 		InitialOptions:       executor.InitialOptions{AdvertisePeerURL: peerURL},
 		DataDir:              tmpDataDir,
 		ForceNewCluster:      true,
@@ -1106,7 +1106,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 
 		ExperimentalInitialCorruptCheck:         true,
 		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,
-	}, append(e.config.ExtraEtcdArgs, "--max-snapshots=0", "--max-wals=0"))
+	}, append(e.config.ExtraEtcdArgs, "--max-snapshots=0", "--max-wals=0"), e.Test)
 }
 
 func addPort(address string, offset int) (string, error) {

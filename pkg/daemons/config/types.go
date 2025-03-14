@@ -312,7 +312,6 @@ type ControlRuntimeBootstrap struct {
 type ControlRuntime struct {
 	ControlRuntimeBootstrap
 
-	ETCDReady                            <-chan struct{}
 	StartupHooksWg                       *sync.WaitGroup
 	ClusterControllerStarts              map[string]leader.Callback
 	LeaderElectedClusterControllerStarts map[string]leader.Callback
@@ -382,7 +381,7 @@ type ControlRuntime struct {
 type Cluster interface {
 	Bootstrap(ctx context.Context, reset bool) error
 	ListenAndServe(ctx context.Context) error
-	Start(ctx context.Context) (<-chan struct{}, error)
+	Start(ctx context.Context) error
 }
 
 type CoreFactory interface {

@@ -20,7 +20,6 @@ type Driver interface {
 	IsReset() (bool, error)
 	ResetFile() string
 	Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error
-	Test(ctx context.Context) error
 	Restore(ctx context.Context) error
 	EndpointName() string
 	Snapshot(ctx context.Context) (*SnapshotResult, error)
