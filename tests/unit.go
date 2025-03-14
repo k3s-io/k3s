@@ -8,6 +8,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/tests/mock"
 )
 
 // GenerateDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
