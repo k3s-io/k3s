@@ -62,12 +62,12 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			for _, server := range config.Servers {
 				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
-				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1
+				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1 or rancher/k3s:v1.20.0-rc1-k3s1
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm", "", 1)
-				cVersion = strings.Replace(cVersion, "-", "+", 1)
+				cVersion = strings.Replace(cVersion, "-k3s", "+k3s", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
 			for _, agent := range config.Agents {
