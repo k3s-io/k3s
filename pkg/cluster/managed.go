@@ -23,36 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// testClusterDB returns a channel that will be closed when the datastore connection is available.
-// The datastore is tested for readiness every 5 seconds until the test succeeds.
-func (c *Cluster) testClusterDB(ctx context.Context) <-chan struct{} {
-	result := make(chan struct{})
-	if c.managedDB == nil {
-		close(result)
-		return result
-	}
-
-	go func() {
-		defer close(result)
-		for {
-			if err := c.managedDB.Test(ctx); err != nil {
-				logrus.Infof("Failed to test data store connection: %v", err)
-			} else {
-				logrus.Info(c.managedDB.EndpointName() + " data store connection OK")
-				return
-			}
-
-			select {
-			case <-time.After(5 * time.Second):
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return result
-}
-
 // start starts the database, unless a cluster reset has been requested, in which case
 // it does that instead.
 func (c *Cluster) start(ctx context.Context) error {
