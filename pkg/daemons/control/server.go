@@ -70,10 +70,8 @@ func Prepare(ctx context.Context, cfg *config.Control) error {
 // Server starts the apiserver and whatever other control-plane components are
 // not disabled on this node.
 func Server(ctx context.Context, cfg *config.Control) error {
-	if ready, err := cfg.Cluster.Start(ctx); err != nil {
+	if err := cfg.Cluster.Start(ctx); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start cluster")
-	} else {
-		cfg.Runtime.ETCDReady = ready
 	}
 
 	if !cfg.DisableAPIServer {
@@ -264,7 +262,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
 
-	return executor.APIServer(ctx, runtime.ETCDReady, args)
+	return executor.APIServer(ctx, args)
 }
 
 func defaults(config *config.Control) {

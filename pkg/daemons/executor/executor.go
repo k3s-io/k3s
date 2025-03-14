@@ -20,21 +20,25 @@ var (
 	executor Executor
 )
 
+// TestFunc is the signature of a function that returns nil error when the component is ready
+type TestFunc func(context.Context) error
+
 type Executor interface {
 	Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
 	Kubelet(ctx context.Context, args []string) error
 	KubeProxy(ctx context.Context, args []string) error
 	APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error)
-	APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error
+	APIServer(ctx context.Context, args []string) error
 	Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error
 	ControllerManager(ctx context.Context, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
-	ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error
+	ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error
 	CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error
 	Containerd(ctx context.Context, node *daemonconfig.Node) error
 	Docker(ctx context.Context, node *daemonconfig.Node) error
 	CRI(ctx context.Context, node *daemonconfig.Node) error
 	APIServerReadyChan() <-chan struct{}
+	ETCDReadyChan() <-chan struct{}
 	CRIReadyChan() <-chan struct{}
 }
 
@@ -153,8 +157,8 @@ func APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler
 	return executor.APIServerHandlers(ctx)
 }
 
-func APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
-	return executor.APIServer(ctx, etcdReady, args)
+func APIServer(ctx context.Context, args []string) error {
+	return executor.APIServer(ctx, args)
 }
 
 func Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
@@ -169,8 +173,8 @@ func CurrentETCDOptions() (InitialOptions, error) {
 	return executor.CurrentETCDOptions()
 }
 
-func ETCD(ctx context.Context, args ETCDConfig, extraArgs []string) error {
-	return executor.ETCD(ctx, args, extraArgs)
+func ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error {
+	return executor.ETCD(ctx, args, extraArgs, test)
 }
 
 func CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
@@ -191,6 +195,10 @@ func CRI(ctx context.Context, config *daemonconfig.Node) error {
 
 func APIServerReadyChan() <-chan struct{} {
 	return executor.APIServerReadyChan()
+}
+
+func ETCDReadyChan() <-chan struct{} {
+	return executor.ETCDReadyChan()
 }
 
 func CRIReadyChan() <-chan struct{} {

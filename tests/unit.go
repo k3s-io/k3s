@@ -101,7 +101,7 @@ func (m *mockExecutor) APIServerHandlers(ctx context.Context) (authenticator.Req
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m *mockExecutor) APIServer(ctx context.Context, etcdReady <-chan struct{}, args []string) error {
+func (m *mockExecutor) APIServer(ctx context.Context, args []string) error {
 	return errors.New("not implemented")
 }
 
@@ -117,9 +117,9 @@ func (m *mockExecutor) CurrentETCDOptions() (executor.InitialOptions, error) {
 	return executor.InitialOptions{}, nil
 }
 
-func (m *mockExecutor) ETCD(ctx context.Context, args executor.ETCDConfig, extraArgs []string) error {
+func (m *mockExecutor) ETCD(ctx context.Context, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
 	embed := &executor.Embedded{}
-	return embed.ETCD(ctx, args, extraArgs)
+	return embed.ETCD(ctx, args, extraArgs, test)
 }
 
 func (m *mockExecutor) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
@@ -139,6 +139,12 @@ func (m *mockExecutor) CRI(ctx context.Context, node *config.Node) error {
 }
 
 func (m *mockExecutor) APIServerReadyChan() <-chan struct{} {
+	c := make(chan struct{})
+	close(c)
+	return c
+}
+
+func (m *mockExecutor) ETCDReadyChan() <-chan struct{} {
 	c := make(chan struct{})
 	close(c)
 	return c
