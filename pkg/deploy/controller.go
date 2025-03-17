@@ -303,19 +303,23 @@ func (w *watcher) delete(path string) error {
 		return err
 	}
 
-	// ensure that the addon is completely removed before deleting the objectSet,
-	// so return when err == nil, otherwise pods may get stuck terminating
-	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "DeletingManifest", "Deleting manifest at %q", path)
-	if err := w.addons.Delete(addon.Namespace, addon.Name, &metav1.DeleteOptions{}); err == nil || !apierrors.IsNotFound(err) {
-		return err
-	}
-
-	// apply an empty set with owner & gvk data to delete
+	// Apply an empty set with owner & gvk data to delete
 	if err := w.apply.WithOwner(&addon).WithGVK(addonGVKs...).ApplyObjects(); err != nil {
 		return err
 	}
 
-	return os.Remove(path)
+	// Remove the addon file
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+
+	// Delete the addon
+	w.recorder.Eventf(&addon, corev1.EventTypeNormal, "DeletingManifest", "Deleting manifest at %q", path)
+	if err := w.addons.Delete(addon.Namespace, addon.Name, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
 }
 
 // getOrCreateAddon attempts to get an Addon by name from the addon namespace, and creates a new one
