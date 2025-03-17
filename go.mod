@@ -8,7 +8,7 @@ replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.2.1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.8.0
-	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.3-k3s1
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.0.4-k3s2
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/distribution/reference => github.com/distribution/reference v0.5.0
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
