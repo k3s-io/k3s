@@ -114,7 +114,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			for _, server := range config.Servers[1:] {
 				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
-				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1 or rancher/k3s:v1.20.0-rc1-k3s1
+				// The k3s image is in the format rancher/k3s:v1.20.0-k3s1-amd64 or rancher/k3s:v1.20.0-rc1-k3s1-amd64
 				cVersion := strings.Split(*k3sImage, ":")[1]
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
