@@ -20,6 +20,7 @@ import (
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 var numServers = 1
@@ -151,7 +152,7 @@ var _ = AfterSuite(func() {
 		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
 		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
 	}
-	if config != nil && !failed {
-		config.Cleanup()
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
