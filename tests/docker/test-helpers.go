@@ -390,6 +390,7 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to remove node %s: %v", nodeName, err)
 	}
+	fmt.Println("Stopped and removed ", nodeName)
 	return nil
 }
 
@@ -428,6 +429,7 @@ func (config *TestConfig) Cleanup() error {
 			errs = append(errs, err)
 		}
 	}
+	config.Servers = nil
 
 	// Stop and remove all agents
 	for _, agent := range config.Agents {
@@ -435,6 +437,7 @@ func (config *TestConfig) Cleanup() error {
 			errs = append(errs, err)
 		}
 	}
+	config.Agents = nil
 
 	// Stop DB if it was started
 	if config.DBType == "mysql" || config.DBType == "postgres" {
@@ -456,8 +459,6 @@ func (config *TestConfig) Cleanup() error {
 	if config.TestDir != "" {
 		return os.RemoveAll(config.TestDir)
 	}
-	config.Agents = nil
-	config.Servers = nil
 	return nil
 }
 
@@ -640,10 +641,47 @@ func FetchExternalIPs(kubeconfig string, servicename string) ([]string, error) {
 // RestartCluster restarts the k3s service on each node given
 func RestartCluster(nodes []DockerNode) error {
 	for _, node := range nodes {
-		cmd := "systemctl restart k3s* --all"
+		// Wait 60 seconds for the restart to succeed.
+		// If k3s doesn't report started to systemd within 60 seconds something is wrong.
+		cmd := "timeout -v 60 systemctl restart k3s* --all"
 		if _, err := node.RunCmdOnNode(cmd); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func DescribeNodesAndPods(config *TestConfig) string {
+	cmd := "kubectl describe node,pod -A --kubeconfig=" + config.KubeconfigFile
+	out, err := RunCommand(cmd)
+	if err != nil {
+		return fmt.Sprintf("** %v **\n%s", err, out)
+	}
+	return out
+}
+
+func TailDockerLogs(lines int, nodes []DockerNode) string {
+	logs := &strings.Builder{}
+	for _, node := range nodes {
+		cmd := fmt.Sprintf("docker logs %s --tail=%d", node.Name, lines)
+		if l, err := RunCommand(cmd); err != nil {
+			fmt.Fprintf(logs, "** failed to read docker logs for node %s ***\n%v\n", node.Name, err)
+		} else {
+			fmt.Fprintf(logs, "** docker logs for node %s ***\n%s\n", node.Name, l)
+		}
+	}
+	return logs.String()
+}
+
+func TailJournalLogs(lines int, nodes []DockerNode) string {
+	logs := &strings.Builder{}
+	for _, node := range nodes {
+		cmd := fmt.Sprintf("journalctl -u k3s* --no-pager --lines=%d", lines)
+		if l, err := node.RunCmdOnNode(cmd); err != nil {
+			fmt.Fprintf(logs, "** failed to read journald log for node %s ***\n%v\n", node.Name, err)
+		} else {
+			fmt.Fprintf(logs, "** journald log for node %s ***\n%s\n", node.Name, l)
+		}
+	}
+	return logs.String()
 }
