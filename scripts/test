@@ -26,25 +26,25 @@ export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
 # Run all tests on tag events, as we want test failures to block the release
 if [ "$ARCH" == 'arm' ] ||  [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
 
-  go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE"
+  go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE" -ci
   echo "Did go test basics $?"
 
   # Extract v1.XX minor version for skew and upgrade tests
   minor_version=$(echo $VERSION_K8S | cut -d '.' -f1,2)
 
-  go test ./tests/docker/cacerts/cacerts_test.go -k3sImage="$K3S_IMAGE"
+  go test ./tests/docker/cacerts/cacerts_test.go -k3sImage="$K3S_IMAGE" -ci
   echo "Did go test cacerts $?"
 
-  go test ./tests/docker/skew/skew_test.go -k3sImage="$K3S_IMAGE" -channel="$minor_version"
+  go test ./tests/docker/skew/skew_test.go -k3sImage="$K3S_IMAGE" -channel="$minor_version" -ci
   echo "Did go test skew $?"
 
-  go test ./tests/docker/bootstraptoken/bootstraptoken_test.go -k3sImage="$K3S_IMAGE"
+  go test ./tests/docker/bootstraptoken/bootstraptoken_test.go -k3sImage="$K3S_IMAGE" -ci
   echo "Did go test bootstraptoken $?"
 
-  go test ./tests/docker/upgrade/upgrade_test.go -k3sImage="$K3S_IMAGE" -channel="$minor_version"
+  go test ./tests/docker/upgrade/upgrade_test.go -k3sImage="$K3S_IMAGE" -channel="$minor_version" -ci
   echo "Did go test upgrade $?"
   
-  go test ./tests/docker/lazypull/lazypull_test.go -k3sImage="$K3S_IMAGE"
+  go test ./tests/docker/lazypull/lazypull_test.go -k3sImage="$K3S_IMAGE" -ci
   echo "Did go test lazypull $?"
 
 fi
@@ -71,9 +71,9 @@ fi
 # ---
 
 if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
-  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v
+  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v -ci
   echo "Did go conformance sqlite serial $?"
-  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v
+  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v -ci
   echo "Did go conformance etcd serial $?"
   test-run-sonobuoy mysql serial
   echo "Did test-run-sonobuoy-mysqk serial $?"
@@ -91,9 +91,9 @@ if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
 
   E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
   echo "Did test-run-sonobuoy parallel $?"
-  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v
+  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v -ci
   echo "Did go conformance sqlite parallel $?"
-  run-go-test ./test/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v
+  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v -ci
   echo "Did go test conformance etcd parallel $?"
   test-run-sonobuoy mysql parallel
   echo "Did test-run-sonobuoy-mysql parallel $?"

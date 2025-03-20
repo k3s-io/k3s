@@ -355,6 +355,7 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to remove node %s: %v", nodeName, err)
 	}
+	fmt.Println("Stopped and removed", nodeName)
 	return nil
 }
 
@@ -379,6 +380,7 @@ func (config *TestConfig) Cleanup() error {
 			errs = append(errs, err)
 		}
 	}
+	config.Servers = nil
 
 	// Stop and remove all agents
 	for _, agent := range config.Agents {
@@ -386,6 +388,7 @@ func (config *TestConfig) Cleanup() error {
 			errs = append(errs, err)
 		}
 	}
+	config.Agents = nil
 
 	// Stop DB if it was started
 	if config.DBType == "mysql" || config.DBType == "postgres" {
@@ -407,8 +410,6 @@ func (config *TestConfig) Cleanup() error {
 	if config.TestDir != "" {
 		return os.RemoveAll(config.TestDir)
 	}
-	config.Agents = nil
-	config.Servers = nil
 	return nil
 }
 
