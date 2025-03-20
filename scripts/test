@@ -25,7 +25,9 @@ export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
 # Only run PR tests on arm arch, we use GitHub Actions for amd64 and arm64
 # Run all tests on tag events, as we want test failures to block the release
 if [ "$ARCH" == 'arm' ] ||  [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
-
+  # Reduce image pull load by using embedded registry
+  export SERVER_1_ARGS="--embedded-registry" SERVER_2_ARGS="--embedded-registry" SERVER_3_ARGS="--embedded-registry"
+  
   go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE"
   echo "Did go test basics $?"
 
