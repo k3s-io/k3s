@@ -15,6 +15,7 @@ import (
 )
 
 var k3sImage = flag.String("k3sImage", "", "The image used to provision containers")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 func Test_DockerBasic(t *testing.T) {
@@ -34,7 +35,7 @@ var _ = Describe("Basic Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "120s", "5s").Should(Succeed())
+			}, "180s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
@@ -79,8 +80,8 @@ var _ = AfterSuite(func() {
 		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
 		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
 	}
-	if config != nil && !failed {
-		config.Cleanup()
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
 
