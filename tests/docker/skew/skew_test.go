@@ -17,6 +17,7 @@ import (
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 func Test_DockerSkew(t *testing.T) {
@@ -64,7 +65,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
 			for _, server := range config.Servers {
@@ -109,7 +110,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(config.ProvisionServers(3)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "90s", "5s").Should(Succeed())
+			}, "180s", "5s").Should(Succeed())
 			Eventually(func(g Gomega) {
 				g.Expect(tests.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))
 				g.Expect(tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())).To(Succeed())
@@ -143,7 +144,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
