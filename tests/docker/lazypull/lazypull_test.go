@@ -77,7 +77,7 @@ var _ = AfterSuite(func() {
 		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
 	}
 	if config != nil && !failed {
-		config.Cleanup()
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
 
