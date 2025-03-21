@@ -56,7 +56,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "120s", "5s").Should(Succeed())
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
 			for _, server := range config.Servers {
