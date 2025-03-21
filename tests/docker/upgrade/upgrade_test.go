@@ -19,6 +19,7 @@ import (
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 var numServers = 1
@@ -127,7 +128,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm", "", 1)
-				cVersion = strings.Replace(cVersion, "-", "+", 1)
+				cVersion = strings.Replace(cVersion, "-k3s", "+k3s", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
 		})
@@ -146,7 +147,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
