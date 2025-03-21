@@ -15,6 +15,7 @@ import (
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 var testID string
 

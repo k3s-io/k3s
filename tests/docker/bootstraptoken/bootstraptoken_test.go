@@ -12,6 +12,7 @@ import (
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 func Test_DockerBootstrapToken(t *testing.T) {
@@ -62,7 +63,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
