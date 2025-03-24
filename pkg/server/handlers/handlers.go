@@ -95,7 +95,7 @@ func ClientKubeletCert(control *config.Control, auth nodepassword.NodeAuthValida
 			util.SendError(err, resp, req, errCode)
 			return
 		}
-		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientKubeProxyKey, certutil.Config{
+		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientKubeletKey, certutil.Config{
 			CommonName:   "system:node:" + nodeName,
 			Organization: []string{user.NodesGroup},
 			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
