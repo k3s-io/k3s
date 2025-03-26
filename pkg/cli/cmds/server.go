@@ -502,7 +502,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringSliceFlag{
 		Name:  "disable",
-		Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: " + DisableItems + ")",
+		Usage: "(components) Do not deploy packaged components and delete any deployed components (valid values: " + DisableItems + ")",
 	},
 	&cli.BoolFlag{
 		Name:        "disable-scheduler",
