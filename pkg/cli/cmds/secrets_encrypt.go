@@ -87,7 +87,7 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 			},
 			{
 				Name:           "rotate-keys",
-				Usage:          "(experimental) Dynamically rotates secrets encryption keys and re-encrypt secrets",
+				Usage:          "Dynamically rotates secrets encryption keys and re-encrypt secrets",
 				SkipArgReorder: true,
 				Action:         rotateKeys,
 				Flags:          EncryptFlags,
