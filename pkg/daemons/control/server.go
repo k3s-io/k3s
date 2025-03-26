@@ -142,7 +142,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
 	return executor.ControllerManager(ctx, args)
@@ -169,7 +169,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	nodeReady := make(chan struct{})
 
@@ -205,7 +205,9 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
 	argsMap["enable-bootstrap-token-auth"] = "true"
-	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	if authConfigFile := util.ArgValue("authorization-config", cfg.ExtraAPIArgs); authConfigFile == "" {
+		argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	}
 	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
 	argsMap["service-node-port-range"] = cfg.ServiceNodePortRange.String()
@@ -258,7 +260,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
 
@@ -373,7 +375,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
 	logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))
 
