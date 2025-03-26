@@ -16,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	utilsnet "k8s.io/utils/net"
@@ -90,5 +91,5 @@ func getDockerCRIArgs(cfg *config.Node) []string {
 		argsMap["runtime-cgroups"] = runtimeRoot
 	}
 
-	return config.GetArgs(argsMap, nil)
+	return util.GetArgs(argsMap, nil)
 }
