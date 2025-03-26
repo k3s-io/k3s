@@ -10,6 +10,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/util"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-base/logs"
@@ -41,7 +42,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
-	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
 	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
 	return executor.KubeProxy(ctx, args)
 }
@@ -49,7 +50,7 @@ func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeletArgs(cfg)
 
-	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraKubeletArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(ctx, args)
