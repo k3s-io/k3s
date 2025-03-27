@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/s3"
 	testutil "github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/mock"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -137,7 +138,9 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := NewETCD()
+
 			defer tt.teardown(tt.args.config)
 			if err := tt.setup(tt.args.config); err != nil {
 				t.Errorf("Prep for ETCD.IsInitialized() failed = %v", err)
@@ -215,6 +218,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := NewETCD()
 
 			defer tt.teardown(tt.args.config)
@@ -389,6 +393,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := &ETCD{
 				client:  tt.fields.client,
 				config:  tt.fields.config,
@@ -628,6 +633,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := &ETCD{
 				client:  tt.fields.client,
 				config:  tt.fields.config,
