@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -183,7 +184,8 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		// finds a node that is ready to run pods during its initial scheduling loop.
 		if !cfg.DisableCCM {
 			logrus.Infof("Waiting for untainted node")
-			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil {
+			// this waits forever for an untainted node; if it returns ErrWaitTimeout the context has been cancelled, and it is not a fatal error
+			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
 				logrus.Fatalf("failed to wait for untained node: %v", err)
 			}
 		}
