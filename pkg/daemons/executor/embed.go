@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
@@ -39,6 +40,8 @@ import (
 	_ "github.com/k3s-io/k3s/pkg/cloudprovider"
 )
 
+var once sync.Once
+
 func init() {
 	executor = &Embedded{}
 }
@@ -49,7 +52,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 	e.criReady = make(chan struct{})
 	e.nodeConfig = nodeConfig
 
-	go func() {
+	go once.Do(func() {
 		// Ensure that the log verbosity remains set to the configured level by resetting it at 1-second intervals
 		// for the first 2 minutes that K3s is starting up. This is necessary because each of the Kubernetes
 		// components will initialize klog and reset the verbosity flag when they are starting.
@@ -66,7 +69,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 				return
 			}
 		}
-	}()
+	})
 
 	return nil
 }
