@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -142,7 +143,7 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraControllerArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraControllerArgs)
 	logrus.Infof("Running kube-controller-manager %s", config.ArgString(args))
 
 	return executor.ControllerManager(ctx, args)
@@ -169,7 +170,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
 
 	nodeReady := make(chan struct{})
 
@@ -183,7 +184,8 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		// finds a node that is ready to run pods during its initial scheduling loop.
 		if !cfg.DisableCCM {
 			logrus.Infof("Waiting for untainted node")
-			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil {
+			// this waits forever for an untainted node; if it returns ErrWaitTimeout the context has been cancelled, and it is not a fatal error
+			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
 				logrus.Fatalf("failed to wait for untained node: %v", err)
 			}
 		}
@@ -205,7 +207,9 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
 	argsMap["enable-bootstrap-token-auth"] = "true"
-	argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	if authConfigFile := util.ArgValue("authorization-config", cfg.ExtraAPIArgs); authConfigFile == "" {
+		argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	}
 	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
 	argsMap["service-node-port-range"] = cfg.ServiceNodePortRange.String()
@@ -258,7 +262,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraAPIArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraAPIArgs)
 
 	logrus.Infof("Running kube-apiserver %s", config.ArgString(args))
 
@@ -373,7 +377,7 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := config.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraCloudControllerArgs)
 
 	logrus.Infof("Running cloud-controller-manager %s", config.ArgString(args))
 

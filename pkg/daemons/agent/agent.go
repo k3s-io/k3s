@@ -12,9 +12,10 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
-	"github.com/k3s-io/k3s/pkg/agent/util"
+	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
@@ -55,7 +56,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
-	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
 	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
 	return executor.KubeProxy(ctx, args)
 }
@@ -75,7 +76,7 @@ func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 		return pkgerrors.WithMessage(err, "generate default kubelet configuration drop-in")
 	}
 
-	args := daemonconfig.GetArgs(argsMap, extraArgs)
+	args := util.GetArgs(argsMap, extraArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(ctx, args)
@@ -135,7 +136,7 @@ func extractConfigArgs(path string, extraArgs []string, config *kubeletconfig.Ku
 	if strippedArgs["config"] != "" && !strings.HasPrefix(strippedArgs["config"], path) {
 		src := strippedArgs["config"]
 		dest := filepath.Join(path, "10-cli-config.conf")
-		if err := util.CopyFile(src, dest, false); err != nil {
+		if err := agentutil.CopyFile(src, dest, false); err != nil {
 			return nil, pkgerrors.WithMessagef(err, "copy config %q into managed drop-in dir %q", src, dest)
 		}
 	}

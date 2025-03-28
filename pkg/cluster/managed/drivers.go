@@ -40,6 +40,10 @@ func Default() Driver {
 	return drivers[0]
 }
 
+func Clear() {
+	drivers = []Driver{}
+}
+
 // SnapshotResult is returned by the Snapshot function,
 // and lists the names of created and deleted snapshots.
 type SnapshotResult struct {

@@ -97,7 +97,7 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 		return true, nil
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		return merr.NewErrors(err, lastErr)
 	}
 

@@ -7,8 +7,6 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
-	"github.com/k3s-io/k3s/pkg/daemons/executor"
-	"github.com/k3s-io/k3s/tests/mock"
 )
 
 // GenerateDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
@@ -45,9 +43,6 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
-	// use mock executor that does not actually start things
-	executor.Set(&mock.Executor{})
-
 	// reuse ready channel from existing runtime if set
 	cnf.Runtime = config.NewRuntime()
 	if err := GenerateDataDir(cnf); err != nil {
