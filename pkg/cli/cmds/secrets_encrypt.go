@@ -40,8 +40,9 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				Flags: append(EncryptFlags, &cli.StringFlag{
 					Name:        "output",
 					Aliases:     []string{"o"},
-					Usage:       "Status format. Default: text. Optional: json",
+					Usage:       "Status format (valid values: text, json)",
 					Destination: &ServerConfig.EncryptOutput,
+					Value:       "text",
 				}),
 			},
 			{
@@ -82,7 +83,7 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 			},
 			{
 				Name:   "rotate-keys",
-				Usage:  "(experimental) Dynamically rotates secrets encryption keys and re-encrypt secrets",
+				Usage:  "Dynamically rotates secrets encryption keys and re-encrypt secrets",
 				Action: rotateKeys,
 				Flags:  EncryptFlags,
 			},
