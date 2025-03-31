@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const EtcdSnapshotCommand = "etcd-snapshot"
@@ -17,23 +17,26 @@ var EtcdSnapshotFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVar:      version.ProgramUpper + "_NODE_NAME",
+		EnvVars:     []string{version.ProgramUpper + "_NODE_NAME"},
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
 	&cli.StringFlag{
-		Name:        "etcd-token,t",
+		Name:        "etcd-token",
+		Aliases:     []string{"t"},
 		Usage:       "(cluster) Shared secret used to authenticate to etcd server",
 		Destination: &ServerConfig.Token,
 	},
 	&cli.StringFlag{
-		Name:        "etcd-server, s",
+		Name:        "etcd-server",
+		Aliases:     []string{"s"},
 		Usage:       "(cluster) Server with etcd role to connect to for snapshot management operations",
 		Value:       "https://127.0.0.1:6443",
 		Destination: &ServerConfig.ServerURL,
 	},
 	&cli.StringFlag{
-		Name:        "dir,etcd-snapshot-dir",
+		Name:        "dir",
+		Aliases:     []string{"etcd-snapshot-dir"},
 		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/server/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
@@ -44,105 +47,119 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Value:       "on-demand",
 	},
 	&cli.BoolFlag{
-		Name:        "snapshot-compress,etcd-snapshot-compress",
+		Name:        "snapshot-compress",
+		Aliases:     []string{"etcd-snapshot-compress"},
 		Usage:       "(db) Compress etcd snapshot",
 		Destination: &ServerConfig.EtcdSnapshotCompress,
 	},
 	&cli.IntFlag{
-		Name:        "snapshot-retention,etcd-snapshot-retention",
+		Name:        "snapshot-retention,",
+		Aliases:     []string{"etcd-snapshot-retention"},
 		Usage:       "(db) Number of snapshots to retain.",
 		Destination: &ServerConfig.EtcdSnapshotRetention,
 		Value:       defaultSnapshotRentention,
 	},
 	&cli.BoolFlag{
-		Name:        "s3,etcd-s3",
+		Name:        "s3",
+		Aliases:     []string{"etcd-s3"},
 		Usage:       "(db) Enable backup to S3",
 		Destination: &ServerConfig.EtcdS3,
 	},
 	&cli.StringFlag{
-		Name:        "s3-endpoint,etcd-s3-endpoint",
+		Name:        "s3-endpoint",
+		Aliases:     []string{"etcd-s3-endpoint"},
 		Usage:       "(db) S3 endpoint url",
 		Destination: &ServerConfig.EtcdS3Endpoint,
 		Value:       "s3.amazonaws.com",
 	},
 	&cli.StringFlag{
-		Name:        "s3-endpoint-ca,etcd-s3-endpoint-ca",
+		Name:        "s3-endpoint-ca",
+		Aliases:     []string{"etcd-s3-endpoint-ca"},
 		Usage:       "(db) S3 custom CA cert to connect to S3 endpoint",
 		Destination: &ServerConfig.EtcdS3EndpointCA,
 	},
 	&cli.BoolFlag{
-		Name:        "s3-skip-ssl-verify,etcd-s3-skip-ssl-verify",
+		Name:        "s3-skip-ssl-verify",
+		Aliases:     []string{"etcd-s3-skip-ssl-verify"},
 		Usage:       "(db) Disables S3 SSL certificate validation",
 		Destination: &ServerConfig.EtcdS3SkipSSLVerify,
 	},
 	&cli.StringFlag{
-		Name:        "s3-access-key,etcd-s3-access-key",
+		Name:        "s3-access-key",
+		Aliases:     []string{"etcd-s3-access-key"},
 		Usage:       "(db) S3 access key",
-		EnvVar:      "AWS_ACCESS_KEY_ID",
+		EnvVars:     []string{"AWS_ACCESS_KEY_ID"},
 		Destination: &ServerConfig.EtcdS3AccessKey,
 	},
 	&cli.StringFlag{
-		Name:        "s3-secret-key,etcd-s3-secret-key",
+		Name:        "s3-secret-key",
+		Aliases:     []string{"etcd-s3-secret-key"},
 		Usage:       "(db) S3 secret key",
-		EnvVar:      "AWS_SECRET_ACCESS_KEY",
+		EnvVars:     []string{"AWS_SECRET_ACCESS_KEY"},
 		Destination: &ServerConfig.EtcdS3SecretKey,
 	},
 	&cli.StringFlag{
-		Name:        "s3-session-token,etcd-s3-session-token",
+		Name:        "s3-session-token",
+		Aliases:     []string{"etcd-s3-session-token"},
 		Usage:       "(db) S3 session token",
-		EnvVar:      "AWS_SESSION_TOKEN",
+		EnvVars:     []string{"AWS_SESSION_TOKEN"},
 		Destination: &ServerConfig.EtcdS3SessionToken,
 	},
 	&cli.StringFlag{
-		Name:        "s3-bucket,etcd-s3-bucket",
+		Name:        "s3-bucket",
+		Aliases:     []string{"etcd-s3-bucket"},
 		Usage:       "(db) S3 bucket name",
 		Destination: &ServerConfig.EtcdS3BucketName,
 	},
 	&cli.StringFlag{
-		Name:        "s3-region,etcd-s3-region",
+		Name:        "s3-region",
+		Aliases:     []string{"etcd-s3-region"},
 		Usage:       "(db) S3 region / bucket location (optional)",
 		Destination: &ServerConfig.EtcdS3Region,
 		Value:       "us-east-1",
 	},
 	&cli.StringFlag{
-		Name:        "s3-folder,etcd-s3-folder",
+		Name:        "s3-folder",
+		Aliases:     []string{"etcd-s3-folder"},
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
 	},
 	&cli.StringFlag{
-		Name:        "s3-proxy,etcd-s3-proxy",
+		Name:        "s3-proxy",
+		Aliases:     []string{"etcd-s3-proxy"},
 		Usage:       "(db) Proxy server to use when connecting to S3, overriding any proxy-releated environment variables",
 		Destination: &ServerConfig.EtcdS3Proxy,
 	},
 	&cli.StringFlag{
-		Name:        "s3-config-secret,etcd-s3-config-secret",
+		Name:        "s3-config-secret",
+		Aliases:     []string{"etcd-s3-config-secret"},
 		Usage:       "(db) Name of secret in the kube-system namespace used to configure S3, if etcd-s3 is enabled and no other etcd-s3 options are set",
 		Destination: &ServerConfig.EtcdS3ConfigSecret,
 	},
 	&cli.BoolFlag{
-		Name:        "s3-insecure,etcd-s3-insecure",
+		Name:        "s3-insecure",
+		Aliases:     []string{"etcd-s3-insecure"},
 		Usage:       "(db) Disables S3 over HTTPS",
 		Destination: &ServerConfig.EtcdS3Insecure,
 	},
 	&cli.DurationFlag{
-		Name:        "s3-timeout,etcd-s3-timeout",
+		Name:        "s3-timeout",
+		Aliases:     []string{"etcd-s3-timeout"},
 		Usage:       "(db) S3 timeout",
 		Destination: &ServerConfig.EtcdS3Timeout,
 		Value:       5 * time.Minute,
 	},
 }
 
-func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
+func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:            EtcdSnapshotCommand,
 		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:            "save",
 				Usage:           "Trigger an immediate etcd snapshot",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          save,
 				Flags:           EtcdSnapshotFlags,
 			},
@@ -150,7 +167,6 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Name:            "delete",
 				Usage:           "Delete given snapshot(s)",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          delete,
 				Flags:           EtcdSnapshotFlags,
 			},
@@ -159,10 +175,10 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Aliases:         []string{"list", "l"},
 				Usage:           "List snapshots",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          list,
 				Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
-					Name:        "o,output",
+					Name:        "output",
+					Aliases:     []string{"o"},
 					Usage:       "(db) List format. Default: standard. Optional: json",
 					Destination: &ServerConfig.EtcdListFormat,
 				}),
@@ -171,7 +187,6 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Name:            "prune",
 				Usage:           "Remove snapshots that match the name prefix that exceed the configured retention count",
 				SkipFlagParsing: false,
-				SkipArgReorder:  true,
 				Action:          prune,
 				Flags:           EtcdSnapshotFlags,
 			},
