@@ -259,7 +259,8 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			auth.V1().ClusterRoleBinding(),
 			core.V1().ServiceAccount(),
 			core.V1().ConfigMap(),
-			core.V1().Secret())
+			core.V1().Secret(),
+			core.V1().Secret().Cache())
 	}
 
 	if config.ControlConfig.Rootless {
