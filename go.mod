@@ -131,16 +131,15 @@ require (
 	github.com/rancher/lasso v0.0.0-20250109193533-00757eec2dbd
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.4.1
-	github.com/rancher/wharfie v0.6.7
+	github.com/rancher/wharfie v0.6.9
 	github.com/rancher/wrangler/v3 v3.2.0-rc.1
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rootless-containers/rootlesskit v1.0.1
+	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spegel-org/spegel v1.0.18
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
-	github.com/urfave/cli v1.22.15
-	github.com/urfave/cli/v2 v2.27.5
+	github.com/urfave/cli/v2 v2.27.6
 	github.com/vishvananda/netlink v1.3.1-0.20250206174618-62fb240731fa
 	github.com/yl2chen/cidranger v1.0.2
 	go.etcd.io/etcd/api/v3 v3.5.19
