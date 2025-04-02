@@ -102,7 +102,11 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 			for _, file := range files {
 				// ignore errors, as some files may not exist, or may not contain certs.
 				// Only check whatever exists and has certs.
-				certs, _ := certutil.CertsFromFile(file)
+				certs, err := certutil.CertsFromFile(file)
+				if err != nil {
+					logrus.Debugf(err.Error())
+					continue
+				}
 				for _, cert := range certs {
 					if now.Before(cert.NotBefore) {
 						logrus.Errorf("%s: certificate %s is not valid before %s", file, cert.Subject, cert.NotBefore.Format(time.RFC3339))
@@ -124,7 +128,11 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 		fmt.Fprintf(w, "-----------\t-------\t------\t-------")
 		for _, files := range fileMap {
 			for _, file := range files {
-				certs, _ := certutil.CertsFromFile(file)
+				certs, err := certutil.CertsFromFile(file)
+				if err != nil {
+					logrus.Debugf(err.Error())
+					continue
+				}
 				for _, cert := range certs {
 					baseName := filepath.Base(file)
 					var status string
