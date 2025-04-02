@@ -71,9 +71,6 @@ func tokenRotate(ctx context.Context, control *config.Control, newToken string) 
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
 	oldToken, found := passwd.Pass("server")
 	if !found {
 		return fmt.Errorf("server token not found")

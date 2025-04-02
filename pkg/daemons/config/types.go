@@ -177,6 +177,7 @@ type CriticalControlArgs struct {
 	DisableNPC            bool         `cli:"disable-network-policy"`
 	DisableServiceLB      bool         `cli:"disable-service-lb"`
 	EncryptSecrets        bool         `cli:"secrets-encryption"`
+	EncryptProvider       string       `cli:"secrets-encryption-provider"`
 	EmbeddedRegistry      bool         `cli:"embedded-registry"`
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`

@@ -3,10 +3,10 @@ package deps
 import (
 	"bytes"
 	"crypto"
-	cryptorand "crypto/rand"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	b64 "encoding/base64"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -23,6 +23,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cloudprovider"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/passwd"
+	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	certutil "github.com/rancher/dynamiclistener/cert"
@@ -37,7 +38,6 @@ import (
 
 const (
 	ipsecTokenSize = 48
-	aescbcKeySize  = 32
 
 	RequestHeaderCN = "system:auth-proxy"
 )
@@ -725,6 +725,15 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 	if !controlConfig.EncryptSecrets {
 		return nil
 	}
+	var keyName string
+	switch controlConfig.EncryptProvider {
+	case secretsencrypt.AESCBCProvider:
+		keyName = "aescbckey"
+	case secretsencrypt.SecretBoxProvider:
+		keyName = "secretboxkey"
+	default:
+		return fmt.Errorf("unsupported secrets-encryption-key-type %s", controlConfig.EncryptProvider)
+	}
 	if s, err := os.Stat(runtime.EncryptionConfig); err == nil && s.Size() > 0 {
 		// On upgrade from older versions, the encryption hash may not exist, create it
 		if _, err := os.Stat(runtime.EncryptionHash); errors.Is(err, os.ErrNotExist) {
@@ -739,12 +748,40 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 		return nil
 	}
 
-	aescbcKey := make([]byte, aescbcKeySize)
-	_, err := cryptorand.Read(aescbcKey)
-	if err != nil {
+	keyByte := make([]byte, secretsencrypt.KeySize)
+	if _, err := rand.Read(keyByte); err != nil {
 		return err
 	}
-	encodedKey := b64.StdEncoding.EncodeToString(aescbcKey)
+	newKey := []apiserverconfigv1.Key{
+		{
+			Name:   keyName,
+			Secret: base64.StdEncoding.EncodeToString(keyByte),
+		},
+	}
+	var provider []apiserverconfigv1.ProviderConfiguration
+	if controlConfig.EncryptProvider == secretsencrypt.AESCBCProvider {
+		provider = []apiserverconfigv1.ProviderConfiguration{
+			{
+				AESCBC: &apiserverconfigv1.AESConfiguration{
+					Keys: newKey,
+				},
+			},
+			{
+				Identity: &apiserverconfigv1.IdentityConfiguration{},
+			},
+		}
+	} else if controlConfig.EncryptProvider == secretsencrypt.SecretBoxProvider {
+		provider = []apiserverconfigv1.ProviderConfiguration{
+			{
+				Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+					Keys: newKey,
+				},
+			},
+			{
+				Identity: &apiserverconfigv1.IdentityConfiguration{},
+			},
+		}
+	}
 
 	encConfig := apiserverconfigv1.EncryptionConfiguration{
 		TypeMeta: metav1.TypeMeta{
@@ -754,21 +791,7 @@ func genEncryptionConfigAndState(controlConfig *config.Control) error {
 		Resources: []apiserverconfigv1.ResourceConfiguration{
 			{
 				Resources: []string{"secrets"},
-				Providers: []apiserverconfigv1.ProviderConfiguration{
-					{
-						AESCBC: &apiserverconfigv1.AESConfiguration{
-							Keys: []apiserverconfigv1.Key{
-								{
-									Name:   "aescbckey",
-									Secret: encodedKey,
-								},
-							},
-						},
-					},
-					{
-						Identity: &apiserverconfigv1.IdentityConfiguration{},
-					},
-				},
+				Providers: provider,
 			},
 		},
 	}

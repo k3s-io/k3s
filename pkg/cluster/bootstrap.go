@@ -507,6 +507,10 @@ func (c *Cluster) compareConfig() error {
 	if clusterControl.CriticalControlArgs.EgressSelectorMode == "" {
 		clusterControl.CriticalControlArgs.EgressSelectorMode = c.config.CriticalControlArgs.EgressSelectorMode
 	}
+	// If the remote server is down-level, for secrets-encryption-key-type
+	if clusterControl.CriticalControlArgs.EncryptProvider == "" {
+		clusterControl.CriticalControlArgs.EncryptProvider = c.config.CriticalControlArgs.EncryptProvider
+	}
 
 	if diff := deep.Equal(c.config.CriticalControlArgs, clusterControl.CriticalControlArgs); diff != nil {
 		rc := reflect.ValueOf(clusterControl.CriticalControlArgs).Type()

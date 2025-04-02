@@ -169,6 +169,52 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 			}
 		})
 	})
+	Context("Switching to Secretbox Provider", func() {
+		It("Append secretbox provider to config", func() {
+			cmd := "echo 'secrets-encryption-provider: secretbox' >> /etc/rancher/k3s/config.yaml"
+			for _, node := range tc.Servers {
+				Expect(node.RunCmdOnNode(cmd)).Error().NotTo(HaveOccurred())
+			}
+		})
+		It("Restarts K3s servers", func() {
+			Expect(docker.RestartCluster(tc.Servers)).To(Succeed())
+		})
+
+		It("Rotates the Secrets-Encryption Keys, switching to new key type", func() {
+			cmd := "k3s secrets-encrypt rotate-keys"
+			res, err := tc.Servers[0].RunCmdOnNode(cmd)
+			Expect(err).NotTo(HaveOccurred(), res)
+			for i, node := range tc.Servers {
+				Eventually(func(g Gomega) {
+					cmd := "k3s secrets-encrypt status"
+					res, err := node.RunCmdOnNode(cmd)
+					g.Expect(err).NotTo(HaveOccurred(), res)
+					g.Expect(res).Should(ContainSubstring("Server Encryption Hashes: hash does not match"))
+					if i == 0 {
+						g.Expect(res).Should(ContainSubstring("XSalsa20-POLY1305"))
+					} else {
+						g.Expect(res).Should(ContainSubstring("AES-CBC"))
+					}
+				}, "420s", "10s").Should(Succeed())
+			}
+		})
+
+		It("Restarts K3s servers", func() {
+			Expect(docker.RestartCluster(tc.Servers)).To(Succeed())
+		})
+
+		It("Verifies encryption key matches on all nodes", func() {
+			cmd := "k3s secrets-encrypt status"
+			for _, node := range tc.Servers {
+				Eventually(func(g Gomega) {
+					res, err := node.RunCmdOnNode(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(res).Should(ContainSubstring("XSalsa20-POLY1305"))
+					g.Expect(res).Should(ContainSubstring("Server Encryption Hashes: All hashes match"))
+				}, "420s", "2s").Should(Succeed())
+			}
+		})
+	})
 
 })
 
