@@ -645,10 +645,11 @@ steps:
     - pull_request
 
 - name: build-e2e-image
-  image: rancher/dapper:v0.6.0
+  image: docker:25.0.5
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
-    - SKIP_VALIDATE=true SKIP_AIRGAP=true GOCOVER=1 dapper ci
+    - apk add make git bash
+    - GOCOVER=1 make local
     - cp dist/artifacts/* /tmp/artifacts/
   volumes:
   - name: cache
