@@ -1,6 +1,8 @@
 module github.com/k3s-io/k3s
 
-go 1.23.3
+go 1.23.4
+
+toolchain go1.24.2
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.9
@@ -111,7 +113,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.0
-	github.com/k3s-io/helm-controller v0.16.6
+	github.com/k3s-io/helm-controller v0.16.10
 	github.com/k3s-io/kine v0.13.9
 	github.com/klauspost/compress v1.17.11
 	github.com/libp2p/go-libp2p v0.38.2
