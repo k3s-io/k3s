@@ -9,7 +9,7 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
-    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
+    zlib-dev tar zip squashfs-tools npm coreutils openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
     zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq pipx \
     && \
@@ -17,10 +17,8 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
     apk -U --no-cache add mingw-w64-gcc; \
     fi
 
-RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
-
-# this works for both go 1.17 and 1.18
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+# Install goimports
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.16.0
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
