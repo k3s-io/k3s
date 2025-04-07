@@ -99,10 +99,7 @@ var _ = AfterSuite(func() {
 		cmd := fmt.Sprintf("docker stop k3s-pause-%s", testID)
 		_, err := tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
-		cmd = fmt.Sprintf("docker rm k3s-pause-%s", testID)
-		_, err = tester.RunCommand(cmd)
-		Expect(err).NotTo(HaveOccurred())
-		cmd = fmt.Sprintf("docker volume ls -q | grep -F %s | xargs -r docker volume rm -f", testID)
+		cmd = fmt.Sprintf("docker rm -v k3s-pause-%s", testID)
 		_, err = tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
 	}
