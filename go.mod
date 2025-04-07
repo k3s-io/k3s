@@ -1,8 +1,6 @@
 module github.com/k3s-io/k3s
 
-go 1.23.4
-
-toolchain go1.24.2
+go 1.23.6
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.9
