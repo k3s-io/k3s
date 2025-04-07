@@ -36,7 +36,7 @@ RUN if [ -n "${TRIVY_ARCH}" ]; then \
     fi
 
 # Install goimports
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.16.0
 
 # Cleanup
 RUN rm -rf /go/src /go/pkg
