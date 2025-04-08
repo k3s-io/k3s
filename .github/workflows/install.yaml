@@ -57,7 +57,7 @@ jobs:
           name: k3s
           path: tests/install/${{ matrix.vm }}
       - name: "Vagrant Up"
-        run: vagrant up --no-provision
+        run: vagrant up --no-tty --no-provision
       - name: "Upload k3s binary to VM"
         run: |
           chmod +x k3s
