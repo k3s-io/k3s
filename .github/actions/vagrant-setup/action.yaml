@@ -16,14 +16,16 @@ runs:
     - name: Enable and start libvirt daemon
       shell: bash
       run: |
-        if command -v systemctl >/dev/null 2>&1; then
+        if [ -d /run/systemd/system ] && ps -p 1 | grep -q systemd; then
+          echo "Using systemd to manage libvirtd"
           sudo systemctl enable --now libvirtd
         elif command -v service >/dev/null 2>&1; then
+          echo "Using init.d to manage libvirtd"
           sudo service libvirtd start
           sudo update-rc.d libvirtd defaults
         else
           echo "No service manager found, attempting direct start"
-          sudo /etc/init.d/libvirtd start || sudo /usr/sbin/libvirtd -d
+          sudo /etc/init.d/libvirtd start
         fi
     - name: Install vagrant dependencies
       shell: bash
