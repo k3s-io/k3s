@@ -63,7 +63,7 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 
 	// Provision the first etcd node. In GitHub Actions, this also imports the VM image into libvirt, which
 	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
-	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-provision %s &> vagrant.log`, nodeRoles, nodeBoxes, etcdNodes[0].String())
+	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeRoles, nodeBoxes, etcdNodes[0].String())
 	fmt.Println(cmd)
 	if _, err := e2e.RunCommand(cmd); err != nil {
 		return etcdNodes, cpNodes, agentNodes, err
@@ -72,7 +72,7 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range allNodeNames[1:] {
-		cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-provision %s &>> vagrant.log`, nodeRoles, nodeBoxes, node)
+		cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeRoles, nodeBoxes, node)
 		errg.Go(func() error {
 			_, err := e2e.RunCommand(cmd)
 			return err
