@@ -22,11 +22,11 @@ runs:
           sudo systemctl enable --now libvirtd
         elif command -v service >/dev/null 2>&1; then
           echo "Using init.d to manage libvirtd"
-          sudo apt-get install -y libvirt-daemon-sysv
+          sudo apt-get install -y libvirt-daemon-system-sysv
           sudo service libvirtd start
         else
           echo "No service manager found, attempting direct start"
-          sudo apt-get install -y libvirt-daemon-sysv
+          sudo apt-get install -y libvirt-daemon-system-sysv
           sudo /etc/init.d/libvirtd start
         fi
     - name: Install vagrant dependencies
