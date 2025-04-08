@@ -12,19 +12,21 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant=2.4.1-1 ruby-libvirt
-    - name: Enable and start libvirt daemon
+        sudo apt-get install -y libvirt-daemon vagrant=2.4.1-1 ruby-libvirt
+    - name: Install and start libvirt daemon
       shell: bash
       run: |
         if [ -d /run/systemd/system ] && ps -p 1 | grep -q systemd; then
           echo "Using systemd to manage libvirtd"
+          sudo apt-get install -y libvirt-daemon-system
           sudo systemctl enable --now libvirtd
         elif command -v service >/dev/null 2>&1; then
           echo "Using init.d to manage libvirtd"
+          sudo apt-get install -y libvirt-daemon-sysv
           sudo service libvirtd start
-          sudo update-rc.d libvirtd defaults
         else
           echo "No service manager found, attempting direct start"
+          sudo apt-get install -y libvirt-daemon-sysv
           sudo /etc/init.d/libvirtd start
         fi
     - name: Install vagrant dependencies
