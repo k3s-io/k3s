@@ -39,7 +39,7 @@ jobs:
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up ⏩ Install K3s"
-        run: vagrant up
+        run: vagrant up --no-tty
       - name: "⏳ Node"
         run: vagrant provision --provision-with=k3s-wait-for-node
       - name: "⏳ CoreDNS"

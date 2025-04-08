@@ -133,7 +133,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		}
 	}
 	// Bring up the first server node
-	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
+	cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, newNodeError(cmd, serverNodes[0], err)
@@ -142,7 +142,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
 		fmt.Println(cmd)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
@@ -224,7 +224,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
