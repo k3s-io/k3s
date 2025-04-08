@@ -386,7 +386,7 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to stop node %s: %v", nodeName, err)
 	}
-	cmd = fmt.Sprintf("docker rm %s", nodeName)
+	cmd = fmt.Sprintf("docker rm -v %s", nodeName)
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to remove node %s: %v", nodeName, err)
 	}
@@ -439,13 +439,18 @@ func (config *TestConfig) Cleanup() error {
 	}
 	config.Agents = nil
 
+	// Remove volumes created by the agent/server containers
+	cmd := fmt.Sprintf("docker volume ls -q | grep -F %s | xargs -r docker volume rm", strings.ToLower(filepath.Base(config.TestDir)))
+	if _, err := RunCommand(cmd); err != nil {
+		errs = append(errs, fmt.Errorf("failed to remove volumes: %v", err))
+	}
 	// Stop DB if it was started
 	if config.DBType == "mysql" || config.DBType == "postgres" {
 		cmd := fmt.Sprintf("docker stop %s", config.DBType)
 		if _, err := RunCommand(cmd); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop %s: %v", config.DBType, err))
 		}
-		cmd = fmt.Sprintf("docker rm %s", config.DBType)
+		cmd = fmt.Sprintf("docker rm -v %s", config.DBType)
 		if _, err := RunCommand(cmd); err != nil {
 			errs = append(errs, fmt.Errorf("failed to remove %s: %v", config.DBType, err))
 		}
