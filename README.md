@@ -55,6 +55,7 @@ Current Status
 [![Build Status](https://drone-publish.k3s.io/api/badges/k3s-io/k3s/status.svg)](https://drone-publish.k3s.io/k3s-io/k3s)
 [![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
 [![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/6835/badge)](https://www.bestpractices.dev/projects/6835)
 
 What's with the name?
 --------------------
