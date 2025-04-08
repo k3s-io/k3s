@@ -2,63 +2,51 @@ name: Build K3s
 
 on: 
   workflow_call:
-   inputs:
-    arch:
-      type: string
-      description: 'Architecture to build'
-      default: 'ubuntu-latest'
-    upload-image:
-      type: boolean
-      required: false
-      default: false
+    inputs:
+      arch:
+        type: string
+        description: 'Architecture to build (ubuntu-latest or ubuntu-24.04-arm)'
+        default: 'ubuntu-latest'
+      os:
+        type: string
+        description: 'Target OS (linux or windows)'
+        default: 'linux'
+      upload-image:
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build
-    runs-on: ${{ inputs.arch }} # defaults to ubuntu-latest, for arm64 use ubuntu-24.04-arm
+    name: Build K3s (${{ inputs.os }} on ${{ inputs.arch }})
+    runs-on: ${{ inputs.arch }}
     timeout-minutes: 20
+    env:
+      BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
+      ARTIFACT_EXT: ${{ inputs.os == 'windows' && '-windows' || (contains(inputs.arch, 'arm') && '-arm64' || '') }}
+      GOOS: ${{ inputs.os }}
     steps:
     - name: Checkout K3s
       uses: actions/checkout@v4
+      
     - name: Build K3s binary
       run: |
-        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 make
-        sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
+        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 GOOS=${{ env.GOOS }} make
+        sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+    
     - name: Build K3s image
-      if: inputs.upload-image == true
+      if: inputs.upload-image == true && inputs.os == 'linux'
       run: make package-image
+      
     - name: "Save K3s image"
-      if: inputs.upload-image == true
+      if: inputs.upload-image == true && inputs.os == 'linux'
       run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
-    - name: "Upload K3s Artifacts"
-      if: inputs.arch == 'ubuntu-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s
-        path: dist/artifacts/k3s*
-    - name: "Upload K3s arm64 Artifacts"
-      if: contains(inputs.arch, 'arm')
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s-arm64
-        path: dist/artifacts/k3s*
-  build-windows:
-    name: Build (windows)
-    if: inputs.arch == 'ubuntu-latest'
-    runs-on: ${{ inputs.arch }} # defaults to ubuntu-latest, for arm64 use ubuntu-24.04-arm
-    timeout-minutes: 20
-    steps:
-    - name: Checkout K3s
-      uses: actions/checkout@v4
-    - name: Build K3s binary
-      run: |
-        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 GOOS=windows make
-        sha256sum dist/artifacts/k3s.exe | sed 's|dist/artifacts/||' > dist/artifacts/k3s.exe.sha256sum
+      
     - name: "Upload K3s Artifacts"
       uses: actions/upload-artifact@v4
       with:
-        name: k3s-windows
+        name: k3s${{ env.ARTIFACT_EXT }}
         path: dist/artifacts/k3s*
