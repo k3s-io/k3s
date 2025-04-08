@@ -30,6 +30,12 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
+    with:
+      os: linux
+  build-windows:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      os: windows
   itest:
     needs: build
     name: Integration Tests
