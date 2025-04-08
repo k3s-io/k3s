@@ -112,11 +112,11 @@ jobs:
   #         files: tests/e2e/${{ matrix.etest }}/coverage.out
   #         flags: e2etests # optional
   #         verbose: true # optional (default = false)
-  e2e-big:
-    name: "E2E Tests"
+  e2e-large:
+    name: "E2E Tests (Large)"
     needs: build
     if: github.repository_owner == 'k3s-io'
-    runs-on: equinix-16cpu-64gb
+    runs-on: equinix-8cpu-32gb
     timeout-minutes: 40
     strategy:
       fail-fast: false
