@@ -1,7 +1,7 @@
 K3s - Lightweight Kubernetes
 ===============================================
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s.svg?type=shield)](https://app.fossa.com/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s?ref=badge_shield)
-![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
+[![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml)
 [![Build Status](https://drone-publish.k3s.io/api/badges/k3s-io/k3s/status.svg)](https://drone-publish.k3s.io/k3s-io/k3s)
 [![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
 [![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
