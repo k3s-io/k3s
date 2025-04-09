@@ -119,6 +119,8 @@ The K3s developer community hangs out on Zoom to chat. Everybody is welcome.
 
 **Meeting recordings**: [K3s Channel](https://www.youtube.com/watch?v=HRuJROA6Z3k&list=PLlBG85HKlLE9KFDqJ_K6NOpup-zVw8ANl&pp=gAQB)
 
+You can check also the full details on the website: https://k3s.io/community
+
 
 What's next?
 ---
