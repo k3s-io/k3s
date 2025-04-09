@@ -671,16 +671,14 @@ steps:
   commands:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
-  - docker stop registry && docker rm registry
   # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
   - tests/e2e/scripts/cleanup_vms.sh
-  - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
+  - tests/e2e/scripts/drone_registries.sh
   - |
     cd tests/e2e/validatecluster
     ../scripts/cleanup_vms.sh 'validatecluster_([0-9]+)_(server|agent)'
     go test -v -timeout=45m ./validatecluster_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/validate-coverage.out
-  - docker stop registry && docker rm registry
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
@@ -703,6 +701,7 @@ steps:
   commands:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
+  - tests/e2e/scripts/drone_registries.sh
   - |
     cd tests/e2e/splitserver
     ../scripts/cleanup_vms.sh 'splitserver_([0-9]+)'
