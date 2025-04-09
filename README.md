@@ -1,7 +1,14 @@
 K3s - Lightweight Kubernetes
 ===============================================
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s.svg?type=shield)](https://app.fossa.com/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s?ref=badge_shield)
+![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
+[![Build Status](https://drone-publish.k3s.io/api/badges/k3s-io/k3s/status.svg)](https://drone-publish.k3s.io/k3s-io/k3s)
+[![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
+[![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/6835/badge)](https://www.bestpractices.dev/projects/6835)
+[![Releases](https://img.shields.io/github/downloads/k3s-io/k3s/total.svg)](https://github.com/k3s-io/k3s/tags?label=Downloads)[![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/k3s/badge)](https://clomonitor.io/projects/cncf/k3s)
 
-Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
+Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than **70 MB**.
 
 Great for:
 
@@ -48,15 +55,6 @@ Additionally, K3s simplifies Kubernetes operations by maintaining functionality 
 * Auto-deploying Kubernetes resources from local manifests in realtime as they are changed.
 * Managing an embedded etcd cluster
 
-Current Status
---------------
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s.svg?type=shield)](https://app.fossa.com/projects/custom%2B25850%2Fgithub.com%2Fk3s-io%2Fk3s?ref=badge_shield)
-![Nightly CI](https://github.com/k3s-io/k3s/actions/workflows/nightly-install.yaml/badge.svg)
-[![Build Status](https://drone-publish.k3s.io/api/badges/k3s-io/k3s/status.svg)](https://drone-publish.k3s.io/k3s-io/k3s)
-[![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
-[![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/6835/badge)](https://www.bestpractices.dev/projects/6835)
-
 What's with the name?
 --------------------
 
@@ -93,6 +91,34 @@ This is a common point of confusion because it has changed over time. Early vers
 Both of these have out-of-tree alternatives in the form of [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) and [CCM](https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/), which work in K3s and which upstream is moving towards.
 
 We remove these to achieve a smaller binary size. They can be removed while remaining conformant because neither affects core Kubernetes functionality. They are also dependent on third-party cloud or data center technologies/services, which may not be available in many K3s' use cases.
+
+Getting Started
+---
+- [Quick Install](https://docs.k3s.io/quick-start)
+- [Achictecture](https://docs.k3s.io/architecture)
+- [FAQ](https://docs.k3s.io/faq)
+- [Contribute](CONTRIBUTING.md)
+
+Community
+---
+#### Slack
+
+Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3s users. Great place to learn and ask questions: [#k3s](https://rancher-users.slack.com/archives/CGGQEHPPW) and [#k3s-contributor](https://rancher-users.slack.com/archives/CGXR87T8B)
+
+#### Getting involved
+[GitHub Issues] - Submit your issues and feature requests via GitHub.
+
+#### Community Meeting and Office hours
+The K3s developer community hangs out on Zoom to chat. Everybody is welcome.
+
+**iCal**: https://webcal.prod.itx.linuxfoundation.org/lfx/a092M00001IkYIjQAN
+- AMS/EMEA TZ 10:00 am PST - every *second* Tuesday of the month
+- EMEA/APAC TimeZone friendly - every *third* Tuesday of the month
+
+**Meeting notes and agenda**: https://hackmd.io/@k3s/meet-notes/
+
+**Meeting recordings**: [K3s Channel](https://www.youtube.com/watch?v=HRuJROA6Z3k&list=PLlBG85HKlLE9KFDqJ_K6NOpup-zVw8ANl&pp=gAQB)
+
 
 What's next?
 ---
@@ -163,3 +189,5 @@ Security
 
 Security issues in K3s can be reported by sending an email to [security@k3s.io](mailto:security@k3s.io).
 Please do not file issues about security issues.
+
+[GitHub Issues]: https://github.com/k3s-io/k3s/issues
