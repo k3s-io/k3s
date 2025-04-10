@@ -109,7 +109,7 @@ Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3
 - ### Getting involved
 [GitHub Issues](https://github.com/k3s-io/k3s/issues) - Submit your issues and feature requests via GitHub.
 
-- ### Community Meeting and Office hours
+- ### Community Meetings and Office hours
 The K3s developer community hangs out on Zoom to chat. Everybody is welcome.
 
 **Add the [Linux Foundation iCal](https://webcal.prod.itx.linuxfoundation.org/lfx/a092M00001IkYIjQAN) to your calendar**: 
