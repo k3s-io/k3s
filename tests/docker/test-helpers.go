@@ -482,8 +482,20 @@ func (config *TestConfig) CopyAndModifyKubeconfig() error {
 		}
 	}
 
-	cmd := fmt.Sprintf("docker cp %s:/etc/rancher/k3s/k3s.yaml %s/kubeconfig.yaml", config.Servers[serverID].Name, config.TestDir)
-	if _, err := RunCommand(cmd); err != nil {
+	// Try twice with a 10s delay between attempts, this is flaky on the arm drone runner
+	var err error
+	var cmd string
+	for i := 1; i <= 2; i++ {
+		cmd = fmt.Sprintf("docker cp %s:/etc/rancher/k3s/k3s.yaml %s/kubeconfig.yaml", config.Servers[serverID].Name, config.TestDir)
+		_, err = RunCommand(cmd)
+		if err != nil {
+			fmt.Printf("Failed to copy kubeconfig, attempt %d: %v\n", i, err)
+			time.Sleep(10 * time.Second)
+		} else {
+			break
+		}
+	}
+	if err != nil {
 		return fmt.Errorf("failed to copy kubeconfig: %v", err)
 	}
 
