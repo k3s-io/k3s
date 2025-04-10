@@ -107,7 +107,7 @@ Community
 Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3s users. Great place to learn and ask questions: [#k3s](https://rancher-users.slack.com/archives/CGGQEHPPW) and [#k3s-contributor](https://rancher-users.slack.com/archives/CGXR87T8B)
 
 - ### Getting involved
-[GitHub Issues] - Submit your issues and feature requests via GitHub.
+[GitHub Issues](https://github.com/k3s-io/k3s/issues) - Submit your issues and feature requests via GitHub.
 
 - ### Community Meeting and Office hours
 The K3s developer community hangs out on Zoom to chat. Everybody is welcome.
