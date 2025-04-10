@@ -112,7 +112,7 @@ Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3
 - ### Community Meeting and Office hours
 The K3s developer community hangs out on Zoom to chat. Everybody is welcome.
 
-**iCal**: https://webcal.prod.itx.linuxfoundation.org/lfx/a092M00001IkYIjQAN
+**Add the [Linux Foundation iCal](https://webcal.prod.itx.linuxfoundation.org/lfx/a092M00001IkYIjQAN) to your calendar**: 
 - AMS/EMEA TZ 10:00 am PST - every *second* Tuesday of the month
 - EMEA/APAC TimeZone friendly - every *third* Tuesday of the month
 
