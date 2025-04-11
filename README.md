@@ -9,7 +9,7 @@ K3s - Lightweight Kubernetes
 [![Releases](https://img.shields.io/github/downloads/k3s-io/k3s/total.svg)](https://github.com/k3s-io/k3s/tags?label=Downloads)
 [![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/k3s/badge)](https://clomonitor.io/projects/cncf/k3s)
 
-Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than **70 MB**.
+Lightweight Kubernetes.  Production ready, easy to install, half the memory, all in a binary less than 100 MB.
 
 Great for:
 
