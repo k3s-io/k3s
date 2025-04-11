@@ -8,4 +8,16 @@ mkdir -p /etc/rancher/k3s/
 echo "mirrors:
   docker.io:
     endpoint:
-      - \"http://$ip_addr:5000\"" >> /etc/rancher/k3s/registries.yaml
+      - \"http://$ip_addr:15000\"
+  registry.k8s.io:
+    endpoint:
+      - \"http://$ip_addr:15001\"
+  gcr.io:
+    endpoint:
+      - \"http://$ip_addr:15002\"
+  quay.io:
+    endpoint:
+      - \"http://$ip_addr:15003\"
+  ghcr.io:
+    endpoint:
+      - \"http://$ip_addr:15004\"" >> /etc/rancher/k3s/registries.yaml
