@@ -42,25 +42,29 @@ type Executor interface {
 	CRIReadyChan() <-chan struct{}
 }
 
+type ETCDSocketOpts struct {
+	ReuseAddress bool `json:"reuse-address,omitempty"`
+	ReusePort    bool `json:"reuse-port,omitempty"`
+}
+
 type ETCDConfig struct {
 	InitialOptions       `json:",inline"`
-	Name                 string      `json:"name,omitempty"`
-	ListenClientURLs     string      `json:"listen-client-urls,omitempty"`
-	ListenClientHTTPURLs string      `json:"listen-client-http-urls,omitempty"`
-	ListenMetricsURLs    string      `json:"listen-metrics-urls,omitempty"`
-	ListenPeerURLs       string      `json:"listen-peer-urls,omitempty"`
-	AdvertiseClientURLs  string      `json:"advertise-client-urls,omitempty"`
-	DataDir              string      `json:"data-dir,omitempty"`
-	SnapshotCount        int         `json:"snapshot-count,omitempty"`
-	ServerTrust          ServerTrust `json:"client-transport-security"`
-	PeerTrust            PeerTrust   `json:"peer-transport-security"`
-	ForceNewCluster      bool        `json:"force-new-cluster,omitempty"`
-	ReuseAddress         bool        `json:"reuse-address,omitempty"`
-	ReusePort            bool        `json:"reuse-port,omitempty"`
-	HeartbeatInterval    int         `json:"heartbeat-interval"`
-	ElectionTimeout      int         `json:"election-timeout"`
-	Logger               string      `json:"logger"`
-	LogOutputs           []string    `json:"log-outputs"`
+	Name                 string         `json:"name,omitempty"`
+	ListenClientURLs     string         `json:"listen-client-urls,omitempty"`
+	ListenClientHTTPURLs string         `json:"listen-client-http-urls,omitempty"`
+	ListenMetricsURLs    string         `json:"listen-metrics-urls,omitempty"`
+	ListenPeerURLs       string         `json:"listen-peer-urls,omitempty"`
+	AdvertiseClientURLs  string         `json:"advertise-client-urls,omitempty"`
+	DataDir              string         `json:"data-dir,omitempty"`
+	SnapshotCount        int            `json:"snapshot-count,omitempty"`
+	ServerTrust          ServerTrust    `json:"client-transport-security"`
+	PeerTrust            PeerTrust      `json:"peer-transport-security"`
+	ForceNewCluster      bool           `json:"force-new-cluster,omitempty"`
+	HeartbeatInterval    int            `json:"heartbeat-interval"`
+	ElectionTimeout      int            `json:"election-timeout"`
+	Logger               string         `json:"logger"`
+	LogOutputs           []string       `json:"log-outputs"`
+	SocketOpts           ETCDSocketOpts `json:"socket-options"`
 
 	ExperimentalInitialCorruptCheck         bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
