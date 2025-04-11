@@ -55,6 +55,8 @@ type ETCDConfig struct {
 	ServerTrust          ServerTrust `json:"client-transport-security"`
 	PeerTrust            PeerTrust   `json:"peer-transport-security"`
 	ForceNewCluster      bool        `json:"force-new-cluster,omitempty"`
+	ReuseAddress         bool        `json:"reuse-address,omitempty"`
+	ReusePort            bool        `json:"reuse-port,omitempty"`
 	HeartbeatInterval    int         `json:"heartbeat-interval"`
 	ElectionTimeout      int         `json:"election-timeout"`
 	Logger               string      `json:"logger"`

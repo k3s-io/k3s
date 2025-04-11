@@ -1035,6 +1035,8 @@ func (e *ETCD) cluster(ctx context.Context, reset bool, options executor.Initial
 		HeartbeatInterval:    500,
 		Logger:               "zap",
 		LogOutputs:           []string{"stderr"},
+		ReuseAddress:         true,
+		ReusePort:            true,
 		ListenClientHTTPURLs: e.listenClientHTTPURLs(),
 
 		ExperimentalInitialCorruptCheck:         true,
@@ -1098,11 +1100,13 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context) error {
 		ListenClientHTTPURLs: clientHTTPURL,
 		ListenPeerURLs:       peerURL,
 		Logger:               "zap",
+		LogOutputs:           []string{"stderr"},
+		ReuseAddress:         true,
+		ReusePort:            true,
 		HeartbeatInterval:    500,
 		ElectionTimeout:      5000,
 		SnapshotCount:        10000,
 		Name:                 e.name,
-		LogOutputs:           []string{"stderr"},
 
 		ExperimentalInitialCorruptCheck:         true,
 		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,

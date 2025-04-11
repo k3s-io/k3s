@@ -30,6 +30,12 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
+    with:
+      os: linux
+  build-windows:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      os: windows
   itest:
     needs: build
     name: Integration Tests
@@ -70,5 +76,52 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./${{ matrix.itest }}.out
+        flags: inttests # optional
+        verbose: true # optional (default = false)
+  itest-windows:
+    name: Integration Tests (windows)
+    needs: build-windows
+    runs-on: windows-2022
+    timeout-minutes: 10
+    env:
+      GOCOVERDIR: "D:/tmp/k3scov"
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with: {fetch-depth: 1}
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Download k3s binary
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s-windows
+        path: dist/artifacts/
+    - name: Run K3s
+      timeout-minutes: 5
+      env:
+        CONTAINERD_LOG_LEVEL: "debug"
+      run: |
+        $ErrorActionPreference = "Continue"
+        $PSNativeCommandUseErrorActionPreference = $true
+        New-Item -Type Directory -Force $Env:GOCOVERDIR | Out-Null
+        $Server = Start-Job -ScriptBlock { ./dist/artifacts/k3s.exe server --token=token --debug --disable=metrics-server }
+        Start-Sleep -Seconds 15
+        D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl apply -f ./tests/integration/startup/testdata/agnhost.yaml
+        D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=5m pod/agnhost
+        D:/var/lib/rancher/k3s/data/current/bin/k3s.exe crictl ps
+        D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl get pod -A -o wide
+        D:/var/lib/rancher/k3s/data/current/bin/k3s.exe kubectl get node -o wide
+        $RET = $LASTEXITCODE
+        Stop-Job -Job $Server
+        Receive-Job -Wait -Job $Server
+        Remove-Job -Job $Server
+        exit $RET
+    - name: Generate coverage report
+      run: go tool covdata textfmt -i $Env:GOCOVERDIR -o windows.out
+    - name: Upload Results To Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./windows.out
         flags: inttests # optional
         verbose: true # optional (default = false)
