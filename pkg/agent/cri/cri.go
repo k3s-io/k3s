@@ -2,6 +2,7 @@ package cri
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -14,7 +15,11 @@ const maxMsgSize = 1024 * 1024 * 16
 
 // Connection connects to a CRI socket at the given path.
 func Connection(ctx context.Context, address string) (*grpc.ClientConn, error) {
-	addr, dialer, err := k8sutil.GetAddressAndDialer(socketPrefix + address)
+	if !strings.HasPrefix(address, socketPrefix) {
+		address = socketPrefix + address
+	}
+
+	addr, dialer, err := k8sutil.GetAddressAndDialer(address)
 	if err != nil {
 		return nil, err
 	}
