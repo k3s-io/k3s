@@ -32,10 +32,14 @@ ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
 WORKDIR ${SRC_DIR}/
 
 
-FROM infra AS build
-
-ARG SKIP_VALIDATE
-
+FROM infra AS manifests
+ARG GIT_TAG
+ARG TREE_STATE
+ARG COMMIT
+ARG DIRTY
+ARG GOOS
+ENV NO_DAPPER=true
+# Used by both build and validate stages, better caching if we do this in a separate stage
 COPY ./scripts/ ./scripts
 COPY ./go.mod ./go.sum ./main.go ./
 COPY ./manifests ./manifests
@@ -43,9 +47,21 @@ RUN mkdir -p bin dist
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     ./scripts/download
 
+
+FROM manifests AS validate
+ARG SKIP_VALIDATE
+COPY . .
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    --mount=type=cache,id=lint,target=/root/.cache/golangci-lint \
+    ./scripts/validate
+
+
+FROM manifests AS build
+ARG GOCOVER
+ARG DEBUG
 COPY ./cmd ./cmd
 COPY ./tests ./tests
-COPY ./.git ./.git
 COPY ./pkg ./pkg
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
@@ -57,6 +73,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     ./scripts/package-cli
 
 RUN ./scripts/binary_size_check.sh
+
 
 FROM scratch AS result
 ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
