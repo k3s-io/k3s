@@ -32,9 +32,9 @@ replace (
 	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0
-	golang.org/x/crypto => golang.org/x/crypto v0.24.0
-	golang.org/x/net => golang.org/x/net v0.26.0
-	golang.org/x/sys => golang.org/x/sys v0.21.0
+	golang.org/x/crypto => golang.org/x/crypto v0.28.0
+	golang.org/x/net => golang.org/x/net v0.30.0
+	golang.org/x/sys => golang.org/x/sys v0.26.0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20230525234035-dd9d682886f9
 	google.golang.org/grpc => google.golang.org/grpc v1.65.0
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.6.0
