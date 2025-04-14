@@ -657,7 +657,9 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: test-e2e
+- name: test-e2e-validatecluster
+  depends_on:
+    - build-e2e-image
   image: test-e2e
   pull: never
   resources:
@@ -669,24 +671,46 @@ steps:
   commands:
   - mkdir -p dist/artifacts
   - cp /tmp/artifacts/* dist/artifacts/
-  - docker stop registry && docker rm registry
   # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
   - tests/e2e/scripts/cleanup_vms.sh
-  - docker run -d -p 5000:5000 -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io --name registry registry:2
+  - tests/e2e/scripts/drone_registries.sh
   - |
     cd tests/e2e/validatecluster
-    vagrant destroy -f
+    ../scripts/cleanup_vms.sh 'validatecluster_([0-9]+)_(server|agent)'
     go test -v -timeout=45m ./validatecluster_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/validate-coverage.out
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: docker
+    path: /var/run/docker.sock
+  - name: cache
+    path: /tmp/artifacts
+
+- name: test-e2e-splitserver
+  depends_on:
+    - build-e2e-image
+  image: test-e2e
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  environment:
+    E2E_REGISTRY: 'true'
+    E2E_GOCOVER: 'true'
+  commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - tests/e2e/scripts/drone_registries.sh
   - |
-    cd ../splitserver
-    vagrant destroy -f
+    cd tests/e2e/splitserver
+    ../scripts/cleanup_vms.sh 'splitserver_([0-9]+)'
     go test -v -timeout=30m ./splitserver_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/split-coverage.out
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd ../upgradecluster
-      vagrant destroy -f
+      ../scripts/cleanup_vms.sh 'upgradecluster_([0-9]+)_(server|agent)'
       # Convert release-1.XX branch to v1.XX channel
       if [ "$DRONE_BRANCH" = "master" ]; then
         UPGRADE_CHANNEL="latest"
@@ -700,7 +724,6 @@ steps:
       E2E_RELEASE_CHANNEL=$UPGRADE_CHANNEL go test -v -timeout=45m ./upgradecluster_test.go  -ci -local -ginkgo.v
       cp ./coverage.out /tmp/artifacts/upgrade-coverage.out
     fi
-  - docker stop registry && docker rm registry
   
   volumes:
   - name: libvirt
@@ -711,6 +734,9 @@ steps:
     path: /tmp/artifacts
 
 - name: upload to codecov
+  depends_on:
+    - test-e2e-validatecluster
+    - test-e2e-splitserver
   image: robertstettner/drone-codecov
   settings:
     token: 
