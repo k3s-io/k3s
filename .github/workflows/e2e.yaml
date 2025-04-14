@@ -42,7 +42,7 @@ jobs:
       contents: read
       packages: write
     with:
-      arch: ubuntu-24.04-arm
+      arch: arm64
       upload-image: true
       cache: ${{ github.ref == 'refs/heads/master' && 'write' || 'read' }}
   e2e:
@@ -87,7 +87,7 @@ jobs:
       - name: "Download k3s binary"
         uses: actions/download-artifact@v4
         with:
-          name: k3s
+          name: k3s-amd64
           path: ./dist/artifacts
       
       - name: Run ${{ matrix.etest }} Test
@@ -182,17 +182,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: "Download K3s image (amd64)"
-      if: ${{ matrix.arch == 'amd64' }}
+    - name: "Download K3s image"
       uses: actions/download-artifact@v4
       with:
-        name: k3s
-        path: ./dist/artifacts
-    - name: "Download K3s image (arm64)"
-      if: ${{ matrix.arch == 'arm64' }}
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s-arm64
+        name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
     - name: Load and set K3s image
       run: |
