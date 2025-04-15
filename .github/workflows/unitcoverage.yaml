@@ -77,3 +77,13 @@ jobs:
         files: ./coverage.out
         flags: unittests # optional
         verbose: true # optional (default = false)
+  test-mods:
+    name: Test K8s Modules
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build test-mods
+      run: docker build --target test-mods -t k3s:mod -f Dockerfile.test .
+    - name: Run test-mods
+      run: docker run -i k3s:mod
