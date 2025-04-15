@@ -460,51 +460,6 @@ volumes:
 
 ---
 kind: pipeline
-name: validate_go_mods
-
-platform:
-  os: linux
-  arch: amd64
-
-trigger:
-  event:
-    exclude:
-    - cron
-
-steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - if [ -z "$DIFF" ]; then
-        echo "All files in PR are on ignore list";
-        exit 78;
-    else
-        echo "Some files in PR are not ignored, $DIFF";
-    fi;
-  when:
-    event:
-    - push
-    - pull_request
-
-- name: validate_go_mods
-  image: rancher/dapper:v0.6.0
-  commands:
-  - docker build --target test-mods -t k3s:mod -f Dockerfile.test .
-  - docker run -i k3s:mod
-
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-
-volumes:
-- name: docker
-  host:
-    path: /var/run/docker.sock
-
----
-kind: pipeline
 name: manifest
 
 platform:
