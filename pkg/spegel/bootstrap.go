@@ -176,15 +176,20 @@ func (s *serverBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 	if nodeName == "" {
 		return nil, errors.New("node name not set")
 	}
+
 	nodes := s.controlConfig.Runtime.Core.Core().V1().Node()
-	labelSelector := labels.Set{P2pEnabledLabel: "true"}.String()
-	nodeList, err := nodes.List(metav1.ListOptions{LabelSelector: labelSelector})
+	if !nodes.Informer().HasSynced() {
+		return nil, errors.New("node cache informer not synced")
+	}
+
+	labelSelector := labels.Set{P2pEnabledLabel: "true"}.AsSelector()
+	nodeList, err := nodes.Cache().List(labelSelector)
 	if err != nil {
 		return nil, err
 	}
 
 	addrs := []peer.AddrInfo{}
-	for _, node := range nodeList.Items {
+	for _, node := range nodeList {
 		if node.Name == nodeName {
 			// don't return our own address
 			continue
