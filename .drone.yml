@@ -10,26 +10,12 @@ trigger:
   event:
     exclude:
     - cron
+    - pull_request
 
 clone:
   retries: 3
 
 steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - if [ -z "$DIFF" ]; then
-        echo "All files in PR are on ignore list";
-        exit 78;
-    else
-        echo "Some files in PR are not ignored, $DIFF";
-    fi;
-  when:
-    event:
-    - pull_request
-
 - name: build
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader, unprivileged_github_token ]
@@ -202,26 +188,12 @@ trigger:
   event:
     exclude:
     - cron
+    - pull_request
 
 clone:
   retries: 3
 
 steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - if [ -z "$DIFF" ]; then
-        echo "All files in PR are on ignore list";
-        exit 78;
-    else
-        echo "Some files in PR are not ignored, $DIFF";
-    fi;
-  when:
-    event:
-    - pull_request
-
 - name: build
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
