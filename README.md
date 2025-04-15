@@ -6,6 +6,7 @@ K3s - Lightweight Kubernetes
 [![Integration Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/integration.yaml)
 [![Unit Test Coverage](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml/badge.svg)](https://github.com/k3s-io/k3s/actions/workflows/unitcoverage.yaml)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/6835/badge)](https://www.bestpractices.dev/projects/6835)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/k3s-io/k3s/badge)](https://scorecard.dev/viewer/?uri=github.com/k3s-io/k3s)
 [![Releases](https://img.shields.io/github/downloads/k3s-io/k3s/total.svg)](https://github.com/k3s-io/k3s/tags?label=Downloads)
 [![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/k3s/badge)](https://clomonitor.io/projects/cncf/k3s)
 
