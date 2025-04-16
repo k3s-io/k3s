@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -90,19 +91,26 @@ func (c *Cluster) filterCN(cn ...string) []string {
 // initClusterAndHTTPS sets up the dynamic tls listener, request router,
 // and cluster database. Once the database is up, it starts the supervisor http server.
 func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
-	// Set up dynamiclistener TLS listener and request handler
-	listener, handler, err := c.newListener(ctx)
+	// Set up dynamiclistener TLS listener and request handler.
+	// The dynamiclistener request handler is always called first as a middleware to add TLS SANs for host headers.
+	// It does not actually do any request handling or send a response.
+	listener, certHandler, err := c.newListener(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Get the base request handler
-	handler, err = c.getHandler(handler)
-	if err != nil {
-		return err
-	}
+	// Create a stub request handler that returns a Service Unavailable response
+	// if the core request handlers have not yet been started yet.
+	var handler http.Handler = http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if c.config.Runtime.Handler != nil {
+			c.config.Runtime.Handler.ServeHTTP(rw, req)
+		} else {
+			util.SendError(fmt.Errorf("starting"), rw, req, http.StatusServiceUnavailable)
+		}
+	})
 
-	// Register database request handlers and controller callbacks
+	// Register database request handlers and controller callbacks.
+	// The database handler wraps the stub handler, and calls it for any requests not related to database bootstrapping.
 	handler, err = c.registerDBHandlers(handler)
 	if err != nil {
 		return err
@@ -110,7 +118,10 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 
 	// Create a HTTP server with the registered request handlers, using logrus for logging
 	server := http.Server{
-		Handler: handler,
+		Handler: http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			certHandler.ServeHTTP(rw, req)
+			handler.ServeHTTP(rw, req)
+		}),
 	}
 
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
