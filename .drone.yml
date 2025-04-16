@@ -601,9 +601,12 @@ steps:
   # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
   - tests/e2e/scripts/cleanup_vms.sh
   - tests/e2e/scripts/drone_registries.sh
+   # Stagger the launch of this test with the parallel splitserver test
+   # to prevent conflicts over libvirt network interfaces
   - |
     cd tests/e2e/validatecluster
     ../scripts/cleanup_vms.sh 'validatecluster_([0-9]+)_(server|agent)'
+    sleep 15
     go test -v -timeout=45m ./validatecluster_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/validate-coverage.out
   volumes:
