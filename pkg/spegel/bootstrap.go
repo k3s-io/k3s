@@ -214,7 +214,9 @@ type chainingBootstrapper struct {
 }
 
 // NewChainingBootstrapper returns a p2p bootstrapper that passes through to a list of bootstrappers.
-// Addressess are returned from all boostrappers that return successfully.
+// Addressess are returned from the first bootstrapper that returns successfully, to prevent infinite
+// recursion if this chains through an agentBootstrapper when the server URL is set to an external
+// loadbalancer that points back at this node.
 func NewChainingBootstrapper(bootstrappers ...routing.Bootstrapper) routing.Bootstrapper {
 	return &chainingBootstrapper{
 		bootstrappers: bootstrappers,
@@ -234,20 +236,16 @@ func (c *chainingBootstrapper) Run(ctx context.Context, id string) error {
 
 func (c *chainingBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 	errs := merr.Errors{}
-	addrs := []peer.AddrInfo{}
 	for i := range c.bootstrappers {
 		b := c.bootstrappers[i]
 		as, err := b.Get(ctx)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			addrs = append(addrs, as...)
+			return as, nil
 		}
 	}
-	if len(addrs) == 0 {
-		return nil, merr.NewErrors(errs...)
-	}
-	return addrs, nil
+	return nil, merr.NewErrors(errs...)
 }
 
 func waitForDone(ctx context.Context) error {
