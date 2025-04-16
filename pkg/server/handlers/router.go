@@ -19,13 +19,21 @@ const (
 	staticURL = "/static/"
 )
 
+var (
+	// When starting, each agent sequentially makes requests for certs, config, and apiservers, and will poll the readyz endpoint
+	// before starting kube-proxy. These limits effectively cap the number of agents that can join simultaneously.
+	// Agents will automatically retry with jitter when rate-limited.
+	maxNonMutatingAgentRequests = 20 // max concurrent get/list/watch requests
+	maxMutatingAgentRequests    = 10 // max concurrent other requests; cert generation with client-provided private key uses post.
+)
+
 func NewHandler(ctx context.Context, control *config.Control, cfg *cmds.Server) http.Handler {
 	nodeAuth := nodepassword.GetNodeAuthValidator(ctx, control)
 
 	prefix := "/v1-{program}"
 	authed := mux.NewRouter().SkipClean(true)
 	authed.NotFoundHandler = APIServer(control, cfg)
-	authed.Use(auth.HasRole(control, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup))
+	authed.Use(auth.HasRole(control, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup), auth.MaxInFlight(maxNonMutatingAgentRequests, maxMutatingAgentRequests))
 	authed.Handle(prefix+"/serving-kubelet.crt", ServingKubeletCert(control, nodeAuth))
 	authed.Handle(prefix+"/client-kubelet.crt", ClientKubeletCert(control, nodeAuth))
 	authed.Handle(prefix+"/client-kube-proxy.crt", ClientKubeProxyCert(control))
