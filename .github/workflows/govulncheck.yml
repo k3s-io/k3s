@@ -5,6 +5,7 @@ on:
       - go.sum
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch: {}
 
 permissions: read-all
 
@@ -13,12 +14,15 @@ jobs:
     name: govulncheck
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # pin@5.4.0
-        with:
-          go-version: '1.23'
-          check-latest: true
-      - name: govulncheck
-        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # pin@1.0.4
-        with:
-          go-package: ./...
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+      - name: Go Generate
+        run: |
+          ./scripts/download
+          ./scripts/generate
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck -format=text ./...
