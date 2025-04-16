@@ -18,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener/cert"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -56,6 +57,11 @@ var (
 	P2pEnableLatestEnv   = version.ProgramUpper + "_P2P_ENABLE_LATEST"
 
 	resolveLatestTag = false
+
+	// Agents request a list of peers when joining, and then again periodically afterwards.
+	// Limit the number of concurrent peer list requests that will be served simultaneously.
+	maxNonMutatingPeerInfoRequests = 20 // max concurrent get/list/watch requests
+	maxMutatingPeerInfoRequests    = 0  // max concurrent other requests; not used
 )
 
 // Config holds fields for a distributed registry
@@ -231,7 +237,9 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
-	mRouter.PathPrefix("/v1-{program}/p2p").Handler(c.peerInfo())
+	sRouter := mRouter.PathPrefix("/v1-{program}/p2p").Subrouter()
+	sRouter.Use(auth.MaxInFlight(maxNonMutatingPeerInfoRequests, maxMutatingPeerInfoRequests))
+	sRouter.Handle("", c.peerInfo())
 
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
