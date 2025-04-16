@@ -102,6 +102,9 @@ var _ = AfterSuite(func() {
 		cmd = fmt.Sprintf("docker rm -v k3s-pause-%s", testID)
 		_, err = tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
+		cmd = fmt.Sprintf("docker volume rm k3s-pause-%s", testID)
+		_, err = tester.RunCommand(cmd)
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 })
