@@ -185,7 +185,6 @@ func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfig
 		NodeStatusReportFrequency:        metav1.Duration{Duration: time.Minute * 5},
 		NodeStatusUpdateFrequency:        metav1.Duration{Duration: time.Second * 10},
 		ProtectKernelDefaults:            cfg.ProtectKernelDefaults,
-		ReadOnlyPort:                     0,
 		RuntimeRequestTimeout:            metav1.Duration{Duration: time.Minute * 2},
 		StreamingConnectionIdleTimeout:   metav1.Duration{Duration: time.Hour * 4},
 		SyncFrequency:                    metav1.Duration{Duration: time.Minute},
