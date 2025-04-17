@@ -115,16 +115,18 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
+			var res string
+			var err error
 			Eventually(func() error {
-				_, err := e2e.RunCommand(cmd)
+				res, err = e2e.RunCommand(cmd)
 				return err
-			}, "600s", "5s").Should(Succeed())
+			}, "600s", "5s").Should(Succeed(), "failed to get pod metrics: %s", res)
 		})
 
 		It("Returns node metrics", func() {
 			cmd := "kubectl top node"
-			_, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred())
+			res, err := e2e.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred(), "failed to get node metrics: %s", res)
 		})
 
 		It("Runs an interactive command a pod", func() {
