@@ -114,18 +114,21 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait for the pod_client to have an IP
-			Eventually(func() string {
-				ips, _ := getClientIPs(tc.KubeconfigFile)
-				return ips[0].IPv4
-			}, "40s", "5s").Should(ContainSubstring("10.42"), "failed getClientIPs")
+			var clientIPs []e2e.ObjIP
+			Eventually(func(g Gomega) {
+				clientIPs, err = getClientIPs(tc.KubeconfigFile)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(clientIPs)).Should(BeNumerically(">", 0), "client pod IPs")
+				for _, ip := range clientIPs {
+					g.Expect(ip.IPv4).Should(ContainSubstring("10.42."), "client pod IP: "+ip.IPv4)
+				}
+			}, "40s", "5s").Should(Succeed(), "failed getClientIPs")
 
-			clientIPs, err := getClientIPs(tc.KubeconfigFile)
-			Expect(err).NotTo(HaveOccurred())
 			for _, ip := range clientIPs {
 				cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
 				Eventually(func() (string, error) {
 					return e2e.RunCommand(cmd)
-				}, "20s", "3s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
+				}, "30s", "10s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
 			}
 		})
 		It("Verifies loadBalancer service's IP is the node-external-ip", func() {
