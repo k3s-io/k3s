@@ -56,7 +56,7 @@ func Start(ctx context.Context, nodeConfig *config.Node, runtime *config.Control
 			runtime.Handler = router
 		}
 
-		router.Use(auth.Delegated(nodeConfig.AgentConfig.ClientCA, nodeConfig.AgentConfig.KubeConfigKubelet, config))
+		router.Use(auth.RequestInfo(), auth.Delegated(nodeConfig.AgentConfig.ClientCA, nodeConfig.AgentConfig.KubeConfigKubelet, config))
 
 		if config.SecureServing != nil {
 			_, _, err = config.SecureServing.Serve(router, 0, ctx.Done())

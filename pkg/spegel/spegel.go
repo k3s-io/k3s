@@ -256,7 +256,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 func (c *Config) peerInfo() http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		info, err := c.Bootstrapper.Get(req.Context())
-		if err != nil || len(info) == 0 {
+		if err != nil {
 			http.Error(resp, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -266,6 +266,11 @@ func (c *Config) peerInfo() http.HandlerFunc {
 			for _, ma := range ai.Addrs {
 				addrs = append(addrs, fmt.Sprintf("%s/p2p/%s", ma, ai.ID))
 			}
+		}
+
+		if len(addrs) == 0 {
+			http.Error(resp, "no peer addresses available", http.StatusServiceUnavailable)
+			return
 		}
 
 		client, _, _ := net.SplitHostPort(req.RemoteAddr)
