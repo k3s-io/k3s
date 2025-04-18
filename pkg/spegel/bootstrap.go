@@ -241,7 +241,7 @@ func (c *chainingBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error)
 		as, err := b.Get(ctx)
 		if err != nil {
 			errs = append(errs, err)
-		} else {
+		} else if len(as) != 0 {
 			return as, nil
 		}
 	}
