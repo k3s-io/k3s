@@ -124,9 +124,16 @@ func Delegated(clientCA, kubeConfig string, config *server.Config) mux.Middlewar
 	return func(handler http.Handler) http.Handler {
 		handler = genericapifilters.WithAuthorization(handler, config.Authorization.Authorizer, scheme.Codecs)
 		handler = genericapifilters.WithAuthentication(handler, config.Authentication.Authenticator, failedHandler, nil, nil)
-		handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
 		handler = genericapifilters.WithCacheControl(handler)
 		return handler
+	}
+}
+
+// RequestInfo returns a middleware function that adds verb/resource/gvk/etc info to the request context.
+// This must be set for other filters to function, but only needs to be in each middleware chain once.
+func RequestInfo() mux.MiddlewareFunc {
+	return func(handler http.Handler) http.Handler {
+		return genericapifilters.WithRequestInfo(handler, requestInfoResolver)
 	}
 }
 
@@ -134,9 +141,6 @@ func Delegated(clientCA, kubeConfig string, config *server.Config) mux.Middlewar
 // This is not strictly auth related, but it also uses the core Kubernetes request filters.
 func MaxInFlight(nonMutatingLimit, mutatingLimit int) mux.MiddlewareFunc {
 	return func(handler http.Handler) http.Handler {
-		handler = genericfilters.WithMaxInFlightLimit(handler, nonMutatingLimit, mutatingLimit, nil)
-		handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
-		handler = genericapifilters.WithCacheControl(handler)
-		return handler
+		return genericfilters.WithMaxInFlightLimit(handler, nonMutatingLimit, mutatingLimit, nil)
 	}
 }

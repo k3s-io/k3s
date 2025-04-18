@@ -33,7 +33,7 @@ func NewHandler(ctx context.Context, control *config.Control, cfg *cmds.Server) 
 	prefix := "/v1-{program}"
 	authed := mux.NewRouter().SkipClean(true)
 	authed.NotFoundHandler = APIServer(control, cfg)
-	authed.Use(auth.HasRole(control, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup), auth.MaxInFlight(maxNonMutatingAgentRequests, maxMutatingAgentRequests))
+	authed.Use(auth.HasRole(control, version.Program+":agent", user.NodesGroup, bootstrapapi.BootstrapDefaultGroup), auth.RequestInfo(), auth.MaxInFlight(maxNonMutatingAgentRequests, maxMutatingAgentRequests))
 	authed.Handle(prefix+"/serving-kubelet.crt", ServingKubeletCert(control, nodeAuth))
 	authed.Handle(prefix+"/client-kubelet.crt", ClientKubeletCert(control, nodeAuth))
 	authed.Handle(prefix+"/client-kube-proxy.crt", ClientKubeProxyCert(control))
