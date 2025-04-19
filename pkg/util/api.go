@@ -31,6 +31,7 @@ import (
 // be at least long enough for downstream projects like RKE2 to start the apiserver in the background.
 const DefaultAPIServerReadyTimeout = 15 * time.Minute
 
+// GetAddresses returns a list of IP addresses for the given endpoint object
 func GetAddresses(endpoint *v1.Endpoints) []string {
 	serverAddresses := []string{}
 	if endpoint == nil {
