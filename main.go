@@ -12,7 +12,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/agent"
 	"github.com/k3s-io/k3s/pkg/cli/cert"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/cli/completion"
 	"github.com/k3s-io/k3s/pkg/cli/crictl"
 	"github.com/k3s-io/k3s/pkg/cli/etcdsnapshot"
 	"github.com/k3s-io/k3s/pkg/cli/kubectl"
@@ -51,7 +50,6 @@ func main() {
 			cert.Rotate,
 			cert.RotateCA,
 		),
-		cmds.NewCompletionCommand(completion.Run),
 	}
 
 	if err := app.Run(context.Background(), configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {

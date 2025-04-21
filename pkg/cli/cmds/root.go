@@ -31,7 +31,9 @@ func init() {
 }
 
 func NewApp() *cli.Command {
-	app := cli.Command{}
+	app := cli.Command{
+		EnableShellCompletion: true,
+	}
 	app.Name = appName
 	app.Usage = "Kubernetes, but small and simple"
 	app.Version = fmt.Sprintf("%s (%s)", version.Version, version.GitCommit)
