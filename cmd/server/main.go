@@ -23,7 +23,7 @@ import (
 	ctr2 "github.com/k3s-io/k3s/pkg/ctr"
 	kubectl2 "github.com/k3s-io/k3s/pkg/kubectl"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	crictl2 "sigs.k8s.io/cri-tools/cmd/crictl"
 )
 
@@ -80,7 +80,7 @@ func main() {
 		cmds.NewCompletionCommand(completion.Run),
 	}
 
-	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
+	if err := app.Run(context.Background(), configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatalf("Error: %v", err)
 	}
 }

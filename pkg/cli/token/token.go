@@ -21,7 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -31,14 +31,14 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func Create(app *cli.Context) error {
+func Create(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return create(app, &cmds.TokenConfig)
+	return create(ctx, app, &cmds.TokenConfig)
 }
 
-func create(app *cli.Context, cfg *cmds.Token) error {
+func create(ctx context.Context, app *cli.Command, cfg *cmds.Token) error {
 	if err := kubeadm.SetDefaults(app, cfg); err != nil {
 		return err
 	}
@@ -70,8 +70,8 @@ func create(app *cli.Context, cfg *cmds.Token) error {
 		Token:       bts,
 		Description: cfg.Description,
 		TTL:         &metav1.Duration{Duration: cfg.TTL},
-		Usages:      cfg.Usages.Value(),
-		Groups:      cfg.Groups.Value(),
+		Usages:      cfg.Usages,
+		Groups:      cfg.Groups,
 	}
 
 	secretName := bootstraputil.BootstrapTokenSecretName(bt.Token.ID)
@@ -93,14 +93,14 @@ func create(app *cli.Context, cfg *cmds.Token) error {
 	return nil
 }
 
-func Delete(app *cli.Context) error {
+func Delete(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return delete(app, &cmds.TokenConfig)
+	return delete(ctx, app, &cmds.TokenConfig)
 }
 
-func delete(app *cli.Context, cfg *cmds.Token) error {
+func delete(ctx context.Context, app *cli.Command, cfg *cmds.Token) error {
 	args := app.Args()
 	if args.Len() < 1 {
 		return errors.New("missing argument; 'token delete' is missing token")
@@ -130,14 +130,14 @@ func delete(app *cli.Context, cfg *cmds.Token) error {
 	return nil
 }
 
-func Generate(app *cli.Context) error {
+func Generate(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return generate(app, &cmds.TokenConfig)
+	return generate(ctx, app, &cmds.TokenConfig)
 }
 
-func generate(app *cli.Context, cfg *cmds.Token) error {
+func generate(ctx context.Context, app *cli.Command, cfg *cmds.Token) error {
 	token, err := bootstraputil.GenerateBootstrapToken()
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func generate(app *cli.Context, cfg *cmds.Token) error {
 	return nil
 }
 
-func Rotate(app *cli.Context) error {
+func Rotate(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -190,14 +190,14 @@ func serverAccess(cfg *cmds.Token) (*clientaccess.Info, error) {
 	return clientaccess.ParseAndValidateToken(cfg.ServerURL, cfg.Token, clientaccess.WithUser("server"))
 }
 
-func List(app *cli.Context) error {
+func List(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return list(app, &cmds.TokenConfig)
+	return list(ctx, app, &cmds.TokenConfig)
 }
 
-func list(app *cli.Context, cfg *cmds.Token) error {
+func list(ctx context.Context, app *cli.Command, cfg *cmds.Token) error {
 	if err := kubeadm.SetDefaults(app, cfg); err != nil {
 		return err
 	}

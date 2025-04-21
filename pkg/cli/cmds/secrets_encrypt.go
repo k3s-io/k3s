@@ -1,8 +1,9 @@
 package cmds
 
 import (
+	"context"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const SecretsEncryptCommand = "secrets-encrypt"
@@ -21,18 +22,18 @@ var (
 			Name:        "server",
 			Aliases:     []string{"s"},
 			Usage:       "(cluster) Server to connect to",
-			EnvVars:     []string{version.ProgramUpper + "_URL"},
+			Sources:     cli.EnvVars(version.ProgramUpper + "_URL"),
 			Value:       "https://127.0.0.1:6443",
 			Destination: &ServerConfig.ServerURL,
 		},
 	}
 )
 
-func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx *cli.Context) error) *cli.Command {
+func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:  SecretsEncryptCommand,
 		Usage: "Control secrets encryption and keys rotation",
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:   "status",
 				Usage:  "Print current status of secrets encryption",

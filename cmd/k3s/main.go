@@ -25,7 +25,7 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var criDefaultConfigPath = "/etc/crictl.yaml"
@@ -43,19 +43,20 @@ func main() {
 	if runCLIs(dataDir) {
 		return
 	}
+	ctx := context.Background()
 
-	tokenCommand := internalCLIAction(version.Program+"-"+cmds.TokenCommand, dataDir, os.Args)
-	etcdsnapshotCommand := internalCLIAction(version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)
-	secretsencryptCommand := internalCLIAction(version.Program+"-"+cmds.SecretsEncryptCommand, dataDir, os.Args)
-	certCommand := internalCLIAction(version.Program+"-"+cmds.CertCommand, dataDir, os.Args)
+	tokenCommand := internalCLIAction(ctx, version.Program+"-"+cmds.TokenCommand, dataDir, os.Args)
+	etcdsnapshotCommand := internalCLIAction(ctx, version.Program+"-"+cmds.EtcdSnapshotCommand, dataDir, os.Args)
+	secretsencryptCommand := internalCLIAction(ctx, version.Program+"-"+cmds.SecretsEncryptCommand, dataDir, os.Args)
+	certCommand := internalCLIAction(ctx, version.Program+"-"+cmds.CertCommand, dataDir, os.Args)
 
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
-	app.EnableBashCompletion = true
+	app.EnableShellCompletion = true
 	app.DisableSliceFlagSeparator = true
 	app.Commands = []*cli.Command{
-		cmds.NewServerCommand(internalCLIAction(version.Program+"-server"+programPostfix, dataDir, os.Args)),
-		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent"+programPostfix, dataDir, os.Args)),
+		cmds.NewServerCommand(internalCLIAction(ctx, version.Program+"-server"+programPostfix, dataDir, os.Args)),
+		cmds.NewAgentCommand(internalCLIAction(ctx, version.Program+"-agent"+programPostfix, dataDir, os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl", dataDir)),
 		cmds.NewCRICTL(externalCLIAction("crictl", dataDir)),
 		cmds.NewCtrCommand(externalCLIAction("ctr", dataDir)),
@@ -87,10 +88,10 @@ func main() {
 			certCommand,
 			certCommand,
 		),
-		cmds.NewCompletionCommand(internalCLIAction(version.Program+"-completion", dataDir, os.Args)),
+		cmds.NewCompletionCommand(internalCLIAction(ctx, version.Program+"-completion", dataDir, os.Args)),
 	}
 
-	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
+	if err := app.Run(ctx, os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatalf("Error: %v", err)
 	}
 }
@@ -172,8 +173,8 @@ func runCLIs(dataDir string) bool {
 }
 
 // externalCLIAction returns a function that will call an external binary, be used as the Action of a cli.Command.
-func externalCLIAction(cmd, dataDir string) func(cli *cli.Context) error {
-	return func(cli *cli.Context) error {
+func externalCLIAction(cmd, dataDir string) func(ctx context.Context, cli *cli.Command) error {
+	return func(ctx context.Context, cli *cli.Command) error {
 		return externalCLI(cmd, dataDir, cli.Args().Slice())
 	}
 }
@@ -190,18 +191,18 @@ func externalCLI(cli, dataDir string, args []string) error {
 }
 
 // internalCLIAction returns a function that will call a K3s internal command, be used as the Action of a cli.Command.
-func internalCLIAction(cmd, dataDir string, args []string) func(ctx *cli.Context) error {
-	return func(ctx *cli.Context) error {
+func internalCLIAction(ctx context.Context, cmd, dataDir string, args []string) func(ctx context.Context, cmd *cli.Command) error {
+	return func(ctx context.Context, command *cli.Command) error {
 		// We don't want the Info logs seen when printing the autocomplete script
 		if cmd == "k3s-completion" {
 			logrus.SetLevel(logrus.ErrorLevel)
 		}
-		return stageAndRunCLI(ctx, cmd, dataDir, args)
+		return stageAndRunCLI(command, cmd, dataDir, args)
 	}
 }
 
 // stageAndRunCLI calls an external binary.
-func stageAndRunCLI(cli *cli.Context, cmd string, dataDir string, args []string) error {
+func stageAndRunCLI(cli *cli.Command, cmd string, dataDir string, args []string) error {
 	return stageAndRun(dataDir, cmd, args, true)
 }
 

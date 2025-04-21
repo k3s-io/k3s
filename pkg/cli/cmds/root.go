@@ -6,7 +6,7 @@ import (
 	"runtime"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 		Name:        "debug",
 		Usage:       "(logging) Turn on debug logs",
 		Destination: &Debug,
-		EnvVars:     []string{version.ProgramUpper + "_DEBUG"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DEBUG"),
 	}
 	PreferBundledBin = &cli.BoolFlag{
 		Name:  "prefer-bundled-bin",
@@ -30,12 +30,12 @@ func init() {
 	}
 }
 
-func NewApp() *cli.App {
-	app := cli.NewApp()
+func NewApp() *cli.Command {
+	app := cli.Command{}
 	app.Name = appName
 	app.Usage = "Kubernetes, but small and simple"
 	app.Version = fmt.Sprintf("%s (%s)", version.Version, version.GitCommit)
-	cli.VersionPrinter = func(c *cli.Context) {
+	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("%s version %s\n", app.Name, app.Version)
 		fmt.Printf("go version %s\n", runtime.Version())
 	}
@@ -44,5 +44,5 @@ func NewApp() *cli.App {
 		DataDirFlag,
 	}
 
-	return app
+	return &app
 }

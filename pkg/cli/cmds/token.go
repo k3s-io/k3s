@@ -3,8 +3,9 @@ package cmds
 import (
 	"time"
 
+	"context"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const TokenCommand = "token"
@@ -17,8 +18,8 @@ type Token struct {
 	Token       string
 	NewToken    string
 	Output      string
-	Groups      cli.StringSlice
-	Usages      cli.StringSlice
+	Groups      []string
+	Usages      []string
 	TTL         time.Duration
 }
 
@@ -29,18 +30,18 @@ var (
 		&cli.StringFlag{
 			Name:        "kubeconfig",
 			Usage:       "(cluster) Server to connect to",
-			EnvVars:     []string{"KUBECONFIG"},
+			Sources:     cli.EnvVars("KUBECONFIG"),
 			Destination: &TokenConfig.Kubeconfig,
 		},
 	}
 )
 
-func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) *cli.Command {
+func NewTokenCommands(create, delete, generate, list, rotate func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:            TokenCommand,
 		Usage:           "Manage tokens",
 		SkipFlagParsing: false,
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "create",
 				Usage: "Create bootstrap tokens on the server",
@@ -100,14 +101,14 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 						Aliases:     []string{"t"},
 						Usage:       "Existing token used to join a server or agent to a cluster",
 						Destination: &TokenConfig.Token,
-						EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
+						Sources:     cli.EnvVars(version.ProgramUpper + "_TOKEN"),
 					},
 					&cli.StringFlag{
 						Name:        "server",
 						Aliases:     []string{"s"},
 						Usage:       "(cluster) Server to connect to",
 						Destination: &TokenConfig.ServerURL,
-						EnvVars:     []string{version.ProgramUpper + "_URL"},
+						Sources:     cli.EnvVars(version.ProgramUpper + "_URL"),
 						Value:       "https://127.0.0.1:6443",
 					},
 					&cli.StringFlag{

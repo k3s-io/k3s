@@ -1,8 +1,10 @@
 package cmds
 
 import (
+	"context"
+
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const CertCommand = "certificate"
@@ -13,7 +15,7 @@ type CertRotateCA struct {
 }
 
 var (
-	ServicesList           cli.StringSlice
+	ServicesList           []string
 	CertRotateCAConfig     CertRotateCA
 	CertRotateCommandFlags = []cli.Flag{
 		DebugFlag,
@@ -34,7 +36,7 @@ var (
 			Name:        "server",
 			Aliases:     []string{"s"},
 			Usage:       "(cluster) Server to connect to",
-			EnvVars:     []string{version.ProgramUpper + "_URL"},
+			Sources:     cli.EnvVars(version.ProgramUpper + "_URL"),
 			Value:       "https://127.0.0.1:6443",
 			Destination: &ServerConfig.ServerURL,
 		},
@@ -52,12 +54,12 @@ var (
 	}
 )
 
-func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) *cli.Command {
+func NewCertCommands(check, rotate, rotateCA func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:            CertCommand,
 		Usage:           "Manage K3s certificates",
 		SkipFlagParsing: false,
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:            "check",
 				Usage:           "Check " + version.Program + " component certificates on disk",

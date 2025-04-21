@@ -424,7 +424,7 @@ func locateOrGenerateResolvConf(envInfo *cmds.Agent) string {
 	return resolvConf
 }
 
-func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
+func get(_ context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.Node, error) {
 	if envInfo.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -442,7 +442,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP.Value())))
+		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP)))
 		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, isIPv6); err != nil {
 			return nil, pkgerrors.WithMessagef(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
 		}
@@ -483,7 +483,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP)
 	if err != nil {
 		return nil, err
 	}
@@ -515,10 +515,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
 		if len(vpnIPs) != 0 {
 			logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
-			if len(envInfo.NodeIP.Value()) != 0 {
+			if len(envInfo.NodeIP) != 0 {
 				logrus.Warn("VPN provider overrides configured node-ip parameter")
 			}
-			if len(envInfo.NodeExternalIP.Value()) != 0 {
+			if len(envInfo.NodeExternalIP) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
 			nodeIPs = vpnIPs
@@ -537,7 +537,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP.Value())
+	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
 	if err != nil {
 		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
 	}
@@ -677,13 +677,13 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	var nodeExternalDNSs []string
-	for _, dnsString := range envInfo.NodeExternalDNS.Value() {
+	for _, dnsString := range envInfo.NodeExternalDNS {
 		nodeExternalDNSs = append(nodeExternalDNSs, strings.Split(dnsString, ",")...)
 	}
 	nodeConfig.AgentConfig.NodeExternalDNSs = nodeExternalDNSs
 
 	var nodeInternalDNSs []string
-	for _, dnsString := range envInfo.NodeInternalDNS.Value() {
+	for _, dnsString := range envInfo.NodeInternalDNS {
 		nodeInternalDNSs = append(nodeInternalDNSs, strings.Split(dnsString, ",")...)
 	}
 	nodeConfig.AgentConfig.NodeInternalDNSs = nodeInternalDNSs
@@ -762,7 +762,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
-	nodeConfig.AgentConfig.AirgapExtraRegistry = envInfo.AirgapExtraRegistry.Value()
+	nodeConfig.AgentConfig.AirgapExtraRegistry = envInfo.AirgapExtraRegistry
 	nodeConfig.AgentConfig.SystemDefaultRegistry = controlConfig.SystemDefaultRegistry
 
 	// Apply SystemDefaultRegistry to PauseImage and AirgapExtraRegistry
@@ -775,10 +775,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs.Value()
-	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs.Value()
-	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints.Value()
-	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels.Value()
+	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
+	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
+	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
+	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
 	nodeConfig.AgentConfig.ImageCredProvBinDir = envInfo.ImageCredProvBinDir
 	nodeConfig.AgentConfig.ImageCredProvConfig = envInfo.ImageCredProvConfig
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
@@ -843,7 +843,7 @@ func GetAPIServers(ctx context.Context, info *clientaccess.Info) ([]string, erro
 
 // getKubeProxyDisabled attempts to return the DisableKubeProxy setting from the server configuration data.
 // It first checks the server readyz endpoint, to ensure that the configuration has stabilized before use.
-func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
+func getKubeProxyDisabled(_ context.Context, node *config.Node, proxy proxy.Proxy) (bool, error) {
 	withCert := clientaccess.WithClientCertificate(node.AgentConfig.ClientKubeletCert, node.AgentConfig.ClientKubeletKey)
 	info, err := clientaccess.ParseAndValidateToken(proxy.SupervisorURL(), node.Token, withCert)
 	if err != nil {

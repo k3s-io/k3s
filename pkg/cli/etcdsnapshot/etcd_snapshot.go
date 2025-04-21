@@ -24,7 +24,7 @@ import (
 	util2 "github.com/k3s-io/k3s/pkg/util"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/printers"
 )
@@ -33,7 +33,7 @@ var timeout = 2 * time.Minute
 
 // commandSetup setups up common things needed
 // for each etcd command.
-func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *clientaccess.Info, error) {
+func commandSetup(ctx context.Context, app *cli.Command, cfg *cmds.Server) (*etcd.SnapshotRequest, *clientaccess.Info, error) {
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	proctitle.SetProcTitle(os.Args[0] + " etcd-snapshot")
@@ -97,14 +97,14 @@ func wrapServerError(err error) error {
 }
 
 // Save triggers an on-demand etcd snapshot operation
-func Save(app *cli.Context) error {
+func Save(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return save(app, &cmds.ServerConfig)
+	return save(ctx, app, &cmds.ServerConfig)
 }
 
-func save(app *cli.Context, cfg *cmds.Server) error {
+func save(ctx context.Context, app *cli.Command, cfg *cmds.Server) error {
 	if app.Args().Len() > 0 {
 		return util2.ErrCommandNoArgs
 	}
@@ -113,7 +113,7 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 	// Prune can be run manually after save, if desired.
 	app.Set("etcd-snapshot-retention", "0")
 
-	sr, info, err := commandSetup(app, cfg)
+	sr, info, err := commandSetup(ctx, app, cfg)
 	if err != nil {
 		return err
 	}
@@ -141,20 +141,20 @@ func save(app *cli.Context, cfg *cmds.Server) error {
 	return nil
 }
 
-func Delete(app *cli.Context) error {
+func Delete(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return delete(app, &cmds.ServerConfig)
+	return delete(ctx, app, &cmds.ServerConfig)
 }
 
-func delete(app *cli.Context, cfg *cmds.Server) error {
+func delete(ctx context.Context, app *cli.Command, cfg *cmds.Server) error {
 	snapshots := app.Args()
 	if snapshots.Len() == 0 {
 		return errors.New("no snapshots given for removal")
 	}
 
-	sr, info, err := commandSetup(app, cfg)
+	sr, info, err := commandSetup(ctx, app, cfg)
 	if err != nil {
 		return err
 	}
@@ -187,11 +187,11 @@ func delete(app *cli.Context, cfg *cmds.Server) error {
 	return nil
 }
 
-func List(app *cli.Context) error {
+func List(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return list(app, &cmds.ServerConfig)
+	return list(ctx, app, &cmds.ServerConfig)
 }
 
 var etcdListFormats = []string{"json", "yaml", "table"}
@@ -205,12 +205,12 @@ func validEtcdListFormat(format string) bool {
 	return false
 }
 
-func list(app *cli.Context, cfg *cmds.Server) error {
+func list(ctx context.Context, app *cli.Command, cfg *cmds.Server) error {
 	if cfg.EtcdListFormat != "" && !validEtcdListFormat(cfg.EtcdListFormat) {
 		return errors.New("invalid output format: " + cfg.EtcdListFormat)
 	}
 
-	sr, info, err := commandSetup(app, cfg)
+	sr, info, err := commandSetup(ctx, app, cfg)
 	if err != nil {
 		return err
 	}
@@ -264,15 +264,15 @@ func list(app *cli.Context, cfg *cmds.Server) error {
 	return nil
 }
 
-func Prune(app *cli.Context) error {
+func Prune(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return prune(app, &cmds.ServerConfig)
+	return prune(ctx, app, &cmds.ServerConfig)
 }
 
-func prune(app *cli.Context, cfg *cmds.Server) error {
-	sr, info, err := commandSetup(app, cfg)
+func prune(ctx context.Context, app *cli.Command, cfg *cmds.Server) error {
+	sr, info, err := commandSetup(ctx, app, cfg)
 	if err != nil {
 		return err
 	}

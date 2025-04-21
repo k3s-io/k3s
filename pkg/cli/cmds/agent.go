@@ -1,11 +1,12 @@
 package cmds
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type Agent struct {
@@ -21,10 +22,10 @@ type Agent struct {
 	ResolvConf               string
 	DataDir                  string
 	BindAddress              string
-	NodeIP                   cli.StringSlice
-	NodeExternalIP           cli.StringSlice
-	NodeInternalDNS          cli.StringSlice
-	NodeExternalDNS          cli.StringSlice
+	NodeIP                   []string
+	NodeExternalIP           []string
+	NodeInternalDNS          []string
+	NodeExternalDNS          []string
 	NodeName                 string
 	PauseImage               string
 	Snapshotter              string
@@ -49,11 +50,11 @@ type Agent struct {
 	ClusterReset             bool
 	PrivateRegistry          string
 	SystemDefaultRegistry    string
-	AirgapExtraRegistry      cli.StringSlice
-	ExtraKubeletArgs         cli.StringSlice
-	ExtraKubeProxyArgs       cli.StringSlice
-	Labels                   cli.StringSlice
-	Taints                   cli.StringSlice
+	AirgapExtraRegistry      []string
+	ExtraKubeletArgs         []string
+	ExtraKubeProxyArgs       []string
+	Labels                   []string
+	Taints                   []string
 	ImageCredProvBinDir      string
 	ImageCredProvConfig      string
 	AgentShared
@@ -70,7 +71,7 @@ var (
 		Name:        "token",
 		Aliases:     []string{"t"},
 		Usage:       "(cluster) Token to use for authentication",
-		EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_TOKEN"),
 		Destination: &AgentConfig.Token,
 	}
 	NodeIPFlag = &cli.StringSliceFlag{
@@ -97,7 +98,7 @@ var (
 	NodeNameFlag = &cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVars:     []string{version.ProgramUpper + "_NODE_NAME"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_NODE_NAME"),
 		Destination: &AgentConfig.NodeName,
 	}
 	WithNodeIDFlag = &cli.BoolFlag{
@@ -114,13 +115,13 @@ var (
 		Name:        "selinux",
 		Usage:       "(agent/node) Enable SELinux in containerd",
 		Destination: &AgentConfig.EnableSELinux,
-		EnvVars:     []string{version.ProgramUpper + "_SELINUX"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_SELINUX"),
 	}
 	LBServerPortFlag = &cli.IntFlag{
 		Name:        "lb-server-port",
 		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
 		Destination: &AgentConfig.LBServerPort,
-		EnvVars:     []string{version.ProgramUpper + "_LB_SERVER_PORT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_LB_SERVER_PORT"),
 		Value:       6444,
 	}
 	DockerFlag = &cli.BoolFlag{
@@ -152,7 +153,7 @@ var (
 	AirgapExtraRegistryFlag = &cli.StringSliceFlag{
 		Name:   "airgap-extra-registry",
 		Usage:  "(agent/runtime) Additional registry to tag airgap images as being sourced from",
-		Value:  &AgentConfig.AirgapExtraRegistry,
+		Value:  AgentConfig.AirgapExtraRegistry,
 		Hidden: true,
 	}
 	PauseImageFlag = &cli.StringFlag{
@@ -185,19 +186,19 @@ var (
 	VPNAuth = &cli.StringFlag{
 		Name:        "vpn-auth",
 		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
-		EnvVars:     []string{version.ProgramUpper + "_VPN_AUTH"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_VPN_AUTH"),
 		Destination: &AgentConfig.VPNAuth,
 	}
 	VPNAuthFile = &cli.StringFlag{
 		Name:        "vpn-auth-file",
 		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
-		EnvVars:     []string{version.ProgramUpper + "_VPN_AUTH_FILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_VPN_AUTH_FILE"),
 		Destination: &AgentConfig.VPNAuthFile,
 	}
 	ResolvConfFlag = &cli.StringFlag{
 		Name:        "resolv-conf",
 		Usage:       "(agent/networking) Kubelet resolv.conf file",
-		EnvVars:     []string{version.ProgramUpper + "_RESOLV_CONF"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_RESOLV_CONF"),
 		Destination: &AgentConfig.ResolvConf,
 	}
 	ExtraKubeletArgs = &cli.StringSliceFlag{
@@ -259,7 +260,7 @@ var (
 	}
 )
 
-func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
+func NewAgentCommand(action func(ctx context.Context, command *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:      "agent",
 		Usage:     "Run node agent",
@@ -276,14 +277,14 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 			&cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) Token file to use for authentication",
-				EnvVars:     []string{version.ProgramUpper + "_TOKEN_FILE"},
+				Sources:     cli.EnvVars(version.ProgramUpper + "_TOKEN_FILE"),
 				Destination: &AgentConfig.TokenFile,
 			},
 			&cli.StringFlag{
 				Name:        "server",
 				Aliases:     []string{"s"},
 				Usage:       "(cluster) Server to connect to",
-				EnvVars:     []string{version.ProgramUpper + "_URL"},
+				Sources:     cli.EnvVars(version.ProgramUpper + "_URL"),
 				Destination: &AgentConfig.ServerURL,
 			},
 			// Note that this is different from DataDirFlag used elswhere in the CLI,
@@ -294,7 +295,7 @@ func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
 				Usage:       "(agent/data) Folder to hold state",
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/" + version.Program + "",
-				EnvVars:     []string{version.ProgramUpper + "_DATA_DIR"},
+				Sources:     cli.EnvVars(version.ProgramUpper + "_DATA_DIR"),
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,

@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/v2/cmd/ctr/app"
-	"github.com/urfave/cli/v2"
+	cli2 "github.com/urfave/cli/v2"
 )
 
 func Main() {
@@ -31,7 +31,8 @@ func Main() {
 func main() {
 	app := app.New()
 	for i, flag := range app.Flags {
-		if sFlag, ok := flag.(*cli.StringFlag); ok {
+
+		if sFlag, ok := flag.(*cli2.StringFlag); ok {
 			if sFlag.Name == "address" {
 				sFlag.Value = "/run/k3s/containerd/containerd.sock"
 				app.Flags[i] = sFlag

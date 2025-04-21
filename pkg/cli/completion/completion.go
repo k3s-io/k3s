@@ -1,24 +1,25 @@
 package completion
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/k3s-io/k3s/pkg/version"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
-func Run(ctx *cli.Context) error {
-	if ctx.NArg() < 1 {
+func Run(ctx context.Context, cmd *cli.Command) error {
+	if cmd.NArg() < 1 {
 		return fmt.Errorf("must provide a valid SHELL argument")
 	}
-	shell := ctx.Args().Get(0)
+	shell := cmd.Args().Get(0)
 	completetionScript, err := genCompletionScript(shell)
 	if err != nil {
 		return err
 	}
-	if ctx.Bool("i") {
+	if cmd.Bool("i") {
 		return writeToRC(shell)
 	}
 	fmt.Println(completetionScript)

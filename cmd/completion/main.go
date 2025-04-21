@@ -8,7 +8,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/cli/completion"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 		cmds.NewCompletionCommand(completion.Run),
 	}
 
-	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
+	if err := app.Run(context.Background(), os.Args); err != nil && !errors.Is(err, context.Canceled) {
 		logrus.Fatal(err)
 	}
 }

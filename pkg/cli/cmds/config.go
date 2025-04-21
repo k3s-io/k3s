@@ -2,7 +2,7 @@ package cmds
 
 import (
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -12,7 +12,7 @@ var (
 		Name:    "config",
 		Aliases: []string{"c"},
 		Usage:   "(config) Load configuration from `FILE`",
-		EnvVars: []string{version.ProgramUpper + "_CONFIG_FILE"},
+		Sources: cli.EnvVars(version.ProgramUpper + "_CONFIG_FILE"),
 		Value:   "/etc/rancher/" + version.Program + "/config.yaml",
 	}
 )

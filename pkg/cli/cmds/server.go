@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -24,15 +24,15 @@ type StartupHookArgs struct {
 type StartupHook func(context.Context, *sync.WaitGroup, StartupHookArgs) error
 
 type Server struct {
-	ClusterCIDR          cli.StringSlice
+	ClusterCIDR          []string
 	AgentToken           string
 	AgentTokenFile       string
 	Token                string
 	TokenFile            string
 	ClusterSecret        string
-	ServiceCIDR          cli.StringSlice
+	ServiceCIDR          []string
 	ServiceNodePortRange string
-	ClusterDNS           cli.StringSlice
+	ClusterDNS           []string
 	ClusterDomain        string
 	// The port which kubectl clients can access k8s
 	HTTPSPort int
@@ -47,13 +47,13 @@ type Server struct {
 	KubeConfigMode           string
 	KubeConfigGroup          string
 	HelmJobImage             string
-	TLSSan                   cli.StringSlice
+	TLSSan                   []string
 	TLSSanSecurity           bool
-	ExtraAPIArgs             cli.StringSlice
-	ExtraEtcdArgs            cli.StringSlice
-	ExtraSchedulerArgs       cli.StringSlice
-	ExtraControllerArgs      cli.StringSlice
-	ExtraCloudControllerArgs cli.StringSlice
+	ExtraAPIArgs             []string
+	ExtraEtcdArgs            []string
+	ExtraSchedulerArgs       []string
+	ExtraControllerArgs      []string
+	ExtraCloudControllerArgs []string
 	Rootless                 bool
 	DatastoreEndpoint        string
 	DatastoreCAFile          string
@@ -121,14 +121,14 @@ var (
 		Aliases:     []string{"d"},
 		Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
 		Destination: &ServerConfig.DataDir,
-		EnvVars:     []string{version.ProgramUpper + "_DATA_DIR"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DATA_DIR"),
 	}
 	ServerToken = &cli.StringFlag{
 		Name:        "token",
 		Aliases:     []string{"t"},
 		Usage:       "(cluster) Shared secret used to join a server or agent to a cluster",
 		Destination: &ServerConfig.Token,
-		EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_TOKEN"),
 	}
 	ClusterCIDR = &cli.StringSliceFlag{
 		Name:        "cluster-cidr",
@@ -195,21 +195,21 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.IntFlag{
 		Name:        "supervisor-port",
-		EnvVars:     []string{version.ProgramUpper + "_SUPERVISOR_PORT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_SUPERVISOR_PORT"),
 		Usage:       "(experimental) Supervisor listen port override",
 		Hidden:      true,
 		Destination: &ServerConfig.SupervisorPort,
 	},
 	&cli.IntFlag{
 		Name:        "apiserver-port",
-		EnvVars:     []string{version.ProgramUpper + "_APISERVER_PORT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_APISERVER_PORT"),
 		Usage:       "(experimental) apiserver internal listen port override",
 		Hidden:      true,
 		Destination: &ServerConfig.APIServerPort,
 	},
 	&cli.StringFlag{
 		Name:        "apiserver-bind-address",
-		EnvVars:     []string{version.ProgramUpper + "_APISERVER_BIND_ADDRESS"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_APISERVER_BIND_ADDRESS"),
 		Usage:       "(experimental) apiserver internal bind address override",
 		Hidden:      true,
 		Destination: &ServerConfig.APIServerBindAddress,
@@ -274,19 +274,19 @@ var ServerFlags = []cli.Flag{
 		Aliases:     []string{"o"},
 		Usage:       "(client) Write kubeconfig for admin client to this file",
 		Destination: &ServerConfig.KubeConfigOutput,
-		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_OUTPUT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_KUBECONFIG_OUTPUT"),
 	},
 	&cli.StringFlag{
 		Name:        "write-kubeconfig-mode",
 		Usage:       "(client) Write kubeconfig with this mode",
 		Destination: &ServerConfig.KubeConfigMode,
-		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_MODE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_KUBECONFIG_MODE"),
 	},
 	&cli.StringFlag{
 		Name:        "write-kubeconfig-group",
 		Usage:       "(client) Write kubeconfig with this group",
 		Destination: &ServerConfig.KubeConfigGroup,
-		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_GROUP"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_KUBECONFIG_GROUP"),
 	},
 	&cli.StringFlag{
 		Name:        "helm-job-image",
@@ -298,37 +298,37 @@ var ServerFlags = []cli.Flag{
 		Name:        "token-file",
 		Usage:       "(cluster) File containing the token",
 		Destination: &ServerConfig.TokenFile,
-		EnvVars:     []string{version.ProgramUpper + "_TOKEN_FILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_TOKEN_FILE"),
 	},
 	&cli.StringFlag{
 		Name:        "agent-token",
 		Usage:       "(cluster) Shared secret used to join agents to the cluster, but not servers",
 		Destination: &ServerConfig.AgentToken,
-		EnvVars:     []string{version.ProgramUpper + "_AGENT_TOKEN"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_AGENT_TOKEN"),
 	},
 	&cli.StringFlag{
 		Name:        "agent-token-file",
 		Usage:       "(cluster) File containing the agent secret",
 		Destination: &ServerConfig.AgentTokenFile,
-		EnvVars:     []string{version.ProgramUpper + "_AGENT_TOKEN_FILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_AGENT_TOKEN_FILE"),
 	},
 	&cli.StringFlag{
 		Name:        "server",
 		Aliases:     []string{"s"},
 		Usage:       "(cluster) Server to connect to, used to join a cluster",
-		EnvVars:     []string{version.ProgramUpper + "_URL"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_URL"),
 		Destination: &ServerConfig.ServerURL,
 	},
 	&cli.BoolFlag{
 		Name:        "cluster-init",
 		Usage:       "(cluster) Initialize a new cluster using embedded Etcd",
-		EnvVars:     []string{version.ProgramUpper + "_CLUSTER_INIT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_CLUSTER_INIT"),
 		Destination: &ServerConfig.ClusterInit,
 	},
 	&cli.BoolFlag{
 		Name:        "cluster-reset",
 		Usage:       "(cluster) Forget all peers and become sole member of a new cluster",
-		EnvVars:     []string{version.ProgramUpper + "_CLUSTER_RESET"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_CLUSTER_RESET"),
 		Destination: &ServerConfig.ClusterReset,
 	},
 	&cli.StringFlag{
@@ -355,25 +355,25 @@ var ServerFlags = []cli.Flag{
 		Name:        "datastore-endpoint",
 		Usage:       "(db) Specify etcd, NATS, MySQL, Postgres, or SQLite (default) data source name",
 		Destination: &ServerConfig.DatastoreEndpoint,
-		EnvVars:     []string{version.ProgramUpper + "_DATASTORE_ENDPOINT"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DATASTORE_ENDPOINT"),
 	},
 	&cli.StringFlag{
 		Name:        "datastore-cafile",
 		Usage:       "(db) TLS Certificate Authority file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreCAFile,
-		EnvVars:     []string{version.ProgramUpper + "_DATASTORE_CAFILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DATASTORE_CAFILE"),
 	},
 	&cli.StringFlag{
 		Name:        "datastore-certfile",
 		Usage:       "(db) TLS certification file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreCertFile,
-		EnvVars:     []string{version.ProgramUpper + "_DATASTORE_CERTFILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DATASTORE_CERTFILE"),
 	},
 	&cli.StringFlag{
 		Name:        "datastore-keyfile",
 		Usage:       "(db) TLS key file used to secure datastore backend communication",
 		Destination: &ServerConfig.DatastoreKeyFile,
-		EnvVars:     []string{version.ProgramUpper + "_DATASTORE_KEYFILE"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_DATASTORE_KEYFILE"),
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-expose-metrics",
@@ -443,19 +443,19 @@ var ServerFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "etcd-s3-access-key",
 		Usage:       "(db) S3 access key",
-		EnvVars:     []string{"AWS_ACCESS_KEY_ID"},
+		Sources:     cli.EnvVars("AWS_ACCESS_KEY_ID"),
 		Destination: &ServerConfig.EtcdS3AccessKey,
 	},
 	&cli.StringFlag{
 		Name:        "etcd-s3-secret-key",
 		Usage:       "(db) S3 secret key",
-		EnvVars:     []string{"AWS_SECRET_ACCESS_KEY"},
+		Sources:     cli.EnvVars("AWS_SECRET_ACCESS_KEY"),
 		Destination: &ServerConfig.EtcdS3SecretKey,
 	},
 	&cli.StringFlag{
 		Name:        "etcd-s3-session-token",
 		Usage:       "(db) S3 session token",
-		EnvVars:     []string{"AWS_SESSION_TOKEN"},
+		Sources:     cli.EnvVars("AWS_SESSION_TOKEN"),
 		Destination: &ServerConfig.EtcdS3SessionToken,
 	},
 	&cli.StringFlag{
@@ -575,7 +575,7 @@ var ServerFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "system-default-registry",
 		Usage:       "(agent/runtime) Private registry to be used for all system images",
-		EnvVars:     []string{version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY"),
 		Destination: &ServerConfig.SystemDefaultRegistry,
 	},
 	AirgapExtraRegistryFlag,
@@ -636,7 +636,7 @@ var ServerFlags = []cli.Flag{
 	},
 }
 
-func NewServerCommand(action func(*cli.Context) error) *cli.Command {
+func NewServerCommand(action func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:      "server",
 		Usage:     "Run management server",

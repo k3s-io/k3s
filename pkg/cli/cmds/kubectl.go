@@ -1,10 +1,11 @@
 package cmds
 
 import (
-	"github.com/urfave/cli/v2"
+	"context"
+	"github.com/urfave/cli/v3"
 )
 
-func NewKubectlCommand(action func(*cli.Context) error) *cli.Command {
+func NewKubectlCommand(action func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:            "kubectl",
 		Usage:           "Run kubectl",

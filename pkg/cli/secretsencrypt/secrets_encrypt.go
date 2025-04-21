@@ -2,6 +2,7 @@ package secretsencrypt
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -18,7 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/utils/ptr"
 )
 
@@ -47,7 +48,7 @@ func wrapServerError(err error) error {
 	return pkgerrors.WithMessage(err, "see server log for details")
 }
 
-func Enable(app *cli.Context) error {
+func Enable(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func Enable(app *cli.Context) error {
 	return nil
 }
 
-func Disable(app *cli.Context) error {
+func Disable(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func Disable(app *cli.Context) error {
 	return nil
 }
 
-func Status(app *cli.Context) error {
+func Status(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func Status(app *cli.Context) error {
 	return nil
 }
 
-func Prepare(app *cli.Context) error {
+func Prepare(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -170,7 +171,7 @@ func Prepare(app *cli.Context) error {
 	return nil
 }
 
-func Rotate(app *cli.Context) error {
+func Rotate(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -192,7 +193,7 @@ func Rotate(app *cli.Context) error {
 	return nil
 }
 
-func Reencrypt(app *cli.Context) error {
+func Reencrypt(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
@@ -215,7 +216,7 @@ func Reencrypt(app *cli.Context) error {
 	return nil
 }
 
-func RotateKeys(app *cli.Context) error {
+func RotateKeys(ctx context.Context, app *cli.Command) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}

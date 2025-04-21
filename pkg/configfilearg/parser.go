@@ -14,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/rancher/wrangler/v3/pkg/data/convert"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v2"
 )
 

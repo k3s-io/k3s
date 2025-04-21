@@ -1,10 +1,11 @@
 package cmds
 
 import (
+	"context"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const EtcdSnapshotCommand = "etcd-snapshot"
@@ -17,7 +18,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVars:     []string{version.ProgramUpper + "_NODE_NAME"},
+		Sources:     cli.EnvVars(version.ProgramUpper + "_NODE_NAME"),
 		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
@@ -88,21 +89,21 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Name:        "s3-access-key",
 		Aliases:     []string{"etcd-s3-access-key"},
 		Usage:       "(db) S3 access key",
-		EnvVars:     []string{"AWS_ACCESS_KEY_ID"},
+		Sources:     cli.EnvVars("AWS_ACCESS_KEY_ID"),
 		Destination: &ServerConfig.EtcdS3AccessKey,
 	},
 	&cli.StringFlag{
 		Name:        "s3-secret-key",
 		Aliases:     []string{"etcd-s3-secret-key"},
 		Usage:       "(db) S3 secret key",
-		EnvVars:     []string{"AWS_SECRET_ACCESS_KEY"},
+		Sources:     cli.EnvVars("AWS_SECRET_ACCESS_KEY"),
 		Destination: &ServerConfig.EtcdS3SecretKey,
 	},
 	&cli.StringFlag{
 		Name:        "s3-session-token",
 		Aliases:     []string{"etcd-s3-session-token"},
 		Usage:       "(db) S3 session token",
-		EnvVars:     []string{"AWS_SESSION_TOKEN"},
+		Sources:     cli.EnvVars("AWS_SESSION_TOKEN"),
 		Destination: &ServerConfig.EtcdS3SessionToken,
 	},
 	&cli.StringFlag{
@@ -151,11 +152,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 }
 
-func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) *cli.Command {
+func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx context.Context, cmd *cli.Command) error) *cli.Command {
 	return &cli.Command{
 		Name:            EtcdSnapshotCommand,
 		SkipFlagParsing: false,
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:            "save",
 				Usage:           "Trigger an immediate etcd snapshot",

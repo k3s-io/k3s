@@ -5,7 +5,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
 )
@@ -17,13 +17,13 @@ var (
 // SetDefaults ensures that the default values are set on the token configuration.
 // These are set here, rather than in the default Token struct, to avoid
 // importing the cluster-bootstrap packages into the CLI.
-func SetDefaults(clx *cli.Context, cfg *cmds.Token) error {
+func SetDefaults(clx *cli.Command, cfg *cmds.Token) error {
 	if !clx.IsSet("groups") {
-		cfg.Groups = *cli.NewStringSlice(NodeBootstrapTokenAuthGroup)
+		cfg.Groups = []string{NodeBootstrapTokenAuthGroup}
 	}
 
 	if !clx.IsSet("usages") {
-		cfg.Usages = *cli.NewStringSlice(bootstrapapi.KnownTokenUsages...)
+		cfg.Usages = bootstrapapi.KnownTokenUsages
 	}
 
 	if cfg.Output == "" {

@@ -24,10 +24,10 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
-func Run(ctx *cli.Context) error {
+func Run(ctx context.Context, cmd *cli.Command) error {
 	// Validate build env
 	cmds.MustValidateGolang()
 
@@ -72,15 +72,15 @@ func Run(ctx *cli.Context) error {
 		return fmt.Errorf("--server is required")
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP.Value()) == 0 {
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
 		ip, err := util.GetIPFromInterface(cmds.AgentConfig.FlannelIface)
 		if err != nil {
 			return err
 		}
-		cmds.AgentConfig.NodeIP.Set(ip)
+		cmds.AgentConfig.NodeIP = []string{ip}
 	}
 
-	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
+	logrus.Info("Starting " + version.Program + " agent " + cmd.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {
@@ -88,7 +88,7 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
-	cfg.Debug = ctx.Bool("debug")
+	cfg.Debug = cmd.Bool("debug")
 	cfg.DataDir = dataDir
 
 	contextCtx := signals.SetupSignalContext()
