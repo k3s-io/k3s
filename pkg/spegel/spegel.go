@@ -198,12 +198,12 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	routerAddr := net.JoinHostPort(c.ExternalAddress, routerPort)
 
 	logrus.Infof("Starting distributed registry P2P node at %s", routerAddr)
-	opts := []libp2p.Option{
+	opts := routing.LibP2POptions(
 		libp2p.Identity(p2pKey),
 		libp2p.Peerstore(ps),
 		libp2p.PrivateNetwork(c.PSK),
-	}
-	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts...)
+	)
+	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create P2P router")
 	}
@@ -215,15 +215,17 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	}
 	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
-	registryOpts := []registry.Option{
-		registry.WithLocalAddress(localAddr),
+	registryOpts := []registry.RegistryOption{
 		registry.WithResolveLatestTag(resolveLatestTag),
 		registry.WithResolveRetries(resolveRetries),
 		registry.WithResolveTimeout(resolveTimeout),
 		registry.WithTransport(client.Transport),
 		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
-	reg := registry.NewRegistry(ociClient, router, registryOpts...)
+	reg, err := registry.NewRegistry(ociClient, router, registryOpts...)
+	if err != nil {
+		return pkgerrors.WithMessage(err, "failed to create embedded registry")
+	}
 	regSvr, err := reg.Server(":" + c.RegistryPort)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create embedded registry server")
