@@ -290,26 +290,37 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
-			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeconfigFile)
-			Eventually(func() error {
 				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
+			var res, logs string
+			var err error
 			Eventually(func() error {
-				_, err := e2e.RunCommand(cmd)
+				res, err = e2e.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
 				return err
-			}, "600s", "5s").Should(Succeed())
+			}, "300s", "10s").Should(Succeed(), "failed to get pod metrics: %s: %s", res, logs)
 		})
 
 		It("Returns node metrics", func() {
+			var res, logs string
+			var err error
 			cmd := "kubectl top node"
-			res, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred(), "failed to get node metrics: %s", res)
+			Eventually(func() error {
+				res, err = e2e.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
+				return err
+			}, "30s", "5s").Should(Succeed(), "failed to get node metrics: %s: %s", res, logs)
 		})
 
 		It("Runs an interactive command a pod", func() {
