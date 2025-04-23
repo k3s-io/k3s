@@ -1,0 +1,104 @@
+name: K3s Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-amd64:
+    name: Build Binary (amd64)
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      cache: '' # No cache for release builds
+      upload-build: true
+
+  build-arm64:
+    name: Build Binary (arm64)
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      arch: arm64
+      cache: '' # No cache for release builds
+      upload-build: true
+
+  build-arm:
+    name: Build Binary (arm)
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      arch: arm
+      cache: '' # No cache for release builds
+      upload-build: true
+
+  push-release-image:
+    name: Build and Push Multi-Arch Image
+    runs-on: ubuntu-latest
+    permissions: 
+      packages: write # Needed to push images to GHCR
+    needs: [build-amd64, build-arm64, build-arm]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: COnfigure image tags
+        id: tag_config
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          
+          # Base configuration - always transform the main tag
+          # Transforms v1.32.4-rc1+k3s1 → v1.32.4-rc1-k3s1
+          BASE_CONFIG="type=raw,value=${TAG//+/-}"
+          
+          if [[ "${TAG,,}" == *"rc"* ]]; then
+            echo "RC release detected: $TAG"
+            echo "tag_spec=$BASE_CONFIG" >> $GITHUB_OUTPUT
+          else
+            echo "Stable release detected: $TAG"
+            echo "tag_spec=$BASE_CONFIG
+          type=semver,pattern=v{{major}}.{{minor}}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/k3s
+          flavor: latest=false
+          tags: ${{ steps.tag_config.outputs.tag_spec }}
+      
+      - name: "Download K3s build"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: k3s*
+          path: ./dist/artifacts
+          merge-multiple: true
+
+      - name: Prepare build folder
+        run: |
+          mkdir -p ./build/out
+          cp ./dist/artifacts/data-* ./build/out
+
+      - name: Build and push K3s runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./package/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            DRONE_TAG=${{ github.ref_name }}
+
