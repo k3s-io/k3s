@@ -6,7 +6,7 @@ OS=${OS:-$("${GO}" env GOOS)}
 SUFFIX="-${ARCH}"
 
 if [ -z "$NO_DAPPER" ]; then
-    ./scripts/git_version.sh
+    . ./scripts/git_version.sh
 fi
 
 get-module-version(){
