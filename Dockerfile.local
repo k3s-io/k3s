@@ -1,13 +1,6 @@
 ARG GOLANG=golang:1.24.2-alpine3.21
 FROM ${GOLANG} AS infra
 
-ARG http_proxy
-ARG https_proxy
-ARG no_proxy
-ENV http_proxy=$http_proxy
-ENV https_proxy=$https_proxy
-ENV no_proxy=$no_proxy
-
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
     zlib-dev tar zip squashfs-tools npm coreutils openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \

@@ -1,14 +1,6 @@
 ARG GOLANG=golang:1.24.2-alpine3.21
 FROM ${GOLANG}
 
-# Set proxy environment variables
-ARG http_proxy
-ARG https_proxy
-ARG no_proxy
-ENV http_proxy=${http_proxy} \
-    https_proxy=${https_proxy} \
-    no_proxy=${no_proxy}
-
 # Install necessary packages
 RUN apk -U --no-cache add \
     bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
