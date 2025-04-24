@@ -30,6 +30,7 @@ on:
 
 jobs:
   build:
+    name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
     runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 20
     env:

@@ -514,8 +514,8 @@ get_pr_artifact_url() {
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
     run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
 
-    # Extract the artifact ID for the "k3s" artifact
-    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
+    # Extract the artifact ID for the "k3s" (old) or "k3s-amd64" (new) artifact
+    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s" or .name == "k3s-amd64") | .archive_download_url')
 }
 
 # --- download binary from github url ---
