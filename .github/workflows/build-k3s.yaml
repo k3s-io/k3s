@@ -111,7 +111,14 @@ jobs:
         outputs: type=local,dest=.
 
     - name: Caculate binary checksum
-      run: sha256sum dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+      run: |
+        if [ ${{ inputs.arch }} == 'amd64' ]; then
+          sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+        elif [ ${{ inputs.arch }} == "arm" ]; then
+          sha256sum dist/artifacts/k3s-armhf | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}.sha256sum
+        else
+          sha256sum dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+        fi
     
     - name: Build K3s image
       if: inputs.upload-image == true && inputs.os == 'linux'
