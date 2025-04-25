@@ -29,14 +29,22 @@ permissions:
 
 jobs:
   build:
+    permissions:
+      contents: read
+      packages: write # permissions cannot be conditional, so we need to set this for all jobs
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+      cache: ${{ github.ref == 'refs/heads/master' && 'write' || 'read' }}
   build-arm64:
     uses: ./.github/workflows/build-k3s.yaml
+    permissions:
+      contents: read
+      packages: write
     with:
-      arch: ubuntu-24.04-arm
+      arch: arm64
       upload-image: true
+      cache: ${{ github.ref == 'refs/heads/master' && 'write' || 'read' }}
   e2e:
     name: "E2E Tests"
     needs: build
@@ -71,10 +79,7 @@ jobs:
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: Install Go
-        uses: actions/setup-go@v5
-        with: 
-          go-version-file: 'go.mod'
-          cache: false
+        uses: ./.github/actions/setup-go
       - name: Install Kubectl
         run: |
            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -82,7 +87,7 @@ jobs:
       - name: "Download k3s binary"
         uses: actions/download-artifact@v4
         with:
-          name: k3s
+          name: k3s-amd64
           path: ./dist/artifacts
       
       - name: Run ${{ matrix.etest }} Test
@@ -177,17 +182,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: "Download K3s image (amd64)"
-      if: ${{ matrix.arch == 'amd64' }}
+    - name: "Download K3s image"
       uses: actions/download-artifact@v4
       with:
-        name: k3s
-        path: ./dist/artifacts
-    - name: "Download K3s image (arm64)"
-      if: ${{ matrix.arch == 'arm64' }}
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s-arm64
+        name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
     - name: Load and set K3s image
       run: |
