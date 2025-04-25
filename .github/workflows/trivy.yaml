@@ -36,8 +36,7 @@ jobs:
 
     - name: Build K3s Image
       run: |
-        make local
-        make package-image
+        make local-image
         make tag-image-latest
 
     - name: Download Rancher's VEX Hub report

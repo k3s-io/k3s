@@ -576,7 +576,7 @@ steps:
   commands:
     - DOCKER_BUILDKIT=1 docker build --target test-e2e -t test-e2e -f Dockerfile.test .
     - apk add make git bash
-    - GOCOVER=1 make local
+    - GOCOVER=1 make local-binary
     - cp dist/artifacts/* /tmp/artifacts/
   volumes:
   - name: cache
