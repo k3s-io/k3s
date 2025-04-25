@@ -8,7 +8,7 @@ RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/li
     echo "root:x:0:" > /image/etc/group && \
     cp /etc/ssl/certs/ca-certificates.crt /image/etc/ssl/certs/ca-certificates.crt
 
-FROM scratch as collect
+FROM scratch AS collect
 ARG DRONE_TAG="dev"
 COPY --from=base /image /
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
