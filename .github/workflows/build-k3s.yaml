@@ -1,12 +1,10 @@
-name: Build K3s
-
 on: 
   workflow_call:
     inputs:
       arch:
         type: string
-        description: 'Architecture to build (ubuntu-latest or ubuntu-24.04-arm)'
-        default: 'ubuntu-latest'
+        description: 'Architecture to build (amd64, arm64, or arm)'
+        default: 'amd64'
       os:
         type: string
         description: 'Target OS (linux or windows)'
@@ -15,31 +13,117 @@ on:
         type: boolean
         required: false
         default: false
+      cache:
+        type: string
+        description: 'Cache mode: "read", "write", or empty for no cache'
+        required: false
+        default: ''
 
-permissions:
-  contents: read
+# Note that is workflow requires the following permissions:
+#   contents: read
+# If using the cache: write option, you will need:
+#   packages: write
+# If using the cache: read option, you will need:
+#   packages: read
+
+
 
 jobs:
   build:
-    name: Build K3s (${{ inputs.os }} on ${{ inputs.arch }})
-    runs-on: ${{ inputs.arch }}
+    name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
+    runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 20
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
-      ARTIFACT_EXT: ${{ inputs.os == 'windows' && '-windows' || (contains(inputs.arch, 'arm') && '-arm64' || '') }}
+      ARCH_EXT: ${{ inputs.os == 'windows' && '-windows' || format('-{0}', inputs.arch) }}
       GOOS: ${{ inputs.os }}
     steps:
     - name: Checkout K3s
       uses: actions/checkout@v4
-      
-    - name: Build K3s binary
+    
+    - name: Set up QEMU
+      if: inputs.arch == 'arm'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/arm/v7
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Determine Git Version Info
+      id: git_vars
       run: |
-        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 GOOS=${{ env.GOOS }} make
-        sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+        source ./scripts/git_version.sh
+        {
+          echo "git_tag=${GIT_TAG}"
+          echo "tree_state=${TREE_STATE}"
+          echo "commit=${COMMIT}"
+          echo "dirty=${DIRTY}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Login to GitHub Container Registry
+      if: inputs.cache == 'write'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build K3s Binary Native
+      if: inputs.arch != 'arm'
+      env:
+          DOCKER_BUILD_SUMMARY: false
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile.local
+        target: result
+        # Defined actions like this don't ingest GITHUB_ENV, so use outputs
+        # and manual set the build arguments
+        build-args: |
+          GIT_TAG=${{ steps.git_vars.outputs.git_tag }}
+          TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
+          COMMIT=${{ steps.git_vars.outputs.commit }}
+          DIRTY=${{ steps.git_vars.outputs.dirty }}
+        cache-from: ${{ inputs.cache != '' && format('type=registry,ref=ghcr.io/{0}:cache-{1}', github.repository, inputs.arch) || '' }}
+        cache-to: ${{ inputs.cache == 'write' && format('type=registry,ref=ghcr.io/{0}:cache-{1},mode=max', github.repository, inputs.arch) || '' }}
+        push: false
+        provenance: mode=min
+        outputs: type=local,dest=.
+
+    - name: Build K3s Binary Emulated
+      if: inputs.arch != 'arm64' && inputs.arch != 'amd64'
+      env:
+        PLATFORM: ${{ inputs.arch == 'arm' && 'linux/arm/v7' || format('linux/{0}', inputs.arch) }}
+        DOCKER_BUILD_SUMMARY: false
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile.local
+        target: result
+        build-args: |
+          GIT_TAG=${{ steps.git_vars.outputs.git_tag }}
+          TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
+          COMMIT=${{ steps.git_vars.outputs.commit }}
+          DIRTY=${{ steps.git_vars.outputs.dirty }}
+        push: false
+        provenance: mode=min
+        platforms: ${{ env.PLATFORM }}
+        outputs: type=local,dest=.
+
+    - name: Caculate binary checksum
+      run: |
+        if [ ${{ inputs.arch }} == 'amd64' ]; then
+          sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+        elif [ ${{ inputs.arch }} == "arm" ]; then
+          sha256sum dist/artifacts/k3s-armhf | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}.sha256sum
+        else
+          sha256sum dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+        fi
     
     - name: Build K3s image
       if: inputs.upload-image == true && inputs.os == 'linux'
-      run: make package-image
+      run: ./scripts/package-image
       
     - name: "Save K3s image"
       if: inputs.upload-image == true && inputs.os == 'linux'
@@ -48,5 +132,5 @@ jobs:
     - name: "Upload K3s Artifacts"
       uses: actions/upload-artifact@v4
       with:
-        name: k3s${{ env.ARTIFACT_EXT }}
+        name: k3s${{ env.ARCH_EXT }}
         path: dist/artifacts/k3s*
