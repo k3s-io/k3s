@@ -172,7 +172,6 @@ dump-logs() {
     echo "#- Finish: logs for run ($testID)"
     echo "#---------------------------------"
     echo
-    ./scripts/log-upload $TEST_DIR
 }
 export -f dump-logs
 
