@@ -10,7 +10,7 @@ fi
 ARCH=$2
 
 # skipping image scan for 32 bits image since trivy dropped support for those https://github.com/aquasecurity/trivy/discussions/4789
-if  [[ "${ARCH}" = "arm" ]] || [ "${ARCH}" != "386" ]; then
+if  [[ "${ARCH}" = "arm" ]] || [ "${ARCH}" = "386" ]; then
     exit 0
 fi
 
