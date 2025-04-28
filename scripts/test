@@ -20,7 +20,7 @@ mkdir -p $artifacts
 docker ps
 
 export K3S_IMAGE="rancher/k3s:${VERSION_TAG}${SUFFIX}"
-
+export VERSION_K8S # used by the sonobuoy tests subprocess
 # ---
 # Only run PR tests on arm arch, we use GitHub Actions for amd64 and arm64
 # Run all tests on tag events, as we want test failures to block the release
