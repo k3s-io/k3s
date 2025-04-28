@@ -37,7 +37,7 @@ func Test_UnitAddFeatureGate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := AddFeatureGate(tt.args.currentArg, tt.args.featureGate)
 			if got != tt.want {
-				t.Errorf("error, should be " + tt.want + ", but got " + got)
+				t.Errorf("error, should be %s, but got %s", tt.want, got)
 			}
 		})
 	}

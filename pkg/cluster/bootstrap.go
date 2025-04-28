@@ -348,7 +348,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		serverTLSDir := filepath.Join(c.config.DataDir, "tls")
 		tlsBackupDir := filepath.Join(c.config.DataDir, "tls-"+strconv.Itoa(int(time.Now().Unix())))
 
-		logrus.Infof("Cluster reset: backing up certificates directory to " + tlsBackupDir)
+		logrus.Infof("Cluster reset: backing up certificates directory to %s", tlsBackupDir)
 
 		if _, err := os.Stat(serverTLSDir); err != nil {
 			return pkgerrors.WithMessage(err, "cluster reset failed to stat server TLS dir")
