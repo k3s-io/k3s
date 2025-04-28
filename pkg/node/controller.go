@@ -88,7 +88,7 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 		nodeIPv4 = ""
 		nodeIPv6 = ""
 	} else if nodeIPv4 == "" && nodeIPv6 == "" {
-		logrus.Errorf("No InternalIP addresses found for node " + nodeName)
+		logrus.Errorf("No InternalIP addresses found for node %s", nodeName)
 		return nil
 	}
 
