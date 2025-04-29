@@ -18,9 +18,9 @@ replace (
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.52.1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
-	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/common => github.com/prometheus/common v0.55.0
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.1
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/common => github.com/prometheus/common v0.62.0
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.1.1-k3s1
 	github.com/ugorji/go => github.com/ugorji/go v1.2.11
 	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.21-k3s1
@@ -32,12 +32,11 @@ replace (
 	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1
 	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0
-	golang.org/x/crypto => golang.org/x/crypto v0.28.0
-	golang.org/x/net => golang.org/x/net v0.30.0
-	golang.org/x/sys => golang.org/x/sys v0.26.0
+	golang.org/x/crypto => golang.org/x/crypto v0.36.0
+	golang.org/x/net => golang.org/x/net v0.38.0
+	golang.org/x/sys => golang.org/x/sys v0.31.0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20230525234035-dd9d682886f9
-	google.golang.org/grpc => google.golang.org/grpc v1.65.0
-	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.6.0
+	google.golang.org/grpc => google.golang.org/grpc v1.68.1
 	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.33.0-k3s1
 	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.33.0-k3s1
 	k8s.io/apimachinery => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.33.0-k3s1
@@ -321,6 +320,7 @@ require (
 	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/koron/go-ssdp v0.0.5 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/libopenstorage/openstorage v1.0.0 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
