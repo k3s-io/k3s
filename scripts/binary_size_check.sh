@@ -11,7 +11,7 @@ if [ "${DEBUG}" = 1 ]; then
     set -x
 fi
 
-# Try to keep the K3s binary under 80 megabytes.
+# Try to keep the K3s binary under 75 megabytes.
 # "64M ought to be enough for anybody"
 MAX_BINARY_MB=75
 MAX_BINARY_SIZE=$((MAX_BINARY_MB * 1024 * 1024))
