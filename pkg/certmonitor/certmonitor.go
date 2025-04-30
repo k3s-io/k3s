@@ -2,7 +2,6 @@ package certmonitor
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -108,25 +107,18 @@ func checkCerts(fileMap map[string][]string, warningPeriod time.Duration) error 
 			basename := filepath.Base(file)
 			certs, _ := certutil.CertsFromFile(file)
 			for _, cert := range certs {
-				usages := []string{}
-				if cert.KeyUsage&x509.KeyUsageCertSign != 0 {
-					usages = append(usages, "CertSign")
-				}
-				for _, eku := range cert.ExtKeyUsage {
-					switch eku {
-					case x509.ExtKeyUsageServerAuth:
-						usages = append(usages, "ServerAuth")
-					case x509.ExtKeyUsageClientAuth:
-						usages = append(usages, "ClientAuth")
-					}
-				}
+				usages := util.GetCertUsages(cert)
 				certificateExpirationSeconds.WithLabelValues(cert.Subject.String(), strings.Join(usages, ",")).Set(cert.NotAfter.Sub(now).Seconds())
-				if now.Before(cert.NotBefore) {
-					errs = append(errs, fmt.Errorf("%s/%s: certificate %s is not valid before %s", service, basename, cert.Subject, cert.NotBefore.Format(time.RFC3339)))
-				} else if now.After(cert.NotAfter) {
-					errs = append(errs, fmt.Errorf("%s/%s: certificate %s expired at %s", service, basename, cert.Subject, cert.NotAfter.Format(time.RFC3339)))
-				} else if warn.After(cert.NotAfter) {
-					errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, int(warningPeriod.Hours()/24), cert.NotAfter.Format(time.RFC3339)))
+				status := util.GetCertStatus(cert, now, warn)
+				if status != util.CertStatusOK {
+					switch status {
+					case util.CertStatusNotYetValid:
+						errs = append(errs, fmt.Errorf("%s/%s: certificate %s is not valid before %s", service, basename, cert.Subject, cert.NotBefore.Format(time.RFC3339)))
+					case util.CertStatusExpired:
+						errs = append(errs, fmt.Errorf("%s/%s: certificate %s expired at %s", service, basename, cert.Subject, cert.NotAfter.Format(time.RFC3339)))
+					case util.CertStatusWarning:
+						errs = append(errs, fmt.Errorf("%s/%s: certificate %s will expire within %d days at %s", service, basename, cert.Subject, int(warningPeriod.Hours()/24), cert.NotAfter.Format(time.RFC3339)))
+					}
 				}
 			}
 		}
