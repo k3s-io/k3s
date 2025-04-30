@@ -65,7 +65,7 @@ func NewCertCommands(check, rotate, rotateCA func(ctx *cli.Context) error) cli.C
 				Action:          check,
 				Flags: append(CertRotateCommandFlags, &cli.StringFlag{
 					Name:  "output,o",
-					Usage: "Format output. Options: text, table",
+					Usage: "Format output. Options: text, table, json, yaml",
 					Value: "text",
 				}),
 			},
