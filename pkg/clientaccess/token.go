@@ -538,7 +538,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 	warnings, _ := net.ParseWarningHeaders(resp.Header["Warning"])
 	for _, warning := range warnings {
 		if warning.Code == 299 && len(warning.Text) != 0 {
-			logrus.Warnf(warning.Text)
+			logrus.Warnf("%s", warning.Text)
 		}
 	}
 

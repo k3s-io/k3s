@@ -98,13 +98,13 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 	switch outFmt {
 	case "text":
 		for service, files := range fileMap {
-			logrus.Info("Checking certificates for " + service)
+			logrus.Infof("Checking certificates for %s", service)
 			for _, file := range files {
 				// ignore errors, as some files may not exist, or may not contain certs.
 				// Only check whatever exists and has certs.
 				certs, err := certutil.CertsFromFile(file)
 				if err != nil {
-					logrus.Debugf(err.Error())
+					logrus.Debugf("%v", err)
 					continue
 				}
 				for _, cert := range certs {
@@ -130,7 +130,7 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 			for _, file := range files {
 				certs, err := certutil.CertsFromFile(file)
 				if err != nil {
-					logrus.Debugf(err.Error())
+					logrus.Debugf("%v", err)
 					continue
 				}
 				for _, cert := range certs {
