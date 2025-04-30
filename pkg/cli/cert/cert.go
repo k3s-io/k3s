@@ -2,14 +2,17 @@ package cert
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -19,6 +22,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
+	k3sutil "github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/services"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/otiai10/copy"
@@ -26,7 +30,142 @@ import (
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
+
+// Certificate defines a single certificate data structure
+type Certificate struct {
+	Filename     string
+	Subject      string
+	Issuer       string
+	Usages       []string
+	ExpiryTime   time.Time
+	ResidualTime time.Duration
+	Status       string // "OK", "WARNING", "EXPIRED", "NOT YET VALID"
+}
+
+// CertificateInfo defines the structure for storing certificate information
+type CertificateInfo struct {
+	Certificates  []Certificate
+	ReferenceTime time.Time `json:"-" yaml:"-"`
+}
+
+// collectCertInfo collects information about certificates
+func collectCertInfo(controlConfig config.Control, ServicesList []string) (*CertificateInfo, error) {
+	result := &CertificateInfo{}
+	now := time.Now()
+	warn := now.Add(time.Hour * 24 * config.CertificateRenewDays)
+
+	fileMap, err := services.FilesForServices(controlConfig, ServicesList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, files := range fileMap {
+		for _, file := range files {
+			certs, err := certutil.CertsFromFile(file)
+			if err != nil {
+				logrus.Debugf("%v", err)
+				continue
+			}
+
+			for _, cert := range certs {
+
+				expiration := cert.NotAfter
+				status := k3sutil.GetCertStatus(cert, now, warn)
+				if status == k3sutil.CertStatusNotYetValid {
+					expiration = cert.NotBefore
+				}
+				usages := k3sutil.GetCertUsages(cert)
+				result.Certificates = append(result.Certificates, Certificate{
+					Filename:     filepath.Base(file),
+					Subject:      cert.Subject.CommonName,
+					Issuer:       cert.Issuer.CommonName,
+					Usages:       usages,
+					ExpiryTime:   expiration,
+					ResidualTime: cert.NotAfter.Sub(now),
+					Status:       status,
+				})
+			}
+		}
+	}
+	result.ReferenceTime = now
+	return result, nil
+}
+
+// CertFormatter defines the interface for formatting certificate information
+type CertFormatter interface {
+	Format(*CertificateInfo) error
+}
+
+// TextFormatter implements text format output
+type TextFormatter struct {
+	Writer io.Writer
+}
+
+func (f *TextFormatter) Format(certInfo *CertificateInfo) error {
+	for _, cert := range certInfo.Certificates {
+		usagesStr := strings.Join(cert.Usages, ",")
+		switch cert.Status {
+		case k3sutil.CertStatusNotYetValid:
+			logrus.Errorf("%s: certificate %s (%s) is not valid before %s",
+				cert.Filename, cert.Subject, usagesStr, cert.ExpiryTime.Format(time.RFC3339))
+		case k3sutil.CertStatusExpired:
+			logrus.Errorf("%s: certificate %s (%s) expired at %s",
+				cert.Filename, cert.Subject, usagesStr, cert.ExpiryTime.Format(time.RFC3339))
+		case k3sutil.CertStatusWarning:
+			logrus.Warnf("%s: certificate %s (%s) will expire within %d days at %s",
+				cert.Filename, cert.Subject, usagesStr, config.CertificateRenewDays, cert.ExpiryTime.Format(time.RFC3339))
+		default:
+			logrus.Infof("%s: certificate %s (%s) is ok, expires at %s",
+				cert.Filename, cert.Subject, usagesStr, cert.ExpiryTime.Format(time.RFC3339))
+		}
+	}
+	return nil
+}
+
+// TableFormatter implements table format output
+type TableFormatter struct {
+	Writer io.Writer
+}
+
+func (f *TableFormatter) Format(certInfo *CertificateInfo) error {
+	w := tabwriter.NewWriter(f.Writer, 0, 0, 3, ' ', 0)
+	now := certInfo.ReferenceTime
+	defer w.Flush()
+
+	fmt.Fprintf(w, "\nFILENAME\tSUBJECT\tUSAGES\tEXPIRES\tRESIDUAL TIME\tSTATUS\n")
+	fmt.Fprintf(w, "--------\t-------\t------\t-------\t-------------\t------\n")
+
+	for _, cert := range certInfo.Certificates {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			cert.Filename,
+			cert.Subject,
+			strings.Join(cert.Usages, ","),
+			cert.ExpiryTime.Format("Jan 02, 2006 15:04 MST"),
+			humanize.RelTime(now, now.Add(cert.ResidualTime), "", ""),
+			cert.Status)
+	}
+	return nil
+}
+
+// JSONFormatter implements JSON format output
+type JSONFormatter struct {
+	Writer io.Writer
+}
+
+func (f *JSONFormatter) Format(certInfo *CertificateInfo) error {
+	return json.NewEncoder(f.Writer).Encode(certInfo)
+}
+
+// YAMLFormatter implements YAML format output
+type YAMLFormatter struct {
+	Writer io.Writer
+}
+
+func (f *YAMLFormatter) Format(certInfo *CertificateInfo) error {
+	return yaml.NewEncoder(f.Writer).Encode(certInfo)
+}
 
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, error) {
 	proctitle.SetProcTitle(os.Args[0])
@@ -58,6 +197,7 @@ func Check(app *cli.Context) error {
 	return check(app, &cmds.ServerConfig)
 }
 
+// check checks the status of the certificates
 func check(app *cli.Context, cfg *cmds.Server) error {
 	var serverConfig server.Config
 
@@ -87,76 +227,27 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 		}
 	}
 
-	fileMap, err := services.FilesForServices(serverConfig.ControlConfig, cmds.ServicesList.Value())
+	certInfo, err := collectCertInfo(serverConfig.ControlConfig, cmds.ServicesList.Value())
 	if err != nil {
 		return err
 	}
-
-	now := time.Now()
-	warn := now.Add(time.Hour * 24 * config.CertificateRenewDays)
 	outFmt := app.String("output")
+
+	var formatter CertFormatter
 	switch outFmt {
 	case "text":
-		for service, files := range fileMap {
-			logrus.Infof("Checking certificates for %s", service)
-			for _, file := range files {
-				// ignore errors, as some files may not exist, or may not contain certs.
-				// Only check whatever exists and has certs.
-				certs, err := certutil.CertsFromFile(file)
-				if err != nil {
-					logrus.Debugf("%v", err)
-					continue
-				}
-				for _, cert := range certs {
-					if now.Before(cert.NotBefore) {
-						logrus.Errorf("%s: certificate %s is not valid before %s", file, cert.Subject, cert.NotBefore.Format(time.RFC3339))
-					} else if now.After(cert.NotAfter) {
-						logrus.Errorf("%s: certificate %s expired at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
-					} else if warn.After(cert.NotAfter) {
-						logrus.Warnf("%s: certificate %s will expire within %d days at %s", file, cert.Subject, config.CertificateRenewDays, cert.NotAfter.Format(time.RFC3339))
-					} else {
-						logrus.Infof("%s: certificate %s is ok, expires at %s", file, cert.Subject, cert.NotAfter.Format(time.RFC3339))
-					}
-				}
-			}
-		}
+		formatter = &TextFormatter{Writer: os.Stdout}
 	case "table":
-		var tabBuffer bytes.Buffer
-		w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "CERTIFICATE\tSUBJECT\tSTATUS\tEXPIRES\n")
-		fmt.Fprintf(w, "-----------\t-------\t------\t-------")
-		for _, files := range fileMap {
-			for _, file := range files {
-				certs, err := certutil.CertsFromFile(file)
-				if err != nil {
-					logrus.Debugf("%v", err)
-					continue
-				}
-				for _, cert := range certs {
-					baseName := filepath.Base(file)
-					var status string
-					expiration := cert.NotAfter.Format(time.RFC3339)
-					if now.Before(cert.NotBefore) {
-						status = "NOT YET VALID"
-						expiration = cert.NotBefore.Format(time.RFC3339)
-					} else if now.After(cert.NotAfter) {
-						status = "EXPIRED"
-					} else if warn.After(cert.NotAfter) {
-						status = "WARNING"
-					} else {
-						status = "OK"
-					}
-					fmt.Fprintf(w, "\n%s\t%s\t%s\t%s", baseName, cert.Subject, status, expiration)
-				}
-			}
-		}
-		w.Flush()
-		fmt.Println(tabBuffer.String())
+		formatter = &TableFormatter{Writer: os.Stdout}
+	case "json":
+		formatter = &JSONFormatter{Writer: os.Stdout}
+	case "yaml":
+		formatter = &YAMLFormatter{Writer: os.Stdout}
 	default:
 		return fmt.Errorf("invalid output format %s", outFmt)
 	}
-	return nil
+
+	return formatter.Format(certInfo)
 }
 
 func Rotate(app *cli.Context) error {
