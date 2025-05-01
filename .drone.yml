@@ -91,26 +91,6 @@ steps:
     event:
     - tag
 
-- name: ghcr-publish
-  image: plugins/docker
-  settings:
-    registry: ghcr.io
-    dockerfile: package/Dockerfile
-    username: "k3s-io"
-    password:
-      from_secret: github_token
-    repo: "ghcr.io/k3s-io/k3s"
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
@@ -250,26 +230,6 @@ steps:
     event:
     - tag
 
-- name: ghcr-publish
-  image: plugins/docker
-  settings:
-    registry: ghcr.io
-    dockerfile: package/Dockerfile
-    username: "k3s-io"
-    password:
-      from_secret: github_token
-    repo: "ghcr.io/k3s-io/k3s"
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
@@ -375,26 +335,6 @@ steps:
     repo: "rancher/k3s"
     username:
       from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: ghcr-publish
-  image: plugins/docker:linux-arm
-  settings:
-    registry: ghcr.io
-    dockerfile: package/Dockerfile
-    username: "k3s-io"
-    password:
-      from_secret: github_token
-    repo: "ghcr.io/k3s-io/k3s"
     build_args_from_env:
       - DRONE_TAG
   when:
