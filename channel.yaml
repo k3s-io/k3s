@@ -65,6 +65,9 @@ channels:
 - name: v1.32
   latestRegexp: v1\.32\..*
   excludeRegexp: ^[^+]+-
+- name: v1.33
+  latestRegexp: v1\.33\..*
+  excludeRegexp: ^[^+]+-
 github:
   owner: k3s-io
   repo: k3s
