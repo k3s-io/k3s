@@ -31,7 +31,7 @@ const (
 	EgressSelectorModeCluster     = "cluster"
 	EgressSelectorModeDisabled    = "disabled"
 	EgressSelectorModePod         = "pod"
-	CertificateRenewDays          = 90
+	CertificateRenewDays          = 120
 	StreamServerPort              = "10010"
 )
 
