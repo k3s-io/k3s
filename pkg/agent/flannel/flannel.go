@@ -51,8 +51,8 @@ var (
 	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
 )
 
-func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, netMode int) error {
-	extIface, err := LookupExtInterface(flannelIface, netMode)
+func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, nm netMode) error {
+	extIface, err := LookupExtInterface(flannelIface, nm)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to find the interface")
 	}
@@ -90,10 +90,8 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		return pkgerrors.WithMessage(err, "failed to initialize flannel ipTables manager")
 	}
 
-	if netMode == (ipv4+ipv6) || netMode == ipv4 {
-		if config.Network.Empty() {
-			return errors.New("ipv4 mode requested but no ipv4 network provided")
-		}
+	if nm.IPv4Enabled() && config.Network.Empty() {
+		return errors.New("ipv4 mode requested but no ipv4 network provided")
 	}
 
 	//setup masq rules
@@ -115,7 +113,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	//setup forward rules
 	trafficMngr.SetupAndEnsureForwardRules(ctx, config.Network, config.IPv6Network, 50)
 
-	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, netMode); err != nil {
+	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, nm); err != nil {
 		// Continue, even though it failed.
 		logrus.Warningf("Failed to write flannel subnet file: %s", err)
 	} else {
@@ -128,14 +126,14 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 	return nil
 }
 
-func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInterface, error) {
+func LookupExtInterface(iface *net.Interface, nm netMode) (*backend.ExternalInterface, error) {
 	var ifaceAddr []net.IP
 	var ifacev6Addr []net.IP
 	var err error
 
 	if iface == nil {
 		logrus.Debug("No interface defined for flannel in the config. Fetching the default gateway interface")
-		if netMode == ipv4 || netMode == (ipv4+ipv6) {
+		if nm.IPv4Enabled() {
 			if iface, err = ip.GetDefaultGatewayInterface(); err != nil {
 				return nil, pkgerrors.WithMessage(err, "failed to get default interface")
 			}
@@ -147,33 +145,22 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	}
 	logrus.Debugf("The interface %s will be used by flannel", iface.Name)
 
-	switch netMode {
-	case ipv4:
+	if nm.IPv4Enabled() {
 		ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
 		if err != nil {
-			return nil, pkgerrors.WithMessage(err, "failed to find IPv4 address for interface")
+			return nil, pkgerrors.WithMessagef(err, "failed to find IPv4 address for interface %s", iface.Name)
 		}
 		logrus.Infof("The interface %s with ipv4 address %s will be used by flannel", iface.Name, ifaceAddr[0])
-		ifacev6Addr = append(ifacev6Addr, nil)
-	case ipv6:
+	} else {
+		ifaceAddr = append(ifaceAddr, nil)
+	}
+	if nm.IPv6Enabled() {
 		ifacev6Addr, err = ip.GetInterfaceIP6Addrs(iface)
 		if err != nil {
-			return nil, pkgerrors.WithMessage(err, "failed to find IPv6 address for interface")
+			return nil, pkgerrors.WithMessagef(err, "failed to find IPv6 address for interface %s", iface.Name)
 		}
 		logrus.Infof("The interface %s with ipv6 address %s will be used by flannel", iface.Name, ifacev6Addr[0])
-		ifaceAddr = append(ifaceAddr, nil)
-	case (ipv4 + ipv6):
-		ifaceAddr, err = ip.GetInterfaceIP4Addrs(iface)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find IPv4 address for interface %s", iface.Name)
-		}
-		ifacev6Addr, err = ip.GetInterfaceIP6Addrs(iface)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find IPv6 address for interface %s", iface.Name)
-		}
-		logrus.Infof("Using dual-stack mode. The interface %s with ipv4 address %s and ipv6 address %s will be used by flannel", iface.Name, ifaceAddr[0], ifacev6Addr[0])
-	default:
-		ifaceAddr = append(ifaceAddr, nil)
+	} else {
 		ifacev6Addr = append(ifacev6Addr, nil)
 	}
 
@@ -190,7 +177,7 @@ func LookupExtInterface(iface *net.Interface, netMode int) (*backend.ExternalInt
 	}, nil
 }
 
-func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn backend.Network, netMode int) error {
+func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn backend.Network, nm netMode) error {
 	dir, name := filepath.Split(path)
 	os.MkdirAll(dir, 0755)
 
@@ -204,7 +191,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	// sn.IP by one
 	sn := bn.Lease().Subnet
 	sn.IP++
-	if netMode == ipv4 || netMode == (ipv4+ipv6) {
+	if nm.IPv4Enabled() {
 		fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw)
 		fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn)
 	}
