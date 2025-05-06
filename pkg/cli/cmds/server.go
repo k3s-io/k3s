@@ -105,6 +105,7 @@ type Server struct {
 	EtcdS3SecretKey          string
 	EtcdS3SessionToken       string
 	EtcdS3BucketName         string
+	EtcdS3BucketLookupType   string
 	EtcdS3Region             string
 	EtcdS3Folder             string
 	EtcdS3Proxy              string
@@ -462,6 +463,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "etcd-s3-bucket",
 		Usage:       "(db) S3 bucket name",
 		Destination: &ServerConfig.EtcdS3BucketName,
+	},
+	&cli.StringFlag{
+		Name:        "etcd-s3-bucket-lookup-type",
+		Usage:       "(db) S3 bucket lookup type, one of 'auto', 'dns', 'path'; default is 'auto' if not set",
+		Destination: &ServerConfig.EtcdS3BucketLookupType,
 	},
 	&cli.StringFlag{
 		Name:        "etcd-s3-region",

@@ -64,6 +64,7 @@ type Node struct {
 type EtcdS3 struct {
 	AccessKey     string          `json:"accessKey,omitempty"`
 	Bucket        string          `json:"bucket,omitempty"`
+	BucketLookup  string          `json:"bucketLookup,omitempty"`
 	ConfigSecret  string          `json:"configSecret,omitempty"`
 	Endpoint      string          `json:"endpoint,omitempty"`
 	EndpointCA    string          `json:"endpointCA,omitempty"`
