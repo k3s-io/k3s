@@ -198,7 +198,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	routerAddr := net.JoinHostPort(c.ExternalAddress, routerPort)
 
 	logrus.Infof("Starting distributed registry P2P node at %s", routerAddr)
-	opts := routing.LibP2POptions(
+	opts := routing.WithLibP2POptions(
 		libp2p.Identity(p2pKey),
 		libp2p.Peerstore(ps),
 		libp2p.PrivateNetwork(c.PSK),
