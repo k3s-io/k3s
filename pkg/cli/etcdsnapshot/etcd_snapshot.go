@@ -55,6 +55,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 		sr.S3 = &config.EtcdS3{
 			AccessKey:     cfg.EtcdS3AccessKey,
 			Bucket:        cfg.EtcdS3BucketName,
+			BucketLookup:  cfg.EtcdS3BucketLookupType,
 			ConfigSecret:  cfg.EtcdS3ConfigSecret,
 			Endpoint:      cfg.EtcdS3Endpoint,
 			EndpointCA:    cfg.EtcdS3EndpointCA,

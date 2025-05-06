@@ -99,6 +99,11 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &ServerConfig.EtcdS3BucketName,
 	},
 	&cli.StringFlag{
+		Name:        "s3-bucket-lookup-type,etcd-s3-bucket-lookup-type",
+		Usage:       "(db) S3 bucket lookup type, one of 'auto', 'dns', 'path'; default is 'auto' if not set",
+		Destination: &ServerConfig.EtcdS3BucketLookupType,
+	},
+	&cli.StringFlag{
 		Name:        "s3-region,etcd-s3-region",
 		Usage:       "(db) S3 region / bucket location (optional)",
 		Destination: &ServerConfig.EtcdS3Region,
