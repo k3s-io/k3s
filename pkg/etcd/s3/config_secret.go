@@ -46,6 +46,7 @@ func (c *Controller) getConfigFromSecret(secretName string) (*config.EtcdS3, err
 	etcdS3 := &config.EtcdS3{
 		AccessKey:    string(secret.Data["etcd-s3-access-key"]),
 		Bucket:       string(secret.Data["etcd-s3-bucket"]),
+		BucketLookup: string(secret.Data["etcd-s3-bucket-lookup-type"]),
 		Endpoint:     defaultEtcdS3.Endpoint,
 		Folder:       string(secret.Data["etcd-s3-folder"]),
 		Proxy:        string(secret.Data["etcd-s3-proxy"]),

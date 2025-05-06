@@ -228,7 +228,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 		Secure:       !etcdS3.Insecure,
 		Region:       etcdS3.Region,
 		Transport:    tr,
-		BucketLookup: bucketLookupType(etcdS3.Endpoint),
+		BucketLookup: bucketLookupType(etcdS3.Endpoint, etcdS3.BucketLookup),
 	}
 	mc, err := minio.New(etcdS3.Endpoint, &opt)
 	if err != nil {
@@ -586,7 +586,14 @@ func loadEndpointCAs(etcdS3EndpointCA string) (*tls.Config, error) {
 	return nil, errors.New("no certificates loaded from etcd-s3-endpoint-ca")
 }
 
-func bucketLookupType(endpoint string) minio.BucketLookupType {
+func bucketLookupType(endpoint, lookupType string) minio.BucketLookupType {
+	switch strings.ToLower(lookupType) {
+	case "dns":
+		return minio.BucketLookupDNS
+	case "path":
+		return minio.BucketLookupPath
+	}
+
 	if strings.Contains(endpoint, "aliyun") { // backwards compatible with RKE1
 		return minio.BucketLookupDNS
 	}
