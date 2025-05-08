@@ -105,8 +105,6 @@ func Server(ctx context.Context, cfg *config.Control) error {
 
 func controllerManager(ctx context.Context, cfg *config.Control) error {
 	runtime := cfg.Runtime
-	certDir := filepath.Join(cfg.DataDir, "tls", "kube-controller-manager")
-
 	argsMap := map[string]string{
 		"controllers":                      "*,tokencleaner",
 		"kubeconfig":                       runtime.KubeConfigController,
@@ -118,7 +116,8 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
-		"cert-dir":                         certDir,
+		"tls-cert-file":                    runtime.ServingKubeControllerCert,
+		"tls-private-key-file":             runtime.ServingKubeControllerKey,
 		"bind-address":                     cfg.Loopback(false),
 		"secure-port":                      "10257",
 		"use-service-account-credentials":  "true",
@@ -154,15 +153,14 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 
 func scheduler(ctx context.Context, cfg *config.Control) error {
 	runtime := cfg.Runtime
-	certDir := filepath.Join(cfg.DataDir, "tls", "kube-scheduler")
-
 	argsMap := map[string]string{
 		"kubeconfig":                runtime.KubeConfigScheduler,
 		"authorization-kubeconfig":  runtime.KubeConfigScheduler,
 		"authentication-kubeconfig": runtime.KubeConfigScheduler,
 		"bind-address":              cfg.Loopback(false),
 		"secure-port":               "10259",
-		"cert-dir":                  certDir,
+		"tls-cert-file":             runtime.ServingKubeSchedulerCert,
+		"tls-private-key-file":      runtime.ServingKubeSchedulerKey,
 		"profiling":                 "false",
 	}
 	if cfg.NoLeaderElect {
