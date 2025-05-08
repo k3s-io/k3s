@@ -14,9 +14,11 @@ Since K3s is written in Go, it is fair to assume that the Go tools are all one n
 
 ## Non-Linux environment prerequisites
 
-All the test and build scripts within this repository were created to be run on GNU Linux development environments. Due to this, it is suggested to use the virtual machine defined on this repository's [Vagrantfile](../../Vagrantfile) to use them.
+All the test and build scripts within this repository were created to be run on GNU Linux development environments. For non-Linux environments, we recommend using Docker with our Dapper build environment, which provides all the necessary tools for building and testing K3s.
 
-Either way, if one still wants to build and test K3s on non-Linux environments, specific setups are to be followed.
+You can use the [Dockerfile.dapper](../../Dockerfile.dapper) to build K3s in a containerized environment with all required dependencies. See the [Building documentation](../../BUILDING.md) for more details on using Dapper for K3s development.
+
+If you still want to build and test K3s directly on non-Linux environments, specific setups are to be followed.
 
 ### Windows Setup
 
