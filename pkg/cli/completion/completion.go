@@ -28,7 +28,7 @@ func Run(ctx *cli.Context) error {
 func genCompletionScript(shell string) (string, error) {
 	var completionScript string
 	if shell == "bash" {
-		completionScript = fmt.Sprintf(`#! /bin/bash
+		completionScript = fmt.Sprintf(`#!/usr/bin/env bash
 _cli_bash_autocomplete() {
 if [[ "${COMP_WORDS[0]}" != "source" ]]; then
 	local cur opts base
