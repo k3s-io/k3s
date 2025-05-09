@@ -143,6 +143,12 @@ func CreateRuntimeCertFiles(config *config.Control) {
 	runtime.ServingKubeAPICert = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.crt")
 	runtime.ServingKubeAPIKey = filepath.Join(config.DataDir, "tls", "serving-kube-apiserver.key")
 
+	runtime.ServingKubeSchedulerCert = filepath.Join(config.DataDir, "tls", "kube-scheduler", "kube-scheduler.crt")
+	runtime.ServingKubeSchedulerKey = filepath.Join(config.DataDir, "tls", "kube-scheduler", "kube-scheduler.key")
+
+	runtime.ServingKubeControllerCert = filepath.Join(config.DataDir, "tls", "kube-controller-manager", "kube-controller-manager.crt")
+	runtime.ServingKubeControllerKey = filepath.Join(config.DataDir, "tls", "kube-controller-manager", "kube-controller-manager.key")
+
 	runtime.ClientKubeletKey = filepath.Join(config.DataDir, "tls", "client-kubelet.key")
 	runtime.ServingKubeletKey = filepath.Join(config.DataDir, "tls", "serving-kubelet.key")
 
@@ -437,6 +443,23 @@ func genServerCerts(config *config.Control) error {
 	}
 
 	if _, _, err := certutil.LoadOrGenerateKeyFile(runtime.ServingKubeletKey, regen); err != nil {
+		return err
+	}
+
+	altNames = &certutil.AltNames{}
+	addSANs(altNames, []string{"localhost" ,"127.0.0.1", "::1"})
+
+	if _, err := createClientCertKey(regen, "kube-scheduler", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		runtime.ServerCA, runtime.ServerCAKey,
+		runtime.ServingKubeSchedulerCert, runtime.ServingKubeSchedulerKey); err != nil {
+		return err
+	}
+
+	if _, err := createClientCertKey(regen, "kube-controller-manager", nil,
+		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		runtime.ServerCA, runtime.ServerCAKey,
+		runtime.ServingKubeControllerCert, runtime.ServingKubeControllerKey); err != nil {
 		return err
 	}
 

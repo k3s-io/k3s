@@ -38,29 +38,31 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"admin": []string{
+				"admin": {
 					filepath.Join(serverDir, "tls", "client-admin.crt"),
 					filepath.Join(serverDir, "tls", "client-admin.key"),
 				},
-				"api-server": []string{
+				"api-server": {
 					filepath.Join(serverDir, "tls", "client-kube-apiserver.crt"),
 					filepath.Join(serverDir, "tls", "client-kube-apiserver.key"),
 					filepath.Join(serverDir, "tls", "serving-kube-apiserver.crt"),
 					filepath.Join(serverDir, "tls", "serving-kube-apiserver.key"),
 				},
-				"auth-proxy": []string{
+				"auth-proxy": {
 					filepath.Join(serverDir, "tls", "client-auth-proxy.crt"),
 					filepath.Join(serverDir, "tls", "client-auth-proxy.key"),
 				},
-				"cloud-controller": []string{
+				"cloud-controller": {
 					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.key"),
 				},
-				"controller-manager": []string{
+				"controller-manager": {
 					filepath.Join(serverDir, "tls", "client-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-controller.key"),
+					filepath.Join(serverDir, "tls", "kube-controller-manager", "kube-controller-manager.crt"),
+					filepath.Join(serverDir, "tls", "kube-controller-manager", "kube-controller-manager.key"),
 				},
-				"etcd": []string{
+				"etcd": {
 					filepath.Join(serverDir, "tls", "etcd", "client.crt"),
 					filepath.Join(serverDir, "tls", "etcd", "client.key"),
 					filepath.Join(serverDir, "tls", "etcd", "server-client.crt"),
@@ -68,19 +70,19 @@ func Test_UnitFilesForServices(t *testing.T) {
 					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.crt"),
 					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.key"),
 				},
-				"k3s-controller": []string{
+				"k3s-controller": {
 					filepath.Join(serverDir, "tls", "client-k3s-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-k3s-controller.key"),
 					filepath.Join(agentDir, "client-k3s-controller.crt"),
 					filepath.Join(agentDir, "client-k3s-controller.key"),
 				},
-				"kube-proxy": []string{
+				"kube-proxy": {
 					filepath.Join(serverDir, "tls", "client-kube-proxy.crt"),
 					filepath.Join(serverDir, "tls", "client-kube-proxy.key"),
 					filepath.Join(agentDir, "client-kube-proxy.crt"),
 					filepath.Join(agentDir, "client-kube-proxy.key"),
 				},
-				"kubelet": []string{
+				"kubelet": {
 					filepath.Join(serverDir, "tls", "client-kubelet.key"),
 					filepath.Join(serverDir, "tls", "serving-kubelet.key"),
 					filepath.Join(agentDir, "client-kubelet.crt"),
@@ -88,11 +90,13 @@ func Test_UnitFilesForServices(t *testing.T) {
 					filepath.Join(agentDir, "serving-kubelet.crt"),
 					filepath.Join(agentDir, "serving-kubelet.key"),
 				},
-				"scheduler": []string{
+				"scheduler": {
 					filepath.Join(serverDir, "tls", "client-scheduler.crt"),
 					filepath.Join(serverDir, "tls", "client-scheduler.key"),
+					filepath.Join(serverDir, "tls", "kube-scheduler", "kube-scheduler.crt"),
+					filepath.Join(serverDir, "tls", "kube-scheduler", "kube-scheduler.key"),
 				},
-				"supervisor": []string{
+				"supervisor": {
 					filepath.Join(serverDir, "tls", "client-supervisor.crt"),
 					filepath.Join(serverDir, "tls", "client-supervisor.key"),
 				},
@@ -112,29 +116,31 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"admin": []string{
+				"admin": {
 					filepath.Join(serverDir, "tls", "client-admin.crt"),
 					filepath.Join(serverDir, "tls", "client-admin.key"),
 				},
-				"api-server": []string{
+				"api-server": {
 					filepath.Join(serverDir, "tls", "client-kube-apiserver.crt"),
 					filepath.Join(serverDir, "tls", "client-kube-apiserver.key"),
 					filepath.Join(serverDir, "tls", "serving-kube-apiserver.crt"),
 					filepath.Join(serverDir, "tls", "serving-kube-apiserver.key"),
 				},
-				"auth-proxy": []string{
+				"auth-proxy": {
 					filepath.Join(serverDir, "tls", "client-auth-proxy.crt"),
 					filepath.Join(serverDir, "tls", "client-auth-proxy.key"),
 				},
-				"cloud-controller": []string{
+				"cloud-controller": {
 					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-k3s-cloud-controller.key"),
 				},
-				"controller-manager": []string{
+				"controller-manager": {
 					filepath.Join(serverDir, "tls", "client-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-controller.key"),
+					filepath.Join(serverDir, "tls", "kube-controller-manager", "kube-controller-manager.crt"),
+					filepath.Join(serverDir, "tls", "kube-controller-manager", "kube-controller-manager.key"),
 				},
-				"etcd": []string{
+				"etcd": {
 					filepath.Join(serverDir, "tls", "etcd", "client.crt"),
 					filepath.Join(serverDir, "tls", "etcd", "client.key"),
 					filepath.Join(serverDir, "tls", "etcd", "server-client.crt"),
@@ -142,11 +148,13 @@ func Test_UnitFilesForServices(t *testing.T) {
 					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.crt"),
 					filepath.Join(serverDir, "tls", "etcd", "peer-server-client.key"),
 				},
-				"scheduler": []string{
+				"scheduler": {
 					filepath.Join(serverDir, "tls", "client-scheduler.crt"),
 					filepath.Join(serverDir, "tls", "client-scheduler.key"),
+					filepath.Join(serverDir, "tls", "kube-scheduler", "kube-scheduler.crt"),
+					filepath.Join(serverDir, "tls", "kube-scheduler", "kube-scheduler.key"),
 				},
-				"supervisor": []string{
+				"supervisor": {
 					filepath.Join(serverDir, "tls", "client-supervisor.crt"),
 					filepath.Join(serverDir, "tls", "client-supervisor.key"),
 				},
@@ -166,19 +174,19 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"k3s-controller": []string{
+				"k3s-controller": {
 					filepath.Join(serverDir, "tls", "client-k3s-controller.crt"),
 					filepath.Join(serverDir, "tls", "client-k3s-controller.key"),
 					filepath.Join(agentDir, "client-k3s-controller.crt"),
 					filepath.Join(agentDir, "client-k3s-controller.key"),
 				},
-				"kube-proxy": []string{
+				"kube-proxy": {
 					filepath.Join(serverDir, "tls", "client-kube-proxy.crt"),
 					filepath.Join(serverDir, "tls", "client-kube-proxy.key"),
 					filepath.Join(agentDir, "client-kube-proxy.crt"),
 					filepath.Join(agentDir, "client-kube-proxy.key"),
 				},
-				"kubelet": []string{
+				"kubelet": {
 					filepath.Join(serverDir, "tls", "client-kubelet.key"),
 					filepath.Join(serverDir, "tls", "serving-kubelet.key"),
 					filepath.Join(agentDir, "client-kubelet.crt"),
@@ -202,7 +210,7 @@ func Test_UnitFilesForServices(t *testing.T) {
 				return nil
 			},
 			want: map[string][]string{
-				"certificate-authority": []string{
+				"certificate-authority": {
 					filepath.Join(serverDir, "tls", "server-ca.crt"),
 					filepath.Join(serverDir, "tls", "server-ca.key"),
 					filepath.Join(serverDir, "tls", "client-ca.crt"),
