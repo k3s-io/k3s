@@ -71,11 +71,15 @@ func FilesForServices(controlConfig config.Control, services []string) (map[stri
 			fileMap[service] = []string{
 				controlConfig.Runtime.ClientControllerCert,
 				controlConfig.Runtime.ClientControllerKey,
+				controlConfig.Runtime.ServingKubeControllerCert,
+				controlConfig.Runtime.ServingKubeControllerKey,
 			}
 		case Scheduler:
 			fileMap[service] = []string{
 				controlConfig.Runtime.ClientSchedulerCert,
 				controlConfig.Runtime.ClientSchedulerKey,
+				controlConfig.Runtime.ServingKubeSchedulerCert,
+				controlConfig.Runtime.ServingKubeSchedulerKey,
 			}
 		case ETCD:
 			fileMap[service] = []string{
