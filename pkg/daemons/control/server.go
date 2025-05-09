@@ -116,6 +116,8 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
+		"tls-cert-file":                    runtime.ServingKubeControllerCert,
+		"tls-private-key-file":             runtime.ServingKubeControllerKey,
 		"bind-address":                     cfg.Loopback(false),
 		"secure-port":                      "10257",
 		"use-service-account-credentials":  "true",
@@ -157,6 +159,8 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig": runtime.KubeConfigScheduler,
 		"bind-address":              cfg.Loopback(false),
 		"secure-port":               "10259",
+		"tls-cert-file":             runtime.ServingKubeSchedulerCert,
+		"tls-private-key-file":      runtime.ServingKubeSchedulerKey,
 		"profiling":                 "false",
 	}
 	if cfg.NoLeaderElect {

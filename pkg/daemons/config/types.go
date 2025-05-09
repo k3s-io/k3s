@@ -334,16 +334,20 @@ type ControlRuntime struct {
 	KubeConfigAPIServer       string
 	KubeConfigCloudController string
 
-	ServingKubeAPICert string
-	ServingKubeAPIKey  string
-	ServingKubeletKey  string
-	ServerToken        string
-	AgentToken         string
-	APIServer          http.Handler
-	Handler            http.Handler
-	HTTPBootstrap      http.Handler
-	Tunnel             http.Handler
-	Authenticator      authenticator.Request
+	ServingKubeAPICert        string
+	ServingKubeAPIKey         string
+	ServingKubeSchedulerCert  string
+	ServingKubeSchedulerKey   string
+	ServingKubeControllerCert string
+	ServingKubeControllerKey  string
+	ServingKubeletKey         string
+	ServerToken               string
+	AgentToken                string
+	APIServer                 http.Handler
+	Handler                   http.Handler
+	HTTPBootstrap             http.Handler
+	Tunnel                    http.Handler
+	Authenticator             authenticator.Request
 
 	EgressSelectorConfig  string
 	CloudControllerConfig string
