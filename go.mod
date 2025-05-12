@@ -130,7 +130,7 @@ require (
 	github.com/rancher/lasso v0.2.1
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.4.1
-	github.com/rancher/wharfie v0.6.9
+	github.com/rancher/wharfie v0.7.0
 	github.com/rancher/wrangler/v3 v3.2.1-0.20250404112553-6674f9c57bfe
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
