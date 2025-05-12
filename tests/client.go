@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,7 +22,6 @@ func CheckDefaultDeployments(kubeconfigFile string) error {
 
 // CheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
 func CheckDeployments(deployments []string, kubeconfigFile string) error {
-
 	deploymentSet := make(map[string]bool)
 	for _, d := range deployments {
 		deploymentSet[d] = false
@@ -39,6 +39,8 @@ func CheckDeployments(deployments []string, kubeconfigFile string) error {
 		if _, ok := deploymentSet[deployment.Name]; ok && deployment.Status.ReadyReplicas == deployment.Status.Replicas {
 			deploymentSet[deployment.Name] = true
 		}
+		logrus.Println("Test deployment")
+		logrus.Printf("%v\n", deployment.Status)
 	}
 	for d, found := range deploymentSet {
 		if !found {

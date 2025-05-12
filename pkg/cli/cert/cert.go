@@ -251,6 +251,7 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 }
 
 func Rotate(app *cli.Context) error {
+	fmt.Println(" rotate")
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
