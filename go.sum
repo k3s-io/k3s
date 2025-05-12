@@ -1215,8 +1215,8 @@ github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7 h1:0Kg2SGoMeU1
 github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7/go.mod h1:fsbs0YOsGn1ofPD5p+BuI4qDhbMbSJtTegKt6Ucna+c=
 github.com/rancher/remotedialer v0.4.1 h1:jwOf2kPRjBBpSFofv1OuZHWaYHeC9Eb6/XgDvbkoTgc=
 github.com/rancher/remotedialer v0.4.1/go.mod h1:Ys004RpJuTLSm+k4aYUCoFiOOad37ubYev3TkOFg/5w=
-github.com/rancher/wharfie v0.6.9 h1:w0xf8F/LqjuXBYYJRMWTcHWIF8p4zVKmFOOEqz74VhQ=
-github.com/rancher/wharfie v0.6.9/go.mod h1:PpyuDiBgnFVd56kKtNfSS3cMDTVcRJZVYfNwxcqv50I=
+github.com/rancher/wharfie v0.7.0 h1:M+OHMkE+tfafY59E5RuZ/Q4IorKNJGVqhtZRksTpOWo=
+github.com/rancher/wharfie v0.7.0/go.mod h1:wSQoRNUM58z0Qb9kmAT1L6ia2ys0LWHRH+7Vix/rkD8=
 github.com/rancher/wrangler/v3 v3.2.1-0.20250404112553-6674f9c57bfe h1:sRkWWOzFJFkoqWknniWes0S9KpYLHOUqBdzPpIpWipM=
 github.com/rancher/wrangler/v3 v3.2.1-0.20250404112553-6674f9c57bfe/go.mod h1:0C5QyvSrQOff8gQQzpB/L/FF03EQycjR3unSJcKCHno=
 github.com/raulk/go-watchdog v1.3.0 h1:oUmdlHxdkXRJlwfG0O9omj8ukerm8MEQavSiDTEtBsk=
