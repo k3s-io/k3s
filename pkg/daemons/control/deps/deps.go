@@ -447,7 +447,7 @@ func genServerCerts(config *config.Control) error {
 	}
 
 	altNames = &certutil.AltNames{}
-	addSANs(altNames, []string{"localhost" ,"127.0.0.1", "::1"})
+	addSANs(altNames, config.SANs)
 
 	if _, err := createClientCertKey(regen, "kube-scheduler", nil,
 		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
