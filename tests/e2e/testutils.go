@@ -123,7 +123,6 @@ func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []V
 }
 
 func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, error) {
-
 	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
@@ -200,7 +199,6 @@ func scpK3sBinary(nodeNames []VagrantNode) error {
 // CreateLocalCluster creates a cluster using the locally built k3s binary. The vagrant-scp plugin must be installed for
 // this function to work. The binary is deployed as an airgapped install of k3s on the VMs.
 func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, error) {
-
 	serverNodes, agentNodes, nodeEnvs := genNodeEnvs(nodeOS, serverCount, agentCount)
 
 	var testOptions string
@@ -431,6 +429,19 @@ func TailJournalLogs(lines int, nodes []VagrantNode) string {
 			fmt.Fprintf(logs, "** failed to read journald log for node %s ***\n%v\n", node, err)
 		} else {
 			fmt.Fprintf(logs, "** journald log for node %s ***\n%s\n", node, l)
+		}
+	}
+	return logs.String()
+}
+
+func TailPodLogs(lines int, nodes []VagrantNode) string {
+	logs := &strings.Builder{}
+	cmd := fmt.Sprintf("tail -n %d /var/log/pods/*/*/*", lines)
+	for _, node := range nodes {
+		if l, err := node.RunCmdOnNode(cmd); err != nil {
+			fmt.Fprintf(logs, "** failed to tail pod logs for node %s ***\n%v\n", node, err)
+		} else {
+			fmt.Fprintf(logs, "** pod logs for node %s ***\n%s\n", node, l)
 		}
 	}
 	return logs.String()
