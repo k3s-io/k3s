@@ -211,10 +211,15 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
 	argsMap["enable-bootstrap-token-auth"] = "true"
-	if authConfigFile := util.ArgValue("authorization-config", cfg.ExtraAPIArgs); authConfigFile == "" {
-		logrus.Warn("Not setting kube-apiserver 'authorization-mode' and 'anonymous-auth' flags due to user-provided 'authorization-config' file.")
+	if util.ArgValue("authorization-config", cfg.ExtraAPIArgs) == "" {
 		argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	} else {
+		logrus.Warn("Not setting kube-apiserver 'authorization-mode' flag due to user-provided 'authorization-config' file.")
+	}
+	if util.ArgValue("authentication-config", cfg.ExtraAPIArgs) == "" {
 		argsMap["anonymous-auth"] = "false"
+	} else {
+		logrus.Warn("Not setting kube-apiserver 'anonymous-auth' flag due to user-provided 'authentication-config' file.")
 	}
 	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
