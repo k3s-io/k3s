@@ -192,6 +192,12 @@ func EncryptionConfig(ctx context.Context, control *config.Control) http.Handler
 			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
+
+		if control.Runtime.Core == nil {
+			util.SendError(util.ErrCoreNotReady, resp, req, http.StatusServiceUnavailable)
+			return
+		}
+
 		encryptReq, err := getEncryptionRequest(req)
 		if err != nil {
 			util.SendError(err, resp, req, http.StatusBadRequest)
