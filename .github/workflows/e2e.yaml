@@ -101,8 +101,8 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: ${{ matrix.etest}}-journald-logs
-          path: tests/e2e/${{ matrix.etest }}/*-jlog.txt
+          name: e2e-${{ matrix.etest}}-logs
+          path: tests/e2e/${{ matrix.etest }}/*log.txt
           retention-days: 30
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
