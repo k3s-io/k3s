@@ -418,6 +418,11 @@ func GenReport(specReport ginkgo.SpecReport) {
 	fmt.Printf("%s", status)
 }
 
+func (v VagrantNode) TailPodLogs(lines int) (string, error) {
+	cmd := fmt.Sprintf("sh -c 'tail -n %d /var/log/pods/*/*/*'", lines)
+	return v.RunCmdOnNode(cmd)
+}
+
 func (v VagrantNode) GetJournalLogs() (string, error) {
 	cmd := "journalctl -u k3s* --no-pager"
 	return v.RunCmdOnNode(cmd)
@@ -434,6 +439,83 @@ func TailJournalLogs(lines int, nodes []VagrantNode) string {
 		}
 	}
 	return logs.String()
+}
+
+func SaveDocker(nodes []VagrantNode) error {
+	cmd := "sh -xc 'docker ps -a --no-trunc; docker info; journalctl -u containerd -u docker'"
+	for _, node := range nodes {
+		logs, err := node.RunCmdOnNode(cmd)
+		if err != nil {
+			logs = fmt.Sprintf("** failed to list docker containers and logs for node %s: %v **", node, err)
+		}
+		lf, err := os.Create(node.String() + "-dockerlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SaveKernel(nodes []VagrantNode) error {
+	cmd := "dmesg"
+	for _, node := range nodes {
+		logs, err := node.RunCmdOnNode(cmd)
+		if err != nil {
+			logs = fmt.Sprintf("** failed to read kernel message log for node %s: %v **", node, err)
+		}
+		lf, err := os.Create(node.String() + "-kernlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SaveNetwork(nodes []VagrantNode) error {
+	cmd := "sh -xc 'ip addr show; ip route show; ip neighbor show; iptables-save'"
+	for _, node := range nodes {
+		logs, err := node.RunCmdOnNode(cmd)
+		if err != nil {
+			logs = fmt.Sprintf("** failed to read network config for node %s: %v **", node, err)
+		}
+		lf, err := os.Create(node.String() + "-netlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TailPodLogs saves the pod logs of each node to a <NAME>-podlog.txt file.
+// When used in GHA CI, the logs are uploaded as an artifact on failure.
+func TailPodLogs(lines int, nodes []VagrantNode) error {
+	for _, node := range nodes {
+		logs, err := node.TailPodLogs(lines)
+		if err != nil {
+			logs = fmt.Sprintf("** failed to read pod logs for node %s: %v **", node, err)
+		}
+		lf, err := os.Create(node.String() + "-podlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SaveJournalLogs saves the journal logs of each node to a <NAME>-jlog.txt file.
@@ -497,9 +579,18 @@ func DumpNodes(kubeConfig string) {
 }
 
 func DumpPods(kubeConfig string) {
-	cmd := "kubectl get pods -o wide --no-headers -A"
+	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
 	res, _ := RunCommand(cmd)
 	fmt.Println(strings.TrimSpace(res))
+}
+
+func DescribePods(kubeConfig string) string {
+	cmd := "kubectl describe pod -A --kubeconfig=" + kubeConfig
+	res, err := RunCommand(cmd)
+	if err != nil {
+		return fmt.Sprintf("Failed to describe pods: %v", err)
+	}
+	return res
 }
 
 // RestartCluster restarts the k3s service on each node given
