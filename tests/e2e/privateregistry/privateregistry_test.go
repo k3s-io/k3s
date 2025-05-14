@@ -31,7 +31,7 @@ func Test_E2EPrivateRegistry(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Create Cluster Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Private Registry Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig
@@ -55,18 +55,14 @@ var _ = Describe("Verify Create", Ordered, func() {
 		})
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "620s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "10s").Should(Succeed())
 		})
 
@@ -82,38 +78,38 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 		})
-		// Mirror the image as NODEIP:5000/docker-io-library/nginx:1.27.3, but reference it as my-registry.local/library/nginx:1.27.3 -
+		// Mirror the image as NODEIP:5000/ghcr-io-library/nginx:1.26.2, but reference it as my-registry.local/library/nginx:1.26.2 -
 		// the rewrite in registries.yaml's entry for my-registry.local should ensure that it is rewritten properly when pulling from
 		// NODEIP:5000 as a mirror.
-		It("Should pull and image from dockerhub and send it to private registry", func() {
-			cmd := "docker pull docker.io/library/nginx:1.27.3"
+		It("Should pull and image from ghcr and send it to private registry", func() {
+			cmd := "docker pull ghcr.io/linuxserver/nginx:1.26.2"
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
 			nodeIP, err := tc.Servers[0].FetchNodeExternalIP()
 			Expect(err).NotTo(HaveOccurred())
 
-			cmd = "docker tag docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker tag ghcr.io/linuxserver/nginx:1.26.2 " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker push " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker push " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 
-			cmd = "docker image remove docker.io/library/nginx:1.27.3 " + nodeIP + ":5000/docker-io-library/nginx:1.27.3"
+			cmd = "docker image remove ghcr.io/linuxserver/nginx:1.26.2 " + nodeIP + ":5000/ghcr-io-library/nginx:1.26.2"
 			_, err = tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed: "+cmd)
 		})
 
 		It("Should create and validate deployment with private registry on", func() {
-			res, err := tc.Servers[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.27.3")
+			res, err := tc.Servers[0].RunCmdOnNode("kubectl create deployment my-webpage --image=my-registry.local/library/nginx:1.26.2")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			var pod corev1.Pod
 			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(tc.KubeConfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile)
 				for _, p := range pods {
 					if strings.Contains(p.Name, "my-webpage") {
 						pod = p
@@ -123,8 +119,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 				g.Expect(string(pod.Status.Phase)).Should(Equal("Running"))
 			}, "60s", "5s").Should(Succeed())
 
-			cmd := "curl " + pod.Status.PodIP
-			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to nginx!"))
+			cmd := "curl -m 5 -s -f http://" + pod.Status.PodIP
+			Expect(tc.Servers[0].RunCmdOnNode(cmd)).To(ContainSubstring("Welcome to our server"))
 		})
 
 	})
@@ -137,9 +133,9 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		Expect(e2e.SaveJournalLogs(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.SaveJournalLogs(tc.AllNodes())).To(Succeed())
 	} else {
-		Expect(e2e.GetCoverageReport(append(tc.Servers, tc.Agents...))).To(Succeed())
+		Expect(e2e.GetCoverageReport(tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		r1, err := tc.Servers[0].RunCmdOnNode("docker rm -f registry")
@@ -148,6 +144,6 @@ var _ = AfterSuite(func() {
 		Expect(err).NotTo(HaveOccurred(), r2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })

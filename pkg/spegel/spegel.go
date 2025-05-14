@@ -3,6 +3,7 @@ package spegel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener/cert"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -30,7 +32,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/metrics"
 	"github.com/spegel-org/spegel/pkg/oci"
@@ -55,6 +57,11 @@ var (
 	P2pEnableLatestEnv   = version.ProgramUpper + "_P2P_ENABLE_LATEST"
 
 	resolveLatestTag = false
+
+	// Agents request a list of peers when joining, and then again periodically afterwards.
+	// Limit the number of concurrent peer list requests that will be served simultaneously.
+	maxNonMutatingPeerInfoRequests = 20 // max concurrent get/list/watch requests
+	maxMutatingPeerInfoRequests    = 0  // max concurrent other requests; not used
 )
 
 // Config holds fields for a distributed registry
@@ -141,33 +148,33 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	ociOpts := []oci.Option{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
 	ociClient, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create OCI client")
+		return pkgerrors.WithMessage(err, "failed to create OCI client")
 	}
 
 	// create or load persistent private key
 	keyFile := filepath.Join(nodeConfig.Containerd.Opt, "peer.key")
 	keyBytes, _, err := cert.LoadOrGenerateKeyFile(keyFile, false)
 	if err != nil {
-		return errors.Wrap(err, "failed to load or generate p2p private key")
+		return pkgerrors.WithMessage(err, "failed to load or generate p2p private key")
 	}
 	privKey, err := cert.ParsePrivateKeyPEM(keyBytes)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse p2p private key")
+		return pkgerrors.WithMessage(err, "failed to parse p2p private key")
 	}
 	p2pKey, _, err := crypto.KeyPairFromStdKey(privKey)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert p2p private key")
+		return pkgerrors.WithMessage(err, "failed to convert p2p private key")
 	}
 
 	// create a peerstore to allow persisting nodes across restarts
 	peerFile := filepath.Join(nodeConfig.Containerd.Opt, "peerstore.db")
 	ds, err := leveldb.NewDatastore(peerFile, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to create peerstore datastore")
+		return pkgerrors.WithMessage(err, "failed to create peerstore datastore")
 	}
 	ps, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
 	if err != nil {
-		return errors.Wrap(err, "failed to create peerstore")
+		return pkgerrors.WithMessage(err, "failed to create peerstore")
 	}
 
 	// get latest tag configuration override
@@ -191,35 +198,37 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	routerAddr := net.JoinHostPort(c.ExternalAddress, routerPort)
 
 	logrus.Infof("Starting distributed registry P2P node at %s", routerAddr)
-	opts := []libp2p.Option{
+	opts := routing.WithLibP2POptions(
 		libp2p.Identity(p2pKey),
 		libp2p.Peerstore(ps),
 		libp2p.PrivateNetwork(c.PSK),
-	}
-	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts...)
+	)
+	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts)
 	if err != nil {
-		return errors.Wrap(err, "failed to create P2P router")
+		return pkgerrors.WithMessage(err, "failed to create P2P router")
 	}
 	go router.Run(ctx)
 
 	caCert, err := os.ReadFile(c.ServerCAFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to read server CA")
+		return pkgerrors.WithMessage(err, "failed to read server CA")
 	}
 	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
-	registryOpts := []registry.Option{
-		registry.WithLocalAddress(localAddr),
+	registryOpts := []registry.RegistryOption{
 		registry.WithResolveLatestTag(resolveLatestTag),
 		registry.WithResolveRetries(resolveRetries),
 		registry.WithResolveTimeout(resolveTimeout),
 		registry.WithTransport(client.Transport),
 		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
-	reg := registry.NewRegistry(ociClient, router, registryOpts...)
+	reg, err := registry.NewRegistry(ociClient, router, registryOpts...)
+	if err != nil {
+		return pkgerrors.WithMessage(err, "failed to create embedded registry")
+	}
 	regSvr, err := reg.Server(":" + c.RegistryPort)
 	if err != nil {
-		return errors.Wrap(err, "failed to create embedded registry server")
+		return pkgerrors.WithMessage(err, "failed to create embedded registry server")
 	}
 
 	// Track images available in containerd and publish via p2p router
@@ -230,7 +239,9 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		return err
 	}
 	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
-	mRouter.PathPrefix("/v1-{program}/p2p").Handler(c.peerInfo())
+	sRouter := mRouter.PathPrefix("/v1-{program}/p2p").Subrouter()
+	sRouter.Use(auth.MaxInFlight(maxNonMutatingPeerInfoRequests, maxMutatingPeerInfoRequests))
+	sRouter.Handle("", c.peerInfo())
 
 	// Wait up to 5 seconds for the p2p network to find peers. This will return
 	// immediately if the node is bootstrapping from itself.
@@ -247,7 +258,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 func (c *Config) peerInfo() http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		info, err := c.Bootstrapper.Get(req.Context())
-		if err != nil || len(info) == 0 {
+		if err != nil {
 			http.Error(resp, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -257,6 +268,11 @@ func (c *Config) peerInfo() http.HandlerFunc {
 			for _, ma := range ai.Addrs {
 				addrs = append(addrs, fmt.Sprintf("%s/p2p/%s", ma, ai.ID))
 			}
+		}
+
+		if len(addrs) == 0 {
+			http.Error(resp, "no peer addresses available", http.StatusServiceUnavailable)
+			return
 		}
 
 		client, _, _ := net.SplitHostPort(req.RemoteAddr)

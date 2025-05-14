@@ -19,6 +19,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/s3"
 	testutil "github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/mock"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -31,6 +32,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -47,7 +49,7 @@ func mustGetAddress() string {
 	return ipAddr.String()
 }
 
-func generateTestConfig() *config.Control {
+func generateTestConfig(t *testing.T) *config.Control {
 	hostname, _ := os.Hostname()
 	containerRuntimeReady := make(chan struct{})
 	close(containerRuntimeReady)
@@ -60,13 +62,14 @@ func generateTestConfig() *config.Control {
 	}
 	return &config.Control{
 		ServerNodeName:        hostname,
-		Runtime:               config.NewRuntime(containerRuntimeReady),
+		Runtime:               config.NewRuntime(),
 		HTTPSPort:             6443,
 		SupervisorPort:        6443,
 		AdvertisePort:         6443,
-		DataDir:               "/tmp/k3s/", // Different than the default value
+		DataDir:               t.TempDir(),
 		EtcdSnapshotName:      "etcd-snapshot",
 		EtcdSnapshotCron:      "0 */12 * * *",
+		EtcdSnapshotReconcile: metav1.Duration{Duration: 10 * time.Minute},
 		EtcdSnapshotRetention: 5,
 		EtcdS3: &config.EtcdS3{
 			Endpoint: "s3.amazonaws.com",
@@ -96,7 +99,7 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory exists",
 			args: args{
-				config: generateTestConfig(),
+				config: generateTestConfig(t),
 			},
 			setup: func(cnf *config.Control) error {
 				if err := testutil.GenerateDataDir(cnf); err != nil {
@@ -114,7 +117,7 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 		{
 			name: "directory does not exist",
 			args: args{
-				config: generateTestConfig(),
+				config: generateTestConfig(t),
 			},
 			setup: func(cnf *config.Control) error {
 				if err := testutil.GenerateDataDir(cnf); err != nil {
@@ -135,7 +138,9 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := NewETCD()
+
 			defer tt.teardown(tt.args.config)
 			if err := tt.setup(tt.args.config); err != nil {
 				t.Errorf("Prep for ETCD.IsInitialized() failed = %v", err)
@@ -173,7 +178,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "standard config",
 			args: args{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				handler: generateTestHandler(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -187,7 +192,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 		{
 			name: "with a tombstone file created",
 			args: args{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				handler: generateTestHandler(),
 			},
 			setup: func(cnf *config.Control) error {
@@ -213,6 +218,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := NewETCD()
 
 			defer tt.teardown(tt.args.config)
@@ -277,7 +283,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 		{
 			name: "nil clientAccessInfo and nil cron",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -291,7 +297,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				err := e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
@@ -302,7 +308,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 		{
 			name: "nil clientAccessInfo",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 				cron:    cron.New(),
@@ -316,7 +322,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				err := e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
@@ -327,7 +333,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 		{
 			name: "valid clientAccessInfo",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 				cron:    cron.New(),
@@ -348,7 +354,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				err := e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
 					return err
@@ -359,7 +365,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 		{
 			name: "existing cluster",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 				cron:    cron.New(),
@@ -375,7 +381,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				// RemoveSelf will fail with a specific error, but it still does cleanup for testing purposes
 				err := e.RemoveSelf(ctxInfo.ctx)
 				ctxInfo.cancel()
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				os.Remove(walDir(e.config))
 				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
@@ -387,6 +393,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := &ETCD{
 				client:  tt.fields.client,
 				config:  tt.fields.config,
@@ -397,11 +404,10 @@ func Test_UnitETCD_Start(t *testing.T) {
 			}
 
 			if err := tt.setup(e, &tt.fields.context); err != nil {
-				t.Errorf("Setup for ETCD.Start() failed = %v", err)
-				return
+				t.Fatalf("Setup for ETCD.Start() failed = %v", err)
 			}
 			if err := e.Start(tt.fields.context.ctx, tt.args.clientAccessInfo); (err != nil) != tt.wantErr {
-				t.Errorf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("ETCD.Start() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
 				memberAddr = e.address
@@ -447,7 +453,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "no server running",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -467,7 +473,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "unreachable server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -488,7 +494,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "learner server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -511,7 +517,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "corrupt server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -534,7 +540,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "leaderless server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -557,7 +563,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "normal server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -580,7 +586,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "alarm on other server",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -604,7 +610,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 		{
 			name: "slow defrag",
 			fields: fields{
-				config:  generateTestConfig(),
+				config:  generateTestConfig(t),
 				address: mustGetAddress(),
 				name:    "default",
 			},
@@ -627,6 +633,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mock.NewExecutorWithEmbeddedETCD(t)
 			e := &ETCD{
 				client:  tt.fields.client,
 				config:  tt.fields.config,

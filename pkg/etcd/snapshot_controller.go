@@ -2,19 +2,20 @@ package etcd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
-	k3s "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	apisv1 "github.com/k3s-io/api/k3s.cattle.io/v1"
+	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
+	controllersv1 "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
-	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	controllerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -90,14 +91,14 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 	sfKey := sf.GenerateConfigMapKey()
 	m, err := sf.Marshal()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal snapshot ConfigMap data")
+		return nil, pkgerrors.WithMessage(err, "failed to marshal snapshot ConfigMap data")
 	}
 	marshalledSnapshot := string(m)
 
 	snapshotConfigMap, err := e.configmaps.Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, errors.Wrap(err, "failed to get snapshot ConfigMap")
+			return nil, pkgerrors.WithMessage(err, "failed to get snapshot ConfigMap")
 		}
 		snapshotConfigMap = &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -142,7 +143,7 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 	}
 
 	if err != nil {
-		err = errors.Wrap(err, "failed to sync snapshot to ConfigMap")
+		err = pkgerrors.WithMessage(err, "failed to sync snapshot to ConfigMap")
 	}
 
 	return nil, err
@@ -157,14 +158,14 @@ func (e *etcdSnapshotHandler) onRemove(key string, esf *apisv1.ETCDSnapshotFile)
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, "failed to get snapshot ConfigMap")
+		return nil, pkgerrors.WithMessage(err, "failed to get snapshot ConfigMap")
 	}
 
 	sfKey := generateETCDSnapshotFileConfigMapKey(*esf)
 	if _, ok := snapshotConfigMap.Data[sfKey]; ok {
 		delete(snapshotConfigMap.Data, sfKey)
 		if _, err := e.configmaps.Update(snapshotConfigMap); err != nil {
-			return nil, errors.Wrap(err, "failed to remove snapshot from ConfigMap")
+			return nil, pkgerrors.WithMessage(err, "failed to remove snapshot from ConfigMap")
 		}
 	}
 	e.etcd.emitEvent(esf)
@@ -243,7 +244,7 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	snapshotConfigMap, err := e.configmaps.Get(metav1.NamespaceSystem, snapshotConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "failed to get snapshot ConfigMap")
+			return pkgerrors.WithMessage(err, "failed to get snapshot ConfigMap")
 		}
 		snapshotConfigMap = &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{

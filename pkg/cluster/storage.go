@@ -198,8 +198,12 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 
 	attempts := 0
 	tokenKey := storageKey(normalizedToken)
-	return wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+	return wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		attempts++
+
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
 		value, saveBootstrap, err := getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 		c.saveBootstrap = saveBootstrap
 		if err != nil {
@@ -244,6 +248,25 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 
 		return true, c.ReconcileBootstrapData(ctx, bytes.NewReader(data), &c.config.Runtime.ControlRuntimeBootstrap, false)
 	})
+}
+
+// getBootstrapData makes a single attempt to retrieve and decrypt bootstrap data from the datastore.
+func (c *Cluster) getBootstrapData(ctx context.Context, token string) ([]byte, error) {
+	storageClient, err := client.New(c.config.Runtime.EtcdConfig)
+	if err != nil {
+		return nil, err
+	}
+	defer storageClient.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	value, err := storageClient.Get(ctx, storageKey(token))
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypt(token, value.Data)
 }
 
 // getBootstrapKeyFromStorage will list all keys that has prefix /bootstrap and will check for key that is

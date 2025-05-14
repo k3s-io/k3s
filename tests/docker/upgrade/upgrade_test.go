@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,6 +20,7 @@ import (
 // the current commit build of K3s defined by <k3sImage>
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 var numServers = 1
@@ -71,7 +73,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(numAgents)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("should confirm latest version", func() {
 			for _, server := range config.Servers {
@@ -113,7 +115,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 		It("should confirm commit version", func() {
 			for _, server := range config.Servers {
@@ -127,7 +129,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 				cVersion = strings.Replace(cVersion, "-amd64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm64", "", 1)
 				cVersion = strings.Replace(cVersion, "-arm", "", 1)
-				cVersion = strings.Replace(cVersion, "-", "+", 1)
+				cVersion = strings.Replace(cVersion, "-k3s", "+k3s", 1)
 				Expect(out).To(ContainSubstring(cVersion))
 			}
 		})
@@ -146,7 +148,11 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if failed {
+		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
+	}
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })

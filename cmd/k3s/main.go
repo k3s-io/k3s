@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -20,11 +21,11 @@ import (
 	"github.com/k3s-io/k3s/pkg/flock"
 	"github.com/k3s-io/k3s/pkg/untar"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 var criDefaultConfigPath = "/etc/crictl.yaml"
@@ -51,7 +52,8 @@ func main() {
 	// Handle subcommand invocation (k3s server, k3s crictl, etc)
 	app := cmds.NewApp()
 	app.EnableBashCompletion = true
-	app.Commands = []cli.Command{
+	app.DisableSliceFlagSeparator = true
+	app.Commands = []*cli.Command{
 		cmds.NewServerCommand(internalCLIAction(version.Program+"-server"+programPostfix, dataDir, os.Args)),
 		cmds.NewAgentCommand(internalCLIAction(version.Program+"-agent"+programPostfix, dataDir, os.Args)),
 		cmds.NewKubectlCommand(externalCLIAction("kubectl", dataDir)),
@@ -172,7 +174,7 @@ func runCLIs(dataDir string) bool {
 // externalCLIAction returns a function that will call an external binary, be used as the Action of a cli.Command.
 func externalCLIAction(cmd, dataDir string) func(cli *cli.Context) error {
 	return func(cli *cli.Context) error {
-		return externalCLI(cmd, dataDir, cli.Args())
+		return externalCLI(cmd, dataDir, cli.Args().Slice())
 	}
 }
 
@@ -207,7 +209,7 @@ func stageAndRunCLI(cli *cli.Context, cmd string, dataDir string, args []string)
 func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) error {
 	dir, err := extract(dataDir)
 	if err != nil {
-		return errors.Wrap(err, "extracting data")
+		return pkgerrors.WithMessage(err, "extracting data")
 	}
 	logrus.Debugf("Asset dir %s", dir)
 

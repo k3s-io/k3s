@@ -514,8 +514,8 @@ get_pr_artifact_url() {
     # GET request to the GitHub API to retrieve the Build workflow associated with the commit
     run_id=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/commits/${commit_id}/check-runs?check_name=build%20%2F%20Build" | jq -r '[.check_runs | sort_by(.id) | .[].details_url | split("/")[7]] | last')
 
-    # Extract the artifact ID for the "k3s" artifact
-    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s") | .archive_download_url')
+    # Extract the artifact ID for the "k3s" (old) or "k3s-amd64" (new) artifact
+    GITHUB_PR_URL=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${github_api_url}/actions/runs/${run_id}/artifacts" | jq -r '.artifacts[] | select(.name == "k3s" or .name == "k3s-amd64") | .archive_download_url')
 }
 
 # --- download binary from github url ---
@@ -993,6 +993,7 @@ EnvironmentFile=-/etc/sysconfig/%N
 EnvironmentFile=-${FILE_K3S_ENV}
 KillMode=process
 Delegate=yes
+User=root
 # Having non-zero Limit*s causes performance problems due to accounting overhead
 # in the kernel. We recommend using cgroups to do container-local accounting.
 LimitNOFILE=1048576
@@ -1112,8 +1113,7 @@ has_working_xtables() {
 
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
-    if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ];
-    then
+    if ! grep -qs memory /sys/fs/cgroup/cgroup.controllers && ! [ "$(grep -s memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" = "1" ]; then
         info 'Failed to find memory cgroup, you may need to add "cgroup_memory=1 cgroup_enable=memory" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)'
     fi
 

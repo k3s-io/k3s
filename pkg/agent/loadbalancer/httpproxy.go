@@ -10,7 +10,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/version"
 	http_dialer "github.com/mwitkow/go-http-dialer"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/net/proxy"
@@ -32,14 +32,14 @@ func SetHTTPProxy(address string) error {
 
 	serverURL, err := url.Parse(address)
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse address %s", address)
+		return pkgerrors.WithMessagef(err, "failed to parse address %s", address)
 	}
 
 	// Call this directly instead of using the cached environment used by http.ProxyFromEnvironment to allow for testing
 	proxyFromEnvironment := httpproxy.FromEnvironment().ProxyFunc()
 	proxyURL, err := proxyFromEnvironment(serverURL)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get proxy for address %s", address)
+		return pkgerrors.WithMessagef(err, "failed to get proxy for address %s", address)
 	}
 	if proxyURL == nil {
 		logrus.Debug(version.ProgramUpper + "_AGENT_HTTP_PROXY_ALLOWED is true but no proxy is configured for URL " + serverURL.String())
@@ -48,7 +48,7 @@ func SetHTTPProxy(address string) error {
 
 	dialer, err := proxyDialer(proxyURL, defaultDialer)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create proxy dialer for %s", proxyURL)
+		return pkgerrors.WithMessagef(err, "failed to create proxy dialer for %s", proxyURL)
 	}
 
 	defaultDialer = dialer

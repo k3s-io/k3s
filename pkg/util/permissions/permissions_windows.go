@@ -6,7 +6,7 @@ package permissions
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"golang.org/x/sys/windows"
 )
 
@@ -27,7 +27,7 @@ func IsPrivileged() error {
 		0, 0, 0, 0, 0, 0,
 		&sid)
 	if err != nil {
-		return errors.Wrap(err, "failed to create Windows SID")
+		return pkgerrors.WithMessage(err, "failed to create Windows SID")
 	}
 	defer windows.FreeSid(sid)
 
@@ -36,7 +36,7 @@ func IsPrivileged() error {
 
 	member, err := token.IsMember(sid)
 	if err != nil {
-		return errors.Wrap(err, "failed to check group membership")
+		return pkgerrors.WithMessage(err, "failed to check group membership")
 	}
 
 	if !member {

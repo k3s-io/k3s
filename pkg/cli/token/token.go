@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,8 +20,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
+	pkgerrors "github.com/pkg/errors"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -69,8 +70,8 @@ func create(app *cli.Context, cfg *cmds.Token) error {
 		Token:       bts,
 		Description: cfg.Description,
 		TTL:         &metav1.Duration{Duration: cfg.TTL},
-		Usages:      cfg.Usages,
-		Groups:      cfg.Groups,
+		Usages:      cfg.Usages.Value(),
+		Groups:      cfg.Groups.Value(),
 	}
 
 	secretName := bootstraputil.BootstrapTokenSecretName(bt.Token.ID)
@@ -101,7 +102,7 @@ func Delete(app *cli.Context) error {
 
 func delete(app *cli.Context, cfg *cmds.Token) error {
 	args := app.Args()
-	if len(args) < 1 {
+	if args.Len() < 1 {
 		return errors.New("missing argument; 'token delete' is missing token")
 	}
 
@@ -111,7 +112,7 @@ func delete(app *cli.Context, cfg *cmds.Token) error {
 		return err
 	}
 
-	for _, token := range args {
+	for _, token := range args.Slice() {
 		if !bootstraputil.IsValidBootstrapTokenID(token) {
 			bts, err := kubeadm.NewBootstrapTokenString(cfg.Token)
 			if err != nil {
@@ -121,7 +122,7 @@ func delete(app *cli.Context, cfg *cmds.Token) error {
 		}
 		secretName := bootstraputil.BootstrapTokenSecretName(token)
 		if err := client.CoreV1().Secrets(metav1.NamespaceSystem).Delete(context.TODO(), secretName, metav1.DeleteOptions{}); err != nil {
-			return errors.Wrapf(err, "failed to delete bootstrap token %q", err)
+			return pkgerrors.WithMessagef(err, "failed to delete bootstrap token %q", err)
 		}
 
 		fmt.Printf("bootstrap token %q deleted\n", token)
@@ -218,7 +219,7 @@ func list(app *cli.Context, cfg *cmds.Token) error {
 
 	secrets, err := client.CoreV1().Secrets(metav1.NamespaceSystem).List(context.TODO(), listOptions)
 	if err != nil {
-		return errors.Wrapf(err, "failed to list bootstrap tokens")
+		return pkgerrors.WithMessagef(err, "failed to list bootstrap tokens")
 	}
 
 	tokens := make([]*kubeadm.BootstrapToken, len(secrets.Items))

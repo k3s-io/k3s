@@ -9,12 +9,14 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 var testID string
 
@@ -64,7 +66,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 	})
 
@@ -88,15 +90,19 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if failed {
+		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
+	}
 	if config != nil && !failed {
 		config.Cleanup()
 		cmd := fmt.Sprintf("docker stop k3s-pause-%s", testID)
 		_, err := tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
-		cmd = fmt.Sprintf("docker rm k3s-pause-%s", testID)
+		cmd = fmt.Sprintf("docker rm -v k3s-pause-%s", testID)
 		_, err = tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
-		cmd = fmt.Sprintf("docker volume ls -q | grep -F %s | xargs -r docker volume rm -f", testID)
+		cmd = fmt.Sprintf("docker volume rm k3s-pause-%s", testID)
 		_, err = tester.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
 	}

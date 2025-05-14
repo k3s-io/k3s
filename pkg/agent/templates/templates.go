@@ -109,10 +109,10 @@ enable_keychain = true
 {{end}}
 {{end}}
 
-{{- if not .NodeConfig.NoFlannel }}
+{{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins."io.containerd.grpc.v1.cri".cni]
-  bin_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIBinDir }}
-  conf_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIConfDir }}
+  {{ if .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIBinDir }}{{end}}
+  {{ if .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIConfDir }}{{end}}
 {{end}}
 
 {{- if or .NodeConfig.Containerd.BlockIOConfig .NodeConfig.Containerd.RDTConfig }}
@@ -198,13 +198,10 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
   sandbox = "{{ . }}"
 {{ end }}
 
-[plugins.'io.containerd.cri.v1.images'.registry]
-  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
-
-{{ if not .NodeConfig.NoFlannel }}
+{{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins.'io.containerd.cri.v1.runtime'.cni]
-  bin_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIBinDir }}
-  conf_dir = {{ printf "%q" .NodeConfig.AgentConfig.CNIConfDir }}
+  {{ with .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" . }}{{ end }}
+  {{ with .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" . }}{{ end }}
 {{ end }}
 
 {{ if or .NodeConfig.Containerd.BlockIOConfig .NodeConfig.Containerd.RDTConfig }}
@@ -237,10 +234,13 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{ end }}
 {{ end }}
 
+[plugins.'io.containerd.cri.v1.images'.registry]
+  config_path = {{ printf "%q" .NodeConfig.Containerd.Registry }}
+
 {{ if .PrivateRegistryConfig }}
 {{ range $k, $v := .PrivateRegistryConfig.Configs }}
 {{ with $v.Auth }}
-[plugins.'io.containerd.grpc.v1.cri'.registry.configs.'{{ $k }}'.auth]
+[plugins.'io.containerd.cri.v1.images'.registry.configs.'{{ $k }}'.auth]
   {{ with .Username }}username = {{ printf "%q" . }}{{ end }}
   {{ with .Password }}password = {{ printf "%q" . }}{{ end }}
   {{ with .Auth }}auth = {{ printf "%q" . }}{{ end }}

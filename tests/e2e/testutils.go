@@ -36,9 +36,13 @@ func VagrantSlice(v []VagrantNode) []string {
 
 type TestConfig struct {
 	Hardened       bool
-	KubeConfigFile string
+	KubeconfigFile string
 	Servers        []VagrantNode
 	Agents         []VagrantNode
+}
+
+func (tc *TestConfig) AllNodes() []VagrantNode {
+	return append(tc.Servers, tc.Agents...)
 }
 
 func (tc *TestConfig) Status() string {
@@ -48,7 +52,7 @@ func (tc *TestConfig) Status() string {
 	if tc.Hardened {
 		hardened = "Hardened: true\n"
 	}
-	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", hardened, tc.KubeConfigFile, sN, aN)
+	return fmt.Sprintf("%sKubeconfig: %s\nServers Nodes: %s\nAgents Nodes: %s\n)", hardened, tc.KubeconfigFile, sN, aN)
 }
 
 type Node struct {
@@ -129,7 +133,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		}
 	}
 	// Bring up the first server node
-	cmd := fmt.Sprintf(`%s %s vagrant up %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
+	cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
 	fmt.Println(cmd)
 	if _, err := RunCommand(cmd); err != nil {
 		return nil, newNodeError(cmd, serverNodes[0], err)
@@ -138,7 +142,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
 		fmt.Println(cmd)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
@@ -157,22 +161,21 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		return nil, err
 	}
 
-	// For startup test, we don't start the cluster, so check first before
-	// generating the kubeconfig file
+	// For startup test, we don't start the cluster, so check first before generating the kubeconfig file.
+	// Systemctl returns a exit code of 3 when the service is inactive, so we don't check for errors
+	// on the command itself.
 	var kubeConfigFile string
-	res, err := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	tc := &TestConfig{
-		KubeConfigFile: kubeConfigFile,
+		KubeconfigFile: kubeConfigFile,
 		Servers:        serverNodes,
 		Agents:         agentNodes,
 	}
@@ -221,7 +224,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
 		errg.Go(func() error {
 			if _, err := RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
@@ -262,14 +265,14 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	var err error
 	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeConfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	tc := &TestConfig{
-		KubeConfigFile: kubeConfigFile,
+		KubeconfigFile: kubeConfigFile,
 		Servers:        serverNodes,
 		Agents:         agentNodes,
 	}
@@ -291,7 +294,7 @@ func (tc TestConfig) DeployWorkload(workload string) (string, error) {
 	for _, f := range files {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {
-			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeConfigFile
+			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeconfigFile
 			return RunCommand(cmd)
 		}
 	}
@@ -367,16 +370,16 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 	return nodeip, nil
 }
 
-// GenKubeConfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
-func GenKubeConfigFile(nodeName string) (string, error) {
-	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
-	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeConfigFile)
+// GenKubeconfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
+func GenKubeconfigFile(nodeName string) (string, error) {
+	kubeconfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
+	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeconfigFile)
 	_, err := RunCommand(cmd)
 	if err != nil {
 		return "", err
 	}
 
-	kubeConfig, err := os.ReadFile(kubeConfigFile)
+	kubeConfig, err := os.ReadFile(kubeconfigFile)
 	if err != nil {
 		return "", err
 	}
@@ -389,14 +392,14 @@ func GenKubeConfigFile(nodeName string) (string, error) {
 		return "", err
 	}
 	modifiedKubeConfig = strings.Replace(modifiedKubeConfig, "127.0.0.1", nodeIP, 1)
-	if err := os.WriteFile(kubeConfigFile, []byte(modifiedKubeConfig), 0644); err != nil {
+	if err := os.WriteFile(kubeconfigFile, []byte(modifiedKubeConfig), 0644); err != nil {
 		return "", err
 	}
 
-	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+	if err := os.Setenv("E2E_KUBECONFIG", kubeconfigFile); err != nil {
 		return "", err
 	}
-	return kubeConfigFile, nil
+	return kubeconfigFile, nil
 }
 
 func GenReport(specReport ginkgo.SpecReport) {
@@ -487,37 +490,10 @@ func GetVagrantLog(cErr error) string {
 	return string(bytes) + nodeJournal
 }
 
-func ParseNodes(kubeConfig string, print bool) ([]Node, error) {
-	nodes := make([]Node, 0, 10)
-	nodeList := ""
-
+func DumpNodes(kubeConfig string) {
 	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
-	res, err := RunCommand(cmd)
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get nodes: %s: %v", res, err)
-	}
-	nodeList = strings.TrimSpace(res)
-	split := strings.Split(nodeList, "\n")
-	for _, rec := range split {
-		if strings.TrimSpace(rec) != "" {
-			fields := strings.Fields(rec)
-			node := Node{
-				Name:       fields[0],
-				Status:     fields[1],
-				Roles:      fields[2],
-				InternalIP: fields[5],
-			}
-			if len(fields) > 6 {
-				node.ExternalIP = fields[6]
-			}
-			nodes = append(nodes, node)
-		}
-	}
-	if print {
-		fmt.Println(nodeList)
-	}
-	return nodes, nil
+	res, _ := RunCommand(cmd)
+	fmt.Println(strings.TrimSpace(res))
 }
 
 func DumpPods(kubeConfig string) {

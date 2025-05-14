@@ -4,6 +4,7 @@
 package agent
 
 import (
+	"errors"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	kubeletconfig "k8s.io/kubelet/config/v1beta1"
@@ -77,6 +77,9 @@ func kubeletArgsAndConfig(cfg *config.Agent) (map[string]string, *kubeletconfig.
 	argsMap := map[string]string{
 		"config-dir": cfg.KubeletConfigDir,
 		"kubeconfig": cfg.KubeConfigKubelet,
+		// note: KubeletConfiguration will omit this field when marshalling if it is set to 0, so we set it via CLI
+		// https://github.com/k3s-io/k3s/issues/12164
+		"read-only-port": "0",
 	}
 
 	if cfg.RootDir != "" {

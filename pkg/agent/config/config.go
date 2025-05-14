@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -32,7 +33,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/rancher/wrangler/v3/pkg/slice"
@@ -247,7 +248,7 @@ func upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile string)
 func getKubeletServingCert(nodeName string, nodeIPs []net.IP, certFile, keyFile, nodePasswordFile string, info *clientaccess.Info) error {
 	csr, err := getCSRBytes(keyFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create certificate request %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to create certificate request %s", certFile)
 	}
 
 	basename := filepath.Base(certFile)
@@ -261,11 +262,11 @@ func getKubeletServingCert(nodeName string, nodeIPs []net.IP, certFile, keyFile,
 	// must be used instead of the one we signed the CSR with.
 	certBytes, keyBytes := splitCertKeyPEM(body)
 	if err := os.WriteFile(certFile, certBytes, 0600); err != nil {
-		return errors.Wrapf(err, "failed to write cert %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to write cert %s", certFile)
 	}
 	if len(keyBytes) > 0 {
 		if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write key %s", keyFile)
+			return pkgerrors.WithMessagef(err, "failed to write key %s", keyFile)
 		}
 	}
 	return nil
@@ -279,7 +280,7 @@ func getHostFile(filename string, info *clientaccess.Info) error {
 		return err
 	}
 	if err := os.WriteFile(filename, fileBytes, 0600); err != nil {
-		return errors.Wrapf(err, "failed to write cert %s", filename)
+		return pkgerrors.WithMessagef(err, "failed to write cert %s", filename)
 	}
 	return nil
 }
@@ -291,7 +292,7 @@ func getHostFile(filename string, info *clientaccess.Info) error {
 func getClientCert(certFile, keyFile string, info *clientaccess.Info) error {
 	csr, err := getCSRBytes(keyFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create certificate request %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to create certificate request %s", certFile)
 	}
 
 	basename := filepath.Base(certFile)
@@ -305,11 +306,11 @@ func getClientCert(certFile, keyFile string, info *clientaccess.Info) error {
 	// must be used instead of the one we signed the CSR with.
 	certBytes, keyBytes := splitCertKeyPEM(fileBytes)
 	if err := os.WriteFile(certFile, certBytes, 0600); err != nil {
-		return errors.Wrapf(err, "failed to write cert %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to write cert %s", certFile)
 	}
 	if len(keyBytes) > 0 {
 		if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write key %s", keyFile)
+			return pkgerrors.WithMessagef(err, "failed to write key %s", keyFile)
 		}
 	}
 	return nil
@@ -352,7 +353,7 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 func getKubeletClientCert(certFile, keyFile, nodeName string, nodeIPs []net.IP, nodePasswordFile string, info *clientaccess.Info) error {
 	csr, err := getCSRBytes(keyFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create certificate request %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to create certificate request %s", certFile)
 	}
 
 	basename := filepath.Base(certFile)
@@ -366,11 +367,11 @@ func getKubeletClientCert(certFile, keyFile, nodeName string, nodeIPs []net.IP, 
 	// must be used instead of the one we signed the CSR with.
 	certBytes, keyBytes := splitCertKeyPEM(body)
 	if err := os.WriteFile(certFile, certBytes, 0600); err != nil {
-		return errors.Wrapf(err, "failed to write cert %s", certFile)
+		return pkgerrors.WithMessagef(err, "failed to write cert %s", certFile)
 	}
 	if len(keyBytes) > 0 {
 		if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
-			return errors.Wrapf(err, "failed to write key %s", keyFile)
+			return pkgerrors.WithMessagef(err, "failed to write key %s", keyFile)
 		}
 	}
 	return nil
@@ -437,13 +438,13 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	controlConfig, err := getConfig(info)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to retrieve configuration from server")
+		return nil, pkgerrors.WithMessage(err, "failed to retrieve configuration from server")
 	}
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP)))
+		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP.Value())))
 		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, isIPv6); err != nil {
-			return nil, errors.Wrapf(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
+			return nil, pkgerrors.WithMessagef(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
 		}
 	}
 	apiServerURL := proxy.APIServerURL()
@@ -452,7 +453,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if controlConfig.FlannelBackend != config.FlannelBackendNone && len(envInfo.FlannelIface) > 0 {
 		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to find interface %s", envInfo.FlannelIface)
+			return nil, pkgerrors.WithMessagef(err, "unable to find interface %s", envInfo.FlannelIface)
 		}
 	}
 
@@ -482,7 +483,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
 
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -508,22 +509,22 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
 			}
 		} else {
-			return nil, errors.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
+			return nil, fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 		}
 
 		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
 		if len(vpnIPs) != 0 {
 			logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
-			if len(envInfo.NodeIP) != 0 {
+			if len(envInfo.NodeIP.Value()) != 0 {
 				logrus.Warn("VPN provider overrides configured node-ip parameter")
 			}
-			if len(envInfo.NodeExternalIP) != 0 {
+			if len(envInfo.NodeExternalIP.Value()) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
 			nodeIPs = vpnIPs
 			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
 			if err != nil {
-				return nil, errors.Wrapf(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
+				return nil, pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
 			}
 		}
 	}
@@ -536,7 +537,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP)
+	nodeExternalIPs, err := util.ParseStringSliceToIPs(envInfo.NodeExternalIP.Value())
 	if err != nil {
 		return nil, fmt.Errorf("invalid node-external-ip: %w", err)
 	}
@@ -558,12 +559,12 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	// Ask the server to sign our kubelet server cert.
 	if err := getKubeletServingCert(nodeName, nodeExternalAndInternalIPs, servingKubeletCert, servingKubeletKey, newNodePasswordFile, info); err != nil {
-		return nil, errors.Wrap(err, servingKubeletCert)
+		return nil, pkgerrors.WithMessage(err, servingKubeletCert)
 	}
 
 	// Ask the server to sign our kubelet client cert.
 	if err := getKubeletClientCert(clientKubeletCert, clientKubeletKey, nodeName, nodeIPs, newNodePasswordFile, info); err != nil {
-		return nil, errors.Wrap(err, clientKubeletCert)
+		return nil, pkgerrors.WithMessage(err, clientKubeletCert)
 	}
 
 	// Generate a kubeconfig for the kubelet.
@@ -577,7 +578,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	// Ask the server to sign our kube-proxy client cert.
 	if err := getClientCert(clientKubeProxyCert, clientKubeProxyKey, info); err != nil {
-		return nil, errors.Wrap(err, clientKubeProxyCert)
+		return nil, pkgerrors.WithMessage(err, clientKubeProxyCert)
 	}
 
 	// Generate a kubeconfig for kube-proxy.
@@ -591,7 +592,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 
 	// Ask the server to sign our agent controller client cert.
 	if err := getClientCert(clientK3sControllerCert, clientK3sControllerKey, info); err != nil {
-		return nil, errors.Wrap(err, clientK3sControllerCert)
+		return nil, pkgerrors.WithMessage(err, clientK3sControllerCert)
 	}
 
 	// Generate a kubeconfig for the agent controller.
@@ -660,7 +661,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	} else {
 		listenAddress, _, _, err := util.GetDefaultAddresses(nodeIPs[0])
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot configure IPv4/IPv6 node-ip")
+			return nil, pkgerrors.WithMessage(err, "cannot configure IPv4/IPv6 node-ip")
 		}
 		nodeConfig.AgentConfig.ListenAddress = listenAddress
 	}
@@ -691,7 +692,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if !nodeConfig.NoFlannel {
 		hostLocal, err := exec.LookPath("host-local")
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to find host-local")
+			return nil, pkgerrors.WithMessagef(err, "failed to find host-local")
 		}
 
 		if envInfo.FlannelConf == "" {
@@ -761,7 +762,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	nodeConfig.AgentConfig.PauseImage = envInfo.PauseImage
-	nodeConfig.AgentConfig.AirgapExtraRegistry = envInfo.AirgapExtraRegistry
+	nodeConfig.AgentConfig.AirgapExtraRegistry = envInfo.AirgapExtraRegistry.Value()
 	nodeConfig.AgentConfig.SystemDefaultRegistry = controlConfig.SystemDefaultRegistry
 
 	// Apply SystemDefaultRegistry to PauseImage and AirgapExtraRegistry
@@ -774,10 +775,10 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
-	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs
-	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs
-	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints
-	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels
+	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs.Value()
+	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs.Value()
+	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints.Value()
+	nodeConfig.AgentConfig.NodeLabels = envInfo.Labels.Value()
 	nodeConfig.AgentConfig.ImageCredProvBinDir = envInfo.ImageCredProvBinDir
 	nodeConfig.AgentConfig.ImageCredProvConfig = envInfo.ImageCredProvConfig
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
@@ -858,7 +859,7 @@ func getKubeProxyDisabled(ctx context.Context, node *config.Node, proxy proxy.Pr
 
 	controlConfig, err := getConfig(info)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to retrieve configuration from server")
+		return false, pkgerrors.WithMessage(err, "failed to retrieve configuration from server")
 	}
 
 	return controlConfig.DisableKubeProxy, nil

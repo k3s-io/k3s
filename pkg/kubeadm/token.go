@@ -1,10 +1,11 @@
 package kubeadm
 
 import (
+	"errors"
+
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
 )
@@ -18,11 +19,11 @@ var (
 // importing the cluster-bootstrap packages into the CLI.
 func SetDefaults(clx *cli.Context, cfg *cmds.Token) error {
 	if !clx.IsSet("groups") {
-		cfg.Groups = []string{NodeBootstrapTokenAuthGroup}
+		cfg.Groups = *cli.NewStringSlice(NodeBootstrapTokenAuthGroup)
 	}
 
 	if !clx.IsSet("usages") {
-		cfg.Usages = bootstrapapi.KnownTokenUsages
+		cfg.Usages = *cli.NewStringSlice(bootstrapapi.KnownTokenUsages...)
 	}
 
 	if cfg.Output == "" {
@@ -35,9 +36,8 @@ func SetDefaults(clx *cli.Context, cfg *cmds.Token) error {
 		}
 	}
 
-	args := clx.Args()
-	if len(args) > 0 {
-		cfg.Token = args[0]
+	if clx.Args().Len() > 0 {
+		cfg.Token = clx.Args().Get(0)
 	}
 
 	if cfg.Token == "" {

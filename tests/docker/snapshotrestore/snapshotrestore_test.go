@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/utils/set"
 )
 
-var k3sImage = flag.String("k3sImage", "rancher/systemd-node", "The image used to provision containers")
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
@@ -31,7 +31,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = tester.NewTestConfig("rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())
@@ -169,6 +169,9 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	if failed {
+		AddReportEntry("journald-logs", docker.TailJournalLogs(1000, append(config.Servers, config.Agents...)))
+	}
 	if *ci || (config != nil && !failed) {
 		Expect(config.Cleanup()).To(Succeed())
 	}

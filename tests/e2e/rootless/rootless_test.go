@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
@@ -22,11 +23,11 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 // Environment Variables Info:
 // E2E_RELEASE_VERSION=v1.27.1+k3s2 or nil for latest commit from master
 
-func Test_E2ERootlessStartupValidation(t *testing.T) {
+func Test_E2ERootless(t *testing.T) {
 	RegisterFailHandler(Fail)
 	flag.Parse()
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "Startup Test Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Rootless Test Suite", suiteConfig, reporterConfig)
 }
 
 var tc *e2e.TestConfig
@@ -94,40 +95,50 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS: " + *nodeOS)
 			By(tc.Status())
-			kubeConfigFile, err := GenRootlessKubeConfigFile(tc.Servers[0].String())
+			kubeConfigFile, err := GenRootlessKubeconfigFile(tc.Servers[0].String())
 			Expect(err).NotTo(HaveOccurred())
-			tc.KubeConfigFile = kubeConfigFile
+			tc.KubeconfigFile = kubeConfigFile
 		})
 
 		It("Checks node and pod status", func() {
 			By("Fetching Nodes status")
-			Eventually(func(g Gomega) {
-				nodes, err := e2e.ParseNodes(tc.KubeConfigFile, false)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, node := range nodes {
-					g.Expect(node.Status).Should(Equal("Ready"))
-				}
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
-			_, _ = e2e.ParseNodes(tc.KubeConfigFile, false)
+			e2e.DumpNodes(tc.KubeconfigFile)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeConfigFile)
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "360s", "5s").Should(Succeed())
-			e2e.DumpPods(tc.KubeConfigFile)
+			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
+			var res, logs string
+			var err error
 			Eventually(func() error {
-				_, err := e2e.RunCommand(cmd)
+				res, err = e2e.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
 				return err
-			}, "600s", "5s").Should(Succeed())
+			}, "300s", "10s").Should(Succeed(), "failed to get pod metrics: %s: %s", res, logs)
 		})
 
 		It("Returns node metrics", func() {
+			var res, logs string
+			var err error
 			cmd := "kubectl top node"
-			_, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				res, err = e2e.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
+				return err
+			}, "30s", "5s").Should(Succeed(), "failed to get node metrics: %s: %s", res, logs)
 		})
 
 		It("Runs an interactive command a pod", func() {
@@ -157,12 +168,71 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, tc.Servers))
+		Expect(SaveRootlessJournalLogs(tc.Servers)).To(Succeed())
 	} else {
 		Expect(e2e.GetCoverageReport(tc.Servers)).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeConfigFile)).To(Succeed())
+		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
 	}
 })
+
+// RunCmdOnRootlessNode executes a command from within the given node as user vagrant
+func RunCmdOnRootlessNode(cmd string, nodename string) (string, error) {
+	injectEnv := ""
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
+		injectEnv = "GOCOVERDIR=/tmp/k3scov "
+	}
+	runcmd := "vagrant ssh " + nodename + " -c \"" + injectEnv + cmd + "\""
+	out, err := e2e.RunCommand(runcmd)
+	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
+	// these are added to the command output and need to be removed
+	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
+	if err != nil {
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, nodename, out, err)
+	}
+	return out, nil
+}
+
+func GenRootlessKubeconfigFile(serverName string) (string, error) {
+	kubeConfig, err := RunCmdOnRootlessNode("cat /home/vagrant/.kube/k3s.yaml", serverName)
+	if err != nil {
+		return "", err
+	}
+	vNode := e2e.VagrantNode(serverName)
+	nodeIP, err := vNode.FetchNodeExternalIP()
+	if err != nil {
+		return "", err
+	}
+	kubeConfig = strings.Replace(kubeConfig, "127.0.0.1", nodeIP, 1)
+	kubeConfigFile := fmt.Sprintf("kubeconfig-%s", serverName)
+	if err := os.WriteFile(kubeConfigFile, []byte(kubeConfig), 0644); err != nil {
+		return "", err
+	}
+	if err := os.Setenv("E2E_KUBECONFIG", kubeConfigFile); err != nil {
+		return "", err
+	}
+	return kubeConfigFile, nil
+}
+
+// SaveRootlessJournalLogs saves the journal logs of each node to a <NAME>-jlog.txt file.
+// When used in GHA CI, the logs are uploaded as an artifact on failure.
+func SaveRootlessJournalLogs(nodes []e2e.VagrantNode) error {
+	for _, node := range nodes {
+		lf, err := os.Create(node.String() + "-jlog.txt")
+		if err != nil {
+			return err
+		}
+		defer lf.Close()
+		cmd := "vagrant ssh --no-tty " + node.String() + " -c \"journalctl -u --user k3s-rootless --no-pager\""
+		logs, err := e2e.RunCommand(cmd)
+		if err != nil {
+			return err
+		}
+		if _, err := lf.Write([]byte(logs)); err != nil {
+			return fmt.Errorf("failed to write %s node logs: %v", node, err)
+		}
+	}
+	return nil
+}

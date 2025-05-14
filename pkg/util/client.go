@@ -63,8 +63,11 @@ func GetUserAgent(controllerName string) string {
 }
 
 // SplitStringSlice is a helper function to handle StringSliceFlag containing multiple values
-// By default, StringSliceFlag only supports repeated values, not multiple values
+// By default, StringSliceFlag supports repeated values, and multiple values, seperated by a comma
 // e.g. --foo="bar,car" --foo=baz will result in []string{"bar", "car". "baz"}
+// However, we disable this with urfave/cli/v2, as controls are not granular enough. You can either have all flags
+// support comma separated values, or no flags. We can't have all flags support comma separated values
+// because our kube-XXX-arg flags need to pass the value "as is" to the kubelet/kube-apiserver etc.
 func SplitStringSlice(ss []string) []string {
 	result := []string{}
 	for _, s := range ss {

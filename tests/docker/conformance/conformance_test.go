@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,6 +21,7 @@ import (
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
 var db = flag.String("db", "", "The database to use for the tests (sqlite, etcd, mysql, postgres)")
 var serial = flag.Bool("serial", false, "Run the Serial Conformance Tests")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 func Test_DockerConformance(t *testing.T) {
@@ -93,7 +95,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			if !*serial {
 				Skip("Skipping serial conformance tests")
 			}
-			cmd := fmt.Sprintf("%s --focus=\"Serial\" --skip=\"Flaky\"  -v 2 --kubeconfig %s",
+			cmd := fmt.Sprintf("%s --focus=\"\\[Serial\\].*\\[Conformance\\]\" --skip=\"Flaky\" -v 2 --kubeconfig %s",
 				filepath.Join(config.TestDir, "hydrophone"),
 				config.KubeconfigFile)
 			By("Hydrophone: " + cmd)
@@ -103,10 +105,10 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 				cmd := fmt.Sprintf("kubectl exec -n=conformance e2e-conformance-test -c output-container --kubeconfig=%s -- cat /tmp/results/e2e.log | grep -o \"•\" | wc -l",
 					config.KubeconfigFile)
 				for i := 1; ; i++ {
-					time.Sleep(120 * time.Second)
 					if hc.ProcessState != nil {
 						break
 					}
+					time.Sleep(120 * time.Second)
 					res, _ := tester.RunCommand(cmd)
 					res = strings.TrimSpace(res)
 					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
@@ -123,8 +125,12 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if failed {
+		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
+	}
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })
 

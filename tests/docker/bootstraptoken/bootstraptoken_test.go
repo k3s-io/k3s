@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/tests"
+	"github.com/k3s-io/k3s/tests/docker"
 	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
+var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
 var config *tester.TestConfig
 
 func Test_DockerBootstrapToken(t *testing.T) {
@@ -30,7 +32,7 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+			}, "120s", "5s").Should(Succeed())
 		})
 	})
 
@@ -62,7 +64,11 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if config != nil && !failed {
-		config.Cleanup()
+	if failed {
+		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
+	}
+	if config != nil && (*ci || !failed) {
+		Expect(config.Cleanup()).To(Succeed())
 	}
 })

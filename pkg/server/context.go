@@ -6,10 +6,10 @@ import (
 	helmcrd "github.com/k3s-io/helm-controller/pkg/crd"
 	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
 	addoncrd "github.com/k3s-io/k3s/pkg/crd"
-	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
+	"github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/crd"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/apps"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/batch"
@@ -57,7 +57,7 @@ func NewContext(ctx context.Context, config *Config, forServer bool) (*Context, 
 	if forServer {
 		recorder = util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll)
 		if err := registerCrds(ctx, config, restConfig); err != nil {
-			return nil, errors.Wrap(err, "failed to register CRDs")
+			return nil, pkgerrors.WithMessage(err, "failed to register CRDs")
 		}
 	}
 

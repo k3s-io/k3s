@@ -1,6 +1,7 @@
 package nodepassword
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,7 +10,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/authenticator/hash"
 	"github.com/k3s-io/k3s/pkg/passwd"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -122,7 +123,7 @@ func MigrateFile(secretClient coreclient.SecretController, nodeClient coreclient
 	for _, nodeName := range nodeNames {
 		if pass, ok := passwd.Pass(nodeName); ok {
 			if err := Ensure(secretClient, nodeName, pass); err != nil {
-				logrus.Warn(errors.Wrapf(err, "error migrating node password entry for node '%s'", nodeName))
+				logrus.Warn(pkgerrors.WithMessagef(err, "error migrating node password entry for node '%s'", nodeName))
 			} else {
 				ensured++
 			}

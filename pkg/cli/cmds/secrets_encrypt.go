@@ -2,14 +2,15 @@ package cmds
 
 import (
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const SecretsEncryptCommand = "secrets-encrypt"
 
 var (
 	forceFlag = &cli.BoolFlag{
-		Name:        "f,force",
+		Name:        "force",
+		Aliases:     []string{"f"},
 		Usage:       "Force this stage.",
 		Destination: &ServerConfig.EncryptForce,
 	}
@@ -17,65 +18,61 @@ var (
 		DataDirFlag,
 		ServerToken,
 		&cli.StringFlag{
-			Name:        "server, s",
+			Name:        "server",
+			Aliases:     []string{"s"},
 			Usage:       "(cluster) Server to connect to",
-			EnvVar:      version.ProgramUpper + "_URL",
+			EnvVars:     []string{version.ProgramUpper + "_URL"},
 			Value:       "https://127.0.0.1:6443",
 			Destination: &ServerConfig.ServerURL,
 		},
 	}
 )
 
-func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
-		Name:           SecretsEncryptCommand,
-		Usage:          "Control secrets encryption and keys rotation",
-		SkipArgReorder: true,
-		Subcommands: []cli.Command{
+func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencrypt, rotateKeys func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
+		Name:  SecretsEncryptCommand,
+		Usage: "Control secrets encryption and keys rotation",
+		Subcommands: []*cli.Command{
 			{
-				Name:           "status",
-				Usage:          "Print current status of secrets encryption",
-				SkipArgReorder: true,
-				Action:         status,
+				Name:   "status",
+				Usage:  "Print current status of secrets encryption",
+				Action: status,
 				Flags: append(EncryptFlags, &cli.StringFlag{
-					Name:        "output,o",
-					Usage:       "Status format. Default: text. Optional: json",
+					Name:        "output",
+					Aliases:     []string{"o"},
+					Usage:       "Status format (valid values: text, json)",
 					Destination: &ServerConfig.EncryptOutput,
+					Value:       "text",
 				}),
 			},
 			{
-				Name:           "enable",
-				Usage:          "Enable secrets encryption",
-				SkipArgReorder: true,
-				Action:         enable,
-				Flags:          EncryptFlags,
+				Name:   "enable",
+				Usage:  "Enable secrets encryption",
+				Action: enable,
+				Flags:  EncryptFlags,
 			},
 			{
-				Name:           "disable",
-				Usage:          "Disable secrets encryption",
-				SkipArgReorder: true,
-				Action:         disable,
-				Flags:          EncryptFlags,
+				Name:   "disable",
+				Usage:  "Disable secrets encryption",
+				Action: disable,
+				Flags:  EncryptFlags,
 			},
 			{
-				Name:           "prepare",
-				Usage:          "Prepare for encryption keys rotation",
-				SkipArgReorder: true,
-				Action:         prepare,
-				Flags:          append(EncryptFlags, forceFlag),
+				Name:   "prepare",
+				Usage:  "Prepare for encryption keys rotation",
+				Action: prepare,
+				Flags:  append(EncryptFlags, forceFlag),
 			},
 			{
-				Name:           "rotate",
-				Usage:          "Rotate secrets encryption keys",
-				SkipArgReorder: true,
-				Action:         rotate,
-				Flags:          append(EncryptFlags, forceFlag),
+				Name:   "rotate",
+				Usage:  "Rotate secrets encryption keys",
+				Action: rotate,
+				Flags:  append(EncryptFlags, forceFlag),
 			},
 			{
-				Name:           "reencrypt",
-				Usage:          "Reencrypt all data with new encryption key",
-				SkipArgReorder: true,
-				Action:         reencrypt,
+				Name:   "reencrypt",
+				Usage:  "Reencrypt all data with new encryption key",
+				Action: reencrypt,
 				Flags: append(EncryptFlags,
 					forceFlag,
 					&cli.BoolFlag{
@@ -85,11 +82,10 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 					}),
 			},
 			{
-				Name:           "rotate-keys",
-				Usage:          "(experimental) Dynamically rotates secrets encryption keys and re-encrypt secrets",
-				SkipArgReorder: true,
-				Action:         rotateKeys,
-				Flags:          EncryptFlags,
+				Name:   "rotate-keys",
+				Usage:  "Dynamically rotates secrets encryption keys and re-encrypt secrets",
+				Action: rotateKeys,
+				Flags:  EncryptFlags,
 			},
 		},
 	}

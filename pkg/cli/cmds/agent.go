@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 type Agent struct {
@@ -56,7 +56,6 @@ type Agent struct {
 	Taints                   cli.StringSlice
 	ImageCredProvBinDir      string
 	ImageCredProvConfig      string
-	ContainerRuntimeReady    chan<- struct{}
 	AgentShared
 }
 
@@ -68,35 +67,37 @@ var (
 	appName        = filepath.Base(os.Args[0])
 	AgentConfig    Agent
 	AgentTokenFlag = &cli.StringFlag{
-		Name:        "token,t",
+		Name:        "token",
+		Aliases:     []string{"t"},
 		Usage:       "(cluster) Token to use for authentication",
-		EnvVar:      version.ProgramUpper + "_TOKEN",
+		EnvVars:     []string{version.ProgramUpper + "_TOKEN"},
 		Destination: &AgentConfig.Token,
 	}
 	NodeIPFlag = &cli.StringSliceFlag{
-		Name:  "node-ip,i",
-		Usage: "(agent/networking) IPv4/IPv6 addresses to advertise for node",
-		Value: &AgentConfig.NodeIP,
+		Name:        "node-ip",
+		Aliases:     []string{"i"},
+		Usage:       "(agent/networking) IPv4/IPv6 addresses to advertise for node",
+		Destination: &AgentConfig.NodeIP,
 	}
 	NodeExternalIPFlag = &cli.StringSliceFlag{
-		Name:  "node-external-ip",
-		Usage: "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
-		Value: &AgentConfig.NodeExternalIP,
+		Name:        "node-external-ip",
+		Usage:       "(agent/networking) IPv4/IPv6 external IP addresses to advertise for node",
+		Destination: &AgentConfig.NodeExternalIP,
 	}
 	NodeInternalDNSFlag = &cli.StringSliceFlag{
-		Name:  "node-internal-dns",
-		Usage: "(agent/networking) internal DNS addresses to advertise for node",
-		Value: &AgentConfig.NodeInternalDNS,
+		Name:        "node-internal-dns",
+		Usage:       "(agent/networking) internal DNS addresses to advertise for node",
+		Destination: &AgentConfig.NodeInternalDNS,
 	}
 	NodeExternalDNSFlag = &cli.StringSliceFlag{
-		Name:  "node-external-dns",
-		Usage: "(agent/networking) external DNS addresses to advertise for node",
-		Value: &AgentConfig.NodeExternalDNS,
+		Name:        "node-external-dns",
+		Usage:       "(agent/networking) external DNS addresses to advertise for node",
+		Destination: &AgentConfig.NodeExternalDNS,
 	}
 	NodeNameFlag = &cli.StringFlag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
-		EnvVar:      version.ProgramUpper + "_NODE_NAME",
+		EnvVars:     []string{version.ProgramUpper + "_NODE_NAME"},
 		Destination: &AgentConfig.NodeName,
 	}
 	WithNodeIDFlag = &cli.BoolFlag{
@@ -113,13 +114,13 @@ var (
 		Name:        "selinux",
 		Usage:       "(agent/node) Enable SELinux in containerd",
 		Destination: &AgentConfig.EnableSELinux,
-		EnvVar:      version.ProgramUpper + "_SELINUX",
+		EnvVars:     []string{version.ProgramUpper + "_SELINUX"},
 	}
 	LBServerPortFlag = &cli.IntFlag{
 		Name:        "lb-server-port",
 		Usage:       "(agent/node) Local port for supervisor client load-balancer. If the supervisor and apiserver are not colocated an additional port 1 less than this port will also be used for the apiserver client load-balancer.",
 		Destination: &AgentConfig.LBServerPort,
-		EnvVar:      version.ProgramUpper + "_LB_SERVER_PORT",
+		EnvVars:     []string{version.ProgramUpper + "_LB_SERVER_PORT"},
 		Value:       6444,
 	}
 	DockerFlag = &cli.BoolFlag{
@@ -184,40 +185,40 @@ var (
 	VPNAuth = &cli.StringFlag{
 		Name:        "vpn-auth",
 		Usage:       "(agent/networking) (experimental) Credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
-		EnvVar:      version.ProgramUpper + "_VPN_AUTH",
+		EnvVars:     []string{version.ProgramUpper + "_VPN_AUTH"},
 		Destination: &AgentConfig.VPNAuth,
 	}
 	VPNAuthFile = &cli.StringFlag{
 		Name:        "vpn-auth-file",
 		Usage:       "(agent/networking) (experimental) File containing credentials for the VPN provider. It must include the provider name and join key in the format name=<vpn-provider>,joinKey=<key>[,controlServerURL=<url>][,extraArgs=<args>]",
-		EnvVar:      version.ProgramUpper + "_VPN_AUTH_FILE",
+		EnvVars:     []string{version.ProgramUpper + "_VPN_AUTH_FILE"},
 		Destination: &AgentConfig.VPNAuthFile,
 	}
 	ResolvConfFlag = &cli.StringFlag{
 		Name:        "resolv-conf",
 		Usage:       "(agent/networking) Kubelet resolv.conf file",
-		EnvVar:      version.ProgramUpper + "_RESOLV_CONF",
+		EnvVars:     []string{version.ProgramUpper + "_RESOLV_CONF"},
 		Destination: &AgentConfig.ResolvConf,
 	}
 	ExtraKubeletArgs = &cli.StringSliceFlag{
-		Name:  "kubelet-arg",
-		Usage: "(agent/flags) Customized flag for kubelet process",
-		Value: &AgentConfig.ExtraKubeletArgs,
+		Name:        "kubelet-arg",
+		Usage:       "(agent/flags) Customized flag for kubelet process",
+		Destination: &AgentConfig.ExtraKubeletArgs,
 	}
 	ExtraKubeProxyArgs = &cli.StringSliceFlag{
-		Name:  "kube-proxy-arg",
-		Usage: "(agent/flags) Customized flag for kube-proxy process",
-		Value: &AgentConfig.ExtraKubeProxyArgs,
+		Name:        "kube-proxy-arg",
+		Usage:       "(agent/flags) Customized flag for kube-proxy process",
+		Destination: &AgentConfig.ExtraKubeProxyArgs,
 	}
 	NodeTaints = &cli.StringSliceFlag{
-		Name:  "node-taint",
-		Usage: "(agent/node) Registering kubelet with set of taints",
-		Value: &AgentConfig.Taints,
+		Name:        "node-taint",
+		Usage:       "(agent/node) Registering kubelet with set of taints",
+		Destination: &AgentConfig.Taints,
 	}
 	NodeLabels = &cli.StringSliceFlag{
-		Name:  "node-label",
-		Usage: "(agent/node) Registering and starting kubelet with set of labels",
-		Value: &AgentConfig.Labels,
+		Name:        "node-label",
+		Usage:       "(agent/node) Registering and starting kubelet with set of labels",
+		Destination: &AgentConfig.Labels,
 	}
 	ImageCredProvBinDirFlag = &cli.StringFlag{
 		Name:        "image-credential-provider-bin-dir",
@@ -258,8 +259,8 @@ var (
 	}
 )
 
-func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
-	return cli.Command{
+func NewAgentCommand(action func(ctx *cli.Context) error) *cli.Command {
+	return &cli.Command{
 		Name:      "agent",
 		Usage:     "Run node agent",
 		UsageText: appName + " agent [OPTIONS]",
@@ -275,23 +276,25 @@ func NewAgentCommand(action func(ctx *cli.Context) error) cli.Command {
 			&cli.StringFlag{
 				Name:        "token-file",
 				Usage:       "(cluster) Token file to use for authentication",
-				EnvVar:      version.ProgramUpper + "_TOKEN_FILE",
+				EnvVars:     []string{version.ProgramUpper + "_TOKEN_FILE"},
 				Destination: &AgentConfig.TokenFile,
 			},
 			&cli.StringFlag{
-				Name:        "server,s",
+				Name:        "server",
+				Aliases:     []string{"s"},
 				Usage:       "(cluster) Server to connect to",
-				EnvVar:      version.ProgramUpper + "_URL",
+				EnvVars:     []string{version.ProgramUpper + "_URL"},
 				Destination: &AgentConfig.ServerURL,
 			},
 			// Note that this is different from DataDirFlag used elswhere in the CLI,
 			// as this is bound to AgentConfig instead of ServerConfig.
 			&cli.StringFlag{
-				Name:        "data-dir,d",
+				Name:        "data-dir",
+				Aliases:     []string{"d"},
 				Usage:       "(agent/data) Folder to hold state",
 				Destination: &AgentConfig.DataDir,
 				Value:       "/var/lib/rancher/" + version.Program + "",
-				EnvVar:      version.ProgramUpper + "_DATA_DIR",
+				EnvVars:     []string{version.ProgramUpper + "_DATA_DIR"},
 			},
 			NodeNameFlag,
 			WithNodeIDFlag,

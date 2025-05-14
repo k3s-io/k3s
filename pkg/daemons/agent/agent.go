@@ -12,12 +12,13 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
-	"github.com/k3s-io/k3s/pkg/agent/util"
+	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/otiai10/copy"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/component-base/logs"
@@ -39,7 +40,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	defer logs.FlushLogs()
 
 	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
-		return errors.Wrap(err, "failed to start kubelet")
+		return pkgerrors.WithMessage(err, "failed to start kubelet")
 	}
 
 	go func() {
@@ -55,7 +56,7 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 
 func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap := kubeProxyArgs(cfg)
-	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraKubeProxyArgs)
 	logrus.Infof("Running kube-proxy %s", daemonconfig.ArgString(args))
 	return executor.KubeProxy(ctx, args)
 }
@@ -63,19 +64,19 @@ func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap, defaultConfig, err := kubeletArgsAndConfig(cfg)
 	if err != nil {
-		return errors.Wrap(err, "prepare default configuration drop-in")
+		return pkgerrors.WithMessage(err, "prepare default configuration drop-in")
 	}
 
 	extraArgs, err := extractConfigArgs(cfg.KubeletConfigDir, cfg.ExtraKubeletArgs, defaultConfig)
 	if err != nil {
-		return errors.Wrap(err, "prepare user configuration drop-ins")
+		return pkgerrors.WithMessage(err, "prepare user configuration drop-ins")
 	}
 
 	if err := writeKubeletConfig(cfg.KubeletConfigDir, defaultConfig); err != nil {
-		return errors.Wrap(err, "generate default kubelet configuration drop-in")
+		return pkgerrors.WithMessage(err, "generate default kubelet configuration drop-in")
 	}
 
-	args := daemonconfig.GetArgs(argsMap, extraArgs)
+	args := util.GetArgs(argsMap, extraArgs)
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
 
 	return executor.Kubelet(ctx, args)
@@ -135,8 +136,8 @@ func extractConfigArgs(path string, extraArgs []string, config *kubeletconfig.Ku
 	if strippedArgs["config"] != "" && !strings.HasPrefix(strippedArgs["config"], path) {
 		src := strippedArgs["config"]
 		dest := filepath.Join(path, "10-cli-config.conf")
-		if err := util.CopyFile(src, dest, false); err != nil {
-			return nil, errors.Wrapf(err, "copy config %q into managed drop-in dir %q", src, dest)
+		if err := agentutil.CopyFile(src, dest, false); err != nil {
+			return nil, pkgerrors.WithMessagef(err, "copy config %q into managed drop-in dir %q", src, dest)
 		}
 	}
 	// copy the config-dir into our managed config dir, unless its already in there
@@ -144,7 +145,7 @@ func extractConfigArgs(path string, extraArgs []string, config *kubeletconfig.Ku
 		src := strippedArgs["config-dir"]
 		dest := filepath.Join(path, "20-cli-config-dir")
 		if err := copy.Copy(src, dest, copy.Options{PreserveOwner: true}); err != nil {
-			return nil, errors.Wrapf(err, "copy config-dir %q into managed drop-in dir %q", src, dest)
+			return nil, pkgerrors.WithMessagef(err, "copy config-dir %q into managed drop-in dir %q", src, dest)
 		}
 	}
 	return args, nil
@@ -184,7 +185,6 @@ func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfig
 		NodeStatusReportFrequency:        metav1.Duration{Duration: time.Minute * 5},
 		NodeStatusUpdateFrequency:        metav1.Duration{Duration: time.Second * 10},
 		ProtectKernelDefaults:            cfg.ProtectKernelDefaults,
-		ReadOnlyPort:                     0,
 		RuntimeRequestTimeout:            metav1.Duration{Duration: time.Minute * 2},
 		StreamingConnectionIdleTimeout:   metav1.Duration{Duration: time.Hour * 4},
 		SyncFrequency:                    metav1.Duration{Duration: time.Minute},
@@ -248,11 +248,11 @@ func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfig
 		defaultConfig.StaticPodPath = cfg.PodManifests
 	}
 	if err := os.MkdirAll(defaultConfig.StaticPodPath, 0750); err != nil {
-		return nil, errors.Wrapf(err, "failed to create static pod manifest dir %s", defaultConfig.StaticPodPath)
+		return nil, pkgerrors.WithMessagef(err, "failed to create static pod manifest dir %s", defaultConfig.StaticPodPath)
 	}
 
 	if t, _, err := taints.ParseTaints(cfg.NodeTaints); err != nil {
-		return nil, errors.Wrap(err, "failed to parse node taints")
+		return nil, pkgerrors.WithMessage(err, "failed to parse node taints")
 	} else {
 		defaultConfig.RegisterWithTaints = t
 	}

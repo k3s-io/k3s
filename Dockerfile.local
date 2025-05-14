@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.23.4-alpine3.20
+ARG GOLANG=golang:1.24.2-alpine3.21
 FROM ${GOLANG} AS infra
 
 ARG http_proxy
@@ -9,7 +9,7 @@ ENV https_proxy=$https_proxy
 ENV no_proxy=$no_proxy
 
 RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
-    zlib-dev tar zip squashfs-tools npm coreutils python3 py3-pip openssl-dev libffi-dev libseccomp libseccomp-dev \
+    zlib-dev tar zip squashfs-tools npm coreutils openssl-dev libffi-dev libseccomp libseccomp-dev \
     libseccomp-static make libuv-static sqlite-dev sqlite-static libselinux libselinux-dev zlib-dev zlib-static \
     zstd pigz alpine-sdk binutils-gold btrfs-progs-dev btrfs-progs-static gawk yq pipx \
     && \
@@ -17,10 +17,8 @@ RUN apk -U --no-cache add bash git gcc musl-dev docker vim less file curl wget c
     apk -U --no-cache add mingw-w64-gcc; \
     fi
 
-RUN PIPX_BIN_DIR=/usr/local/bin pipx install awscli
-
-# this works for both go 1.17 and 1.18
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+# Install goimports
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.16.0
 RUN rm -rf /go/src /go/pkg
 
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
@@ -34,10 +32,14 @@ ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
 WORKDIR ${SRC_DIR}/
 
 
-FROM infra AS build
-
-ARG SKIP_VALIDATE
-
+FROM infra AS manifests
+ARG GIT_TAG
+ARG TREE_STATE
+ARG COMMIT
+ARG DIRTY
+ARG GOOS
+ENV NO_DAPPER=true
+# Used by both build and validate stages, better caching if we do this in a separate stage
 COPY ./scripts/ ./scripts
 COPY ./go.mod ./go.sum ./main.go ./
 COPY ./manifests ./manifests
@@ -45,9 +47,21 @@ RUN mkdir -p bin dist
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     ./scripts/download
 
+
+FROM manifests AS validate
+ARG SKIP_VALIDATE
+COPY . .
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    --mount=type=cache,id=lint,target=/root/.cache/golangci-lint \
+    ./scripts/validate
+
+
+FROM manifests AS build
+ARG GOCOVER
+ARG DEBUG
 COPY ./cmd ./cmd
 COPY ./tests ./tests
-COPY ./.git ./.git
 COPY ./pkg ./pkg
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
@@ -59,6 +73,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     ./scripts/package-cli
 
 RUN ./scripts/binary_size_check.sh
+
 
 FROM scratch AS result
 ENV SRC_DIR=/go/src/github.com/k3s-io/k3s

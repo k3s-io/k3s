@@ -3,6 +3,7 @@ package spegel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/routing"
@@ -81,14 +82,14 @@ func (c *agentBootstrapper) Run(ctx context.Context, id string) error {
 		withCert := clientaccess.WithClientCertificate(c.clientCert, c.clientKey)
 		info, err := clientaccess.ParseAndValidateToken(c.server, c.token, withCert)
 		if err != nil {
-			return errors.Wrap(err, "failed to validate join token")
+			return pkgerrors.WithMessage(err, "failed to validate join token")
 		}
 		c.info = info
 	}
 
 	client, err := util.GetClientSet(c.kubeConfig)
 	if err != nil {
-		return errors.Wrap(err, "failed to create kubernetes client")
+		return pkgerrors.WithMessage(err, "failed to create kubernetes client")
 	}
 	nodes := client.CoreV1().Nodes()
 
@@ -175,15 +176,20 @@ func (s *serverBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 	if nodeName == "" {
 		return nil, errors.New("node name not set")
 	}
+
 	nodes := s.controlConfig.Runtime.Core.Core().V1().Node()
-	labelSelector := labels.Set{P2pEnabledLabel: "true"}.String()
-	nodeList, err := nodes.List(metav1.ListOptions{LabelSelector: labelSelector})
+	if !nodes.Informer().HasSynced() {
+		return nil, errors.New("node cache informer not synced")
+	}
+
+	labelSelector := labels.Set{P2pEnabledLabel: "true"}.AsSelector()
+	nodeList, err := nodes.Cache().List(labelSelector)
 	if err != nil {
 		return nil, err
 	}
 
 	addrs := []peer.AddrInfo{}
-	for _, node := range nodeList.Items {
+	for _, node := range nodeList {
 		if node.Name == nodeName {
 			// don't return our own address
 			continue
@@ -208,7 +214,9 @@ type chainingBootstrapper struct {
 }
 
 // NewChainingBootstrapper returns a p2p bootstrapper that passes through to a list of bootstrappers.
-// Addressess are returned from all boostrappers that return successfully.
+// Addressess are returned from the first bootstrapper that returns successfully, to prevent infinite
+// recursion if this chains through an agentBootstrapper when the server URL is set to an external
+// loadbalancer that points back at this node.
 func NewChainingBootstrapper(bootstrappers ...routing.Bootstrapper) routing.Bootstrapper {
 	return &chainingBootstrapper{
 		bootstrappers: bootstrappers,
@@ -228,20 +236,16 @@ func (c *chainingBootstrapper) Run(ctx context.Context, id string) error {
 
 func (c *chainingBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 	errs := merr.Errors{}
-	addrs := []peer.AddrInfo{}
 	for i := range c.bootstrappers {
 		b := c.bootstrappers[i]
 		as, err := b.Get(ctx)
 		if err != nil {
 			errs = append(errs, err)
-		} else {
-			addrs = append(addrs, as...)
+		} else if len(as) != 0 {
+			return as, nil
 		}
 	}
-	if len(addrs) == 0 {
-		return nil, merr.NewErrors(errs...)
-	}
-	return addrs, nil
+	return nil, merr.NewErrors(errs...)
 }
 
 func waitForDone(ctx context.Context) error {

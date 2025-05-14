@@ -2,14 +2,13 @@ package util
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
@@ -52,15 +51,19 @@ func GetAddresses(endpoint *v1.Endpoints) []string {
 	return serverAddresses
 }
 
-// WaitForAPIServerReady waits for the API Server's /readyz endpoint to report "ok" with timeout.
+// WaitForAPIServerReady waits for the API server's /readyz endpoint to report "ok" with timeout.
 // This is modified from WaitForAPIServer from the Kubernetes controller-manager app, but checks the
 // readyz endpoint instead of the deprecated healthz endpoint, and supports context.
 func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout time.Duration) error {
-	var lastErr error
+	lastErr := errors.New("API server not polled")
 	restConfig, err := GetRESTConfig(kubeconfigPath)
 	if err != nil {
 		return err
 	}
+
+	// Probe apiserver readiness with a 15 second timeout
+	// https://github.com/kubernetes/kubernetes/blob/v1.24.0/cmd/kubeadm/app/util/staticpod/utils.go#L252
+	restConfig.Timeout = time.Second * 15
 
 	// By default, idle connections to the apiserver are returned to a global pool
 	// between requests.  Explicitly flag this client's request for closure so that
@@ -79,28 +82,42 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 		return err
 	}
 
-	err = wait.PollUntilContextTimeout(ctx, time.Second, timeout, true, func(ctx context.Context) (bool, error) {
-		healthStatus := 0
-		result := restClient.Get().AbsPath("/readyz").Do(ctx).StatusCode(&healthStatus)
-		if rerr := result.Error(); rerr != nil {
-			lastErr = errors.Wrap(rerr, "failed to get apiserver /readyz status")
-			return false, nil
-		}
-		if healthStatus != http.StatusOK {
-			content, _ := result.Raw()
-			lastErr = fmt.Errorf("APIServer isn't ready: %v", string(content))
-			logrus.Warnf("APIServer isn't ready yet: %v. Waiting a little while.", string(content))
+	err = wait.PollUntilContextTimeout(ctx, time.Second*2, timeout, true, func(ctx context.Context) (bool, error) {
+		// DoRaw returns an error if the response code is < 200 OK or > 206 Partial Content
+		if _, err := restClient.Get().AbsPath("/readyz").Param("verbose", "").DoRaw(ctx); err != nil {
+			if err.Error() != lastErr.Error() {
+				logrus.Infof("Polling for API server readiness: GET /readyz failed: %v", err)
+			} else {
+				logrus.Debug("Polling for API server readiness: GET /readyz failed: status unchanged")
+			}
+			lastErr = err
 			return false, nil
 		}
 
 		return true, nil
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		return merr.NewErrors(err, lastErr)
 	}
 
 	return nil
+}
+
+// APIServerReadyChan wraps WaitForAPIServerReady, returning a channel that
+// is closed when the apiserver is ready.  If the apiserver does not become
+// ready within the expected duration, a fatal error is raised.
+func APIServerReadyChan(ctx context.Context, kubeConfig string, timeout time.Duration) <-chan struct{} {
+	ready := make(chan struct{})
+
+	go func() {
+		defer close(ready)
+		if err := WaitForAPIServerReady(ctx, kubeConfig, timeout); err != nil {
+			logrus.Fatalf("Failed to wait for API server to become ready: %v", err)
+		}
+	}()
+
+	return ready
 }
 
 type genericAccessReviewRequest func(context.Context) (*authorizationv1.SubjectAccessReviewStatus, error)
