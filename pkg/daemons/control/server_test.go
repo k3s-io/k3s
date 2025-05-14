@@ -103,7 +103,7 @@ func Test_UnitServer(t *testing.T) {
 			},
 		},
 		{
-			name: "ControlPlane+Kine with authorization-config",
+			name: "ControlPlane+Kine with auth config",
 			setup: func(ctx context.Context, t *testing.T) (*config.Control, error) {
 				control, err := mockControl(ctx, t, false)
 				if err != nil {
@@ -114,10 +114,11 @@ func Test_UnitServer(t *testing.T) {
 
 				executor := mock.NewExecutorWithEmbeddedETCD(t)
 
-				// authorization-mode and anonymous-auth should not be set when user sets --authorization-config
-				control.ExtraAPIArgs = []string{"authorization-config=/dev/null"}
+				// authorization-mode and anonymous-auth should not be set when user sets --authorization-config and --authentication-config
+				control.ExtraAPIArgs = []string{"authorization-config=/dev/null", "authentication-config=/dev/null"}
 				matchAuthArgs := mock.GM(And(
 					ContainElement(ContainSubstring("--authorization-config")),
+					ContainElement(ContainSubstring("--authentication-config")),
 					Not(ContainElement(ContainSubstring("--authorization-mode"))),
 					Not(ContainElement(ContainSubstring("--anonymous-auth"))),
 				))
