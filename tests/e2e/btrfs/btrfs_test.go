@@ -75,6 +75,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if failed {
 		Expect(e2e.SaveJournalLogs(tc.Servers)).To(Succeed())
+		Expect(e2e.TailPodLogs(50, tc.AllNodes())).To(Succeed())
 	}
 	if !failed || *ci {
 		Expect(e2e.DestroyCluster()).To(Succeed())
