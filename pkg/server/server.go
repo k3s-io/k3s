@@ -48,6 +48,7 @@ func ResolveDataDir(dataDir string) (string, error) {
 // PrepareServer prepares the server for operation. This includes setting paths
 // in ControlConfig, creating any certificates not extracted from the bootstrap
 // data, and binding request handlers.
+// TEST
 func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
