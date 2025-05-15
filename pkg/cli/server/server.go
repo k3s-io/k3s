@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -601,6 +602,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	go cmds.WriteCoverage(ctx)
+
+	serverConfig.ControlConfig.Runtime.StartupHooksWg = &sync.WaitGroup{}
+	serverConfig.ControlConfig.Runtime.StartupHooksWg.Add(len(serverConfig.StartupHooks))
 
 	go func() {
 		if !serverConfig.ControlConfig.DisableETCD {
