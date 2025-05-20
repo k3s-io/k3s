@@ -20,7 +20,7 @@ K3s project uses the [GitHub flow](https://docs.github.com/en/get-started/quicks
 Every forked repository works independently, meaning that any contributor can create branches with the name they see fit. However, it is worth noting that K3s mirrors [Kubernetes version skew policy](https://kubernetes.io/releases/version-skew-policy/) by maintaining release branches for the most recent three minor releases. The only exception is that the main branch mirrors the latest Kubernetes release (1.23) instead of using a `release-` prefixed one.
 
 ```text
-master       -------------------------------------------. (Kubernetes 1.23)
+main         -------------------------------------------. (Kubernetes 1.23)
 release-1.21            \---------------|---------------. (Kubernetes 1.21)
 release-1.22                            \---------------. (Kubernetes 1.22)
 ```
@@ -74,23 +74,23 @@ Every time one wants to work on a new K3s feature, we do:
 In code it would look this way:
 
 ```sh
-## Get local master up to date
+## Get local main up to date
 # Assuming the k3s clone is the current working directory
 git fetch upstream
-git checkout master
-git rebase upstream/master
+git checkout main
+git rebase upstream/main
 
-## Create a new branch from master
+## Create a new branch from main
 git checkout -b myfeature
 ```
 
 ### Keeping local branches in sync
 
-Either when branching out from master or a release one, keep in mind it is worth checking if any change has been pushed upstream by doing:
+Either when branching out from main or a release one, keep in mind it is worth checking if any change has been pushed upstream by doing:
 
 ```sh
 git fetch upstream
-git rebase upstream/master
+git rebase upstream/main
 ```
 
 It is suggested to `fetch` then `rebase` instead of `pull` since the latter does a merge, which leaves merge commits. For this, one can consider changing the local repository configuration by doing `git config branch.autoSetupRebase always` to change the behavior of `git pull`, or another non-merge option such as `git pull --rebase`.

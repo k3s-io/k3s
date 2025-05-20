@@ -22,7 +22,7 @@ var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
-// E2E_RELEASE_VERSION=v1.28.0+k3s1 or nil for latest commit from master
+// E2E_RELEASE_VERSION=v1.28.0+k3s1 or nil for latest commit from main
 
 func Test_E2ESecretsEncryption(t *testing.T) {
 	RegisterFailHandler(Fail)

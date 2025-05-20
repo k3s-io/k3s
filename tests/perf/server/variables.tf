@@ -71,7 +71,7 @@ variable "db_version" {}
 
 variable "server_count" {
   default     = 1
-  description = "Count of k3s master servers"
+  description = "Count of k3s primary servers"
 }
 
 variable "debug" {
