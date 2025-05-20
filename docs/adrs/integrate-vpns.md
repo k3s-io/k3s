@@ -13,7 +13,7 @@ There are kubernetes use cases which require a kubernetes cluster to be deployed
 	* Having a baremetal cluster that requires, only in certain periods, to be extended with hyperscalers VMs to cope out with the demand
 	* Require cluster to include nodes in different hyperscalers due to resiliency reasons or legal requirements, e.g. GDPR
 
-As of today, k3s allows to deploy a cluster on a set of heterogeneous nodes by a simple and robust solution. This is achieved by using the [websocket proxy](https://github.com/k3s-io/k3s/blob/master/pkg/agent/run.go#L277) to connect the control-plane of the cluster, i.e. kube-api <==> kubelet, and a vpn-type flannel backend, e.g. wireguard, to connect the data-plane, i.e. pod <==> pod/node.
+As of today, k3s allows to deploy a cluster on a set of heterogeneous nodes by a simple and robust solution. This is achieved by using the [websocket proxy](https://github.com/k3s-io/k3s/blob/main/pkg/agent/run.go#L277) to connect the control-plane of the cluster, i.e. kube-api <==> kubelet, and a vpn-type flannel backend, e.g. wireguard, to connect the data-plane, i.e. pod <==> pod/node.
 
 The current solution works well but has a few limitations:
 	* It requires the server to have a public IP
