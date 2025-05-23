@@ -9,9 +9,20 @@ if [ "${OS}" != "linux" ]; then
   exit
 fi
 
+# Used by GHA to inject --platform=linux/(NON_x86_ARCH) on amd64 runners
+OPT_ARCH=${1:-""}
+if [ -n "${OPT_ARCH}" ]; then
+  ARCH=${OPT_ARCH}
+  if [ "${ARCH}" = "arm" ]; then
+    OPT_PLATFORM="--platform=linux/arm/v7"
+  else
+    OPT_PLATFORM="--platform=linux/${ARCH}"
+  fi
+fi
+
 airgap_image_file='scripts/airgap/image-list.txt'
 images=$(cat "${airgap_image_file}")
-xargs -n1 docker pull <<< "${images}"
+xargs -n1 docker pull ${OPT_PLATFORM} <<< "${images}"
 docker save ${images} -o dist/artifacts/k3s-airgap-images-${ARCH}.tar
 zstd --no-progress -T0 -16 -f --long=25 dist/artifacts/k3s-airgap-images-${ARCH}.tar -o dist/artifacts/k3s-airgap-images-${ARCH}.tar.zst
 pigz -v -c dist/artifacts/k3s-airgap-images-${ARCH}.tar > dist/artifacts/k3s-airgap-images-${ARCH}.tar.gz
