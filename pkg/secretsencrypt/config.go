@@ -257,7 +257,7 @@ func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccess
 	var lastFailure string
 
 	ctx := context.Background()
-	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, 120*time.Second, true, func(ctx context.Context) (bool, error) {
 		newReloadTime, newReloadSuccess, err := GetEncryptionConfigMetrics(runtime, false)
 		if err != nil {
 			return true, err
@@ -265,6 +265,7 @@ func WaitForEncryptionConfigReload(runtime *config.ControlRuntime, reloadSuccess
 
 		if newReloadSuccess <= reloadSuccesses || newReloadTime <= reloadTime {
 			lastFailure = fmt.Sprintf("apiserver has not reloaded encryption configuration (reload success: %d/%d, reload timestamp %d/%d)", newReloadSuccess, reloadSuccesses, newReloadTime, reloadTime)
+			logrus.Debugf("waiting for apiserver to reload encryption config: %s", lastFailure)
 			return false, nil
 		}
 		logrus.Infof("encryption config reloaded successfully %d times", newReloadSuccess)
@@ -297,7 +298,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 	// This is wrapped in a poller because on startup no metrics exist. Its only after the encryption config
 	// is modified and the first reload occurs that the metrics are available.
 	ctx := context.Background()
-	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
+	err = wait.PollUntilContextTimeout(ctx, 5*time.Second, 120*time.Second, true, func(ctx context.Context) (bool, error) {
 		data, err := restClient.Get().AbsPath("/metrics").DoRaw(ctx)
 		if err != nil {
 			return true, err
