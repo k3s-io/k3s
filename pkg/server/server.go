@@ -563,7 +563,6 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 		v, ok := node.Labels[util.ControlPlaneRoleLabelKey]
 		if !ok || v != "true" {
 			node.Labels[util.ControlPlaneRoleLabelKey] = "true"
-			node.Labels[util.MasterRoleLabelKey] = "true"
 		}
 
 		if config.ControlConfig.EncryptSecrets {
