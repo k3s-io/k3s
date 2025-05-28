@@ -490,11 +490,6 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 					SecurityContext:              securityContext,
 					Tolerations: []core.Toleration{
 						{
-							Key:      util.MasterRoleLabelKey,
-							Operator: "Exists",
-							Effect:   "NoSchedule",
-						},
-						{
 							Key:      util.ControlPlaneRoleLabelKey,
 							Operator: "Exists",
 							Effect:   "NoSchedule",
