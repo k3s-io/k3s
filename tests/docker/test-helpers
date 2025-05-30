@@ -528,12 +528,22 @@ run-go-test() {
     local delay=15
     (
       set +x
-      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-3} ]; do
+      while [ $(count-running-tests) -ge ${MAX_CONCURRENT_TESTS:-4} ]; do
           sleep $delay
       done
     )
+    
+    if [ "$LABEL" ]; then
+        exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0; fflush() }") \
+            2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0; fflush() }" >&2)
+    fi
 
     go test -timeout=45m -v "$@" &
+
+    # Reset LABEL
+    unset "LABEL"
+    exec >/dev/tty 2>/dev/tty
+
     pids+=($!)
 }
 export -f run-go-test
