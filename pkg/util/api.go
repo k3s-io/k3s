@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -46,6 +47,27 @@ func GetAddresses(endpoint *v1.Endpoints) []string {
 		}
 		for _, address := range subset.Addresses {
 			serverAddresses = append(serverAddresses, net.JoinHostPort(address.IP, port))
+		}
+	}
+	return serverAddresses
+}
+
+func GetAddressesFromSlices(slices ...discoveryv1.EndpointSlice) []string {
+	serverAddresses := []string{}
+	for _, slice := range slices {
+		var port string
+		if len(slice.Ports) > 0 && slice.Ports[0].Port != nil {
+			port = strconv.Itoa(int(*slice.Ports[0].Port))
+		}
+		if port == "" {
+			port = "443"
+		}
+		for _, endpoint := range slice.Endpoints {
+			if endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready == true {
+				for _, address := range endpoint.Addresses {
+					serverAddresses = append(serverAddresses, net.JoinHostPort(address, port))
+				}
+			}
 		}
 	}
 	return serverAddresses
