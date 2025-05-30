@@ -67,14 +67,10 @@ fi
 # ---
 
 if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v -ci
-  echo "Did go conformance sqlite serial $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v -ci
-  echo "Did go conformance etcd serial $?"
-  test-run-sonobuoy mysql serial
-  echo "Did test-run-sonobuoy-mysqk serial $?"
-  test-run-sonobuoy postgres serial
-  echo "Did test-run-sonobuoy-postgres serial $?"
+  LABEL="SERIAL SQLITE" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v -ci
+  LABEL="SERIAL ETCD" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v -ci
+  LABEL="SERIAL MYSQL" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db mysql -serial -ginkgo.v -ci
+  LABEL="SERIAL POSTGRES" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db postgres -serial -ginkgo.v -ci
 
   # Wait until all serial tests have finished
   delay=15
@@ -85,16 +81,10 @@ if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
   done
   )
 
-  E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
-  echo "Did test-run-sonobuoy parallel $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v -ci
-  echo "Did go conformance sqlite parallel $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v -ci
-  echo "Did go test conformance etcd parallel $?"
-  test-run-sonobuoy mysql parallel
-  echo "Did test-run-sonobuoy-mysql parallel $?"
-  test-run-sonobuoy postgres parallel
-  echo "Did test-run-sonobuoy-postgres parallel $?"
+  LABEL="PARALLEL SQLITE" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v -ci
+  LABEL="PARALLEL ETCD" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v -ci
+  LABEL="PARALLEL MYSQL" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db mysql -ginkgo.v -ci
+  LABEL="PARALLEL POSTGRES" run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db postgres -ginkgo.v -ci
 fi
 
 # Wait until all tests have finished
