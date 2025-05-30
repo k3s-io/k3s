@@ -116,6 +116,8 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 		"cluster-cidr":                     util.JoinIPNets(cfg.ClusterIPRanges),
 		"root-ca-file":                     runtime.ServerCA,
 		"profiling":                        "false",
+		"tls-cert-file":                    runtime.ServingKubeControllerCert,
+		"tls-private-key-file":             runtime.ServingKubeControllerKey,
 		"bind-address":                     cfg.Loopback(false),
 		"secure-port":                      "10257",
 		"use-service-account-credentials":  "true",
@@ -157,6 +159,8 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		"authentication-kubeconfig": runtime.KubeConfigScheduler,
 		"bind-address":              cfg.Loopback(false),
 		"secure-port":               "10259",
+		"tls-cert-file":             runtime.ServingKubeSchedulerCert,
+		"tls-private-key-file":      runtime.ServingKubeSchedulerKey,
 		"profiling":                 "false",
 	}
 	if cfg.NoLeaderElect {
@@ -207,8 +211,15 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["cert-dir"] = certDir
 	argsMap["allow-privileged"] = "true"
 	argsMap["enable-bootstrap-token-auth"] = "true"
-	if authConfigFile := util.ArgValue("authorization-config", cfg.ExtraAPIArgs); authConfigFile == "" {
+	if util.ArgValue("authorization-config", cfg.ExtraAPIArgs) == "" {
 		argsMap["authorization-mode"] = strings.Join([]string{modes.ModeNode, modes.ModeRBAC}, ",")
+	} else {
+		logrus.Warn("Not setting kube-apiserver 'authorization-mode' flag due to user-provided 'authorization-config' file.")
+	}
+	if util.ArgValue("authentication-config", cfg.ExtraAPIArgs) == "" {
+		argsMap["anonymous-auth"] = "false"
+	} else {
+		logrus.Warn("Not setting kube-apiserver 'anonymous-auth' flag due to user-provided 'authentication-config' file.")
 	}
 	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
@@ -249,7 +260,6 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	argsMap["requestheader-username-headers"] = "X-Remote-User"
 	argsMap["client-ca-file"] = runtime.ClientCA
 	argsMap["enable-admission-plugins"] = "NodeRestriction"
-	argsMap["anonymous-auth"] = "false"
 	argsMap["profiling"] = "false"
 	if cfg.EncryptSecrets {
 		argsMap["encryption-provider-config"] = runtime.EncryptionConfig

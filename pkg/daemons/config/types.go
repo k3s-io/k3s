@@ -31,7 +31,7 @@ const (
 	EgressSelectorModeCluster     = "cluster"
 	EgressSelectorModeDisabled    = "disabled"
 	EgressSelectorModePod         = "pod"
-	CertificateRenewDays          = 90
+	CertificateRenewDays          = 120
 	StreamServerPort              = "10010"
 )
 
@@ -64,6 +64,7 @@ type Node struct {
 type EtcdS3 struct {
 	AccessKey     string          `json:"accessKey,omitempty"`
 	Bucket        string          `json:"bucket,omitempty"`
+	BucketLookup  string          `json:"bucketLookup,omitempty"`
 	ConfigSecret  string          `json:"configSecret,omitempty"`
 	Endpoint      string          `json:"endpoint,omitempty"`
 	EndpointCA    string          `json:"endpointCA,omitempty"`
@@ -333,16 +334,20 @@ type ControlRuntime struct {
 	KubeConfigAPIServer       string
 	KubeConfigCloudController string
 
-	ServingKubeAPICert string
-	ServingKubeAPIKey  string
-	ServingKubeletKey  string
-	ServerToken        string
-	AgentToken         string
-	APIServer          http.Handler
-	Handler            http.Handler
-	HTTPBootstrap      http.Handler
-	Tunnel             http.Handler
-	Authenticator      authenticator.Request
+	ServingKubeAPICert        string
+	ServingKubeAPIKey         string
+	ServingKubeSchedulerCert  string
+	ServingKubeSchedulerKey   string
+	ServingKubeControllerCert string
+	ServingKubeControllerKey  string
+	ServingKubeletKey         string
+	ServerToken               string
+	AgentToken                string
+	APIServer                 http.Handler
+	Handler                   http.Handler
+	HTTPBootstrap             http.Handler
+	Tunnel                    http.Handler
+	Authenticator             authenticator.Request
 
 	EgressSelectorConfig  string
 	CloudControllerConfig string

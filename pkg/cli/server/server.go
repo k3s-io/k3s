@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -150,12 +151,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.ExtraEtcdArgs = cfg.ExtraEtcdArgs.Value()
 	serverConfig.ControlConfig.ExtraSchedulerAPIArgs = cfg.ExtraSchedulerArgs.Value()
 	serverConfig.ControlConfig.ClusterDomain = cfg.ClusterDomain
-	serverConfig.ControlConfig.Datastore.NotifyInterval = 5 * time.Second
-	serverConfig.ControlConfig.Datastore.EmulatedETCDVersion = etcdversion.Version
-	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CAFile = cfg.DatastoreCAFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
+	serverConfig.ControlConfig.Datastore.CompactBatchSize = 1000
+	serverConfig.ControlConfig.Datastore.CompactInterval = 5 * time.Minute
+	serverConfig.ControlConfig.Datastore.CompactMinRetain = 1000
+	serverConfig.ControlConfig.Datastore.CompactTimeout = 5 * time.Second
+	serverConfig.ControlConfig.Datastore.EmulatedETCDVersion = etcdversion.Version
+	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
+	serverConfig.ControlConfig.Datastore.NotifyInterval = 5 * time.Second
+	serverConfig.ControlConfig.Datastore.PollBatchSize = 500
 	serverConfig.ControlConfig.KineTLS = cfg.KineTLS
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
@@ -200,6 +206,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			serverConfig.ControlConfig.EtcdS3 = &config.EtcdS3{
 				AccessKey:     cfg.EtcdS3AccessKey,
 				Bucket:        cfg.EtcdS3BucketName,
+				BucketLookup:  cfg.EtcdS3BucketLookupType,
 				ConfigSecret:  cfg.EtcdS3ConfigSecret,
 				Endpoint:      cfg.EtcdS3Endpoint,
 				EndpointCA:    cfg.EtcdS3EndpointCA,
@@ -595,6 +602,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	go cmds.WriteCoverage(ctx)
+
+	serverConfig.ControlConfig.Runtime.StartupHooksWg = &sync.WaitGroup{}
+	serverConfig.ControlConfig.Runtime.StartupHooksWg.Add(len(serverConfig.StartupHooks))
 
 	go func() {
 		if !serverConfig.ControlConfig.DisableETCD {

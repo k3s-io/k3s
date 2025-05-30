@@ -36,6 +36,7 @@ def provision(vm, role, role_num, node_num)
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type} INSTALL_K3S_SKIP_START=true]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.config = <<~YAML
+        debug: true
         token: vagrant
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
@@ -48,6 +49,7 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.config = <<~YAML
         server: "https://#{NETWORK_PREFIX}.100:6443"
+        debug: true
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1

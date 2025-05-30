@@ -11,6 +11,12 @@ on:
         default: 'linux'
       upload-image:
         type: boolean
+        description: 'Build and upload k3s image (only works on arm64 or amd64)'
+        required: false
+        default: false
+      upload-build:
+        type: boolean
+        description: 'Upload contents of build/out, used to build the k3s image externally'
         required: false
         default: false
       cache:
@@ -45,7 +51,7 @@ jobs:
       if: inputs.arch == 'arm'
       uses: docker/setup-qemu-action@v3
       with:
-        platforms: linux/arm/v7
+        cache-image: false
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -70,7 +76,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build K3s Binary Native
-      if: inputs.arch != 'arm'
+      if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
           DOCKER_BUILD_SUMMARY: false
       uses: docker/build-push-action@v6
@@ -122,15 +128,20 @@ jobs:
         fi
     
     - name: Build K3s image
-      if: inputs.upload-image == true && inputs.os == 'linux'
+      if: inputs.upload-image == true && inputs.os == 'linux' && (inputs.arch == 'amd64' || inputs.arch == 'arm64')
       run: ./scripts/package-image
       
     - name: "Save K3s image"
       if: inputs.upload-image == true && inputs.os == 'linux'
       run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
-      
+
+    - name: "Save K3s build"
+      if: inputs.upload-build == true  && inputs.os == 'linux'
+      run: |
+        mv ./build/out/data-linux.tar.zst ./dist/artifacts/data-linux${{ env.ARCH_EXT }}.tar.zst
+
     - name: "Upload K3s Artifacts"
       uses: actions/upload-artifact@v4
       with:
         name: k3s${{ env.ARCH_EXT }}
-        path: dist/artifacts/k3s*
+        path: dist/artifacts/

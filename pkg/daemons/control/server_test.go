@@ -18,7 +18,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/mock"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	pkgerrors "github.com/pkg/errors"
+	etcdversion "go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/mock/gomock"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -101,7 +103,7 @@ func Test_UnitServer(t *testing.T) {
 			},
 		},
 		{
-			name: "ControlPlane+Kine with authorization-config",
+			name: "ControlPlane+Kine with auth config",
 			setup: func(ctx context.Context, t *testing.T) (*config.Control, error) {
 				control, err := mockControl(ctx, t, false)
 				if err != nil {
@@ -112,11 +114,13 @@ func Test_UnitServer(t *testing.T) {
 
 				executor := mock.NewExecutorWithEmbeddedETCD(t)
 
-				// authorization-mode should not be set when user sets --authorization-config
-				control.ExtraAPIArgs = []string{"authorization-config=/dev/null"}
+				// authorization-mode and anonymous-auth should not be set when user sets --authorization-config and --authentication-config
+				control.ExtraAPIArgs = []string{"authorization-config=/dev/null", "authentication-config=/dev/null"}
 				matchAuthArgs := mock.GM(And(
 					ContainElement(ContainSubstring("--authorization-config")),
+					ContainElement(ContainSubstring("--authentication-config")),
 					Not(ContainElement(ContainSubstring("--authorization-mode"))),
+					Not(ContainElement(ContainSubstring("--anonymous-auth"))),
 				))
 
 				// leader-elect should be disabled when using kine+sqlite
@@ -182,6 +186,15 @@ func mockControl(ctx context.Context, t *testing.T, clusterInit bool) (*config.C
 		ServerNodeName:       "k3s-server-1",
 		ServiceNodePortRange: &utilnet.PortRange{Base: 30000, Size: 2048},
 		Token:                "token",
+		Datastore: endpoint.Config{
+			CompactBatchSize:    1000,
+			CompactInterval:     5 * time.Minute,
+			CompactMinRetain:    1000,
+			CompactTimeout:      5 * time.Second,
+			EmulatedETCDVersion: etcdversion.Version,
+			NotifyInterval:      5 * time.Second,
+			PollBatchSize:       500,
+		},
 	}
 
 	if err := os.Chdir(control.DataDir); err != nil {
