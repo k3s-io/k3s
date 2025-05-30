@@ -128,6 +128,7 @@ func runControllers(ctx context.Context, config *Config) error {
 	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
 	controlConfig.Runtime.Core = sc.Core
+	controlConfig.Runtime.Discovery = sc.Discovery
 
 	for name, cb := range controlConfig.Runtime.ClusterControllerStarts {
 		go runOrDie(ctx, name, cb)

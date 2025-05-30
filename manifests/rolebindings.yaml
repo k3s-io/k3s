@@ -55,6 +55,14 @@ rules:
   - list
   - get
   - watch
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - get
+  - watch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
