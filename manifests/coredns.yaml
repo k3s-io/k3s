@@ -118,6 +118,12 @@ spec:
           labelSelector:
             matchLabels:
               k8s-app: kube-dns
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              k8s-app: kube-dns
       containers:
       - name: coredns
         image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:1.12.1"
