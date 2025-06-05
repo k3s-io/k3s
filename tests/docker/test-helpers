@@ -534,15 +534,22 @@ run-go-test() {
     )
     
     if [ "$LABEL" ]; then
+         # Save original stdout and stderr
+        exec 3>&1
+        exec 4>&2
+
         exec > >(awk "{ printf \"[\033[36m${LABEL}\033[m] %s\n\", \$0; fflush() }") \
             2> >(awk "{ printf \"[\033[35m${LABEL}\033[m] %s\n\", \$0; fflush() }" >&2)
     fi
 
     go test -timeout=45m -v "$@" &
 
-    # Reset LABEL
-    unset "LABEL"
-    exec >/dev/tty 2>/dev/tty
+    if [ "$LABEL" ]; then
+        # Reset LABEL and restore stdout and stderr
+        unset "LABEL"
+        exec 1>&3 2>&4
+        exec 3>&- 4>&-
+    fi
 
     pids+=($!)
 }
