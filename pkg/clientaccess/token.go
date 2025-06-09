@@ -433,6 +433,11 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// get an empty CA bundle. or if the dynamiclistener cert is incorrectly signed.
 	_, err = get(url, GetHTTPClient(cacerts, "", ""), "", "", "")
 	if err != nil {
+		var cierr x509.CertificateInvalidError
+		if errors.As(err, &cierr) && cierr.Reason == x509.Expired {
+			logrus.Warnf("Ignoring expired server certificate during CA cert validation: %v", err)
+			return cacerts, nil
+		}
 		return nil, pkgerrors.WithMessage(err, "CA cert validation failed")
 	}
 
