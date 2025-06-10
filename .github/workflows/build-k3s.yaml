@@ -31,13 +31,15 @@ on:
 #   packages: write
 # If using the cache: read option, you will need:
 #   packages: read
-
-
+permissions:
+  contents: read
 
 jobs:
   build:
     name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
     runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    permissions:
+      packages: write
     timeout-minutes: 20
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
