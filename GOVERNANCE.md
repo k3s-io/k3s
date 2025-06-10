@@ -28,7 +28,7 @@ K3s and its leadership embrace the following values:
 
 ## Community Roles
 
-* **Users**: Members that engage with the K3s community via any medium (Slack, WeChat, GitHub, mailing lists, etc.).
+* **Users**: Members that engage with the K3s community via any medium (Slack, GitHub, mailing lists, etc.).
 
 * **Contributors**: Regular contributions to projects (documentation, code reviews, responding to issues, participation in proposal discussions, contributing code, etc.). Contributors are potential Maintainers.
 
@@ -52,9 +52,8 @@ The collective team of all Maintainers is known as the Maintainer Council, which
 
 ### Becoming a Maintainer
 
-To become a Maintainer you need to demonstrate the following:
+Anyone is eligible to become a Maintainer, you need to demonstrate a few or more of the following:
 
-* Anyone is eligible to become a K3s Maintainer  
 * demonstrate availability and capability to meet the Maintainer expectations above  
 * commitment to the project:  
   * participate in discussions, community meeting, contributions, code and documentation reviews for period 6 months or more,  
@@ -92,7 +91,7 @@ A Maintainer may be removed at any time by a [supermajority](#Supermajority) vot
 Depending on the reason for removal, a Maintainer may be converted to Emeritus status.  Emeritus Maintainers will still be consulted on some project matters, and can be rapidly returned   
 to Maintainer status if their availability changes.
 
-Reviewer  
+## Reviewer  
 Reviewers are able to review code for quality and correctness on some part of a subproject. They are knowledgeable about both the codebase and software engineering principles.
 
 **Requirements**
@@ -155,7 +154,7 @@ Ideally, all project decisions are resolved by consensus. If impossible, any Mai
 
 In case of situation with not enough participation from maintainer for **non** critical decision we can lower the supermajority to [**simple majority**](#simple-majority).
 
-For any **critital** decisions [CNCF TOC](https://www.cncf.io/people/technical-oversight-committee/) should be consulted for appravals and moving forward.
+For any **critital** decisions [CNCF TOC](https://www.cncf.io/people/technical-oversight-committee/) should be consulted for approvals and moving forward.
 
 ## Voting requirements:
 
@@ -165,7 +164,7 @@ For any **critital** decisions [CNCF TOC](https://www.cncf.io/people/technical-o
 
 * Requesting CNCF resources: [Simple majority](#simple-majority)
 
-* Charter changes: [Supermajority](#Supermajority)
+* Charter and Governance: [Supermajority](#Supermajority)
 
 If a vote does not meet quorum (e.g., fewer than 50% of Maintainers vote), the vote may be postponed or escalated to a follow-up meeting.
 
@@ -212,7 +211,7 @@ Any Maintainer may suggest a request for CNCF resources, either in the [mailing 
 
 ## Code of Conduct
 
-[Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md) violations by community members will be discussed and resolved on the [private Maintainer mailing list](http://TODO).  If a Maintainer is directly involved in the report, the Maintainers will instead designate two Maintainers to work with the CNCF Code of Conduct Committee in resolving it.
+[Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md) violations by community members will be discussed and resolved on the [private Maintainer mailing list](https://lists.cncf.io/g/cncf-k3s-maintainers).  If a Maintainer is directly involved in the report, the Maintainers will instead designate two Maintainers to work with the CNCF Code of Conduct Committee in resolving it.
 
 ## Security Response Team
 
