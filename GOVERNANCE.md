@@ -118,7 +118,14 @@ User \-\> Contributor \-\> Reviewer \-\> Maintainer
 
 ## Supermajority
 
-A **supermajority** is defined as two-thirds of members in the group. A supermajority of Maintainers is required for certain decisions as outlined above. Voting on decisions can happen on the mailing list, GitHub, Slack, email, or via a voting service, when appropriate. Maintainers can either vote "agree, yes, \+1", "disagree, no, \-1", or "abstain". A vote passes when supermajority is met. An abstain vote equals not voting at all.
+A **supermajority** is defined as two-thirds (2/3) of active Maintainers. A supermajority is calculated based on the number of votes cast, excluding abstentions.
+
+Maintainers may vote "agree / yes / +1", "disagree / no / -1", or "abstain". An "abstain" vote does not count toward the total used to calculate the supermajority — it is equivalent to not voting.
+
+A vote passes when at least two-thirds of the non-abstaining votes are in favor within the voting period.
+
+Votes must be cast within a defined voting period (e.g., 7 calendar days). If a quorum (more than 50% of active Maintainers) is not met during this period, the vote is considered invalid and may be rescheduled.
+
 Examples:
 | Votes Cast | Yes Votes | No Votes | Required Yes Votes (≥2/3) | Result               |
 |------------|-----------|----------|----------------------------|----------------------|
