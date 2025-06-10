@@ -4,11 +4,13 @@ on:
     - cron: '0 20 * * *'
   workflow_dispatch:
 permissions:
-  contents: write
-  issues: write
+  contents: read
 jobs:
   stalebot:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
     steps:
       - name: Close Stale Issues
         uses: actions/stale@v9.1.0
