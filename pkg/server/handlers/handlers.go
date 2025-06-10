@@ -23,11 +23,13 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/user"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	typeddiscoveryv1 "k8s.io/client-go/kubernetes/typed/discovery/v1"
 )
 
 func CACerts(config *config.Control) http.Handler {
@@ -317,20 +319,21 @@ type addressGetter func(ctx context.Context) <-chan []string
 
 // kubernetesGetter returns a function that returns a channel that can be read to get apiserver addresses from kubernetes endpoints
 func kubernetesGetter(control *config.Control) addressGetter {
-	var endpointsClient typedcorev1.EndpointsInterface
+	var endpointSliceClient typeddiscoveryv1.EndpointSliceInterface
+	labelSelector := labels.Set{discoveryv1.LabelServiceName: "kubernetes"}.String()
 	return func(ctx context.Context) <-chan []string {
 		ch := make(chan []string, 1)
 		go func() {
-			if endpointsClient == nil {
+			if endpointSliceClient == nil {
 				if control.Runtime.K8s != nil {
-					endpointsClient = control.Runtime.K8s.CoreV1().Endpoints(metav1.NamespaceDefault)
+					endpointSliceClient = control.Runtime.K8s.DiscoveryV1().EndpointSlices(metav1.NamespaceDefault)
 				}
 			}
-			if endpointsClient != nil {
-				if endpoint, err := endpointsClient.Get(ctx, "kubernetes", metav1.GetOptions{}); err != nil {
+			if endpointSliceClient != nil {
+				if endpointSlices, err := endpointSliceClient.List(ctx, metav1.ListOptions{LabelSelector: labelSelector}); err != nil {
 					logrus.Debugf("Failed to get apiserver addresses from kubernetes: %v", err)
 				} else {
-					ch <- util.GetAddresses(endpoint)
+					ch <- util.GetAddressesFromSlices(endpointSlices.Items...)
 				}
 			}
 			close(ch)
