@@ -126,6 +126,8 @@ A vote passes when at least two-thirds of the non-abstaining votes are in favor 
 
 Votes must be cast within a defined voting period (e.g., 7 calendar days). If a quorum (more than 50% of active Maintainers) is not met during this period, the vote is considered invalid and may be rescheduled.
 
+Failure to vote on major decisions will be considered a sign of inactivity and may indicate that a Maintainer is not fulfilling their responsibilities. This behavior will be taken into account during periodic reviews of Maintainer status.
+
 Examples:
 | Votes Cast | Yes Votes | No Votes | Required Yes Votes (≥2/3) | Result               |
 |------------|-----------|----------|----------------------------|----------------------|
