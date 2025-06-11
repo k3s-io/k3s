@@ -578,8 +578,8 @@ github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83/go.mod h1:v6o7
 github.com/euank/go-kmsg-parser v2.0.0+incompatible h1:cHD53+PLQuuQyLZeriD1V/esuG4MuU0Pjs5y6iknohY=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible/go.mod h1:MhmAMZ8V4CYH4ybgdRwPr2TU5ThnS43puaKEMpja1uw=
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
-github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
-github.com/evanphx/json-patch v5.9.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
+github.com/evanphx/json-patch v5.9.11+incompatible h1:ixHHqfcGvxhWkniF1tWxBHA0yb4Z+d1UQi45df52xW8=
+github.com/evanphx/json-patch v5.9.11+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d h1:105gxyaGwCFad8crR9dcMQWvV9Hvulu6hwUh4tWPJnM=
 github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d/go.mod h1:ZZMPRZwes7CROmyNKgQzC3XPs6L/G2EJLHddWejkmf4=
 github.com/expr-lang/expr v1.17.2 h1:o0A99O/Px+/DTjEnQiodAgOIK9PPxL8DtXhBRKC+Iso=
@@ -1552,10 +1552,10 @@ github.com/quic-go/quic-go v0.50.1 h1:unsgjFIUqW8a2oopkY7YNONpV1gYND6Nt9hnt1PN94
 github.com/quic-go/quic-go v0.50.1/go.mod h1:Vim6OmUvlYdwBhXP9ZVrtGmCMWa3wEqhq3NgYrI8b4E=
 github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66 h1:4WFk6u3sOT6pLa1kQ50ZVdm8BQFgJNA117cepZxtLIg=
 github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66/go.mod h1:Vp72IJajgeOL6ddqrAhmp7IM9zbTcgkQxD/YdxrVwMw=
-github.com/rancher/dynamiclistener v0.6.0-rc1 h1:Emwf9o7PMLdQNv4lvFx7xJKxDuDa4Y69GvVEGU9U9Js=
-github.com/rancher/dynamiclistener v0.6.0-rc1/go.mod h1:BIPgJ8xFSUyuTyGvRMVt++S1qjD3+7Ptvq1TXl6hcTM=
-github.com/rancher/lasso v0.0.0-20250109193533-00757eec2dbd h1:W4hWtKB8A2SSJlxkphvzwA+RkiOrgHg9Gytc78S0pvk=
-github.com/rancher/lasso v0.0.0-20250109193533-00757eec2dbd/go.mod h1:IxgTBO55lziYhTEETyVKiT8/B5Rg92qYiRmcIIYoPgI=
+github.com/rancher/dynamiclistener v0.6.3 h1:0O8rci5stk6xcPLUBCVTzjylRSfkrHdFWwpECu1IQ9M=
+github.com/rancher/dynamiclistener v0.6.3/go.mod h1:ncmVR7qR8kR1o6xNkTcVS2mZ9WtlljimBilIlNjdyzc=
+github.com/rancher/lasso v0.2.1 h1:SZTqMVQn8cAOqvwGBd1/EYOIJ/MGN+UfJrOWvHd4jHU=
+github.com/rancher/lasso v0.2.1/go.mod h1:KSV3jBXfdXqdCuMm2uC8kKB9q/wuDYb3h0eHZoRjShM=
 github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7 h1:0Kg2SGoMeU1ll4xPi4DE0+qNHLFO/U5MwtK0WrIdK+o=
 github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7/go.mod h1:fsbs0YOsGn1ofPD5p+BuI4qDhbMbSJtTegKt6Ucna+c=
 github.com/rancher/remotedialer v0.4.1 h1:jwOf2kPRjBBpSFofv1OuZHWaYHeC9Eb6/XgDvbkoTgc=
