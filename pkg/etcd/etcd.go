@@ -32,7 +32,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/kine/pkg/client"
-	endpoint2 "github.com/k3s-io/kine/pkg/endpoint"
+	kine "github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
@@ -42,6 +42,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	etcdversion "go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/credentials"
@@ -910,14 +911,21 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	_, err = endpoint2.Listen(ctx, endpoint2.Config{
-		Endpoint: "sqlite://",
+	_, err = kine.Listen(ctx, kine.Config{
+		CompactBatchSize:    1000,
+		CompactInterval:     5 * time.Minute,
+		CompactMinRetain:    1000,
+		CompactTimeout:      5 * time.Second,
+		EmulatedETCDVersion: etcdversion.Version,
+		NotifyInterval:      5 * time.Second,
+		PollBatchSize:       500,
+		Endpoint:            "sqlite://",
 	})
 	if err != nil {
 		return err
 	}
 
-	sqliteClient, err := client.New(endpoint2.ETCDConfig{
+	sqliteClient, err := client.New(kine.ETCDConfig{
 		Endpoints: []string{"unix://kine.sock"},
 	})
 	if err != nil {
