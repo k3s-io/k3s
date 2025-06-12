@@ -4,7 +4,7 @@
 1. After the merge CI has completed, cut an RC by creating a release in the GitHub interface
    1. the title is the version of k3s you are releasing with the rc1 subversion eg. "v1.25.0-rc1+k3s1"
    1. In the case of a update to k3s, it should be incremented from `k3s1` to `k3s2`, for example, meaning the k3s version is being incremented.
-   1. the target should match the release branch, remember that the latest version is attached to "master"
+   1. the target should match the release branch, remember that the latest version is attached to "main"
    1. no description
    1. the tag should match the title
 1. After the RC is cut validate that the CI for the RC passes
