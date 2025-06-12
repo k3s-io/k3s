@@ -54,5 +54,3 @@ systemctl daemon-reload
 loginctl enable-linger vagrant
 # We need to run this as vagrant user, because rootless k3s will be run as vagrant user
 su -c 'XDG_RUNTIME_DIR="/run/user/$UID" DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus" systemctl --user daemon-reload' vagrant
-su -c 'XDG_RUNTIME_DIR="/run/user/$UID" DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus" systemctl --user enable --now k3s-rootless' vagrant
-
