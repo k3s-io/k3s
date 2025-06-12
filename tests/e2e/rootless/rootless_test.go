@@ -37,7 +37,7 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string) error {
 
 		resetCmd := "head -n 3 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
 		yamlCmd := fmt.Sprintf("echo '%s' >> /etc/rancher/k3s/config.yaml", serverYAML)
-		startCmd := "systemctl --user restart k3s-rootless"
+		startCmd := "systemctl --user start k3s-rootless"
 
 		if _, err := node.RunCmdOnNode(resetCmd); err != nil {
 			return err
@@ -95,9 +95,12 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS: " + *nodeOS)
 			By(tc.Status())
-			kubeConfigFile, err := GenRootlessKubeconfigFile(tc.Servers[0].String())
-			Expect(err).NotTo(HaveOccurred())
-			tc.KubeconfigFile = kubeConfigFile
+
+			Eventually(func() error {
+				kubeConfigFile, err := GenRootlessKubeconfigFile(tc.Servers[0].String())
+				tc.KubeconfigFile = kubeConfigFile
+				return err
+			}, "360s", "5s").Should(Succeed())
 		})
 
 		It("Checks node and pod status", func() {
