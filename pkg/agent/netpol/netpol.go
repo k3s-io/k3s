@@ -169,7 +169,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	wg.Add(1)
 	go metricsRunCheck(mc, healthCh, stopCh, &wg)
 
-	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{},
+	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{}, nil,
 		iptablesCmdHandlers, ipSetHandlers)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "unable to initialize network policy controller")
@@ -196,7 +196,7 @@ func metricsRunCheck(mc *krmetrics.Controller, healthChan chan<- *healthcheck.Co
 	krmetrics.DefaultRegisterer.MustRegister(krmetrics.BuildInfo)
 
 	for {
-		healthcheck.SendHeartBeat(healthChan, "MC")
+		healthcheck.SendHeartBeat(healthChan, healthcheck.MetricsController)
 		select {
 		case <-stopCh:
 			t.Stop()
