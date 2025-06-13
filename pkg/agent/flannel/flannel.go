@@ -85,7 +85,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		return pkgerrors.WithMessage(err, "failed to register flannel network")
 	}
 	trafficMngr := &iptables.IPTablesManager{}
-	err = trafficMngr.Init(ctx, &sync.WaitGroup{})
+	err = trafficMngr.Init(ctx)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to initialize flannel ipTables manager")
 	}
