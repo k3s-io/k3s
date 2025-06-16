@@ -110,7 +110,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.1
-	github.com/k3s-io/helm-controller v0.16.10
+	github.com/k3s-io/helm-controller v0.16.11
 	github.com/k3s-io/kine v0.13.15
 	github.com/klauspost/compress v1.18.0
 	github.com/libp2p/go-libp2p v0.41.1
