@@ -543,15 +543,14 @@ run-go-test() {
     fi
 
     go test -timeout=45m -v "$@" &
+    pids+=($!)
 
     if [ "$LABEL" ]; then
         # Reset LABEL and restore stdout and stderr
         unset "LABEL"
         exec 1>&3 2>&4
         exec 3>&- 4>&-
-    fi
-
-    pids+=($!)
+    fi   
 }
 export -f run-go-test
 
