@@ -63,27 +63,6 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string, agentYAML strin
 	return nil
 }
 
-func KillK3sCluster(nodes []e2e.VagrantNode) error {
-	for _, node := range nodes {
-		if _, err := node.RunCmdOnNode("k3s-killall.sh"); err != nil {
-			return err
-		}
-		if _, err := node.RunCmdOnNode("sh -c 'docker ps -qa | xargs -r docker rm -fv'"); err != nil {
-			return err
-		}
-		if _, err := node.RunCmdOnNode("rm -rf /etc/rancher/k3s/config.yaml.d /var/lib/kubelet/pods /var/lib/rancher/k3s/agent/etc /var/lib/rancher/k3s/agent/containerd /var/lib/rancher/k3s/server/db /var/log/pods /run/k3s /run/flannel"); err != nil {
-			return err
-		}
-		if _, err := node.RunCmdOnNode("systemctl restart containerd docker"); err != nil {
-			return err
-		}
-		if _, err := node.RunCmdOnNode("journalctl --flush --sync --rotate --vacuum-size=1"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = BeforeSuite(func() {
@@ -157,10 +136,87 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("Verify SQLite to Etcd migration", func() {
+		It("Starts up with SQLite and checks status", func() {
+			err := StartK3sCluster(tc.AllNodes(), "", "")
+			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
+
+			By("CLUSTER CONFIG")
+			By("OS:" + *nodeOS)
+			By(tc.Status())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Fetching node status")
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
+			}, "600s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeconfigFile)
+			}, "600s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
+			}, "480s", "10s").Should(Succeed())
+			e2e.DumpPods(tc.KubeconfigFile)
+		})
+
+		It("Creates test resources before migration", func() {
+			createCmd := "kubectl create configmap migration-test --from-literal=test=before-migration"
+			_, err := tc.Servers[0].RunCmdOnNode(createCmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			getCmd := "kubectl get configmap migration-test -o jsonpath='{.data.test}'"
+			result, err := tc.Servers[0].RunCmdOnNode(getCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("before-migration"))
+		})
+
+		It("Migrates from SQLite to etcd", func() {
+			configCmd := "echo 'cluster-init: true' >> /etc/rancher/k3s/config.yaml"
+			_, err := tc.Servers[0].RunCmdOnNode(configCmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(e2e.RestartCluster(tc.Servers)).To(Succeed())
+			Expect(e2e.RestartCluster(tc.Agents)).To(Succeed())
+
+			Eventually(func() (string, error) {
+				cmd := "kubectl get nodes -l node-role.kubernetes.io/etcd=true"
+				return tc.Servers[0].RunCmdOnNode(cmd)
+			}, "120s", "5s").Should(ContainSubstring(tc.Servers[0].String()))
+		})
+
+		It("Checks node and pod status after migration", func() {
+			By("Fetching node status after migration")
+			Eventually(func() error {
+				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
+			}, "600s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.AllPodsUp(tc.KubeconfigFile)
+			}, "600s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
+			}, "480s", "10s").Should(Succeed())
+			e2e.DumpPods(tc.KubeconfigFile)
+		})
+
+		It("Verifies data persistence after migration", func() {
+			getCmd := "kubectl get configmap migration-test -o jsonpath='{.data.test}'"
+			result, err := tc.Servers[0].RunCmdOnNode(getCmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(ContainSubstring("before-migration"))
+		})
+
+		It("Kills the cluster", func() {
+			err := e2e.KillK3sCluster(tc.AllNodes())
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 	Context("Verify kubelet config file", func() {
 		It("Starts K3s with no issues", func() {
 			for _, node := range tc.AllNodes() {
@@ -203,7 +259,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -234,7 +290,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -306,7 +362,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -338,7 +394,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "120s", "5s").Should(ContainSubstring("rancher/shell"))
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -355,7 +411,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -386,7 +442,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
 		It("Kills the cluster", func() {
-			err := KillK3sCluster(tc.AllNodes())
+			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
