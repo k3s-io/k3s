@@ -105,7 +105,7 @@ Community
 ---
 - ### Slack
 
-Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3s users. Great place to learn and ask questions: [#k3s](https://rancher-users.slack.com/archives/CGGQEHPPW) and [#k3s-contributor](https://rancher-users.slack.com/archives/CGXR87T8B) and [#k3s](https://cloud-native.slack.com/archives/C0196ULKX8S) channel in [CNCF Slack](cloud-native.slack.com)
+Join [Slack](https://slack.rancher.io/) to chat with K3s developers and other K3s users. Great place to learn and ask questions: [#k3s](https://rancher-users.slack.com/archives/CGGQEHPPW) and [#k3s-contributor](https://rancher-users.slack.com/archives/CGXR87T8B) and [#k3s](https://cloud-native.slack.com/archives/C0196ULKX8S) channel in [CNCF Slack](https://cloud-native.slack.com)
 
 - ### Getting involved
 [GitHub Issues](https://github.com/k3s-io/k3s/issues) - Submit your issues and feature requests via GitHub.

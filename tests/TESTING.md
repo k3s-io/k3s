@@ -4,8 +4,8 @@ Testing in K3s comes in 5 forms:
 - [Unit](#unit-tests)
 - [Integration](#integration-tests)
 - [Docker](#docker-tests)
-- [Smoke](#smoke-tests)
-- [Performance](#performance)
+- [Install](#install-tests)
+- [Performance](#performance-tests)
 - [End-to-End (E2E)](#end-to-end-e2e-tests)
 - [Distros-test-framework](#distros-test-framework)
 
@@ -68,10 +68,10 @@ ___
 
 ## Install Tests
 
-Install tests are a collection of tests defined under the [tests/install](./tests/install). These tests are used to validate the installation and operation of K3s on a variety of operating systems. The test themselves are Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
+Install tests are a collection of tests defined under the [tests/install](./install). These tests are used to validate the installation and operation of K3s on a variety of operating systems. The test themselves are Vagrantfiles describing single-node installations that are easily spun up with Vagrant for the `libvirt` and `virtualbox` providers:
 
 - [Install Script](install) :arrow_right: scheduled nightly and on an install script change
-  - [CentOS 9 Stream](install/centos-stream)
+  - [CentOS 9 Stream](install/centos-9)
   - [Rocky Linux 8](install/rocky-8) (stand-in for RHEL 8)
   - [Rocky Linux 9](install/rocky-9) (stand-in for RHEL 9)
   - [Fedora 40](install/fedora)
