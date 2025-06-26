@@ -4,4 +4,4 @@
 # Checks exemptions
 exemptions:
   - check: artifacthub_badge # Check identifier (see https://github.com/cncf/clomonitor/blob/main/docs/checks.md#exemptions)
-    reason: "K3s is bundled Kubernetes distribution and it's installed via the k3s binary or script or shiped as part of OS and therefore, it does not appear on Artifact Hub independently."
+    reason: "K3s is bundled Kubernetes distribution and it's installed via the k3s binary or script or shipped as part of OS and therefore, it does not appear on Artifact Hub independently."
