@@ -160,6 +160,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:            EtcdSnapshotCommand,
+		Usage:           "Manage etcd snapshots",
 		SkipFlagParsing: false,
 		Subcommands: []*cli.Command{
 			{
