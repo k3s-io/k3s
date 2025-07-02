@@ -37,3 +37,21 @@ func Test_UnitSCrypt_VerifyHash(t *testing.T) {
 		})
 	}
 }
+
+func FuzzVerifyHash(f *testing.F) {
+	hasher := NewSCrypt()
+	validSecret := "my-secret-password"
+	validHash, _ := hasher.CreateHash(validSecret)
+
+	// Seed the fuzzer with some valid and invalid inputs
+	f.Add(validHash, validSecret)
+	f.Add(validHash, "wrong-password")
+	f.Add("", "")
+	f.Add("$1:deadbeef:f:8:1:corrupt-hash", "any-password")
+	f.Add("", validSecret)
+	f.Add(validHash, "")
+
+	f.Fuzz(func(t *testing.T, hash, secretKey string) {
+		_ = hasher.VerifyHash(hash, secretKey)
+	})
+}
