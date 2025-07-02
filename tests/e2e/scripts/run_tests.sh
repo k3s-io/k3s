@@ -30,7 +30,7 @@ E2E_EXTERNAL_DB=$db && export E2E_EXTERNAL_DB
 E2E_REGISTRY=true && export E2E_REGISTRY
 
 cd
-cd k3s && git pull --rebase origin master
+cd k3s && git pull --rebase origin main
 /usr/local/go/bin/go mod tidy
 
 cd tests/e2e
@@ -40,7 +40,7 @@ echo "$OS"
 vagrant global-status | awk '/running/'|cut -c1-7| xargs -r -d '\n' -n 1 -- vagrant destroy -f
 
 # To reduce GH API requsts, we grab the latest commit on the host and pass it to the tests
-./scripts/latest_commit.sh master latest_commit.txt
+./scripts/latest_commit.sh main latest_commit.txt
 E2E_RELEASE_VERSION=$(cat latest_commit.txt) && export E2E_RELEASE_VERSION
 
 echo 'RUNNING DUALSTACK TEST'

@@ -144,7 +144,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 			})
 			/* The flag --disable-cloud-controller doesn't stop ccm from running,
 			it appends -cloud-node and -cloud-node-lifecycle to the end of the --controllers flag
-			https://github.com/k3s-io/k3s/blob/master/docs/adrs/servicelb-ccm.md
+			https://github.com/k3s-io/k3s/blob/main/docs/adrs/servicelb-ccm.md
 			*/
 			It("should find cloud-controller-manager starting with"+
 				"\"--cloud-node,--cloud-node-lifecycle,--secure-port=0\" flags ", func() {

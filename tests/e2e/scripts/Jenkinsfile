@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Git Checkout') {
             steps {
-                    git branch: 'master', url: 'https://github.com/k3s-io/k3s.git'
+                    git branch: 'main', url: 'https://github.com/k3s-io/k3s.git'
                     script {
                         dir("${WORKSPACE}/tests/e2e") {
                         if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
