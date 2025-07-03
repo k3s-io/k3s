@@ -54,7 +54,7 @@ jobs:
       - name: "Download k3s binary"
         uses: actions/download-artifact@v4
         with:
-          name: k3s
+          name: k3s-amd64
           path: tests/install/${{ matrix.vm }}
       - name: "Vagrant Up"
         run: vagrant up --no-tty --no-provision

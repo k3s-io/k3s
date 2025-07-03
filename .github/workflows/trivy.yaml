@@ -25,8 +25,7 @@ jobs:
 
     - name: Build K3s Image
       run: |
-        make local
-        make package-image
+        make local-image
         make tag-image-latest
 
     - name: Run Trivy vulnerability scanner

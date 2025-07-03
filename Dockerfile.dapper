@@ -1,14 +1,6 @@
 ARG GOLANG=golang:1.23.10-alpine3.21
 FROM ${GOLANG}
 
-# Set proxy environment variables
-ARG http_proxy
-ARG https_proxy
-ARG no_proxy
-ENV http_proxy=${http_proxy} \
-    https_proxy=${https_proxy} \
-    no_proxy=${no_proxy}
-
 # Install necessary packages
 RUN apk -U --no-cache add \
     bash git gcc musl-dev docker vim less file curl wget ca-certificates jq linux-headers \
@@ -36,7 +28,7 @@ RUN if [ -n "${TRIVY_ARCH}" ]; then \
     fi
 
 # Install goimports
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.11.0
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.16.0
 
 # Cleanup
 RUN rm -rf /go/src /go/pkg
