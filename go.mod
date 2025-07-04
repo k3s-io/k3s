@@ -113,8 +113,8 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/api v0.1.1-k3s1.30
-	github.com/k3s-io/helm-controller v0.16.11
+	github.com/k3s-io/api v0.1.2-k3s1.30
+	github.com/k3s-io/helm-controller v0.16.12-0.20250703174217-fcdaa90161e6
 	github.com/k3s-io/kine v0.13.15
 	github.com/klauspost/compress v1.18.0
 	github.com/libp2p/go-libp2p v0.41.1
@@ -159,6 +159,7 @@ require (
 	google.golang.org/grpc v1.72.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.32.1
+	k8s.io/apiextensions-apiserver v0.32.1
 	k8s.io/apimachinery v0.32.3
 	k8s.io/apiserver v0.32.0
 	k8s.io/cli-runtime v0.31.10
@@ -492,7 +493,6 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.32.1 // indirect
 	k8s.io/controller-manager v0.25.4 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
