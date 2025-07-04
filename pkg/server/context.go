@@ -2,11 +2,12 @@ package server
 
 import (
 	"context"
+	"time"
 
+	k3scrds "github.com/k3s-io/api/pkg/crds"
 	"github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io"
-	helmcrd "github.com/k3s-io/helm-controller/pkg/crd"
+	helmcrds "github.com/k3s-io/helm-controller/pkg/crds"
 	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
-	addoncrd "github.com/k3s-io/k3s/pkg/crd"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
@@ -17,6 +18,8 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/discovery"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/rbac"
 	"github.com/rancher/wrangler/v3/pkg/start"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -76,21 +79,27 @@ func NewContext(ctx context.Context, config *Config, forServer bool) (*Context, 
 	}, nil
 }
 
+type crdLister func() ([]*apiextv1.CustomResourceDefinition, error)
+
 func registerCrds(ctx context.Context, config *Config, restConfig *rest.Config) error {
-	factory, err := crd.NewFactoryFromClient(restConfig)
+	listers := []crdLister{k3scrds.List}
+	if !config.ControlConfig.DisableHelmController {
+		listers = append(listers, helmcrds.List)
+	}
+
+	crds := []*apiextv1.CustomResourceDefinition{}
+	for _, list := range listers {
+		l, err := list()
+		if err != nil {
+			return err
+		}
+		crds = append(crds, l...)
+	}
+
+	client, err := clientset.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
 
-	factory.BatchCreateCRDs(ctx, crds(config)...)
-
-	return factory.BatchWait()
-}
-
-func crds(config *Config) []crd.CRD {
-	defaultCrds := addoncrd.List()
-	if !config.ControlConfig.DisableHelmController {
-		defaultCrds = append(defaultCrds, helmcrd.List()...)
-	}
-	return defaultCrds
+	return crd.BatchCreateCRDs(ctx, client.ApiextensionsV1().CustomResourceDefinitions(), nil, time.Minute, crds)
 }
