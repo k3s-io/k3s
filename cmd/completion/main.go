@@ -15,8 +15,8 @@ func main() {
 	app := cmds.NewApp()
 	app.Commands = []*cli.Command{
 		cmds.NewCompletionCommand(
-			completion.RunBash,
-			completion.RunZsh,
+			completion.Bash,
+			completion.Zsh,
 		),
 	}
 
