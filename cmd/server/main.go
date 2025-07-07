@@ -78,8 +78,8 @@ func main() {
 			cert.RotateCA,
 		),
 		cmds.NewCompletionCommand(
-			completion.RunBash,
-			completion.RunZsh,
+			completion.Bash,
+			completion.Zsh,
 		),
 	}
 

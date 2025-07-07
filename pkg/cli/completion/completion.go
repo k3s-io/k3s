@@ -53,7 +53,7 @@ _cli_zsh_autocomplete() {
 compdef _cli_zsh_autocomplete %[1]s`
 )
 
-func RunBash(ctx *cli.Context) error {
+func Bash(ctx *cli.Context) error {
 	completetionScript, err := genCompletionScript(bashScript)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func RunBash(ctx *cli.Context) error {
 	return nil
 }
 
-func RunZsh(ctx *cli.Context) error {
+func Zsh(ctx *cli.Context) error {
 	completetionScript, err := genCompletionScript(zshScript)
 	if err != nil {
 		return err
