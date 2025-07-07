@@ -18,7 +18,7 @@ func NewCompletionCommand(bash, zsh func(*cli.Context) error) *cli.Command {
 			{
 				Name:      "bash",
 				Usage:     "Bash completion",
-				UsageText: appName + " completion bash [FLAGS]",
+				UsageText: appName + " completion bash [OPTIONS]",
 				Action:    bash,
 				Flags: []cli.Flag{
 					&installFlag,
@@ -28,7 +28,7 @@ func NewCompletionCommand(bash, zsh func(*cli.Context) error) *cli.Command {
 				Name:      "zsh",
 				Usage:     "Zsh completion",
 				Action:    zsh,
-				UsageText: appName + " completion zsh [FLAGS]",
+				UsageText: appName + " completion zsh [OPTIONS]",
 				Flags: []cli.Flag{
 					&installFlag,
 				},
