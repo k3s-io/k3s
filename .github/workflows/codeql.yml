@@ -1,0 +1,49 @@
+name: "CodeQL Static Analysis"
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: 'ubuntu-latest'
+    permissions:
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: actions
+          build-mode: none
+        # - language: go
+        #   build-mode: manual
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+
+    # - if: matrix.build-mode == 'manual'
+    #   shell: bash
+    #   run: |
+    #     sudo apt-get update && sudo apt-get install -y libseccomp-dev
+    #     ./scripts/download
+    #     ./scripts/build
+    #     ./scripts/package-cli
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
