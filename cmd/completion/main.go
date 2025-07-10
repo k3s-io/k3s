@@ -14,7 +14,10 @@ import (
 func main() {
 	app := cmds.NewApp()
 	app.Commands = []*cli.Command{
-		cmds.NewCompletionCommand(completion.Run),
+		cmds.NewCompletionCommand(
+			completion.Bash,
+			completion.Zsh,
+		),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
