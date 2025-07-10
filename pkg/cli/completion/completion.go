@@ -9,26 +9,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Run(ctx *cli.Context) error {
-	if ctx.NArg() < 1 {
-		return fmt.Errorf("must provide a valid SHELL argument")
-	}
-	shell := ctx.Args().Get(0)
-	completetionScript, err := genCompletionScript(shell)
-	if err != nil {
-		return err
-	}
-	if ctx.Bool("i") {
-		return writeToRC(shell)
-	}
-	fmt.Println(completetionScript)
-	return nil
-}
-
-func genCompletionScript(shell string) (string, error) {
-	var completionScript string
-	if shell == "bash" {
-		completionScript = fmt.Sprintf(`#!/usr/bin/env bash
+var (
+	bashScript = `#!/usr/bin/env bash
 _cli_bash_autocomplete() {
 if [[ "${COMP_WORDS[0]}" != "source" ]]; then
 	local cur opts base
@@ -45,9 +27,9 @@ fi
 }
 
 complete -o bashdefault -o default -o nospace -F _cli_bash_autocomplete %s
-`, version.Program)
-	} else if shell == "zsh" {
-		completionScript = fmt.Sprintf(`#compdef %[1]s
+`
+
+	zshScript = `#compdef %[1]s
 _cli_zsh_autocomplete() {
 
 	local -a opts
@@ -68,36 +50,56 @@ _cli_zsh_autocomplete() {
 	return
 }
 
-compdef _cli_zsh_autocomplete %[1]s`, version.Program)
-	} else {
-		return "", fmt.Errorf("unknown shell: %s", shell)
-	}
+compdef _cli_zsh_autocomplete %[1]s`
+)
 
+func Bash(ctx *cli.Context) error {
+	completetionScript, err := genCompletionScript(bashScript)
+	if err != nil {
+		return err
+	}
+	if ctx.Bool("i") {
+		return writeToRC("bash", "/.bashrc")
+	}
+	fmt.Println(completetionScript)
+	return nil
+}
+
+func Zsh(ctx *cli.Context) error {
+	completetionScript, err := genCompletionScript(zshScript)
+	if err != nil {
+		return err
+	}
+	if ctx.Bool("i") {
+		return writeToRC("zsh", "/.zshrc")
+	}
+	fmt.Println(completetionScript)
+	return nil
+}
+
+func genCompletionScript(script string) (string, error) {
+	completionScript := fmt.Sprintf(script, version.Program)
 	return completionScript, nil
 }
 
-func writeToRC(shell string) error {
-	rcFileName := ""
-	if shell == "bash" {
-		rcFileName = "/.bashrc"
-	} else if shell == "zsh" {
-		rcFileName = "/.zshrc"
-	}
-
+func writeToRC(shell, envFileName string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil
 	}
-	rcFileName = home + rcFileName
-	f, err := os.OpenFile(rcFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	envFileName = home + envFileName
+	f, err := os.OpenFile(envFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
+
 	defer f.Close()
-	bashEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. <(%[1]s completion %s)\n# >> %[1]s command completion (end)", version.Program, shell)
-	if _, err := f.WriteString(bashEntry); err != nil {
+	shellEntry := fmt.Sprintf("# >> %[1]s command completion (start)\n. <(%[1]s completion %s)\n# >> %[1]s command completion (end)", version.Program, shell)
+	if _, err := f.WriteString(shellEntry); err != nil {
 		return err
 	}
-	fmt.Printf("Autocomplete for %s added to: %s\n", shell, rcFileName)
+
+	fmt.Printf("Autocomplete for %s added to: %s\n", shell, envFileName)
 	return nil
 }
