@@ -778,8 +778,8 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/api v0.1.2-0.20250707203559-eba70d696089 h1:1iX9DP6fzhgcbbCKv0B67/+TldvyvD5Wlw5+dre80yA=
-github.com/k3s-io/api v0.1.2-0.20250707203559-eba70d696089/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
+github.com/k3s-io/api v0.1.2 h1:Z0S2FPWGs6cUjtkj6g9B2VpF+wCPHfNH3zgahIEwJ1I=
+github.com/k3s-io/api v0.1.2/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
 github.com/k3s-io/cadvisor v0.52.1 h1:KeeADD5no2159ICWnTRTJfExlNbVfhqbo9ohixQ74GM=
 github.com/k3s-io/cadvisor v0.52.1/go.mod h1:OAhPcx1nOm5YwMh/JhpUOMKyv1YKLRtS9KgzWPndHmA=
 github.com/k3s-io/containerd/v2 v2.0.5-k3s2 h1:LQnClzWjDWyMBoJwnqYYor6h5uxUtC8MTMUPsnKjA50=
@@ -804,8 +804,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1 h1:sZIV+qFhbGPyOXRiIC6zjdGS00GPjeDo/
 github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1/go.mod h1:fmcuY5R2SNkklU4+fKVBQi2biVp5vafMrWUEj4TJ4Cs=
 github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1 h1:N7yuD8/WUf7oEOu4nlXbsoSTvF5yPMMOU2uc3WrJ/eM=
 github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1/go.mod h1:G1mOzdwuzKT1VRL7SqRchli/qcFrtLBTAQ4lV20sXXo=
-github.com/k3s-io/helm-controller v0.16.12-0.20250703174217-fcdaa90161e6 h1:wz2x5YDBtoMZvitxHixM6Br1ijh6TZp+zBEhCTZJL2Q=
-github.com/k3s-io/helm-controller v0.16.12-0.20250703174217-fcdaa90161e6/go.mod h1:mw6sVaH/eli+81sUnRqRYh5wV7YVzYp+U7OucLT5kUc=
+github.com/k3s-io/helm-controller v0.16.13 h1:jMD5lI4Mzo9uclZjLgJ8Yak6wSnXaL/tuTU+dEEx69Q=
+github.com/k3s-io/helm-controller v0.16.13/go.mod h1:mw6sVaH/eli+81sUnRqRYh5wV7YVzYp+U7OucLT5kUc=
 github.com/k3s-io/kine v0.13.17 h1:P2pInxDHWHGleL0hmZGcreaJufqZ9Wqkaof6X1XOteo=
 github.com/k3s-io/kine v0.13.17/go.mod h1:FswGrgQMNPyyHX3e6ct1PEdlJ1ug6h5JrKKL9Cg9XTg=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
