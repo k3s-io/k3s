@@ -782,8 +782,8 @@ github.com/k3s-io/api v0.1.2-0.20250707203559-eba70d696089 h1:1iX9DP6fzhgcbbCKv0
 github.com/k3s-io/api v0.1.2-0.20250707203559-eba70d696089/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
 github.com/k3s-io/cadvisor v0.52.1 h1:KeeADD5no2159ICWnTRTJfExlNbVfhqbo9ohixQ74GM=
 github.com/k3s-io/cadvisor v0.52.1/go.mod h1:OAhPcx1nOm5YwMh/JhpUOMKyv1YKLRtS9KgzWPndHmA=
-github.com/k3s-io/containerd/v2 v2.0.5-k3s1 h1:bQxBHXObL7pHJ5c2rlTYsQuR+hNhBN7vpN+bX6CwpUk=
-github.com/k3s-io/containerd/v2 v2.0.5-k3s1/go.mod h1:8dzNB8eVPdY7/UNM3xZ9FIFjqvNHd092sCMqi6xg2Ck=
+github.com/k3s-io/containerd/v2 v2.0.5-k3s2 h1:LQnClzWjDWyMBoJwnqYYor6h5uxUtC8MTMUPsnKjA50=
+github.com/k3s-io/containerd/v2 v2.0.5-k3s2/go.mod h1:8dzNB8eVPdY7/UNM3xZ9FIFjqvNHd092sCMqi6xg2Ck=
 github.com/k3s-io/cri-dockerd v0.3.17-k3s1 h1:z4BuruxM3kqlWxUaA6OlIlyQ8telEUxGy6Q78EaRfjk=
 github.com/k3s-io/cri-dockerd v0.3.17-k3s1/go.mod h1:4yt/MGrotvdjND8/THCHWLMujHh7TrCHJ77MxlmyFpE=
 github.com/k3s-io/cri-tools v1.31.0-k3s2 h1:nekOdJe5Hecm+C5eswg688uXTI0enUZOJYadmyU9pYw=
