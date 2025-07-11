@@ -115,7 +115,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.2-k3s1.30
-	github.com/k3s-io/helm-controller v0.16.12-0.20250703174217-fcdaa90161e6
+	github.com/k3s-io/helm-controller v0.16.13
 	github.com/k3s-io/kine v0.13.17
 	github.com/klauspost/compress v1.18.0
 	github.com/kubernetes-sigs/cri-tools v0.0.0-00010101000000-000000000000
