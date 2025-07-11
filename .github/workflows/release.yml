@@ -13,7 +13,6 @@ jobs:
     name: Build Binary (amd64)
     uses: ./.github/workflows/build-k3s.yaml
     with:
-      cache: '' # No cache for release builds
       upload-build: true
 
   build-arm64:
@@ -21,7 +20,6 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       arch: arm64
-      cache: '' # No cache for release builds
       upload-build: true
 
   build-arm:
@@ -29,7 +27,6 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       arch: arm
-      cache: '' # No cache for release builds
       upload-build: true
 
   push-release-image:
