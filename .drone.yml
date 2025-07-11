@@ -49,28 +49,6 @@ steps:
     event:
       - push
       - tag
-
-- name: github_binary_release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-amd64.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: docker-publish
   image: plugins/docker
   settings:
@@ -189,27 +167,6 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: github_binary_release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-arm64.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: docker-publish
   image: plugins/docker
   settings:
@@ -304,28 +261,6 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
-
-- name: github_binary_release
-  image: plugins/github-release:linux-arm
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-arm.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: docker-publish
   image: plugins/docker:linux-arm
   settings:
