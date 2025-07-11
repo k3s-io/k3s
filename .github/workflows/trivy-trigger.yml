@@ -1,0 +1,68 @@
+name: Trivy Scan Trigger
+
+# This workflow is triggered when a pull request is labeled with 'scan-with-trivy'.
+# This can only be initiated by a user who is a member of the k3s-io organization and has write permissions.
+# It isolates the built of k3s within a unprivileged enviroment. 
+# The follow up unprivileged workflow will then use the artifact created here to run the scan
+# and report the results back to the PR.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-scan:
+    if: github.event.label.name == 'scan-with-trivy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify actor is a member of k3s-io organization and has write permissions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const org = 'k3s-io';
+            const actor = context.actor;
+            const { repo, owner } = context.repo; 
+            
+            try {
+              const result = await github.rest.orgs.checkMembershipForUser({
+                org,
+                username: actor,
+              });
+            } catch (error) {
+              core.setFailed(`User ${actor} is not an public member of the ${org} organization`);
+            }
+
+            const { data: { permission } } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner,
+              repo,
+              username: actor
+            });
+            
+            if (permission !== 'admin' && permission !== 'write') {
+              core.setFailed(`User @${actor} does not have write permission. Scan can only be triggered by repository collaborators with write access.`);
+            }
+      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Build And Save K3s Image
+        run: |
+          make local-image
+          make tag-image-latest
+          docker save -o k3s.tar rancher/k3s:latest
+
+      - name: Create PR context artifact
+        run: |
+          mkdir -p pr-context
+          echo "${{ github.event.pull_request.number }}" > pr-context/pr_number
+          mv k3s.tar pr-context/k3s.tar
+
+      - name: Upload PR context artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-context-for-scan
+          path: pr-context/
+          retention-days: 1

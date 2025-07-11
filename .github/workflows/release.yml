@@ -13,7 +13,6 @@ jobs:
     name: Build Binary (amd64)
     uses: ./.github/workflows/build-k3s.yaml
     with:
-      cache: '' # No cache for release builds
       upload-build: true
 
   build-arm64:
@@ -21,7 +20,6 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       arch: arm64
-      cache: '' # No cache for release builds
       upload-build: true
 
   build-arm:
@@ -29,7 +27,6 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       arch: arm
-      cache: '' # No cache for release builds
       upload-build: true
 
   push-release-image:
@@ -52,7 +49,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: COnfigure image tags
+      - name: Configure image tags
         id: tag_config
         run: |
           TAG=${GITHUB_REF#refs/tags/}
@@ -74,7 +71,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/k3s
+          images: |
+            ghcr.io/${{ github.repository_owner }}/k3s
           flavor: latest=false
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
@@ -101,4 +99,97 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DRONE_TAG=${{ github.ref_name }}
+
+  upload-release-airgap:
+    name: Build Airgap Pkg (${{ matrix.arch }})
+    runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
+    permissions: 
+      contents: write  # Needed to update release with assets
+    strategy:
+      matrix:
+        arch: [amd64, arm64, arm]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y zstd pigz
+
+      - name: Create Airgap Package (${{ matrix.arch }})
+        run: |
+          mkdir -p ./dist/artifacts
+          ./scripts/package-airgap ${{ matrix.arch }}
+
+      - name: Caculate Airgap sha256sum
+        run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
+
+      - name: Upload Airgap sha256sum
+        uses: actions/upload-artifact@v4
+        with:
+          name: k3s-airgap-images-${{ matrix.arch }}.sha256sum
+          path: dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
+      
+      - name: Upload k3s-images.txt to Release
+        uses: softprops/action-gh-release@v2
+        # This action is recommended by GITHUB, they don't support a first party action for releases
+        # See https://github.com/actions/create-release?tab=readme-ov-file#github-action---releases-api
+        if: ${{ matrix.arch == 'amd64' }}
+        with:
+          files: |
+            dist/artifacts/k3s-images.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Airgap Assets to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/artifacts/k3s-airgap-images*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-release-assets:
+    name: Prepare and Upload Release Assets
+    permissions: 
+      contents: write # Needed to update release with assets
+    runs-on: ubuntu-latest
+    needs: [build-amd64, build-arm64, build-arm, upload-release-airgap]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: "Download Binaries and Airgap sha256sum"
+      uses: actions/download-artifact@v4
+      with:
+        pattern: k3s*
+        path: ./dist/artifacts
+        merge-multiple: true
+    
+    - name: "Combine and format sha256sum files"
+      run: |
+        for arch in amd64 arm64 arm; do
+          output_file="./dist/artifacts/sha256sum-${arch}.txt"
+          cat ./dist/artifacts/k3s-airgap-images-$arch*.sha256sum >> "$output_file"
+          rm ./dist/artifacts/k3s-airgap-images-$arch*.sha256sum
+          if [[ "$arch" == "amd64" ]]; then
+            cat ./dist/artifacts/k3s.sha256sum >> "$output_file"
+            rm ./dist/artifacts/k3s.sha256sum # Remove the original file to avoid uploading it
+          else
+            cat ./dist/artifacts/k3s-${arch}.sha256sum >> "$output_file"
+            rm ./dist/artifacts/k3s-${arch}.sha256sum # Remove the original file to avoid uploading it
+          fi
+        done    
+    
+    - name: Upload Assets to Release
+      uses: softprops/action-gh-release@v2.2.1
+      with:
+        files: |
+          dist/artifacts/k3s*
+          dist/artifacts/sha256sum*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
