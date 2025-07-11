@@ -30,13 +30,9 @@ env:
   
 jobs:
   build:
-    permissions:
-      contents: read
-      packages: read
     uses: ./.github/workflows/build-k3s.yaml
     with:
       os: linux
-      cache: read
   build-windows:
     uses: ./.github/workflows/build-k3s.yaml
     with:

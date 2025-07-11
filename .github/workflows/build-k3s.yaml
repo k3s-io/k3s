@@ -19,18 +19,7 @@ on:
         description: 'Upload contents of build/out, used to build the k3s image externally'
         required: false
         default: false
-      cache:
-        type: string
-        description: 'Cache mode: "read", "write", or empty for no cache'
-        required: false
-        default: ''
 
-# Note that is workflow requires the following permissions:
-#   contents: read
-# If using the cache: write option, you will need:
-#   packages: write
-# If using the cache: read option, you will need:
-#   packages: read
 permissions:
   contents: read
 
@@ -38,8 +27,6 @@ jobs:
   build:
     name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
     runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    permissions:
-      packages: write
     timeout-minutes: 20
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
@@ -69,14 +56,6 @@ jobs:
           echo "dirty=${DIRTY}"
         } >> "$GITHUB_OUTPUT"
 
-    - name: Login to GitHub Container Registry
-      if: inputs.cache == 'write'
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Build K3s Binary Native
       if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
@@ -93,8 +72,6 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
-        cache-from: ${{ inputs.cache != '' && format('type=registry,ref=ghcr.io/{0}:cache-{1}', github.repository, inputs.arch) || '' }}
-        cache-to: ${{ inputs.cache == 'write' && format('type=registry,ref=ghcr.io/{0}:cache-{1},mode=max', github.repository, inputs.arch) || '' }}
         push: false
         provenance: mode=min
         outputs: type=local,dest=.
