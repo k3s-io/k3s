@@ -31,8 +31,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	kine "github.com/k3s-io/kine/pkg/app"
 	"github.com/k3s-io/kine/pkg/client"
-	kine "github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
@@ -911,21 +912,12 @@ func (e *ETCD) migrateFromSQLite(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	_, err = kine.Listen(ctx, kine.Config{
-		CompactBatchSize:    1000,
-		CompactInterval:     5 * time.Minute,
-		CompactMinRetain:    1000,
-		CompactTimeout:      5 * time.Second,
-		EmulatedETCDVersion: etcdversion.Version,
-		NotifyInterval:      5 * time.Second,
-		PollBatchSize:       500,
-		Endpoint:            "sqlite://",
-	})
+	_, err = endpoint.Listen(ctx, DefaultEndpointConfig())
 	if err != nil {
 		return err
 	}
 
-	sqliteClient, err := client.New(kine.ETCDConfig{
+	sqliteClient, err := client.New(endpoint.ETCDConfig{
 		Endpoints: []string{"unix://kine.sock"},
 	})
 	if err != nil {
@@ -1714,4 +1706,13 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 
 	// move the data directory to a temp path
 	return os.Rename(dbDir(e.config), oldDataDir)
+}
+
+// DefaultEndpointConfig returns default kine endpoint config, with k3s default
+// behavior of listening on a unix socket, and advertising the embedded etcd version
+func DefaultEndpointConfig() endpoint.Config {
+	return kine.Config([]string{
+		"--listen-address=" + endpoint.KineSocket,
+		"--emulated-etcd-version=" + etcdversion.Version,
+	})
 }

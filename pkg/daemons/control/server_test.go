@@ -18,9 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/mock"
-	"github.com/k3s-io/kine/pkg/endpoint"
 	pkgerrors "github.com/pkg/errors"
-	etcdversion "go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/mock/gomock"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -186,15 +184,7 @@ func mockControl(ctx context.Context, t *testing.T, clusterInit bool) (*config.C
 		ServerNodeName:       "k3s-server-1",
 		ServiceNodePortRange: &utilnet.PortRange{Base: 30000, Size: 2048},
 		Token:                "token",
-		Datastore: endpoint.Config{
-			CompactBatchSize:    1000,
-			CompactInterval:     5 * time.Minute,
-			CompactMinRetain:    1000,
-			CompactTimeout:      5 * time.Second,
-			EmulatedETCDVersion: etcdversion.Version,
-			NotifyInterval:      5 * time.Second,
-			PollBatchSize:       500,
-		},
+		Datastore:            etcd.DefaultEndpointConfig(),
 	}
 
 	if err := os.Chdir(control.DataDir); err != nil {

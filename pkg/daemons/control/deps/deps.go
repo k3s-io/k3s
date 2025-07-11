@@ -179,6 +179,11 @@ func CreateRuntimeCertFiles(config *config.Control) {
 // needed to successfully bootstrap a cluster.
 func GenServerDeps(config *config.Control) error {
 	runtime := config.Runtime
+
+	if err := cleanupLegacyCerts(config); err != nil {
+		return err
+	}
+
 	if err := genCerts(config); err != nil {
 		return err
 	}
@@ -447,7 +452,7 @@ func genServerCerts(config *config.Control) error {
 	}
 
 	altNames = &certutil.AltNames{}
-	addSANs(altNames, []string{"localhost" ,"127.0.0.1", "::1"})
+	addSANs(altNames, []string{"localhost", "127.0.0.1", "::1"})
 
 	if _, err := createClientCertKey(regen, "kube-scheduler", nil,
 		altNames, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
@@ -662,6 +667,20 @@ func createClientCertKey(regen bool, commonName string, organization []string, a
 	}
 
 	return true, certutil.WriteCert(certFile, util.EncodeCertsPEM(cert, caCerts))
+}
+
+func cleanupLegacyCerts(config *config.Control) error {
+	// remove legacy certs that are no longer used
+	legacyCerts := []string{
+		config.Runtime.ClientKubeProxyCert,
+		config.Runtime.ClientK3sControllerCert,
+	}
+	for _, cert := range legacyCerts {
+		if err := os.Remove(cert); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 func exists(files ...string) bool {
