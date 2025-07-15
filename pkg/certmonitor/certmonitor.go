@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -66,6 +67,7 @@ func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) e
 	}
 	deps.CreateRuntimeCertFiles(&controlConfig)
 
+	startupOnce := &sync.Once{}
 	caMap := map[string][]string{}
 	nodeList := services.Agent
 	if _, err := os.Stat(controlConfig.DataDir); err == nil {
@@ -83,15 +85,25 @@ func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) e
 
 	go wait.Until(func() {
 		logrus.Debugf("Running %s certificate expiration check", controllerName)
+		var hasErr bool
 		if err := checkCerts(nodeMap, time.Hour*24*daemonconfig.CertificateRenewDays); err != nil {
 			message := fmt.Sprintf("Node certificates require attention - restart %s on this node to trigger automatic rotation: %v", version.Program, err)
 			recorder.Event(nodeRef, corev1.EventTypeWarning, "CertificateExpirationWarning", message)
+			hasErr = true
 		}
 		if err := checkCerts(caMap, time.Hour*24*365); err != nil {
-			message := fmt.Sprintf("Certificate authority certificates require attention - check %s documentation and begin planning rotation: %v", version.Program, err)
+			message := fmt.Sprintf("Certificate Authority certificates require attention - check %s documentation and begin planning rotation: %v", version.Program, err)
 			recorder.Event(nodeRef, corev1.EventTypeWarning, "CACertificateExpirationWarning", message)
-
+			hasErr = true
 		}
+		// Only check for no errors and emit an OK event once, on the initial check after startup.
+		startupOnce.Do(func() {
+			if !hasErr {
+				message := fmt.Sprintf("Node and Certificate Authority certificates managed by %s are OK", version.Program)
+				recorder.Event(nodeRef, corev1.EventTypeNormal, "CertificateExpirationOK", message)
+			}
+		})
+
 	}, certCheckInterval, ctx.Done())
 
 	return nil
