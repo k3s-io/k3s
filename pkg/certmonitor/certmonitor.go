@@ -35,7 +35,7 @@ var (
 
 	certificateExpirationSeconds = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: version.Program + "_certificate_expiration_seconds",
-		Help: "Remaining lifetime on the certificate.",
+		Help: "Remaining lifetime in seconds of the certificate, labeled by certificate subject and usages.",
 	}, []string{"subject", "usages"})
 )
 
