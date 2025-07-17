@@ -414,8 +414,8 @@ github.com/dgraph-io/badger v1.6.2 h1:mNw0qs90GVgGGWylh0umH5iag1j6n/PeJtNvL6KY/x
 github.com/dgraph-io/badger v1.6.2/go.mod h1:JW2yswe3V058sS0kZ2h/AXeDSqFjxnZcRrVH//y2UQE=
 github.com/dgraph-io/ristretto v0.0.2 h1:a5WaUrDa0qm0YrAAS1tUykT5El3kt62KNZZeMxQn3po=
 github.com/dgraph-io/ristretto v0.0.2/go.mod h1:KPxhHT9ZxKefz+PCeOGsrHpl1qZ7i70dGTu2u+Ahh6E=
-github.com/distribution/reference v0.5.0 h1:/FUIFXtfc/x2gpa5/VGfiGLuOIdYa1t65IKK2OFGvA0=
-github.com/distribution/reference v0.5.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
+github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
+github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
 github.com/docker/cli v27.3.1+incompatible h1:qEGdFBF3Xu6SCvCYhc7CzaQTlBmqDuzxPDpigSyeKQQ=
 github.com/docker/cli v27.3.1+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
 github.com/docker/distribution v2.8.3+incompatible h1:AtKxIZ36LoNK51+Z6RpzLpddBirtxJnzDrHLEKxTAYk=
@@ -784,8 +784,8 @@ github.com/k3s-io/cadvisor v0.52.1 h1:KeeADD5no2159ICWnTRTJfExlNbVfhqbo9ohixQ74G
 github.com/k3s-io/cadvisor v0.52.1/go.mod h1:OAhPcx1nOm5YwMh/JhpUOMKyv1YKLRtS9KgzWPndHmA=
 github.com/k3s-io/containerd/v2 v2.0.5-k3s2 h1:LQnClzWjDWyMBoJwnqYYor6h5uxUtC8MTMUPsnKjA50=
 github.com/k3s-io/containerd/v2 v2.0.5-k3s2/go.mod h1:8dzNB8eVPdY7/UNM3xZ9FIFjqvNHd092sCMqi6xg2Ck=
-github.com/k3s-io/cri-dockerd v0.3.17-k3s1 h1:z4BuruxM3kqlWxUaA6OlIlyQ8telEUxGy6Q78EaRfjk=
-github.com/k3s-io/cri-dockerd v0.3.17-k3s1/go.mod h1:4yt/MGrotvdjND8/THCHWLMujHh7TrCHJ77MxlmyFpE=
+github.com/k3s-io/cri-dockerd v0.3.19-k3s1 h1:i8jkI/n3A+hXitJ+4ielNIFB/MEjI+4qH9xJn6qRZ4E=
+github.com/k3s-io/cri-dockerd v0.3.19-k3s1/go.mod h1:4yt/MGrotvdjND8/THCHWLMujHh7TrCHJ77MxlmyFpE=
 github.com/k3s-io/cri-tools v1.31.0-k3s2 h1:nekOdJe5Hecm+C5eswg688uXTI0enUZOJYadmyU9pYw=
 github.com/k3s-io/cri-tools v1.31.0-k3s2/go.mod h1:PvPf/fN5FiNdK1v43jCydRNRw6631qGTSEOhv/OsjYU=
 github.com/k3s-io/etcd/api/v3 v3.5.21-k3s1 h1:iXBMuGT7PbQumlc9R5JOFQ+SgmGaH3dF35ZpO7e3XeA=
