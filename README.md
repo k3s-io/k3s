@@ -37,7 +37,7 @@ K3s is a [fully conformant](https://github.com/cncf/k8s-conformance/pulls?q=is%3
 K3s bundles the following technologies together into a single cohesive distribution:
 
 * [Containerd](https://containerd.io/) & [runc](https://github.com/opencontainers/runc)
-* [Flannel](https://github.com/coreos/flannel) for CNI
+* [Flannel](https://github.com/flannel-io/flannel) for CNI
 * [CoreDNS](https://coredns.io/)
 * [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
 * [Traefik](https://containo.us/traefik/) for ingress
@@ -97,7 +97,7 @@ We remove these to achieve a smaller binary size. They can be removed while rema
 Getting Started
 ---
 - [Quick Install](https://docs.k3s.io/quick-start)
-- [Achictecture](https://docs.k3s.io/architecture)
+- [Architecture](https://docs.k3s.io/architecture)
 - [FAQ](https://docs.k3s.io/faq)
 - [Contribute](CONTRIBUTING.md)
 

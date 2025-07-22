@@ -52,14 +52,6 @@ export PATH
 
 It is well known that K3s is written in [Go](http://golang.org). Please follow the [Go Getting Started guide](https://golang.org/doc/install) to install and set up the Go tools used to compile and run the test batteries.
 
-**Note:** K3s uses the same Go version as the Kubernetes components underneath. The table below lists the required Go versions for supported the Kubernetes releases.
-
-| Kubernetes     | requires Go |
-|----------------|-------------|
-| 1.19 - 1.20    | 1.15.5      |
-| 1.21 - 1.22    | 1.16.7      |
-| 1.23+          | 1.17        |
-
 ### Docker
 
 K3s build and test processes development require Docker to run certain steps. [Follow the Docker website instructions to install Docker](https://docs.docker.com/get-docker/) in the development environment.
