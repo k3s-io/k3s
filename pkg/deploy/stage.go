@@ -8,13 +8,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/k3s-io/k3s/manifests"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 func Stage(dataDir string, templateVars map[string]string, skips map[string]bool) error {
+	manifestFiles, err := manifests.List()
+	if err != nil {
+		return err
+	}
 staging:
-	for _, name := range AssetNames() {
+	for _, name := range manifestFiles {
 		nameNoExtension := strings.TrimSuffix(name, filepath.Ext(name))
 		if skips[name] || skips[nameNoExtension] {
 			continue staging
@@ -27,7 +32,7 @@ staging:
 			}
 		}
 
-		content, err := Asset(name)
+		content, err := manifests.ReadContent(name)
 		if err != nil {
 			return err
 		}

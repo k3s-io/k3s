@@ -276,7 +276,7 @@ func (c *Cluster) getBootstrapData(ctx context.Context, token string) ([]byte, e
 	return decrypt(token, value.Data)
 }
 
-// getBootstrapValues returns the value of all keys under the "/bootstrap" prefix, with a 10 second timeout. 
+// getBootstrapValues returns the value of all keys under the "/bootstrap" prefix, with a 10 second timeout.
 func getBootstrapValues(ctx context.Context, storageClient client.Client) ([]client.Value, error) {
 	var bootstrapList []client.Value
 	var err error
@@ -284,7 +284,7 @@ func getBootstrapValues(ctx context.Context, storageClient client.Client) ([]cli
 	if err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		operationCtx, operationCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer operationCancel()
-	
+
 		bootstrapList, err = storageClient.List(operationCtx, "/bootstrap", 0)
 		if err != nil {
 			if errors.Is(err, rpctypes.ErrGPRCNotSupportedForLearner) {
