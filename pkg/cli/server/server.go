@@ -210,6 +210,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 				SecretKey:     cfg.EtcdS3SecretKey,
 				SessionToken:  cfg.EtcdS3SessionToken,
 				SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
+				Retention:     cfg.EtcdS3Retention,
 				Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
 			}
 		}
