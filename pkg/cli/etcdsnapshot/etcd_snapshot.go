@@ -65,6 +65,7 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 			Region:        cfg.EtcdS3Region,
 			SecretKey:     cfg.EtcdS3SecretKey,
 			SkipSSLVerify: cfg.EtcdS3SkipSSLVerify,
+			Retention:     cfg.EtcdS3Retention,
 			Timeout:       metav1.Duration{Duration: cfg.EtcdS3Timeout},
 		}
 		// extend request timeout to allow the S3 operation to complete
