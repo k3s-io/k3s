@@ -105,6 +105,7 @@ type Server struct {
 	EtcdS3SecretKey          string
 	EtcdS3SessionToken       string
 	EtcdS3BucketName         string
+	EtcdS3Retention          int
 	EtcdS3BucketLookupType   string
 	EtcdS3Region             string
 	EtcdS3Folder             string
@@ -479,6 +480,12 @@ var ServerFlags = []cli.Flag{
 		Name:        "etcd-s3-folder",
 		Usage:       "(db) S3 folder",
 		Destination: &ServerConfig.EtcdS3Folder,
+	},
+	&cli.IntFlag{
+		Name:        "etcd-s3-retention",
+		Usage:       "(db) S3 retention limit",
+		Destination: &ServerConfig.EtcdS3Retention,
+		Value:       defaultSnapshotRentention,
 	},
 	&cli.StringFlag{
 		Name:        "etcd-s3-proxy",
