@@ -76,6 +76,7 @@ type EtcdS3 struct {
 	SessionToken  string          `json:"sessionToken,omitempty"`
 	Insecure      bool            `json:"insecure,omitempty"`
 	SkipSSLVerify bool            `json:"skipSSLVerify,omitempty"`
+	Retention     int             `json:"retention,omitempty"`
 	Timeout       metav1.Duration `json:"timeout,omitempty"`
 }
 
