@@ -79,6 +79,7 @@ LDFLAGS="
 "
 TAGS="urfave_cli_no_docs"
 STATIC="-extldflags '-static'"
+cp -av build/data/* pkg/data/embed/
 CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -buildvcs=false -ldflags "$LDFLAGS $STATIC" -o ${CMD_NAME} ./cmd/k3s
 
 stat ${CMD_NAME}
