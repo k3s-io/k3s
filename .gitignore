@@ -22,7 +22,9 @@
 /image/main.squashfs
 /package/k3s
 /package/data-*
-/pkg/data/zz_generated_bindata.go
+/pkg/deploy/embed/
+/pkg/static/embed/
+/pkg/data/embed/
 __pycache__
 /tests/.pytest_cache/
 /tests/.tox/
