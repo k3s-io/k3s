@@ -172,6 +172,8 @@ if [ ! -x ${INSTALLBIN}/cni${BINARY_POSTFIX} ]; then
 fi
 
 echo Building k3s
+cp -av manifests/* pkg/deploy/embed/
+cp -av build/static/* pkg/static/embed/
 CGO_CFLAGS="-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_USE_ALLOCA=1" \
 CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s${BINARY_POSTFIX} ./cmd/server
 
