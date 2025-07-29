@@ -94,7 +94,6 @@ require (
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/flannel-io/flannel v0.27.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/stdr v1.2.3-0.20220714215716-96bad1d688c5
 	github.com/go-test/deep v1.0.7
