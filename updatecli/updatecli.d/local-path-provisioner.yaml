@@ -76,16 +76,3 @@ targets:
         - "scripts/airgap/image-list.txt"
       matchpattern: 'rancher/local-path-provisioner:v\d+\.\d+\.\d+(-\w+)?'
       replacepattern: 'rancher/local-path-provisioner:{{ source `local-path-provisioner` }}'
-  go-generate:
-    name: "Run go generate"
-    kind: "shell"
-    scmid: "k3s"
-    dependson:
-      - "local-path-provisioner"
-    disablesourceinput: true
-    spec:
-      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-generate.sh'
-      environments:
-        - name: PATH
-        - name: HOME
-
