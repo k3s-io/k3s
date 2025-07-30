@@ -76,13 +76,3 @@ targets:
         - "scripts/airgap/image-list.txt"
       matchpattern: 'docker.io/rancher/mirrored-coredns-coredns:\S+'
       replacepattern: 'docker.io/rancher/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}'
-
-  go-generate:
-    name: "Run go generate"
-    kind: "shell"
-    sourceid: "get-pwd"
-    spec:
-      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-generate.sh'
-      environments:
-        - name: PATH
-        - name: HOME
