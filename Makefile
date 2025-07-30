@@ -1,5 +1,5 @@
 TARGETS := $(shell ls scripts | grep -v \\.sh)
-GO_FILES ?= $$(find . -name '*.go' | grep -v generated)
+GO_FILES ?= $$(find . -name '*.go')
 SHELL := /bin/bash
 
 
