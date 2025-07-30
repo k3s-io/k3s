@@ -14,9 +14,6 @@ sha256sum -c install.sh.sha256sum
 echo Running: go mod tidy
 go mod tidy
 
-echo Running: go generate
-GOOS=linux CC=gcc CXX=g++ go generate
-
 echo Running validation
 
 . ./scripts/version.sh
