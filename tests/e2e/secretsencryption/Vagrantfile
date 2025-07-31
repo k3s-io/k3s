@@ -44,7 +44,7 @@ def provision(vm, role, role_num, node_num)
   if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
   end
-  vm.provision 'k3s-autocomplete', type: 'shell', inline: "k3s completion -i bash"
+  vm.provision 'k3s-autocomplete', type: 'shell', inline: "k3s completion bash -i"
 end
 
 Vagrant.configure("2") do |config|
