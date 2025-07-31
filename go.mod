@@ -112,7 +112,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/k3s-io/api v0.1.2-k3s1.30
+	github.com/k3s-io/api v0.1.3
 	github.com/k3s-io/helm-controller v0.16.13
 	github.com/k3s-io/kine v0.13.17
 	github.com/klauspost/compress v1.18.0
