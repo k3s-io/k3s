@@ -75,7 +75,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 				"--etcd-s3-folder=test-folder " +
 				"--etcd-s3-endpoint=localhost:9090 " +
 				"--etcd-s3-skip-ssl-verify=true " +
-				"--etcd-s3-access-key=test ")
+				"--etcd-s3-access-key=test " +
+				"--etcd-s3-retention=1 ")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(ContainSubstring("Snapshot on-demand-server-0"))
 		})
@@ -86,7 +87,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 				"--from-literal=etcd-s3-folder=test-folder " +
 				"--from-literal=etcd-s3-endpoint=localhost:9090 " +
 				"--from-literal=etcd-s3-skip-ssl-verify=true " +
-				"--from-literal=etcd-s3-access-key=test ")
+				"--from-literal=etcd-s3-access-key=test " +
+				"--from-literal=etcd-s3-retention=1 ")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(ContainSubstring("secret/k3s-etcd-s3-config created"))
 		})
@@ -132,12 +134,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 			_, err = tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot save")
 			Expect(err).NotTo(HaveOccurred())
 			time.Sleep(time.Second)
-			res, err := tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot prune")
+			_, err = tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot prune")
 			Expect(err).NotTo(HaveOccurred())
-			// There should now be 4 on-demand snapshots - 2 local, and 2 on s3
-			res, err = tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep on-demand | wc -l")
+			// There should now be 4 on-demand snapshots - 2 local, and 1 on s3
+			res, err := tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep on-demand | wc -l")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(strings.TrimSpace(res)).To(Equal("4"))
+			Expect(strings.TrimSpace(res)).To(Equal("3"))
 		})
 		It("ensure snapshots retention is working in s3 and local", func() {
 			// Wait until the retention works with 3 minutes
@@ -145,7 +147,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			time.Sleep(3 * time.Minute)
 			res, err := tc.Servers[0].RunCmdOnNode("k3s etcd-snapshot ls 2>/dev/null | grep etcd-snapshot | wc -l")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(strings.TrimSpace(res)).To(Equal("4"))
+			Expect(strings.TrimSpace(res)).To(Equal("3"))
 		})
 	})
 })
