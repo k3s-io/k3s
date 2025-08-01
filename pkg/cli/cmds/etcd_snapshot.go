@@ -124,6 +124,13 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Destination: &ServerConfig.EtcdS3Region,
 		Value:       "us-east-1",
 	},
+	&cli.IntFlag{
+		Name:        "s3-retention",
+		Aliases:     []string{"etcd-s3-retention"},
+		Usage:       "(db) Number of s3 snapshots to retain.",
+		Destination: &ServerConfig.EtcdS3Retention,
+		Value:       defaultSnapshotRentention,
+	},
 	&cli.StringFlag{
 		Name:        "s3-folder",
 		Aliases:     []string{"etcd-s3-folder"},
