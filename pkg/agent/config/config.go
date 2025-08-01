@@ -731,14 +731,14 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ImageServiceEndpoint
 	}
 
-	if nodeConfig.ContainerRuntimeEndpoint != "" {
-		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
-	} else if nodeConfig.Docker {
+	if nodeConfig.Docker {
 		if err := applyCRIDockerdOSSpecificConfig(nodeConfig); err != nil {
 			return nil, err
 		}
 		nodeConfig.AgentConfig.CNIPlugin = true
 		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.CRIDockerd.Address
+	} else if nodeConfig.ContainerRuntimeEndpoint != "" {
+		nodeConfig.AgentConfig.RuntimeSocket = nodeConfig.ContainerRuntimeEndpoint
 	} else {
 		if err := applyContainerdOSSpecificConfig(nodeConfig); err != nil {
 			return nil, err
