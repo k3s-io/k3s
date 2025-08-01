@@ -373,7 +373,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 				// Attempt to apply retention even if the upload failed; failure may be due to bucket
 				// being full or some other condition that retention policy would resolve.
 				// Snapshot retention may prune some files before returning an error. Failing to prune is not fatal.
-				deleted, err := s3client.SnapshotRetention(ctx, e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName)
+				deleted, err := s3client.SnapshotRetention(ctx, e.config.EtcdSnapshotName)
 				res.Deleted = append(res.Deleted, deleted...)
 				if err != nil {
 					logrus.Warnf("Failed to apply s3 snapshot retention policy: %v", err)
@@ -482,7 +482,7 @@ func (e *ETCD) PruneSnapshots(ctx context.Context) (*managed.SnapshotResult, err
 		if s3client, err := e.getS3Client(ctx); err != nil {
 			logrus.Warnf("Unable to initialize S3 client: %v", err)
 		} else {
-			deleted, err := s3client.SnapshotRetention(ctx, e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName)
+			deleted, err := s3client.SnapshotRetention(ctx, e.config.EtcdSnapshotName)
 			if err != nil {
 				logrus.Errorf("Error applying S3 snapshot retention policy: %v", err)
 			}

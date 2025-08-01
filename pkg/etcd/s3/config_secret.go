@@ -53,6 +53,7 @@ func (c *Controller) getConfigFromSecret(secretName string) (*config.EtcdS3, err
 		Region:       defaultEtcdS3.Region,
 		SecretKey:    string(secret.Data["etcd-s3-secret-key"]),
 		SessionToken: string(secret.Data["etcd-s3-session-token"]),
+		Retention:    defaultEtcdS3.Retention,
 		Timeout:      *defaultEtcdS3.Timeout.DeepCopy(),
 	}
 
@@ -72,6 +73,14 @@ func (c *Controller) getConfigFromSecret(secretName string) (*config.EtcdS3, err
 			logrus.Warnf("Failed to parse etcd-s3-timeout value from S3 config secret %s: %v", secretName, err)
 		} else {
 			etcdS3.Timeout.Duration = duration
+		}
+	}
+
+	if v, ok := secret.Data["etcd-s3-retention"]; ok {
+		if retention, err := strconv.Atoi(string(v)); err != nil {
+			logrus.Warnf("Failed to parse etcd-s3-retention value from S3 config secret %s: %v", secretName, err)
+		} else {
+			etcdS3.Retention = retention
 		}
 	}
 
