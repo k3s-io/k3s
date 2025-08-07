@@ -43,7 +43,7 @@ spec:
         emptyDir: {}
       containers:
       - name: metrics-server
-        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.7.2"
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:v0.8.0"
         args:
         - --cert-dir=/tmp
         - --secure-port=10250
