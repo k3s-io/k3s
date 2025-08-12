@@ -10,6 +10,7 @@ import (
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/services"
@@ -82,6 +83,9 @@ func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) e
 	}
 
 	go wait.Until(func() {
+		// don't check and create events until after the apiserver is up, otherwise the events may be lost.
+		<-executor.APIServerReadyChan()
+
 		logrus.Debugf("Running %s certificate expiration check", controllerName)
 		if err := checkCerts(nodeMap, time.Hour*24*daemonconfig.CertificateRenewDays); err != nil {
 			message := fmt.Sprintf("Node certificates require attention - restart %s on this node to trigger automatic rotation: %v", version.Program, err)
