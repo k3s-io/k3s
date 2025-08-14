@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.24.4-alpine3.22
+ARG GOLANG=golang:1.24.5-alpine3.22
 FROM ${GOLANG}
 
 # Install necessary packages
