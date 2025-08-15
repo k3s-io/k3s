@@ -57,6 +57,10 @@ func getDockerCRIArgs(cfg *config.Node) []string {
 		"streaming-bind-addr":        "127.0.0.1:10010",
 	}
 
+	if cfg.CRIDockerd.Debug {
+		argsMap["log-level"] = "debug"
+	}
+
 	if dualNode, _ := utilsnet.IsDualStackIPs(cfg.AgentConfig.NodeIPs); dualNode {
 		argsMap["ipv6-dual-stack"] = "true"
 	}

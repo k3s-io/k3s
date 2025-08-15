@@ -101,6 +101,7 @@ type Containerd struct {
 type CRIDockerd struct {
 	Address string
 	Root    string
+	Debug   bool
 }
 
 type Agent struct {
