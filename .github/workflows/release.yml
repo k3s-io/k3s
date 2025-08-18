@@ -37,7 +37,7 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -111,7 +111,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -160,7 +160,7 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm, upload-release-airgap]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: "Download Binaries and Airgap sha256sum"
       uses: actions/download-artifact@v5
