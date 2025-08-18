@@ -25,7 +25,7 @@ jobs:
       INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with: {fetch-depth: 1}
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
