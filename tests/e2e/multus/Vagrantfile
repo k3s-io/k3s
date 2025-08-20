@@ -16,7 +16,9 @@ def provision(vm, role, role_num, node_num)
   vm.hostname = role
   node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
   vm.network "private_network", :ip => node_ip4, :netmask => "255.255.255.0"
-    
+  #2nd interface to be used by multus
+  vm.network "public_network",  auto_config: false
+  
   scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
   load vagrant_defaults
@@ -36,6 +38,8 @@ def provision(vm, role, role_num, node_num)
       YAML
       k3s.env = ["K3S_KUBECONFIG_MODE=0644", install_type]
     end
+    #install multus manifest
+    vm.provision "file", source: "~/.tests/e2e/multus/rke2-multus-config.yaml", destination: "/var/lib/rancher/k3s/server/manifests/"
   end
   if role.include?("agent")
     vm.provision :k3s, run: 'once' do |k3s|
@@ -52,6 +56,8 @@ def provision(vm, role, role_num, node_num)
   end
   # Make sure cluster traffic cannot flow via eth1 
   vm.provision "Disable forwarding", type: "shell", inline: "sysctl -w net.ipv4.conf.eth1.forwarding=0"
+  # Make sure cluster traffic cannot flow via eth1 
+  vm.provision "Disable forwarding", type: "shell", inline: "sysctl -w net.ipv4.conf.eth2.forwarding=0"
 end
 
 Vagrant.configure("2") do |config|
