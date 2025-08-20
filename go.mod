@@ -22,14 +22,13 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common => github.com/prometheus/common v0.62.0
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.2.0-k3s1
-	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.305.21-k3s1
-	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/raft/v3 => github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1
-	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1
+	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.6.4-k3s2
+	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.6.4-k3s2
+	go.etcd.io/etcd/client/v2 => github.com/k3s-io/etcd/client/v2 v2.306.4-k3s2
+	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.6.4-k3s2
+	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.6.4-k3s2
+	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.6.4-k3s2
+	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.6.4-k3s2
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0
 	golang.org/x/crypto => golang.org/x/crypto v0.36.0
 	golang.org/x/net => golang.org/x/net v0.38.0
@@ -142,7 +141,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.6.4
 	go.etcd.io/etcd/client/pkg/v3 v3.6.4
 	go.etcd.io/etcd/client/v3 v3.6.4
-	go.etcd.io/etcd/etcdutl/v3 v3.5.18
+	go.etcd.io/etcd/etcdutl/v3 v3.6.4
 	go.etcd.io/etcd/server/v3 v3.6.4
 	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
@@ -282,7 +281,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -294,9 +293,9 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/hanwen/go-fuse/v2 v2.8.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -458,9 +457,8 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.4.2 // indirect
-	go.etcd.io/etcd/client/v2 v2.305.21 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.6.4 // indirect
-	go.etcd.io/etcd/raft/v3 v3.5.21 // indirect
+	go.etcd.io/raft/v3 v3.6.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0 // indirect
@@ -488,7 +486,6 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10 // indirect
 	gonum.org/v1/gonum v0.15.1 // indirect
-	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250826171959-ef028d996bc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250826171959-ef028d996bc1 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
