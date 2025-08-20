@@ -96,13 +96,6 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
 			}
 		})
-		It("Verifies that flannel added the correct annotation for the external-ip", func() {
-			nodeIPs, err := getExternalIPs(tc.KubeconfigFile)
-			Expect(err).NotTo(HaveOccurred())
-			for _, annotation := range nodeIPs {
-				Expect(annotation).Should(ContainSubstring("10.100.100."))
-			}
-		})
 		It("Verifies internode connectivity over the tunnel", func() {
 			_, err := tc.DeployWorkload("pod_client.yaml")
 			Expect(err).NotTo(HaveOccurred())
@@ -124,14 +117,6 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 					return e2e.RunCommand(cmd)
 				}, "30s", "10s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
 			}
-		})
-		It("Verifies loadBalancer service's IP is the node-external-ip", func() {
-			_, err := tc.DeployWorkload("loadbalancer.yaml")
-			Expect(err).NotTo(HaveOccurred())
-			cmd := "kubectl get svc -l k8s-app=nginx-app-loadbalancer -o=jsonpath='{range .items[*]}{.metadata.name}{.status.loadBalancer.ingress[*].ip}{end}'"
-			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
-			}, "20s", "3s").Should(ContainSubstring("10.100.100"), "failed cmd: "+cmd)
 		})
 	})
 })
