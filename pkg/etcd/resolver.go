@@ -16,7 +16,7 @@ type EtcdSimpleResolver struct {
 	endpoint string
 }
 
-// Cribbed from https://github.com/etcd-io/etcd/blob/v3.5.16/client/v3/internal/resolver/resolver.go
+// Cribbed from https://github.com/etcd-io/etcd/blob/v3.5.25/client/v3/internal/resolver/resolver.go
 // but only supports a single fixed endpoint. We use this instead of the internal etcd client resolver
 // because the agent loadbalancer handles failover and we don't want etcd or grpc's special behavior.
 func NewSimpleResolver(endpoint string) *EtcdSimpleResolver {
@@ -29,11 +29,13 @@ func (r *EtcdSimpleResolver) Build(target resolver.Target, cc resolver.ClientCon
 	if err != nil {
 		return nil, err
 	}
-
-	if r.CC != nil {
+	if cc != nil {
 		addr, serverName := interpret(r.endpoint)
+		a := resolver.Address{Addr: addr, ServerName: serverName}
 		r.UpdateState(resolver.State{
-			Addresses: []resolver.Address{{Addr: addr, ServerName: serverName}},
+			Endpoints: []resolver.Endpoint{
+				{Addresses: []resolver.Address{a}},
+			},
 		})
 	}
 
