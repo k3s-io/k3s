@@ -260,7 +260,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 	var sf *snapshot.File
 
 	saveStart := time.Now()
-	err = snapshotv3.Save(ctx, e.client.GetLogger(), *cfg, snapshotPath)
+	_, err = snapshotv3.SaveWithVersion(ctx, e.client.GetLogger(), *cfg, snapshotPath)
 	metrics.ObserveWithStatus(snapshotSaveLocalCount, saveStart, err)
 
 	if err != nil {

@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	errorsv3 "go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -299,7 +299,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
-				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+				if err != nil && err.Error() != errorsv3.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
 				return nil
@@ -324,7 +324,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
-				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+				if err != nil && err.Error() != errorsv3.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
 				return nil
@@ -356,7 +356,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				ctxInfo.cancel()
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
-				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+				if err != nil && err.Error() != errorsv3.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
 				return nil
@@ -384,7 +384,7 @@ func Test_UnitETCD_Start(t *testing.T) {
 				time.Sleep(10 * time.Second)
 				testutil.CleanupDataDir(e.config)
 				os.Remove(walDir(e.config))
-				if err != nil && err.Error() != etcdserver.ErrNotEnoughStartedMembers.Error() {
+				if err != nil && err.Error() != errorsv3.ErrNotEnoughStartedMembers.Error() {
 					return err
 				}
 				return nil
@@ -814,7 +814,7 @@ func (m *mockEtcd) Status(context.Context, *etcdserverpb.StatusRequest) (*etcdse
 	}
 	if m.noLeader {
 		res.Leader = 0
-		res.Errors = append(res.Errors, etcdserver.ErrNoLeader.Error())
+		res.Errors = append(res.Errors, errorsv3.ErrNoLeader.Error())
 	}
 	for _, a := range m.alarms() {
 		res.Errors = append(res.Errors, a.String())
@@ -862,7 +862,7 @@ func (m *mockEtcd) MemberAdd(context.Context, *etcdserverpb.MemberAddRequest) (*
 }
 func (m *mockEtcd) MemberRemove(context.Context, *etcdserverpb.MemberRemoveRequest) (*etcdserverpb.MemberRemoveResponse, error) {
 	m.inc("memberremove")
-	return nil, etcdserver.ErrNotEnoughStartedMembers
+	return nil, errorsv3.ErrNotEnoughStartedMembers
 }
 func (m *mockEtcd) MemberUpdate(context.Context, *etcdserverpb.MemberUpdateRequest) (*etcdserverpb.MemberUpdateResponse, error) {
 	m.inc("memberupdate")
