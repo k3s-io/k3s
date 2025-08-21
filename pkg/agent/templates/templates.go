@@ -191,6 +191,7 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 [plugins.'io.containerd.cri.v1.images']
   snapshotter = "{{ . }}"
   disable_snapshot_annotations = {{ if eq . "stargz" }}false{{else}}true{{end}}
+  use_local_image_pull = true
 {{ end }}
 
 {{ with .NodeConfig.AgentConfig.PauseImage }}
@@ -200,7 +201,7 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 
 {{- if or .NodeConfig.AgentConfig.CNIBinDir .NodeConfig.AgentConfig.CNIConfDir }}
 [plugins.'io.containerd.cri.v1.runtime'.cni]
-  {{ with .NodeConfig.AgentConfig.CNIBinDir }}bin_dir = {{ printf "%q" . }}{{ end }}
+  {{ with .NodeConfig.AgentConfig.CNIBinDir }}bin_dirs = [{{ printf "%q" . }}]{{ end }}
   {{ with .NodeConfig.AgentConfig.CNIConfDir }}conf_dir = {{ printf "%q" . }}{{ end }}
 {{ end }}
 
