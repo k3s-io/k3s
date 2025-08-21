@@ -51,6 +51,7 @@ def provision(vm, role, role_num, node_num)
       k3s.args = ["server"]
       k3s.env = %W[#{install_type}]
       k3s.config = <<~YAML
+        debug: true
         cluster-init: true
         node-external-ip: "#{NETWORK_PREFIX}.100"
         flannel-iface: eth1
