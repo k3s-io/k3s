@@ -125,11 +125,11 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
 	github.com/rancher/dynamiclistener v0.7.0
-	github.com/rancher/lasso v0.2.3-rc1
+	github.com/rancher/lasso v0.2.3
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
-	github.com/rancher/remotedialer v0.4.1
+	github.com/rancher/remotedialer v0.5.0
 	github.com/rancher/wharfie v0.7.0
-	github.com/rancher/wrangler/v3 v3.2.2-rc.1
+	github.com/rancher/wrangler/v3 v3.2.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.3
@@ -144,7 +144,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.21
 	go.etcd.io/etcd/etcdutl/v3 v3.5.18
 	go.etcd.io/etcd/server/v3 v3.5.21
-	go.uber.org/mock v0.5.0
+	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/mod v0.24.0
