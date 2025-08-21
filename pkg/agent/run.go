@@ -106,12 +106,16 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
 
+	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
+		return err
+	}
+
 	if nodeConfig.EmbeddedRegistry {
 		if nodeConfig.Docker || nodeConfig.ContainerRuntimeEndpoint != "" {
 			return errors.New("embedded registry mirror requires embedded containerd")
 		}
 
-		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig); err != nil {
+		if err := spegel.DefaultRegistry.Start(ctx, nodeConfig, executor.CRIReadyChan()); err != nil {
 			return pkgerrors.WithMessage(err, "failed to start embedded registry")
 		}
 	}
@@ -129,10 +133,6 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	}
 
 	if err := setupCriCtlConfig(cfg, nodeConfig); err != nil {
-		return err
-	}
-
-	if err := executor.Bootstrap(ctx, nodeConfig, cfg); err != nil {
 		return err
 	}
 
