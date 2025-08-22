@@ -541,19 +541,14 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if serverConfig.ControlConfig.DisableAPIServer {
-		if cfg.ServerURL == "" {
-			// If this node is the initial member of the cluster and is not hosting an apiserver,
-			// always bootstrap the agent off local supervisor, and go through the process of reading
-			// apiserver endpoints from etcd and blocking further startup until one is available.
-			// This ensures that we don't end up in a chicken-and-egg situation on cluster restarts,
-			// where the loadbalancer is routing traffic to existing apiservers, but the apiservers
-			// are non-functional because they're waiting for us to start etcd.
-			loadbalancer.ResetLoadBalancer(filepath.Join(agentConfig.DataDir, "agent"), loadbalancer.SupervisorServiceName)
-		} else {
-			// If this is a secondary member of the cluster and is not hosting an apiserver,
-			// bootstrap the agent off the existing supervisor, instead of bootstrapping locally.
-			agentConfig.ServerURL = cfg.ServerURL
-		}
+		// If this node is not hosting an apiserver, always bootstrap the agent off the local
+		// supervisor, and go through the process of reading apiserver endpoints from etcd and
+		// blocking further startup until one is available.  This ensures that we don't end up in
+		// a chicken-and-egg situation on cluster restarts, where the loadbalancer is routing
+		// traffic to existing apiservers, but the apiservers are non-functional because they're
+		// waiting for us to start etcd.
+		loadbalancer.ResetLoadBalancer(filepath.Join(agentConfig.DataDir, "agent"), loadbalancer.SupervisorServiceName)
+
 		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan []string)
 		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
