@@ -782,8 +782,8 @@ github.com/k3s-io/cadvisor v0.52.1 h1:KeeADD5no2159ICWnTRTJfExlNbVfhqbo9ohixQ74G
 github.com/k3s-io/cadvisor v0.52.1/go.mod h1:OAhPcx1nOm5YwMh/JhpUOMKyv1YKLRtS9KgzWPndHmA=
 github.com/k3s-io/containerd/v2 v2.0.5-k3s2 h1:LQnClzWjDWyMBoJwnqYYor6h5uxUtC8MTMUPsnKjA50=
 github.com/k3s-io/containerd/v2 v2.0.5-k3s2/go.mod h1:8dzNB8eVPdY7/UNM3xZ9FIFjqvNHd092sCMqi6xg2Ck=
-github.com/k3s-io/cri-dockerd v0.3.19-k3s1 h1:i8jkI/n3A+hXitJ+4ielNIFB/MEjI+4qH9xJn6qRZ4E=
-github.com/k3s-io/cri-dockerd v0.3.19-k3s1/go.mod h1:4yt/MGrotvdjND8/THCHWLMujHh7TrCHJ77MxlmyFpE=
+github.com/k3s-io/cri-dockerd v0.3.19-k3s2 h1:sCIh+EJQiaIcqeRYX09vT5sKDOBQjcDLCwHjUiHby64=
+github.com/k3s-io/cri-dockerd v0.3.19-k3s2/go.mod h1:O/Zkr8Jv7OGldRszxS4MLHmCO/93S/PNS50piYrusRs=
 github.com/k3s-io/cri-tools v1.31.0-k3s2 h1:nekOdJe5Hecm+C5eswg688uXTI0enUZOJYadmyU9pYw=
 github.com/k3s-io/cri-tools v1.31.0-k3s2/go.mod h1:PvPf/fN5FiNdK1v43jCydRNRw6631qGTSEOhv/OsjYU=
 github.com/k3s-io/etcd/api/v3 v3.5.21-k3s1 h1:iXBMuGT7PbQumlc9R5JOFQ+SgmGaH3dF35ZpO7e3XeA=
@@ -1095,12 +1095,12 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/opencontainers/runc v1.2.6 h1:P7Hqg40bsMvQGCS4S7DJYhUZOISMLJOB2iGX5COWiPk=
-github.com/opencontainers/runc v1.2.6/go.mod h1:dOQeFo29xZKBNeRBI0B19mJtfHv68YgCTh1X+YphA+4=
+github.com/opencontainers/runc v1.3.0 h1:cvP7xbEvD0QQAs0nZKLzkVog2OPZhI/V2w3WmTmUSXI=
+github.com/opencontainers/runc v1.3.0/go.mod h1:9wbWt42gV+KRxKRVVugNP6D5+PQciRbenB4fLVsqGPs=
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-spec v1.0.3-0.20220825212826-86290f6a00fb/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
-github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE7dzrbT927iTk=
-github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
+github.com/opencontainers/runtime-spec v1.2.1 h1:S4k4ryNgEpxW1dzyqffOmhI1BHYcjzU8lpJfSlR0xww=
+github.com/opencontainers/runtime-spec v1.2.1/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 h1:DmNGcqH3WDbV5k8OJ+esPWbqUOX5rMLR2PMvziDMJi0=
 github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626/go.mod h1:BRHJJd0E+cx42OybVYSgUvZmU0B8P9gZuRXlZUP7TKI=
 github.com/opencontainers/selinux v1.11.1 h1:nHFvthhM0qY8/m+vfhJylliSshm8G1jJ2jDMcgULaH8=
