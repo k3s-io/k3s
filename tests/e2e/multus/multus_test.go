@@ -8,7 +8,6 @@ package externalip
 import (
 	"flag"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,14 +24,14 @@ var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
 var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
-// getLBServiceIPs returns the externalIP configured for flannel
-func getExternalIPs(kubeConfigFile string) ([]string, error) {
-	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.annotations.flannel\.alpha\.coreos\.com/public-ip-overwrite}'  --kubeconfig=` + kubeConfigFile
+// getMultusIp returns the IP address on the multus network of the multus-demo pod running on nodeName
+func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
+	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{range .items[*]}{.metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status}'  --kubeconfig=` + kubeConfigFile + ` | jq '.[1].ips[0]`
 	res, err := e2e.RunCommand(cmd)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return strings.Split(res, " "), nil
+	return res, nil
 }
 
 // getClientIPs returns the IPs of the client pods
@@ -106,16 +105,15 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			_, err := tc.DeployWorkload("multus_pod_client.yaml")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Wait for the pod_client to have an IP
-			// var clientIPs []e2e.ObjIP
-			// Eventually(func(g Gomega) {
-			// 	clientIPs, err = getClientIPs(tc.KubeconfigFile)
-			// 	g.Expect(err).NotTo(HaveOccurred())
-			// 	g.Expect(len(clientIPs)).Should(BeNumerically(">", 0), "client pod IPs")
-			// 	for _, ip := range clientIPs {
-			// 		g.Expect(ip.IPv4).Should(ContainSubstring("10.42."), "client pod IP: "+ip.IPv4)
-			// 	}
-			// }, "40s", "5s").Should(Succeed(), "failed getClientIPs")
+			// Wait for each multus-demo pod to have an IP address on the multus network
+			nodes := [2]string{"server-0", "agent-0"}
+			for _, node := range nodes {
+				Eventually(func(g Gomega) {
+					multusIp, err := getMultusIp(tc.KubeconfigFile, node)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(multusIp).Should(ContainSubstring("172.17.0"), "multus IP: "+multusIp)
+				}, "40s", "5s").Should(Succeed(), "failed to get Multus IP for node "+node)
+			}
 
 			// for _, ip := range clientIPs {
 			// 	cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
