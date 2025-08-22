@@ -95,7 +95,6 @@ require (
 	github.com/flannel-io/flannel v0.27.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-logr/logr v1.4.2
-	github.com/go-logr/stdr v1.2.3-0.20220714215716-96bad1d688c5
 	github.com/go-test/deep v1.0.7
 	github.com/google/cadvisor v0.52.1
 	github.com/google/go-containerregistry v0.20.2
@@ -264,6 +263,7 @@ require (
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
+	github.com/go-logr/stdr v1.2.3-0.20220714215716-96bad1d688c5 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect

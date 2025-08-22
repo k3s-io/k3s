@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -19,13 +18,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/server/auth"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/dynamiclistener/cert"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/ptr"
 
 	"github.com/go-logr/logr"
-	"github.com/go-logr/stdr"
 	"github.com/gorilla/mux"
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	ipfslog "github.com/ipfs/go-log/v2"
@@ -108,7 +106,7 @@ func init() {
 }
 
 // Start starts the embedded p2p router, and binds the registry API to an existing HTTP router.
-func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
+func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyChan <-chan struct{}) error {
 	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
 	// distribute images for all configured mirrors. there doesn't need to be a
 	// configured endpoint, just having a key for the registry will do.
@@ -135,12 +133,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 		c.ExternalAddress, c.RegistryPort, registries)
 
 	// set up the various logging logging frameworks
+	ctx = logr.NewContext(ctx, logger.NewLogrusSink(nil).AsLogr().WithName("spegel"))
 	level := ipfslog.LevelInfo
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		level = ipfslog.LevelDebug
-		stdlog := log.New(logrus.StandardLogger().Writer(), "spegel ", log.LstdFlags)
-		logger := stdr.NewWithOptions(stdlog, stdr.Options{Verbosity: ptr.To(7)})
-		ctx = logr.NewContext(ctx, logger)
 	}
 	ipfslog.SetAllLoggers(level)
 
@@ -232,7 +228,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	}
 
 	// Track images available in containerd and publish via p2p router
-	go state.Track(ctx, ociClient, router, resolveLatestTag)
+	go func() {
+		<-criReadyChan
+		state.Track(ctx, ociClient, router, resolveLatestTag)
+	}()
 
 	mRouter, err := c.Router(ctx, nodeConfig)
 	if err != nil {
