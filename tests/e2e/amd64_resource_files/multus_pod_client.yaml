@@ -5,21 +5,21 @@ metadata:
   labels:
     app: multus-demo
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: multus-demo
   template:
     metadata:
       annotations:
-        k8s.v1.cni.cncf.io/networks: macvlan-whereabouts@eth1
+        k8s.v1.cni.cncf.io/networks: macvlan-whereabouts
       labels:
         app: multus-demo
     spec:
       containers:
-      - image: ranchertest/mytestcontainer
+      - image: wbitt/network-multitool:extra
         imagePullPolicy: Always
-        name: client-curl
+        name: network-multitool
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
