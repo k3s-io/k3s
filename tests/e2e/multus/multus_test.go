@@ -3,11 +3,12 @@
 // would be a public IP. In the test, we create two networks, one sets the node
 // internal-ip and the other sets the node-external-ip. Traffic is blocked on the former
 
-package externalip
+package multus
 
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -18,16 +19,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type Network struct {
-	name      string
-	ips       []string
-	isDefault bool `json:"default"`
-	mac       string
-	dns       interface{}
-}
-
-type NetworkStatus struct {
-	Networks []Network
+type NetworkConfig struct {
+	Name      string                 `json:"name"`
+	Interface string                 `json:"interface,omitempty"`
+	IPs       []string               `json:"ips"`
+	Default   bool                   `json:"default,omitempty"`
+	MAC       string                 `json:"mac,omitempty"`
+	DNS       map[string]interface{} `json:"dns,omitempty"` // flexible, since DNS object is empty
 }
 
 // Valid nodeOS: bento/ubuntu-24.04, opensuse/Leap-15.6.x86_64
@@ -45,13 +43,18 @@ func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
 		return "", err
 	}
 
-	var netStatus NetworkStatus
+	fmt.Printf("network status: %s\n", res)
 
-	err = json.Unmarshal([]byte(res), &netStatus)
+	var networkStatus []NetworkConfig
+
+	err = json.Unmarshal([]byte(res), &networkStatus)
 	if err != nil {
 		return "", err
 	}
-	return netStatus.Networks[1].ips[0], nil
+
+	fmt.Printf("network status: %s\n", networkStatus)
+
+	return networkStatus[1].IPs[0], nil
 }
 
 // getClientIPs returns the IPs of the client pods
