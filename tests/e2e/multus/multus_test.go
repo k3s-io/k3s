@@ -52,7 +52,7 @@ func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("network status: %s\n", networkStatus)
+	fmt.Printf("network status: %v\n", networkStatus)
 
 	return networkStatus[1].IPs[0], nil
 }
