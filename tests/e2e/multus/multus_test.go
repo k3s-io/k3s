@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// json structure stored in metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status
 type NetworkConfig struct {
 	Name      string                 `json:"name"`
 	Interface string                 `json:"interface,omitempty"`
@@ -27,6 +29,8 @@ type NetworkConfig struct {
 	MAC       string                 `json:"mac,omitempty"`
 	DNS       map[string]interface{} `json:"dns,omitempty"` // flexible, since DNS object is empty
 }
+
+const successMessage = "5 packets transmitted, 5 received, 0% packet loss"
 
 // Valid nodeOS: bento/ubuntu-24.04, opensuse/Leap-15.6.x86_64
 var nodeOS = flag.String("nodeOS", "bento/ubuntu-24.04", "VM operating system")
@@ -43,8 +47,6 @@ func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("network status: %s\n", res)
-
 	var networkStatus []NetworkConfig
 
 	err = json.Unmarshal([]byte(res), &networkStatus)
@@ -57,17 +59,27 @@ func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
 	return networkStatus[1].IPs[0], nil
 }
 
-// getClientIPs returns the IPs of the client pods
-func getClientIPs(kubeConfigFile string) ([]e2e.ObjIP, error) {
-	cmd := `kubectl get pods -l app=client -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIPs[*].ip}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
-	return e2e.GetObjIPs(cmd)
+func pingOverMultusNetwork(kubeConfigFile, sourceNodeName, destMultusIP string) (bool, error) {
+	//get the name of the multus-demo pod
+	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + sourceNodeName + ` -o jsonpath='{.items[0].metadata.name}'  --kubeconfig=` + kubeConfigFile
+	podName, err := e2e.RunCommand(cmd)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println(podName)
+	//run ping command in that pod
+	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 ` + destMultusIP
+	res, err := e2e.RunCommand(cmd)
+	fmt.Println(res)
+
+	return strings.Contains(res, successMessage), nil
 }
 
 func Test_E2EMultus(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	RunSpecs(t, "External-IP config Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Multus config Suite", suiteConfig, reporterConfig)
 
 }
 
@@ -129,14 +141,29 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait for each multus-demo pod to have an IP address on the multus network
-			nodes := [2]string{"server-0", "agent-0"}
-			for _, node := range nodes {
+			// then store them
+			multusIPs := map[string]string{"server-0": "", "agent-0": ""}
+
+			for nodename := range multusIPs {
 				Eventually(func(g Gomega) {
-					multusIp, err := getMultusIp(tc.KubeconfigFile, node)
+					multusIp, err := getMultusIp(tc.KubeconfigFile, nodename)
 					g.Expect(err).NotTo(HaveOccurred())
 					g.Expect(multusIp).Should(ContainSubstring("172.17.0"), "multus IP: "+multusIp)
-				}, "40s", "5s").Should(Succeed(), "failed to get Multus IP for node "+node)
+					multusIPs[nodename] = multusIp
+				}, "40s", "5s").Should(Succeed(), "failed to get Multus IP for node "+nodename)
 			}
+
+			Eventually(func(g Gomega) {
+				//ping pod on agent-0 from pod on server-0
+				res, err := pingOverMultusNetwork(tc.KubeconfigFile, "server-0", multusIPs["agent-0"])
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(res).To(Equal(true))
+				//ping pod on server-0 from pod on agent-0
+				res, err = pingOverMultusNetwork(tc.KubeconfigFile, "agent-0", multusIPs["server-0"])
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(res).To(Equal(true))
+
+			}, "40s", "5s").Should(Succeed(), "failed to ping between pods on multus network")
 
 			// for _, ip := range clientIPs {
 			// 	cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
