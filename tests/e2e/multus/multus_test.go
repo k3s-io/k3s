@@ -6,6 +6,7 @@
 package externalip
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"testing"
@@ -17,6 +18,18 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+type Network struct {
+	name      string
+	ips       []string
+	isDefault bool `json:"default"`
+	mac       string
+	dns       interface{}
+}
+
+type NetworkStatus struct {
+	Networks []Network
+}
+
 // Valid nodeOS: bento/ubuntu-24.04, opensuse/Leap-15.6.x86_64
 var nodeOS = flag.String("nodeOS", "bento/ubuntu-24.04", "VM operating system")
 var serverCount = flag.Int("serverCount", 1, "number of server nodes")
@@ -26,12 +39,19 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // getMultusIp returns the IP address on the multus network of the multus-demo pod running on nodeName
 func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
-	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{range .items[*]}{.metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status}'  --kubeconfig=` + kubeConfigFile + ` | jq '.[1].ips[0]`
+	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{.items[0]..metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status}'  --kubeconfig=` + kubeConfigFile + ` | jq '.[1].ips[0]`
 	res, err := e2e.RunCommand(cmd)
 	if err != nil {
 		return "", err
 	}
-	return res, nil
+
+	var netStatus NetworkStatus
+
+	err = json.Unmarshal([]byte(res), &netStatus)
+	if err != nil {
+		return "", err
+	}
+	return netStatus.Networks[1].ips[0], nil
 }
 
 // getClientIPs returns the IPs of the client pods
