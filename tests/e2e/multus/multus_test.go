@@ -39,7 +39,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // getMultusIp returns the IP address on the multus network of the multus-demo pod running on nodeName
 func getMultusIp(kubeConfigFile, nodeName string) (string, error) {
-	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{.items[0]..metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status}'  --kubeconfig=` + kubeConfigFile + ` | jq '.[1].ips[0]`
+	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{.items[0]..metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status}'  --kubeconfig=` + kubeConfigFile
 	res, err := e2e.RunCommand(cmd)
 	if err != nil {
 		return "", err
