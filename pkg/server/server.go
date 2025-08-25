@@ -107,7 +107,7 @@ func startOnAPIServerReady(ctx context.Context, config *Config) {
 func runControllers(ctx context.Context, config *Config) error {
 	controlConfig := &config.ControlConfig
 
-	sc, err := NewContext(ctx, config, true)
+	sc, err := NewContext(ctx, config)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create new server context")
 	}
@@ -220,7 +220,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
 	}
 
-	if !config.ControlConfig.DisableHelmController {
+	if sc.Helm != nil {
 		restConfig, err := util.GetRESTConfig(config.ControlConfig.Runtime.KubeConfigSupervisor)
 		if err != nil {
 			return err
