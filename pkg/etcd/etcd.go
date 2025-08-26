@@ -100,6 +100,7 @@ var (
 	NodeAddressAnnotation = "etcd." + version.Program + ".cattle.io/node-address"
 
 	ErrAddressNotSet    = errors.New("apiserver addresses not yet set")
+	ErrJoinTimeout      = errors.New("MemberAdd request timed out")
 	ErrNotMember        = errNotMember()
 	ErrMemberListFailed = errMemberListFailed()
 )
@@ -512,6 +513,10 @@ func (e *ETCD) Start(ctx context.Context, clientAccessInfo *clientaccess.Info) e
 							logrus.Infof("Waiting to retrieve etcd cluster member list: %v", err)
 							return false, nil
 						}
+						if errors.Is(err, ErrJoinTimeout) {
+							logrus.Infof("Retrying etcd cluster join: %v", err)
+							return false, nil
+						}
 						return false, err
 					}
 					return true, nil
@@ -621,6 +626,9 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	if add {
 		logrus.Infof("Adding member %s=%s to etcd cluster %v", e.name, e.peerURL(), cluster)
 		if _, err = client.MemberAddAsLearner(clientCtx, []string{e.peerURL()}); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return ErrJoinTimeout
+			}
 			return err
 		}
 		cluster = append(cluster, fmt.Sprintf("%s=%s", e.name, e.peerURL()))
