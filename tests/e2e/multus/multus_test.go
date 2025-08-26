@@ -71,6 +71,9 @@ func pingOverMultusNetwork(kubeConfigFile, sourceNodeName, destMultusIP string) 
 	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 ` + destMultusIP
 	res, err := e2e.RunCommand(cmd)
 	fmt.Println(res)
+	if err != nil {
+		return false, err
+	}
 
 	return strings.Contains(res, successMessage), nil
 }
@@ -92,6 +95,32 @@ func pingBetweenNode(src, dest e2e.VagrantNode) (bool, error) {
 	fmt.Printf("output: %s\n", output)
 	return strings.Contains(output, successMessage), nil
 
+}
+
+func runRandomTests(kubeConfigFile, nodeName string) (bool, error) {
+	//get the name of the multus-demo pod
+	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{.items[0].metadata.name}'  --kubeconfig=` + kubeConfigFile
+	podName, err := e2e.RunCommand(cmd)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println(podName)
+
+	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ip a`
+	res, err := e2e.RunCommand(cmd)
+	fmt.Printf("res: %s", res)
+	if err != nil {
+		return false, err
+	}
+
+	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 8.8.8.8`
+	res, err = e2e.RunCommand(cmd)
+	fmt.Printf("res: %s", res)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func Test_E2EMultus(t *testing.T) {
@@ -182,6 +211,9 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			}
 
 			Eventually(func(g Gomega) {
+				result, err := runRandomTests(tc.KubeconfigFile, "server-0")
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(result).To(Equal(true))
 				//ping pod on agent-0 from pod on server-0
 				res, err := pingOverMultusNetwork(tc.KubeconfigFile, "server-0", multusIPs["agent-0"])
 				g.Expect(err).NotTo(HaveOccurred())
