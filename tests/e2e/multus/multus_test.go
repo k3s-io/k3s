@@ -120,6 +120,12 @@ func runRandomTests(kubeConfigFile, nodeName string) (bool, error) {
 		return false, err
 	}
 
+	cmd = `kubectl get pods -o wide -A  --kubeconfig=` + kubeConfigFile
+	res, err = e2e.RunCommand(cmd)
+	fmt.Printf("res: %s", res)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
