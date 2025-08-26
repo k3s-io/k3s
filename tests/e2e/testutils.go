@@ -391,6 +391,19 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 	return nodeip, nil
 }
 
+// FetchNodeSecondaryIP returns the IP address of the node on the second network used by Multus
+func (v VagrantNode) FetchNodeSecondaryIP() (string, error) {
+	cmd := "ip -f inet addr show eth2| awk '/inet / {print $2}'|cut -d/ -f1"
+	ipaddr, err := v.RunCmdOnNode(cmd)
+	if err != nil {
+		return "", err
+	}
+	ips := strings.Trim(ipaddr, "")
+	ip := strings.Split(ips, "inet")
+	nodeip := strings.TrimSpace(ip[1])
+	return nodeip, nil
+}
+
 // GenKubeconfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
 func GenKubeconfigFile(nodeName string) (string, error) {
 	kubeconfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)

@@ -22,12 +22,12 @@ import (
 
 // json structure stored in metadata.annotations.k8s\.v1\.cni\.cncf\.io\/network-status
 type NetworkConfig struct {
-	Name      string                 `json:"name"`
-	Interface string                 `json:"interface,omitempty"`
-	IPs       []string               `json:"ips"`
-	Default   bool                   `json:"default,omitempty"`
-	MAC       string                 `json:"mac,omitempty"`
-	DNS       map[string]interface{} `json:"dns,omitempty"` // flexible, since DNS object is empty
+	Name      string         `json:"name"`
+	Interface string         `json:"interface,omitempty"`
+	IPs       []string       `json:"ips"`
+	Default   bool           `json:"default,omitempty"`
+	MAC       string         `json:"mac,omitempty"`
+	DNS       map[string]any `json:"dns,omitempty"`
 }
 
 const successMessage = "5 packets transmitted, 5 received, 0% packet loss"
@@ -73,6 +73,19 @@ func pingOverMultusNetwork(kubeConfigFile, sourceNodeName, destMultusIP string) 
 	fmt.Println(res)
 
 	return strings.Contains(res, successMessage), nil
+}
+
+func pingBetweenNode(src, dest e2e.VagrantNode) (bool, error) {
+	destIP, err := dest.FetchNodeSecondaryIP()
+	if err != nil {
+		return false, err
+	}
+	fmt.Printf("destIP: %s\n", destIP)
+	cmd := "ping -c 5 " + destIP
+	output, err := src.RunCmdOnNode(cmd)
+	fmt.Printf("output: %s\n", output)
+	return strings.Contains(output, successMessage), nil
+
 }
 
 func Test_E2EMultus(t *testing.T) {
@@ -130,6 +143,11 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			for _, pod := range podIPs {
 				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
 			}
+		})
+		It("Verifies that nodes can ping each other on secondary network", func() {
+			result, err := pingBetweenNode(tc.Servers[0], tc.Agents[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(true))
 		})
 		It("Deploys Multus NetworkAttachmentDefinition", func() {
 			_, err := tc.DeployWorkload("multus_network_attach.yaml")
