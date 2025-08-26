@@ -155,6 +155,9 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			result, err := pingBetweenNode(tc.Servers[0], tc.Agents[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(true))
+			result, err = pingBetweenNode(tc.Agents[0], tc.Servers[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(true))
 		})
 		It("Deploys Multus NetworkAttachmentDefinition", func() {
 			_, err := tc.DeployWorkload("multus_network_attach.yaml")

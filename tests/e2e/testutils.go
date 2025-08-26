@@ -670,6 +670,7 @@ func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
 	}
 	runcmd := "vagrant ssh --no-tty " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
+	fmt.Printf("runcmd: %s", runcmd)
 	out, err := RunCommand(runcmd)
 	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
 	// these are added to the command output and need to be removed
