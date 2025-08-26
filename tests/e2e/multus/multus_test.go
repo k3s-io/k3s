@@ -76,6 +76,12 @@ func pingOverMultusNetwork(kubeConfigFile, sourceNodeName, destMultusIP string) 
 }
 
 func pingBetweenNode(src, dest e2e.VagrantNode) (bool, error) {
+	srcIP, err := src.FetchNodeSecondaryIP()
+	if err != nil {
+		return false, err
+	}
+	fmt.Printf("srcIP: %s\n", srcIP)
+
 	destIP, err := dest.FetchNodeSecondaryIP()
 	if err != nil {
 		return false, err
@@ -132,6 +138,7 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 	Context("Deploy workloads to check cluster connectivity of the nodes", func() {
 		It("Verifies that each node has vagrant IP", func() {
 			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
+			fmt.Printf("nodeIPs: %v", nodeIPs)
 			Expect(err).NotTo(HaveOccurred())
 			for _, node := range nodeIPs {
 				Expect(node.IPv4).Should(ContainSubstring("10.10."))
