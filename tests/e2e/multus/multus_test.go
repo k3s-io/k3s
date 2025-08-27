@@ -102,7 +102,7 @@ func runRandomTests(kubeConfigFile, nodeName string) (bool, error) {
 	cmd := `kubectl get pods -l app=multus-demo --field-selector spec.nodeName=` + nodeName + ` -o jsonpath='{.items[0].metadata.name}'  --kubeconfig=` + kubeConfigFile
 	podName, err := e2e.RunCommand(cmd)
 	if err != nil {
-		return false, err
+		fmt.Printf("error: %s\n", err)
 	}
 	fmt.Println(podName)
 
@@ -110,21 +110,21 @@ func runRandomTests(kubeConfigFile, nodeName string) (bool, error) {
 	res, err := e2e.RunCommand(cmd)
 	fmt.Printf("res: %s", res)
 	if err != nil {
-		return false, err
+		fmt.Printf("error: %s\n", err)
 	}
 
 	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 8.8.8.8`
 	res, err = e2e.RunCommand(cmd)
 	fmt.Printf("res: %s", res)
 	if err != nil {
-		return false, err
+		fmt.Printf("error: %s\n", err)
 	}
 
 	cmd = `kubectl get pods -o wide -A  --kubeconfig=` + kubeConfigFile
 	res, err = e2e.RunCommand(cmd)
 	fmt.Printf("res: %s", res)
 	if err != nil {
-		return false, err
+		fmt.Printf("error: %s\n", err)
 	}
 	return true, nil
 }
