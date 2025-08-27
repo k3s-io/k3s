@@ -11,6 +11,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	lassometrics "github.com/rancher/lasso/pkg/metrics"
+	rdmetrics "github.com/rancher/remotedialer/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
 )
 
@@ -38,6 +39,8 @@ func init() {
 	loadbalancer.MustRegister(DefaultRegisterer)
 	// and etcd snapshot metrics
 	etcd.MustRegister(DefaultRegisterer)
+	// and remotedialer metrics
+	rdmetrics.MustRegister(DefaultRegisterer)
 }
 
 // Config holds fields for the metrics listener
