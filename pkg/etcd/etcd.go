@@ -626,7 +626,7 @@ func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) er
 	if add {
 		logrus.Infof("Adding member %s=%s to etcd cluster %v", e.name, e.peerURL(), cluster)
 		if _, err = client.MemberAddAsLearner(clientCtx, []string{e.peerURL()}); err != nil {
-			if errors.Is(err, context.Canceled) {
+			if errors.Is(err, context.DeadlineExceeded) {
 				return ErrJoinTimeout
 			}
 			return err
