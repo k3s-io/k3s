@@ -391,6 +391,19 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 	return nodeip, nil
 }
 
+// FetchNodeSecondaryIP returns the IP address of the node on the second network used by Multus
+func (v VagrantNode) FetchNodeSecondaryIP() (string, error) {
+	cmd := "ip -f inet addr show eth2| awk '/inet / {print $2}'|cut -d/ -f1"
+	ipaddr, err := v.RunCmdOnNode(cmd)
+	if err != nil {
+		return "", err
+	}
+	ips := strings.Trim(ipaddr, "")
+	ip := strings.Split(ips, "inet")
+	nodeip := strings.TrimSpace(ip[1])
+	return nodeip, nil
+}
+
 // GenKubeconfigFile extracts the kubeconfig from the given node and modifies it for use outside the VM.
 func GenKubeconfigFile(nodeName string) (string, error) {
 	kubeconfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
@@ -657,6 +670,7 @@ func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
 	}
 	runcmd := "vagrant ssh --no-tty " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
+	fmt.Printf("runcmd: %s", runcmd)
 	out, err := RunCommand(runcmd)
 	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
 	// these are added to the command output and need to be removed
