@@ -290,6 +290,8 @@ github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2y
 github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
 github.com/boombuler/barcode v1.0.1/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
 github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=
+github.com/brandond/dynamiclistener v0.7.1-0.20250828011552-e04c90bf663e h1:/pPjSbq3AE56X4I8IsdhjD9N51abDQwGGRNLz8NHQPM=
+github.com/brandond/dynamiclistener v0.7.1-0.20250828011552-e04c90bf663e/go.mod h1:kq+3QHceIpW3f2xVpYgok7ILn1JcS8+O2utC42y8ZNY=
 github.com/bronze1man/goStrongswanVici v0.0.0-20231128135937-211cef3b0b20 h1:JMoL5xJSYxo1QVJ3c+4FutWQnks3gZX9DYkgAnvg+5g=
 github.com/bronze1man/goStrongswanVici v0.0.0-20231128135937-211cef3b0b20/go.mod h1:fWUtBEPt2yjrr3WFhOqvajM8JSEU8bEeBcoeSCsKRpc=
 github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
@@ -1206,8 +1208,6 @@ github.com/quic-go/quic-go v0.50.1 h1:unsgjFIUqW8a2oopkY7YNONpV1gYND6Nt9hnt1PN94
 github.com/quic-go/quic-go v0.50.1/go.mod h1:Vim6OmUvlYdwBhXP9ZVrtGmCMWa3wEqhq3NgYrI8b4E=
 github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66 h1:4WFk6u3sOT6pLa1kQ50ZVdm8BQFgJNA117cepZxtLIg=
 github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66/go.mod h1:Vp72IJajgeOL6ddqrAhmp7IM9zbTcgkQxD/YdxrVwMw=
-github.com/rancher/dynamiclistener v0.7.0 h1:+jyfZ4lVamc1UbKWo8V8dhSPtCgRZYaY8nm7wiHeko4=
-github.com/rancher/dynamiclistener v0.7.0/go.mod h1:Q2YA42xp7Xc69JiSlJ8GpvLvze261T0iQ/TP4RdMCYk=
 github.com/rancher/lasso v0.2.3 h1:74/z/C/O3ykhyMrRuEgc9kVyYiSoS7kp5BAijlcyXDg=
 github.com/rancher/lasso v0.2.3/go.mod h1:G+KeeOaKRjp+qGp0bV6VbLhYrq1vHbJPbDh40ejg5yE=
 github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7 h1:0Kg2SGoMeU1ll4xPi4DE0+qNHLFO/U5MwtK0WrIdK+o=
