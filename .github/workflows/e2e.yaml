@@ -51,8 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
-        etest: [multus]
+        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
       max-parallel: 5
     steps:
       - name: "Checkout"
@@ -207,12 +206,12 @@ jobs:
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
         cd ./tests/docker/${{ matrix.dtest }}
         
-  #       # These tests use rancher/systemd-node and have different flags.
-  #       CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
-  #       if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
-  #         ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
-  #       elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
-  #         ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -ci
-  #       else
-  #         ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE
-  #       fi
+        # These tests use rancher/systemd-node and have different flags.
+        CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
+        elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -ci
+        else
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE
+        fi
