@@ -57,7 +57,7 @@ replace (
 	k8s.io/kms => github.com/mgfritch/kubernetes/staging/src/k8s.io/kms v1.34.0-k3s1
 	k8s.io/kube-aggregator => github.com/mgfritch/kubernetes/staging/src/k8s.io/kube-aggregator v1.34.0-k3s1
 	k8s.io/kube-controller-manager => github.com/mgfritch/kubernetes/staging/src/k8s.io/kube-controller-manager v1.34.0-k3s1
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b
 	k8s.io/kube-proxy => github.com/mgfritch/kubernetes/staging/src/k8s.io/kube-proxy v1.34.0-k3s1
 	k8s.io/kube-scheduler => github.com/mgfritch/kubernetes/staging/src/k8s.io/kube-scheduler v1.34.0-k3s1
 	k8s.io/kubectl => github.com/mgfritch/kubernetes/staging/src/k8s.io/kubectl v1.34.0-k3s1
@@ -200,7 +200,6 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -280,7 +279,6 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
-	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
@@ -508,7 +506,6 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.7.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.20.1 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.0.0 // indirect
