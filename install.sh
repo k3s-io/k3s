@@ -128,6 +128,34 @@ verify_system() {
     fatal 'Can not find systemd or openrc to use as a process supervisor for k3s'
 }
 
+# --- use sudo if we are not already root ---
+set_sudo_cmd() {
+    SUDO=sudo
+    if [ $(id -u) -eq 0 ]; then
+        SUDO=
+    fi
+}
+
+# --- check for a running firewall and warn ---
+warn_if_firewall_running() {
+    set_sudo_cmd
+    # --- suse/rhel ---
+    if [ -x /usr/bin/firewall-cmd ]; then
+        $SUDO firewall-cmd --state > /dev/null 2>&1 && rc=$? || rc=$?
+        # --- 252 = NOT_RUNNING ---
+        if [ $rc -ne "252" ]; then
+            warn 'Using firewalld with K3s is not recommended. See https://docs.k3s.io/installation/requirements'
+        fi
+    fi
+    # --- debian/ubuntu ---
+    if [ -x /usr/sbin/ufw ]; then
+        $SUDO /usr/bin/ufw | grep -qw active && rc=$? || rc=$?
+        if [ $rc -eq "0" ]; then
+            warn 'Using ufw with K3s is not recommended. See https://docs.k3s.io/installation/requirements'
+        fi
+    fi
+}
+
 # --- add quotes to command arguments ---
 quote() {
     for arg in "$@"; do
@@ -212,11 +240,7 @@ setup_env() {
             ${invalid_chars}"
     fi
 
-    # --- use sudo if we are not already root ---
-    SUDO=sudo
-    if [ $(id -u) -eq 0 ]; then
-        SUDO=
-    fi
+    set_sudo_cmd
 
     # --- use systemd type if defined or create default ---
     if [ -n "${INSTALL_K3S_TYPE}" ]; then
@@ -1147,6 +1171,7 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 # --- run the install process --
 {
     verify_system
+    warn_if_firewall_running
     setup_env "$@"
     download_and_verify
     setup_selinux
