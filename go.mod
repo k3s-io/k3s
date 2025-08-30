@@ -8,7 +8,7 @@ replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.5.0
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.9.0
-	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.1.4-k3s1
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.1.4-k3s2
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker => github.com/docker/docker v25.0.8+incompatible
@@ -81,7 +81,7 @@ require (
 	github.com/cloudnativelabs/kube-router/v2 v2.0.0-00010101000000-000000000000
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/containerd/containerd/api v1.9.0
-	github.com/containerd/containerd/v2 v2.1.3
+	github.com/containerd/containerd/v2 v2.1.4
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fuse-overlayfs-snapshotter/v2 v2.1.6
 	github.com/containerd/stargz-snapshotter v0.17.0
