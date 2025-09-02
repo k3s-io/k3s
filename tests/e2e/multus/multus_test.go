@@ -224,11 +224,11 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result).To(Equal(true))
 				//ping pod on agent-0 from pod on server-0
-				res, err := pingOverMultusNetwork(tc.KubeconfigFile, "server-0", multusIPs["server-0"])
+				res, err := pingOverMultusNetwork(tc.KubeconfigFile, "server-0", multusIPs["agent-0"])
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).To(Equal(true))
 				//ping pod on server-0 from pod on agent-0
-				res, err = pingOverMultusNetwork(tc.KubeconfigFile, "agent-0", multusIPs["agent-0"])
+				res, err = pingOverMultusNetwork(tc.KubeconfigFile, "agent-0", multusIPs["server-0"])
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).To(Equal(true))
 
