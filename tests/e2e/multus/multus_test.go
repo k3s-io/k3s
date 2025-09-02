@@ -68,23 +68,23 @@ func pingOverMultusNetwork(kubeConfigFile, sourceNodeName, destMultusIP string) 
 	}
 	fmt.Println(podName)
 
-	//run curl command
-	podCmd := `curl -m 5 -s -f http://` + destMultusIP + `:1180`
-
-	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ` + podCmd
+	//run ping command in that pod
+	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 ` + destMultusIP
 	res, err := e2e.RunCommand(cmd)
 	fmt.Println(res)
 	if err != nil {
 		return false, err
 	}
-	//run ping command in that pod
-	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ping -c 5 ` + destMultusIP
+
+	//run curl command
+	podCmd := `curl -m 5 -s -f http://` + destMultusIP + `:1180`
+
+	cmd = `kubectl exec --kubeconfig=` + kubeConfigFile + ` ` + podName + ` -- ` + podCmd
 	res, err = e2e.RunCommand(cmd)
 	fmt.Println(res)
 	if err != nil {
 		return false, err
 	}
-
 	return strings.Contains(res, successMessage), nil
 }
 
