@@ -1525,7 +1525,7 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 						PrivateRegistryConfig: registry.Registry,
 						Program:               "k3s",
 						ExtraRuntimes: map[string]templates.ContainerdRuntimeConfig{
-							"wasmtime": templates.ContainerdRuntimeConfig{
+							"wasmtime": {
 								RuntimeType: "io.containerd.wasmtime.v1",
 								BinaryName:  "containerd-shim-wasmtime-v1",
 							},
