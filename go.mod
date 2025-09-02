@@ -10,6 +10,7 @@ replace (
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.9.0
 	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.1.4-k3s2
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
+	github.com/containerd/stargz-snapshotter => github.com/k3s-io/stargz-snapshotter v0.17.0-k3s1
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker => github.com/docker/docker v25.0.8+incompatible
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.11.0

@@ -364,8 +364,6 @@ github.com/containerd/platforms v1.0.0-rc.1 h1:83KIq4yy1erSRgOVHNk1HYdPvzdJ5CnsW
 github.com/containerd/platforms v1.0.0-rc.1/go.mod h1:J71L7B+aiM5SdIEqmd9wp6THLVRzJGXfNuWCZCllLA4=
 github.com/containerd/plugin v1.0.0 h1:c8Kf1TNl6+e2TtMHZt+39yAPDbouRH9WAToRjex483Y=
 github.com/containerd/plugin v1.0.0/go.mod h1:hQfJe5nmWfImiqT1q8Si3jLv3ynMUIBB47bQ+KexvO8=
-github.com/containerd/stargz-snapshotter v0.17.0 h1:djNS4KU8ztFhLdEDZ1bsfzOiYuVHT6TgSU5qwRk+cNc=
-github.com/containerd/stargz-snapshotter v0.17.0/go.mod h1:ySEul1ck7jCE4jqsuFCo8FFLrHU20UWQeI9g7mdsanI=
 github.com/containerd/stargz-snapshotter/estargz v0.17.0 h1:+TyQIsR/zSFI1Rm31EQBwpAA1ovYgIKHy7kctL3sLcE=
 github.com/containerd/stargz-snapshotter/estargz v0.17.0/go.mod h1:s06tWAiJcXQo9/8AReBCIo/QxcXFZ2n4qfsRnpl71SM=
 github.com/containerd/ttrpc v1.2.7 h1:qIrroQvuOL9HQ1X6KHe2ohc7p+HP/0VE6XPU7elJRqQ=
@@ -829,6 +827,8 @@ github.com/k3s-io/kube-router/v2 v2.5.0 h1:pG46bYnvi17z/Zp7W1MTeTax8HaFEp7zCzUu5
 github.com/k3s-io/kube-router/v2 v2.5.0/go.mod h1:0CkKQ7OUc0HSY0Fv2ED70ES07sQH+6Iugj4so13TMjQ=
 github.com/k3s-io/spegel v0.2.0-k3s1 h1:99kcb7dx2i3XxAfPQj7WMhV9WutZ2LCMvAkIwU+DKqk=
 github.com/k3s-io/spegel v0.2.0-k3s1/go.mod h1:/pCa6euBfCKjtKLIjhSKvF+fRkK0+xF2ybO99zkwUhA=
+github.com/k3s-io/stargz-snapshotter v0.17.0-k3s1 h1:QkAk5A+As/MiFoknI6FJSpFVLQ7BuhcMvEwmWjwuq0Y=
+github.com/k3s-io/stargz-snapshotter v0.17.0-k3s1/go.mod h1:UgxD0RRcEELdIwC+WoKBJ1saQZHoXPyoKpkFK/fiXdY=
 github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwSWoI=
 github.com/karrick/godirwalk v1.17.0/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
