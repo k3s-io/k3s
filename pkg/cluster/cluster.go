@@ -11,6 +11,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -162,6 +163,9 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 	c.storageStarted = true
 
 	if !bootstrap {
+		// only register metrics when not bootstrapping, to prevent
+		// multiple datastore metrics from being registered.
+		c.config.Datastore.MetricsRegisterer = metrics.DefaultRegisterer
 		// set the tls config for the kine storage
 		c.config.Datastore.ServerTLSConfig.CAFile = c.config.Runtime.ETCDServerCA
 		c.config.Datastore.ServerTLSConfig.CertFile = c.config.Runtime.ServerETCDCert
