@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -188,12 +189,18 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	// Give the server a new group id so we can kill it and its children later
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	// Pipe output to a file for debugging later
-	f, err := os.Create("./k3log.txt")
+	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
+	logpath := filepath.Join(wd, "k3s-log.txt")
+	f, err := os.Create("k3s-log.txt")
+	if err != nil {
+		return nil, err
+	}
+	cmd.Stdout = f
 	cmd.Stderr = f
-	logrus.Info("Starting k3s server. Check k3log.txt for logs")
+	logrus.Infof("Starting k3s server with stdout and stderr written to %s", logpath)
 	err = cmd.Start()
 	return &K3sServer{cmd, f}, err
 }
@@ -202,7 +209,7 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 // Equivalent to stopping the K3s service
 func K3sStopServer(server *K3sServer) error {
 	if server.log != nil {
-		server.log.Close()
+		defer server.log.Close()
 	}
 	if err := server.cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return err
@@ -224,8 +231,7 @@ func K3sKillServer(server *K3sServer) error {
 		return nil
 	}
 	if server.log != nil {
-		server.log.Close()
-		os.Remove(server.log.Name())
+		defer server.log.Close()
 	}
 	pgid, err := syscall.Getpgid(server.cmd.Process.Pid)
 	if err != nil {
@@ -285,7 +291,12 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 }
 
 func K3sSaveLog(server *K3sServer, dump bool) error {
-	server.log.Close()
+	if server == nil {
+		return nil
+	}
+	if server.log != nil {
+		server.log.Close()
+	}
 	if !dump {
 		return nil
 	}

@@ -63,7 +63,15 @@ jobs:
       run: | 
         chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" go test -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration -ginkgo.v -test.v
+        cd tests/integration/${{ matrix.itest }}
+        sudo -E env "PATH=$PATH" go test -timeout=45m ./... -run Integration -ginkgo.v -test.v
+    - name: On Failure, Upload Logs
+      uses: actions/upload-artifact@v4
+      if: ${{ failure() }}
+      with:
+        name: integration-${{ matrix.itest }}-logs
+        path: tests/integration/${{ matrix.itest }}/*log.txt
+        retention-days: 30
     - name: On Failure, Launch Debug Session
       uses: lhotari/action-upterm@v1
       if: ${{ failure() }}
