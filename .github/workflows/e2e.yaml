@@ -94,12 +94,12 @@ jobs:
         run: | 
           chmod +x ./dist/artifacts/k3s
           cd tests/e2e/${{ matrix.etest }}
-          go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+          go test -timeout=45m ./${{ matrix.etest }}_test.go -test.v -ginkgo.v -ci -local
       - name: On Failure, Upload Journald Logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: e2e-${{ matrix.etest}}-logs
+          name: e2e-${{ matrix.etest }}-logs
           path: tests/e2e/${{ matrix.etest }}/*log.txt
           retention-days: 30
       - name: On Failure, Launch Debug Session
@@ -209,9 +209,9 @@ jobs:
         # These tests use rancher/systemd-node and have different flags.
         CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
-          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE -channel=$CHANNEL
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
-          ./${{ matrix.dtest }}.test -ci 
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -ci
         else
-          ./${{ matrix.dtest }}.test -k3sImage=$K3S_IMAGE
+          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE
         fi
