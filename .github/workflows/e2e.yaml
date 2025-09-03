@@ -94,12 +94,12 @@ jobs:
         run: | 
           chmod +x ./dist/artifacts/k3s
           cd tests/e2e/${{ matrix.etest }}
-          go test -timeout=45m ./${{ matrix.etest}}_test.go -test.v -ginkgo.v -ci -local
+          go test -timeout=45m ./${{ matrix.etest }}_test.go -test.v -ginkgo.v -ci -local
       - name: On Failure, Upload Journald Logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: e2e-${{ matrix.etest}}-logs
+          name: e2e-${{ matrix.etest }}-logs
           path: tests/e2e/${{ matrix.etest }}/*log.txt
           retention-days: 30
       - name: On Failure, Launch Debug Session
