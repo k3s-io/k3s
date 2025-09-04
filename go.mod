@@ -17,6 +17,7 @@ replace (
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.52.1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
+	github.com/k3s-io/kine => github.com/brandond/kine v0.13.20-0.20250904182450-801ca9ad775d
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.22.0

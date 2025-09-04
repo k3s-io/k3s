@@ -1717,10 +1717,12 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 }
 
 // DefaultEndpointConfig returns default kine endpoint config, with k3s default
-// behavior of listening on a unix socket, and advertising the embedded etcd version
+// behavior of listening on a unix socket, advertising the embedded etcd version,
+// and disabling automatic compaction.
 func DefaultEndpointConfig() endpoint.Config {
 	return kine.Config([]string{
 		"--listen-address=" + endpoint.KineSocket,
 		"--emulated-etcd-version=" + etcdversion.Version,
+		"--compact-interval=0s",
 	})
 }
