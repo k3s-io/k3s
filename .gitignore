@@ -29,6 +29,7 @@ __pycache__
 /tests/.pytest_cache/
 /tests/.tox/
 /tests/.vscode
+/tests/**/*log.txt
 /sonobuoy-output
 *.tmp
 config/local.tfvars
