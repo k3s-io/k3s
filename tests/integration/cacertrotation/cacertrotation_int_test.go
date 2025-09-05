@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	tests "github.com/k3s-io/k3s/tests"
 	testutil "github.com/k3s-io/k3s/tests/integration"
@@ -11,29 +12,27 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const tmpdDataDir = "/tmp/cacertrotationtest"
+var _ = DescribeTableSubtree("ca certificate rotation", Ordered, func(serverArgs []string) {
+	var server, server2 *testutil.K3sServer
+	var tmpdDataDir, certHash, caCertHash string
+	var testLock int
+	var failed bool
 
-var server, server2 *testutil.K3sServer
-var serverArgs = []string{"--cluster-init", "-t", "test", "-d", tmpdDataDir}
-var certHash, caCertHash string
-var testLock int
-
-var _ = BeforeSuite(func() {
-	if !testutil.IsExistingServer() {
-		var err error
-		testLock, err = testutil.K3sTestLock()
-		Expect(err).ToNot(HaveOccurred())
-		server, err = testutil.K3sStartServer(serverArgs...)
-		Expect(err).ToNot(HaveOccurred())
-	}
-})
-
-var _ = Describe("ca certificate rotation", Ordered, func() {
-	BeforeEach(func() {
+	BeforeAll(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(serverArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(serverArgs, " "))
+		} else {
+			var err error
+			testLock, err = testutil.K3sTestLock()
+			Expect(err).ToNot(HaveOccurred())
+
+			tmpdDataDir = GinkgoT().TempDir()
+			serverArgs = append(serverArgs, tmpdDataDir)
+			server, err = testutil.K3sStartServer(serverArgs...)
+			Expect(err).ToNot(HaveOccurred())
 		}
 	})
+
 	When("a new server is created", func() {
 		It("starts up with no problems", func() {
 			Eventually(func() error {
@@ -59,6 +58,7 @@ var _ = Describe("ca certificate rotation", Ordered, func() {
 			res, err := testutil.K3sCmd("certificate", "rotate-ca", "-d", tmpdDataDir, "--path", tmpdDataDir+"/server/rotate-ca")
 			By("checking command results: " + res)
 			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(5 * time.Second)
 		})
 		It("stop k3s", func() {
 			Expect(testutil.K3sKillServer(server)).To(Succeed())
@@ -84,24 +84,26 @@ var _ = Describe("ca certificate rotation", Ordered, func() {
 			Expect(caCertHash).To(Not(Equal(caCertHashAfter)))
 		})
 	})
-})
 
-var failed bool
-var _ = AfterEach(func() {
-	failed = failed || CurrentSpecReport().Failed()
-})
+	AfterAll(func() {
+		failed = failed || CurrentSpecReport().Failed()
+	})
 
-var _ = AfterSuite(func() {
-	if !testutil.IsExistingServer() {
-		if failed {
-			testutil.K3sSaveLog(server, false)
+	AfterAll(func() {
+		if !testutil.IsExistingServer() {
+			if failed {
+				testutil.K3sSaveLog(server, false)
+			}
+			Expect(testutil.K3sKillServer(server)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+			Expect(testutil.K3sKillServer(server2)).To(Succeed())
+			Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())
 		}
-		Expect(testutil.K3sKillServer(server)).To(Succeed())
-		Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
-		Expect(testutil.K3sKillServer(server2)).To(Succeed())
-		Expect(testutil.K3sCleanup(testLock, tmpdDataDir)).To(Succeed())
-	}
-})
+	})
+},
+	Entry("with kine", []string{"-t", "test", "-d"}),
+	Entry("with etcd", []string{"--cluster-init", "-t", "test", "-d"}),
+)
 
 func Test_IntegrationCertRotation(t *testing.T) {
 	RegisterFailHandler(Fail)

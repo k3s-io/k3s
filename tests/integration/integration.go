@@ -200,7 +200,7 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	}
 	cmd.Stdout = f
 	cmd.Stderr = f
-	logrus.Infof("Starting k3s server with stdout and stderr written to %s", logpath)
+	logrus.Infof("Running %q with stdout and stderr written to %s", cmd, logpath)
 	err = cmd.Start()
 	return &K3sServer{cmd, f}, err
 }
