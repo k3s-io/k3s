@@ -308,6 +308,25 @@ func extract(dataDir string) (string, error) {
 		return "", err
 	}
 
+	// Rotate 'current' symlink into 'previous', and create a new 'current' that points
+	// at the new directory.
+	currentSymLink := filepath.Join(dataDir, "data", "current")
+	previousSymLink := filepath.Join(dataDir, "data", "previous")
+	if _, err := os.Lstat(currentSymLink); err == nil {
+		if err := os.Rename(currentSymLink, previousSymLink); err != nil {
+			return "", err
+		}
+	}
+	if err := os.Symlink(dir, currentSymLink); err != nil {
+		return "", err
+	}
+
+	// Rename the new directory into place after updating symlinks, so that the k3s binary check at the start
+	// of this function only succeeds if everything else has been completed successfully.
+	if err := os.Rename(tempDest, dir); err != nil {
+		return "", err
+	}
+
 	// Create a stable CNI bin dir and place it first in the path so that users have a
 	// consistent location to drop their own CNI plugin binaries.
 	cniPath := filepath.Join(dataDir, "data", "cni")
@@ -326,13 +345,13 @@ func extract(dataDir string) (string, error) {
 	// Non-symlink plugins in the stable CNI bin dir will not be overwritten, to allow users to replace our
 	// CNI plugins with their own versions if they want. Note that the cni multicall binary itself is always
 	// symlinked into the stable bin dir and should not be replaced.
-	ents, err := os.ReadDir(filepath.Join(tempDest, "bin"))
+	ents, err := os.ReadDir(filepath.Join(dir, "bin"))
 	if err != nil {
 		return "", err
 	}
 	for _, ent := range ents {
 		if info, err := ent.Info(); err == nil && info.Mode()&fs.ModeSymlink != 0 {
-			if target, err := os.Readlink(filepath.Join(tempDest, "bin", ent.Name())); err == nil && target == "cni" {
+			if target, err := os.Readlink(filepath.Join(dir, "bin", ent.Name())); err == nil && target == "cni" {
 				src := filepath.Join(cniPath, ent.Name())
 				// Check if plugin already exists in stable CNI bin dir
 				if info, err := os.Lstat(src); err == nil {
@@ -351,25 +370,6 @@ func extract(dataDir string) (string, error) {
 				}
 			}
 		}
-	}
-
-	// Rotate 'current' symlink into 'previous', and create a new 'current' that points
-	// at the new directory.
-	currentSymLink := filepath.Join(dataDir, "data", "current")
-	previousSymLink := filepath.Join(dataDir, "data", "previous")
-	if _, err := os.Lstat(currentSymLink); err == nil {
-		if err := os.Rename(currentSymLink, previousSymLink); err != nil {
-			return "", err
-		}
-	}
-	if err := os.Symlink(dir, currentSymLink); err != nil {
-		return "", err
-	}
-
-	// Rename the new directory into place after updating symlinks, so that the k3s binary check at the start
-	// of this function only succeeds if everything else has been completed successfully.
-	if err := os.Rename(tempDest, dir); err != nil {
-		return "", err
 	}
 
 	return dir, nil
