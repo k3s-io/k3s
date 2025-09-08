@@ -63,7 +63,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         cache: false
     - name: Run Unit Tests
