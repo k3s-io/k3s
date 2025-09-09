@@ -129,7 +129,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/common v0.66.1
-	github.com/rancher/dynamiclistener v0.6.3
+	github.com/rancher/dynamiclistener v0.6.4-rc.2
 	github.com/rancher/lasso v0.2.2
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.4.1
