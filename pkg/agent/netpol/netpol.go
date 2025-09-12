@@ -46,7 +46,7 @@ func init() {
 // https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/cmd/kube-router.go#L78
 // It converts the k3s config.Node into kube-router configuration (only the
 // subset of options needed for netpol controller).
-func Run(ctx context.Context, nodeConfig *config.Node) error {
+func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error {
 	set, err := utils.NewIPSet(false)
 	if err != nil {
 		logrus.Warnf("Skipping network policy controller start, ipset unavailable: %v", err)
@@ -119,9 +119,6 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	stopCh := ctx.Done()
 	healthCh := make(chan *healthcheck.ControllerHeartbeat)
 
-	// We don't use this WaitGroup, but kube-router components require it.
-	var wg sync.WaitGroup
-
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 	podInformer := informerFactory.Core().V1().Pods().Informer()
 	nsInformer := informerFactory.Core().V1().Namespaces().Informer()
@@ -176,10 +173,10 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	hc.SetAlive()
 
 	wg.Add(1)
-	go hc.RunCheck(healthCh, stopCh, &wg)
+	go hc.RunCheck(healthCh, stopCh, wg)
 
 	wg.Add(1)
-	go metricsRunCheck(mc, healthCh, stopCh, &wg)
+	go metricsRunCheck(mc, healthCh, stopCh, wg)
 
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{}, nil,
 		iptablesCmdHandlers, ipSetHandlers)
@@ -193,7 +190,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 
 	wg.Add(1)
 	logrus.Infof("Starting network policy controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
-	go npc.Run(healthCh, stopCh, &wg)
+	go npc.Run(healthCh, stopCh, wg)
 
 	return nil
 }

@@ -159,7 +159,6 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 		name:       e.name,
 		address:    e.address,
 		cron:       e.cron,
-		cancel:     e.cancel,
 		snapshotMu: e.snapshotMu,
 	}
 	if len(sr.Name) > 0 {

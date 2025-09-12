@@ -51,7 +51,7 @@ var (
 	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
 )
 
-func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, nm netMode) error {
+func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, nm netMode) error {
 	extIface, err := LookupExtInterface(flannelIface, nm)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to find the interface")
@@ -80,7 +80,7 @@ func flannel(ctx context.Context, flannelIface *net.Interface, flannelConf, kube
 		return pkgerrors.WithMessage(err, "failed to create the flannel backend")
 	}
 
-	bn, err := be.RegisterNetwork(ctx, &sync.WaitGroup{}, config)
+	bn, err := be.RegisterNetwork(ctx, wg, config)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to register flannel network")
 	}

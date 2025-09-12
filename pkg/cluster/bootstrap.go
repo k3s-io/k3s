@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-test/deep"
@@ -546,17 +547,19 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 	originalConfig := c.config.Runtime.EtcdConfig
 	c.config.Runtime.EtcdConfig = tempConfig
 	reconcileCtx, cancel := context.WithCancel(ctx)
+	wg := &sync.WaitGroup{}
 
 	defer func() {
 		cancel()
 		c.config.Runtime.EtcdConfig = originalConfig
+		wg.Wait()
 	}()
 
 	e := etcd.NewETCD()
 	if err := e.SetControlConfig(c.config); err != nil {
 		return err
 	}
-	if err := e.StartEmbeddedTemporary(reconcileCtx); err != nil {
+	if err := e.StartEmbeddedTemporary(reconcileCtx, wg); err != nil {
 		return err
 	}
 

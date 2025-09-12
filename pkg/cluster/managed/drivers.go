@@ -3,6 +3,7 @@ package managed
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -16,10 +17,10 @@ type Driver interface {
 	SetControlConfig(config *config.Control) error
 	IsInitialized() (bool, error)
 	Register(handler http.Handler) (http.Handler, error)
-	Reset(ctx context.Context, reboostrap func() error) error
+	Reset(ctx context.Context, wg *sync.WaitGroup, reboostrap func() error) error
 	IsReset() (bool, error)
 	ResetFile() string
-	Start(ctx context.Context, clientAccessInfo *clientaccess.Info) error
+	Start(ctx context.Context, wg *sync.WaitGroup, clientAccessInfo *clientaccess.Info) error
 	Restore(ctx context.Context) error
 	EndpointName() string
 	Snapshot(ctx context.Context) (*SnapshotResult, error)

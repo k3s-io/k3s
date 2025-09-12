@@ -13,6 +13,7 @@ import (
 	context "context"
 	http "net/http"
 	reflect "reflect"
+	sync "sync"
 
 	cmds "github.com/k3s-io/k3s/pkg/cli/cmds"
 	config "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -203,17 +204,17 @@ func (mr *ExecutorMockRecorder) Docker(ctx, node any) *gomock.Call {
 }
 
 // ETCD mocks base method.
-func (m *Executor) ETCD(ctx context.Context, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
+func (m *Executor) ETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ETCD", ctx, args, extraArgs, test)
+	ret := m.ctrl.Call(m, "ETCD", ctx, wg, args, extraArgs, test)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ETCD indicates an expected call of ETCD.
-func (mr *ExecutorMockRecorder) ETCD(ctx, args, extraArgs, test any) *gomock.Call {
+func (mr *ExecutorMockRecorder) ETCD(ctx, wg, args, extraArgs, test any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ETCD", reflect.TypeOf((*Executor)(nil).ETCD), ctx, args, extraArgs, test)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ETCD", reflect.TypeOf((*Executor)(nil).ETCD), ctx, wg, args, extraArgs, test)
 }
 
 // ETCDReadyChan mocks base method.
@@ -228,6 +229,20 @@ func (m *Executor) ETCDReadyChan() <-chan struct{} {
 func (mr *ExecutorMockRecorder) ETCDReadyChan() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ETCDReadyChan", reflect.TypeOf((*Executor)(nil).ETCDReadyChan))
+}
+
+// IsSelfHosted mocks base method.
+func (m *Executor) IsSelfHosted() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsSelfHosted")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsSelfHosted indicates an expected call of IsSelfHosted.
+func (mr *ExecutorMockRecorder) IsSelfHosted() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSelfHosted", reflect.TypeOf((*Executor)(nil).IsSelfHosted))
 }
 
 // KubeProxy mocks base method.

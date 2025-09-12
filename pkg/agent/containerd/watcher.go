@@ -259,8 +259,7 @@ func importAndWatchImages(ctx context.Context, cfg *config.Node) error {
 
 	// wait for the workqueue to empty before returning
 	for w.workqueue.Len() > 0 {
-		logrus.Debugf("Waiting for initial import of images from %s", cfg.Images)
-		time.Sleep(time.Second * 2)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// prune unseen entries from last run once all existing files have been processed

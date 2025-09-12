@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"net/http"
-	"os"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -19,8 +18,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	cloudprovider "k8s.io/cloud-provider"
@@ -87,10 +88,9 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("kubelet exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "kubelet exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -109,10 +109,9 @@ func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("kube-proxy exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "kube-proxy exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -136,10 +135,9 @@ func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("apiserver exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "apiserver exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -159,10 +157,9 @@ func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, arg
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("scheduler exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "scheduler exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -181,10 +178,9 @@ func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("controller-manager exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "controller-manager exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -227,10 +223,9 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("cloud-controller-manager exited: %v", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "cloud-controller-manager exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	return nil
@@ -241,22 +236,19 @@ func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
-	defer close(e.criReady)
-	return containerd.Run(ctx, cfg)
+	return CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
-	defer close(e.criReady)
-	return cridockerd.Run(ctx, cfg)
+	return CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
-	defer close(e.criReady)
 	// agentless sets cri socket path to /dev/null to indicate no CRI is needed
 	if cfg.ContainerRuntimeEndpoint != "/dev/null" {
-		return cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI")
+		return CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
 	}
-	return nil
+	return CloseIfNilErr(nil, e.criReady)
 }
 
 func (e *Embedded) APIServerReadyChan() <-chan struct{} {
@@ -278,4 +270,8 @@ func (e *Embedded) CRIReadyChan() <-chan struct{} {
 		panic("executor not bootstrapped")
 	}
 	return e.criReady
+}
+
+func (e Embedded) IsSelfHosted() bool {
+	return false
 }

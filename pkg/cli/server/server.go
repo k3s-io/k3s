@@ -51,7 +51,7 @@ func RunWithControllers(app *cli.Context, leaderControllers server.CustomControl
 	return run(app, &cmds.ServerConfig, leaderControllers, controllers)
 }
 
-func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) error {
+func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) (rerr error) {
 	var err error
 	// Validate build env
 	cmds.MustValidateGolang()
@@ -74,6 +74,22 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
+
+	ctx := signals.SetupSignalContext()
+	wg := &sync.WaitGroup{}
+
+	// If exiting due to an error, ensure that contexts are cancelled so that the
+	// WaitGroup exits.  Otherwise, wait for something else to initiate shutdown.
+	defer func() {
+		if rerr != nil {
+			// do not need to pass the error in here, it will be reported by the CLI error handler
+			signals.RequestShutdown(nil)
+		} else {
+			<-ctx.Done()
+			rerr = ctx.Err()
+		}
+		wg.Wait()
+	}()
 
 	if !cfg.DisableAgent && !cfg.Rootless {
 		if err := permissions.IsPrivileged(); err != nil {
@@ -136,6 +152,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
+	serverConfig.ControlConfig.Datastore.WaitGroup = wg
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
@@ -471,6 +488,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.DisableScheduler = true
 		serverConfig.ControlConfig.DisableCCM = true
 		serverConfig.ControlConfig.DisableServiceLB = true
+		serverConfig.ControlConfig.EtcdDisableSnapshots = true
 
 		// If the supervisor and apiserver are on the same port, everything is running embedded
 		// and we don't need the kubelet or containerd up to perform a cluster reset.
@@ -512,9 +530,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
-	ctx := signals.SetupSignalContext()
-
-	if err := server.PrepareServer(ctx, &serverConfig, cfg); err != nil {
+	if err := server.PrepareServer(ctx, wg, &serverConfig, cfg); err != nil {
 		return err
 	}
 
@@ -540,7 +556,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		agentConfig.RootlessAlreadyUnshared = true
 	}
 
-	if serverConfig.ControlConfig.DisableAPIServer {
+	if serverConfig.ControlConfig.DisableAPIServer && !cfg.ClusterReset {
 		// If this node is not hosting an apiserver, always bootstrap the agent off the local
 		// supervisor, and go through the process of reading apiserver endpoints from etcd and
 		// blocking further startup until one is available.  This ensures that we don't end up in
@@ -581,11 +597,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if cfg.DisableAgent {
 		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
-		if err := agent.RunStandalone(ctx, agentConfig); err != nil {
+		if err := agent.RunStandalone(ctx, wg, agentConfig); err != nil {
 			return err
 		}
 	} else {
-		if err := agent.Run(ctx, agentConfig); err != nil {
+		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
 		}
 	}
@@ -610,12 +626,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
+	if err := server.StartServer(ctx, wg, &serverConfig, cfg); err != nil {
 		return err
 	}
 
-	<-ctx.Done()
-	return ctx.Err()
+	return nil
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.
@@ -641,11 +656,15 @@ func getAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agen
 		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &serverConfig.ControlConfig)
 		if err == nil && len(serverAddresses) > 0 {
 			agentConfig.APIAddressCh <- serverAddresses
-			break
+			return
 		}
 		if !errors.Is(err, etcd.ErrAddressNotSet) {
 			logrus.Warnf("Failed to get apiserver address from etcd: %v", err)
 		}
-		<-toCtx.Done()
+		select {
+		case <-toCtx.Done():
+		case <-ctx.Done():
+			return
+		}
 	}
 }

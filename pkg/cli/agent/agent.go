@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
@@ -27,7 +28,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Run(ctx *cli.Context) error {
+func Run(clx *cli.Context) (rerr error) {
 	// Validate build env
 	cmds.MustValidateGolang()
 
@@ -45,6 +46,22 @@ func Run(ctx *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
+
+	ctx := signals.SetupSignalContext()
+	wg := &sync.WaitGroup{}
+
+	// If exiting due to an error, ensure that contexts are cancelled so that the
+	// WaitGroup exits.  Otherwise, wait for something else to initiate shutdown.
+	defer func() {
+		if rerr != nil {
+			// do not need to pass the error in here, it will be reported by the CLI error handler
+			signals.RequestShutdown(nil)
+		} else {
+			<-ctx.Done()
+			rerr = ctx.Err()
+		}
+		wg.Wait()
+	}()
 
 	if !cmds.AgentConfig.Rootless {
 		if err := permissions.IsPrivileged(); err != nil {
@@ -80,7 +97,7 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
-	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
+	logrus.Info("Starting " + version.Program + " agent " + clx.App.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {
@@ -88,12 +105,10 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
-	cfg.Debug = ctx.Bool("debug")
+	cfg.Debug = clx.Bool("debug")
 	cfg.DataDir = dataDir
 
-	contextCtx := signals.SetupSignalContext()
-
-	go cmds.WriteCoverage(contextCtx)
+	go cmds.WriteCoverage(ctx)
 	if cfg.VPNAuthFile != "" {
 		cfg.VPNAuth, err = util.ReadFile(cfg.VPNAuthFile)
 		if err != nil {
@@ -130,10 +145,9 @@ func Run(ctx *cli.Context) error {
 		return https.Start(ctx, nodeConfig, nil)
 	}
 
-	if err := agent.Run(contextCtx, cfg); err != nil {
+	if err := agent.Run(ctx, wg, cfg); err != nil {
 		return err
 	}
 
-	<-contextCtx.Done()
-	return contextCtx.Err()
+	return nil
 }
