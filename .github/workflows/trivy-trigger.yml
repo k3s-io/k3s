@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify actor is a member of k3s-io organization and has write permissions
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const org = 'k3s-io';
