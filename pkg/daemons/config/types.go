@@ -390,7 +390,7 @@ type ControlRuntime struct {
 type Cluster interface {
 	Bootstrap(ctx context.Context, reset bool) error
 	ListenAndServe(ctx context.Context) error
-	Start(ctx context.Context) error
+	Start(ctx context.Context, wg *sync.WaitGroup) error
 }
 
 type CoreFactory interface {

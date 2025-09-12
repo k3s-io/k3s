@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/signals"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
@@ -97,7 +99,7 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 		return true, nil
 	})
 
-	if err != nil && !errors.Is(err, context.Canceled) {
+	if err != nil {
 		return merr.NewErrors(err, lastErr)
 	}
 
@@ -111,10 +113,11 @@ func APIServerReadyChan(ctx context.Context, kubeConfig string, timeout time.Dur
 	ready := make(chan struct{})
 
 	go func() {
-		defer close(ready)
 		if err := WaitForAPIServerReady(ctx, kubeConfig, timeout); err != nil {
-			logrus.Fatalf("Failed to wait for API server to become ready: %v", err)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to wait for API server to become ready"))
+			return
 		}
+		close(ready)
 	}()
 
 	return ready

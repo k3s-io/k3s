@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -32,7 +33,7 @@ type Executor interface {
 	Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error
 	ControllerManager(ctx context.Context, args []string) error
 	CurrentETCDOptions() (InitialOptions, error)
-	ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error
+	ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error
 	CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error
 	Containerd(ctx context.Context, node *daemonconfig.Node) error
 	Docker(ctx context.Context, node *daemonconfig.Node) error
@@ -40,6 +41,7 @@ type Executor interface {
 	APIServerReadyChan() <-chan struct{}
 	ETCDReadyChan() <-chan struct{}
 	CRIReadyChan() <-chan struct{}
+	IsSelfHosted() bool
 }
 
 type ETCDSocketOpts struct {
@@ -179,8 +181,8 @@ func CurrentETCDOptions() (InitialOptions, error) {
 	return executor.CurrentETCDOptions()
 }
 
-func ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error {
-	return executor.ETCD(ctx, args, extraArgs, test)
+func ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error {
+	return executor.ETCD(ctx, wg, args, extraArgs, test)
 }
 
 func CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
@@ -209,4 +211,15 @@ func ETCDReadyChan() <-chan struct{} {
 
 func CRIReadyChan() <-chan struct{} {
 	return executor.CRIReadyChan()
+}
+
+func IsSelfHosted() bool {
+	return executor.IsSelfHosted()
+}
+
+func CloseIfNilErr(err error, ch chan struct{}) error {
+	if err == nil {
+		close(ch)
+	}
+	return err
 }
