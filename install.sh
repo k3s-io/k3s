@@ -94,6 +94,10 @@ set -o noglob
 #   - INSTALL_K3S_CHANNEL
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
+#
+#   - INSTALL_K3S_SKIP_NM_CLOUD_SETUP_CHECK
+#     If set to true will skip the ExecStartPre check that ensures
+#     nm-cloud-setup.service is disabled.
 
 GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
 GITHUB_PR_URL=""
@@ -976,6 +980,12 @@ create_env_file() {
 # --- write systemd service file ---
 create_systemd_service_file() {
     info "systemd: Creating service file ${FILE_K3S_SERVICE}"
+
+    NM_CLOUD_SETUP_CHECK="ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'"
+    if [ "${INSTALL_K3S_SKIP_NM_CLOUD_SETUP_CHECK}" = true ]; then
+        NM_CLOUD_SETUP_CHECK=""
+    fi
+
     $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
 [Unit]
 Description=Lightweight Kubernetes
@@ -1003,7 +1013,7 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
-ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+${NM_CLOUD_SETUP_CHECK}
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart=${BIN_DIR}/k3s \\
