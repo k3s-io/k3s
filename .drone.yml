@@ -11,6 +11,7 @@ trigger:
     exclude:
     - cron
     - pull_request
+    - tag
 
 clone:
   retries: 3
@@ -147,6 +148,7 @@ trigger:
     exclude:
     - cron
     - pull_request
+    - tag
 
 clone:
   retries: 3
@@ -222,6 +224,7 @@ trigger:
   event:
     exclude:
     - cron
+    - tag
 
 clone:
   retries: 3
