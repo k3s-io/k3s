@@ -130,37 +130,49 @@ func runControllers(ctx context.Context, config *Config) error {
 	controlConfig.Runtime.Core = sc.Core
 	controlConfig.Runtime.Discovery = sc.Discovery
 
+	// Create a new context to use for wrangler controllers, that is
+	// cancelled on a delay after the signal context. This allows other things
+	// (like etcd) to clean up, before wrangler's leader.RunOrDie calls
+	// exit when its context is cancelled.
+	wctx, wcancel := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Done()
+		logrus.Infof("Delaying wrangler controller shutdown...")
+		time.Sleep(time.Second * 5)
+		wcancel()
+	}()
+
 	for name, cb := range controlConfig.Runtime.ClusterControllerStarts {
-		go runOrDie(ctx, name, cb)
+		go runOrDie(wctx, name, cb)
 	}
 
 	for _, controller := range config.Controllers {
-		if err := controller(ctx, sc); err != nil {
+		if err := controller(wctx, sc); err != nil {
 			return pkgerrors.WithMessagef(err, "failed to start %s controller", util.GetFunctionName(controller))
 		}
 	}
 
-	if err := sc.Start(ctx); err != nil {
+	if err := sc.Start(wctx); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start wranger controllers")
 	}
 
 	if !controlConfig.DisableAPIServer {
 		controlConfig.Runtime.LeaderElectedClusterControllerStarts[version.Program] = func(ctx context.Context) {
-			apiserverControllers(ctx, sc, config)
+			apiserverControllers(wctx, sc, config)
 		}
 	}
 
-	go setNodeLabelsAndAnnotations(ctx, sc.Core.Core().V1().Node(), config)
+	go setNodeLabelsAndAnnotations(wctx, sc.Core.Core().V1().Node(), config)
 
-	go setClusterDNSConfig(ctx, config, sc.Core.Core().V1().ConfigMap())
+	go setClusterDNSConfig(wctx, config, sc.Core.Core().V1().ConfigMap())
 
 	if controlConfig.NoLeaderElect {
 		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
-			go runOrDie(ctx, name, cb)
+			go runOrDie(wctx, name, cb)
 		}
 	} else {
 		for name, cb := range controlConfig.Runtime.LeaderElectedClusterControllerStarts {
-			go leader.RunOrDie(ctx, "", name, sc.K8s, cb)
+			go leader.RunOrDie(wctx, "", name, sc.K8s, cb)
 		}
 	}
 
