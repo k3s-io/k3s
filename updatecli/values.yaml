@@ -6,7 +6,7 @@ github:
 k3s:
   org: "k3s-io"
   repo: "k3s"
-  branch: "master"
+  branch: "main"
 klipper_helm:
   org: "k3s-io"
   repo: "klipper-helm"
