@@ -20,6 +20,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	util2 "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
 	pkgerrors "github.com/pkg/errors"
@@ -106,10 +107,9 @@ func Run(ctx context.Context, cfg *config.Node) error {
 		addDeathSig(cmd)
 		err := cmd.Run()
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logrus.Errorf("containerd exited: %s", err)
-			os.Exit(1)
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "containerd exited"))
 		}
-		os.Exit(0)
+		signals.RequestShutdown(nil)
 	}()
 
 	if err := cri.WaitForService(ctx, cfg.Containerd.Address, "containerd"); err != nil {
