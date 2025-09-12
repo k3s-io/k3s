@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -23,7 +24,7 @@ type Embedded struct {
 	nodeConfig     *daemonconfig.Node
 }
 
-func (e *Embedded) ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error {
+func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error {
 	// An unbootstrapped executor is used to start up a temporary embedded etcd when reconciling.
 	// This temporary executor doesn't have any ready channels set up, so don't bother testing.
 	if e.etcdReady != nil {
@@ -61,12 +62,15 @@ func (e *Embedded) ETCD(ctx context.Context, args *ETCDConfig, extraArgs []strin
 		return err
 	}
 
+	wg.Add(1)
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
+		wg.Done()
 		return err
 	}
 
 	go func() {
+		defer wg.Done()
 		select {
 		case err := <-etcd.Server.ErrNotify():
 			if errors.Is(err, rafthttp.ErrMemberRemoved) {
@@ -83,9 +87,11 @@ func (e *Embedded) ETCD(ctx context.Context, args *ETCDConfig, extraArgs []strin
 			logrus.Infof("stopping etcd")
 			etcd.Close()
 		case <-etcd.Server.StopNotify():
-			logrus.Fatalf("etcd stopped")
+			logrus.Errorf("etcd stopped")
+			return
 		case err := <-etcd.Err():
-			logrus.Fatalf("etcd exited: %v", err)
+			logrus.Errorf("etcd exited: %v", err)
+			return
 		}
 	}()
 	return nil

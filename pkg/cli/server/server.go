@@ -513,6 +513,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	os.Unsetenv("NOTIFY_SOCKET")
 
 	ctx := signals.SetupSignalContext()
+	wg := &sync.WaitGroup{}
 
 	if err := server.PrepareServer(ctx, &serverConfig, cfg); err != nil {
 		return err
@@ -585,7 +586,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			return err
 		}
 	} else {
-		if err := agent.Run(ctx, agentConfig); err != nil {
+		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
 		}
 	}
@@ -610,11 +611,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
+	if err := server.StartServer(ctx, wg, &serverConfig, cfg); err != nil {
 		return err
 	}
 
 	<-ctx.Done()
+	wg.Wait()
+
 	return ctx.Err()
 }
 

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/authenticator"
@@ -70,8 +71,8 @@ func Prepare(ctx context.Context, cfg *config.Control) error {
 
 // Server starts the apiserver and whatever other control-plane components are
 // not disabled on this node.
-func Server(ctx context.Context, cfg *config.Control) error {
-	if err := cfg.Cluster.Start(ctx); err != nil {
+func Server(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
+	if err := cfg.Cluster.Start(ctx, wg); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start cluster")
 	}
 

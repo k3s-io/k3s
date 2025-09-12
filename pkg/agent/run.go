@@ -10,6 +10,7 @@ import (
 	goruntime "runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -55,7 +56,7 @@ import (
 	utilsptr "k8s.io/utils/ptr"
 )
 
-func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
+func run(ctx context.Context, wg *sync.WaitGroup, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig, err := config.Get(ctx, cfg, proxy)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to retrieve agent configuration")
@@ -173,7 +174,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 	go func() {
 		<-executor.APIServerReadyChan()
-		if err := startNetwork(ctx, nodeConfig); err != nil {
+		if err := startNetwork(ctx, wg, nodeConfig); err != nil {
 			logrus.Fatalf("Failed to start networking: %v", err)
 		}
 
@@ -191,7 +192,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 // startNetwork updates the network annotations on the node, and starts flannel
 // and the kube-router netpol controller, if enabled.
-func startNetwork(ctx context.Context, nodeConfig *daemonconfig.Node) error {
+func startNetwork(ctx context.Context, wg *sync.WaitGroup, nodeConfig *daemonconfig.Node) error {
 	// Use the kubelet kubeconfig to update annotations on the local node
 	kubeletClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
 	if err != nil {
@@ -203,13 +204,13 @@ func startNetwork(ctx context.Context, nodeConfig *daemonconfig.Node) error {
 	}
 
 	if !nodeConfig.NoFlannel {
-		if err := flannel.Run(ctx, nodeConfig); err != nil {
+		if err := flannel.Run(ctx, wg, nodeConfig); err != nil {
 			return err
 		}
 	}
 
 	if !nodeConfig.AgentConfig.DisableNPC {
-		if err := netpol.Run(ctx, nodeConfig); err != nil {
+		if err := netpol.Run(ctx, wg, nodeConfig); err != nil {
 			return err
 		}
 	}
@@ -308,7 +309,7 @@ func RunStandalone(ctx context.Context, cfg cmds.Agent) error {
 
 // Run sets up cgroups, configures the LB proxy, and triggers startup
 // of containerd and kubelet.
-func Run(ctx context.Context, cfg cmds.Agent) error {
+func Run(ctx context.Context, wg *sync.WaitGroup, cfg cmds.Agent) error {
 	if err := cgroups.Validate(); err != nil {
 		return err
 	}
@@ -328,7 +329,7 @@ func Run(ctx context.Context, cfg cmds.Agent) error {
 		return err
 	}
 
-	return run(ctx, cfg, proxy)
+	return run(ctx, wg, cfg, proxy)
 }
 
 func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Proxy, error) {

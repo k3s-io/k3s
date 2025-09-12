@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
@@ -27,7 +28,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Run(ctx *cli.Context) error {
+func Run(clx *cli.Context) error {
 	// Validate build env
 	cmds.MustValidateGolang()
 
@@ -80,7 +81,7 @@ func Run(ctx *cli.Context) error {
 		cmds.AgentConfig.NodeIP.Set(ip)
 	}
 
-	logrus.Info("Starting " + version.Program + " agent " + ctx.App.Version)
+	logrus.Info("Starting " + version.Program + " agent " + clx.App.Version)
 
 	dataDir, err := datadir.LocalHome(cmds.AgentConfig.DataDir, cmds.AgentConfig.Rootless)
 	if err != nil {
@@ -88,12 +89,13 @@ func Run(ctx *cli.Context) error {
 	}
 
 	cfg := cmds.AgentConfig
-	cfg.Debug = ctx.Bool("debug")
+	cfg.Debug = clx.Bool("debug")
 	cfg.DataDir = dataDir
 
-	contextCtx := signals.SetupSignalContext()
+	ctx := signals.SetupSignalContext()
+	wg := &sync.WaitGroup{}
 
-	go cmds.WriteCoverage(contextCtx)
+	go cmds.WriteCoverage(ctx)
 	if cfg.VPNAuthFile != "" {
 		cfg.VPNAuth, err = util.ReadFile(cfg.VPNAuthFile)
 		if err != nil {
@@ -130,10 +132,12 @@ func Run(ctx *cli.Context) error {
 		return https.Start(ctx, nodeConfig, nil)
 	}
 
-	if err := agent.Run(contextCtx, cfg); err != nil {
+	if err := agent.Run(ctx, wg, cfg); err != nil {
 		return err
 	}
 
-	<-contextCtx.Done()
-	return contextCtx.Err()
+	<-ctx.Done()
+	wg.Wait()
+
+	return ctx.Err()
 }

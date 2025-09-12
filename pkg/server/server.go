@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	helmchart "github.com/k3s-io/helm-controller/pkg/controllers/chart"
@@ -68,8 +69,8 @@ func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error 
 // StartServer starts whatever control-plane and etcd components are enabled by
 // the current server configuration, runs startup hooks, starts controllers,
 // and writes the admin kubeconfig.
-func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
-	if err := control.Server(ctx, &config.ControlConfig); err != nil {
+func StartServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg *cmds.Server) error {
+	if err := control.Server(ctx, wg, &config.ControlConfig); err != nil {
 		return pkgerrors.WithMessage(err, "starting kubernetes")
 	}
 
