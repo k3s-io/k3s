@@ -15,6 +15,7 @@ import (
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/otiai10/copy"
@@ -39,14 +40,17 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start kubelet")
-	}
+	go func() {
+		<-executor.CRIReadyChan()
+		if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
+			signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to start kubelet"))
+		}
+	}()
 
 	go func() {
 		if !config.KubeProxyDisabled(ctx, nodeConfig, proxy) {
 			if err := startKubeProxy(ctx, &nodeConfig.AgentConfig); err != nil {
-				logrus.Fatalf("Failed to start kube-proxy: %v", err)
+				signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to start kube-proxy"))
 			}
 		}
 	}()

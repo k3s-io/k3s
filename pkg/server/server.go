@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	helmchart "github.com/k3s-io/helm-controller/pkg/controllers/chart"
@@ -47,7 +48,7 @@ func ResolveDataDir(dataDir string) (string, error) {
 // PrepareServer prepares the server for operation. This includes setting paths
 // in ControlConfig, creating any certificates not extracted from the bootstrap
 // data, and binding request handlers.
-func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
+func PrepareServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg *cmds.Server) error {
 	if err := setupDataDirAndChdir(&config.ControlConfig); err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error 
 		return err
 	}
 
-	if err := control.Prepare(ctx, &config.ControlConfig); err != nil {
+	if err := control.Prepare(ctx, wg, &config.ControlConfig); err != nil {
 		return err
 	}
 
@@ -68,8 +69,8 @@ func PrepareServer(ctx context.Context, config *Config, cfg *cmds.Server) error 
 // StartServer starts whatever control-plane and etcd components are enabled by
 // the current server configuration, runs startup hooks, starts controllers,
 // and writes the admin kubeconfig.
-func StartServer(ctx context.Context, config *Config, cfg *cmds.Server) error {
-	if err := control.Server(ctx, &config.ControlConfig); err != nil {
+func StartServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg *cmds.Server) error {
+	if err := control.Server(ctx, wg, &config.ControlConfig); err != nil {
 		return pkgerrors.WithMessage(err, "starting kubernetes")
 	}
 
@@ -128,6 +129,12 @@ func runControllers(ctx context.Context, config *Config) error {
 	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
 	controlConfig.Runtime.Core = sc.Core
+
+	// Create a new context to use for wrangler controllers that is
+	// cancelled on a delay after the signal context. This allows other things
+	// (like etcd) to clean up, before wrangler's leader.RunOrDie calls
+	// exit when its context is cancelled.
+	ctx = util.DelayCancel(ctx, util.DefaultContextDelay)
 
 	for name, cb := range controlConfig.Runtime.ClusterControllerStarts {
 		go runOrDie(ctx, name, cb)
