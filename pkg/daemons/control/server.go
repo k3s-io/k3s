@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/authenticator"
@@ -15,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
@@ -39,11 +41,11 @@ import (
 
 // Prepare loads bootstrap data from the datastore and sets up the initial
 // tunnel server request handler and stub authenticator.
-func Prepare(ctx context.Context, cfg *config.Control) error {
+func Prepare(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
-	if err := prepare(ctx, cfg); err != nil {
+	if err := prepare(ctx, wg, cfg); err != nil {
 		return pkgerrors.WithMessage(err, "preparing server")
 	}
 
@@ -70,10 +72,16 @@ func Prepare(ctx context.Context, cfg *config.Control) error {
 
 // Server starts the apiserver and whatever other control-plane components are
 // not disabled on this node.
-func Server(ctx context.Context, cfg *config.Control) error {
-	if err := cfg.Cluster.Start(ctx); err != nil {
+func Server(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
+	if err := cfg.Cluster.Start(ctx, wg); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start cluster")
 	}
+
+	// Create a new context to use for control-plane components that is
+	// cancelled on a delay after the signal context. This allows other things
+	// (like etcd) to clean up, before their leader.RunOrDie calls
+	// exit when its context is cancelled.
+	ctx = util.DelayCancel(ctx, util.DefaultContextDelay)
 
 	if !cfg.DisableAPIServer {
 		go waitForAPIServerHandlers(ctx, cfg.Runtime)
@@ -190,7 +198,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 			logrus.Infof("Waiting for untainted node")
 			// this waits forever for an untainted node; if it returns ErrWaitTimeout the context has been cancelled, and it is not a fatal error
 			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
-				logrus.Fatalf("failed to wait for untained node: %v", err)
+				signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to wait for untained node"))
 			}
 		}
 	}()
@@ -300,7 +308,7 @@ func defaults(config *config.Control) {
 // prepare sets up the server data-dir, calls deps.GenServerDeps to
 // set paths, extracts the cluster bootstrap data to the
 // configured paths, and starts the supervisor listener.
-func prepare(ctx context.Context, config *config.Control) error {
+func prepare(ctx context.Context, wg *sync.WaitGroup, config *config.Control) error {
 	defaults(config)
 
 	if err := os.MkdirAll(config.DataDir, 0700); err != nil {

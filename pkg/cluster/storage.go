@@ -294,7 +294,6 @@ func getBootstrapValues(ctx context.Context, storageClient client.Client) ([]cli
 		}
 		return true, nil
 	}); err != nil {
-		logrus.Errorf("Failed to validate datastore connection: %v", err)
 		return nil, err
 	}
 	return bootstrapList, nil
