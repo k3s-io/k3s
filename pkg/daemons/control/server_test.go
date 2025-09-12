@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -141,13 +142,14 @@ func Test_UnitServer(t *testing.T) {
 			managed.RegisterDriver(etcd.NewETCD())
 
 			ctx, cancel := context.WithCancel(context.Background())
+			wg := &sync.WaitGroup{}
 			defer func() {
 				// give time for the cluster datastore to finish saving after the cluster is started;
 				// it'll panic if the context is cancelled while this is in progress
 				time.Sleep(time.Second)
 				cancel()
 				// give time for etcd to shut down between tests, following context cancellation
-				time.Sleep(time.Second * 10)
+				wg.Wait()
 			}()
 
 			// generate control config
@@ -169,7 +171,7 @@ func Test_UnitServer(t *testing.T) {
 			}
 
 			// test Server now that everything's set up
-			if err := Server(ctx, cfg); (err != nil) != tt.wantErr {
+			if err := Server(ctx, wg, cfg); (err != nil) != tt.wantErr {
 				t.Errorf("Server() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
@@ -23,17 +24,17 @@ type Embedded struct {
 	nodeConfig     *daemonconfig.Node
 }
 
-func (e *Embedded) ETCD(ctx context.Context, args *ETCDConfig, extraArgs []string, test TestFunc) error {
+func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error {
 	// An unbootstrapped executor is used to start up a temporary embedded etcd when reconciling.
 	// This temporary executor doesn't have any ready channels set up, so don't bother testing.
 	if e.etcdReady != nil {
 		go func() {
-			defer close(e.etcdReady)
 			for {
 				if err := test(ctx); err != nil {
 					logrus.Infof("Failed to test etcd connection: %v", err)
 				} else {
 					logrus.Info("Connection to etcd is ready")
+					close(e.etcdReady)
 					return
 				}
 
@@ -61,31 +62,42 @@ func (e *Embedded) ETCD(ctx context.Context, args *ETCDConfig, extraArgs []strin
 		return err
 	}
 
+	wg.Add(1)
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
+		wg.Done()
 		return err
 	}
 
 	go func() {
-		select {
-		case err := <-etcd.Server.ErrNotify():
-			if errors.Is(err, rafthttp.ErrMemberRemoved) {
-				tombstoneFile := filepath.Join(args.DataDir, "tombstone")
-				if err := os.WriteFile(tombstoneFile, []byte{}, 0600); err != nil {
-					logrus.Fatalf("Failed to write tombstone file to %s: %v", tombstoneFile, err)
+		<-ctx.Done()
+		logrus.Infof("Stopping etcd server...")
+		etcd.Server.Stop()
+		go etcd.Close()
+	}()
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case err := <-etcd.Server.ErrNotify():
+				if errors.Is(err, rafthttp.ErrMemberRemoved) {
+					tombstoneFile := filepath.Join(args.DataDir, "tombstone")
+					if err := os.WriteFile(tombstoneFile, []byte{}, 0600); err != nil {
+						logrus.Fatalf("Failed to write tombstone file to %s: %v", tombstoneFile, err)
+					}
+					etcd.Close()
+					logrus.Infof("This node has been removed from the cluster - please restart %s to rejoin the cluster", version.Program)
+					return
 				}
-				etcd.Close()
-				logrus.Infof("This node has been removed from the cluster - please restart %s to rejoin the cluster", version.Program)
+				logrus.Errorf("etcd error: %v", err)
+			case <-etcd.Server.StopNotify():
+				logrus.Info("etcd server stopped")
+				return
+			case err := <-etcd.Err():
+				logrus.Errorf("etcd exited: %v", err)
 				return
 			}
-			logrus.Errorf("etcd error: %v", err)
-		case <-ctx.Done():
-			logrus.Infof("stopping etcd")
-			etcd.Close()
-		case <-etcd.Server.StopNotify():
-			logrus.Fatalf("etcd stopped")
-		case err := <-etcd.Err():
-			logrus.Fatalf("etcd exited: %v", err)
 		}
 	}()
 	return nil
