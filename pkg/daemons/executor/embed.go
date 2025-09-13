@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"net/http"
-	"os"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -88,9 +87,11 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("kubelet exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("KUBELET EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("KUBELET EXIT 0")
 	}()
 
 	return nil
@@ -110,9 +111,11 @@ func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("kube-proxy exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("KUBE-PROXY EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("KUBE-PROXY EXIT 0")
 	}()
 
 	return nil
@@ -137,9 +140,11 @@ func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("apiserver exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("APISERVER EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("APISERVER EXIT 0")
 	}()
 
 	return nil
@@ -160,9 +165,11 @@ func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, arg
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("scheduler exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("SCHEDULER EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("SCHEDULER EXIT 0")
 	}()
 
 	return nil
@@ -182,9 +189,11 @@ func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("controller-manager exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("CM EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("CM EXIT 0")
 	}()
 
 	return nil
@@ -228,9 +237,11 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("cloud-controller-manager exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("CCM EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("CCM EXIT 0")
 	}()
 
 	return nil

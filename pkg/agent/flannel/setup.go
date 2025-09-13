@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"sync"
 
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -73,7 +73,7 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 	return createFlannelConf(nodeConfig)
 }
 
-func Run(ctx context.Context, nodeConfig *config.Node) error {
+func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error {
 	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
 
 	kubeConfig := nodeConfig.AgentConfig.KubeConfigKubelet
@@ -104,12 +104,14 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 		return pkgerrors.WithMessage(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, nm)
+		err := flannel(ctx, wg, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, nm)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("flannel exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("FLANNEL EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("FLANNEL EXIT 0")
 	}()
 
 	return nil

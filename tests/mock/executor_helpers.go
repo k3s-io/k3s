@@ -17,7 +17,7 @@ func NewExecutorWithEmbeddedETCD(t *testing.T) *Executor {
 	embed := &executor.Embedded{}
 	mockExecutor.EXPECT().Bootstrap(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(embed.Bootstrap)
 	mockExecutor.EXPECT().CurrentETCDOptions().AnyTimes().DoAndReturn(embed.CurrentETCDOptions)
-	mockExecutor.EXPECT().ETCD(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(embed.ETCD)
+	mockExecutor.EXPECT().ETCD(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(embed.ETCD)
 	mockExecutor.EXPECT().ETCDReadyChan().AnyTimes().DoAndReturn(embed.ETCDReadyChan)
 
 	closedChannel := func() <-chan struct{} {

@@ -117,7 +117,9 @@ func (a *agentTunnel) startWatches(ctx context.Context, config *daemonconfig.Nod
 			Group:     "discovery.k8s.io",
 			Resource:  "endpointslices",
 		}, ""); err != nil {
-			logrus.Fatalf("Tunnel watches failed to wait for RBAC: %v", err)
+			logrus.Errorf("Tunnel watches failed to wait for RBAC: %v", err)
+			// TODO: make sure this causes an exit
+			return
 		}
 
 		close(rbacReady)

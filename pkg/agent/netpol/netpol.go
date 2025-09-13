@@ -46,7 +46,7 @@ func init() {
 // https://github.com/cloudnativelabs/kube-router/blob/ee9f6d890d10609284098229fa1e283ab5d83b93/pkg/cmd/kube-router.go#L78
 // It converts the k3s config.Node into kube-router configuration (only the
 // subset of options needed for netpol controller).
-func Run(ctx context.Context, nodeConfig *config.Node) error {
+func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error {
 	set, err := utils.NewIPSet(false)
 	if err != nil {
 		logrus.Warnf("Skipping network policy controller start, ipset unavailable: %v", err)
@@ -119,9 +119,6 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	stopCh := ctx.Done()
 	healthCh := make(chan *healthcheck.ControllerHeartbeat)
 
-	// We don't use this WaitGroup, but kube-router components require it.
-	var wg sync.WaitGroup
-
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 	podInformer := informerFactory.Core().V1().Pods().Informer()
 	nsInformer := informerFactory.Core().V1().Namespaces().Informer()
@@ -175,11 +172,13 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	// Initialize all healthcheck timers. Otherwise, the system reports heartbeat missing messages
 	hc.SetAlive()
 
+	logrus.Warn("**** WG ADD NETPOL HEALTH ****")
 	wg.Add(1)
-	go hc.RunCheck(healthCh, stopCh, &wg)
+	go hc.RunCheck(healthCh, stopCh, wg)
 
+	logrus.Warn("**** WG ADD NETPOL METRICS ****")
 	wg.Add(1)
-	go metricsRunCheck(mc, healthCh, stopCh, &wg)
+	go metricsRunCheck(mc, healthCh, stopCh, wg)
 
 	npc, err := netpol.NewNetworkPolicyController(client, krConfig, podInformer, npInformer, nsInformer, &sync.Mutex{}, nil,
 		iptablesCmdHandlers, ipSetHandlers)
@@ -191,9 +190,10 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 	nsInformer.AddEventHandler(npc.NamespaceEventHandler)
 	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
+	logrus.Warn("**** WG ADD NETPOL CONTROLLER ****")
 	wg.Add(1)
 	logrus.Infof("Starting network policy controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
-	go npc.Run(healthCh, stopCh, &wg)
+	go npc.Run(healthCh, stopCh, wg)
 
 	return nil
 }
@@ -201,6 +201,7 @@ func Run(ctx context.Context, nodeConfig *config.Node) error {
 // metricsRunCheck is a stub version of mc.Run() that doesn't start up a dedicated http server.
 func metricsRunCheck(mc *krmetrics.Controller, healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
 	t := time.NewTicker(3 * time.Second)
+	defer logrus.Warn("**** WG DONE METRICS ****")
 	defer wg.Done()
 
 	// register metrics for this controller

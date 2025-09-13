@@ -4,6 +4,7 @@
 package cmds
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -67,7 +68,7 @@ func forkIfLoggingOrReaping() error {
 			Stdout: stdout,
 			Stderr: stderr,
 			SysProcAttr: &syscall.SysProcAttr{
-				Pdeathsig: unix.SIGTERM,
+				Pdeathsig: unix.SIGHUP,
 			},
 		}
 		if err := cmd.Start(); err != nil {
@@ -78,6 +79,7 @@ func forkIfLoggingOrReaping() error {
 		// and then wait for it to exit and pass along the exit code.
 		systemd.SdNotify(true, "READY=1\n")
 		cmd.Wait()
+		fmt.Fprint(os.Stderr, "CHILD EXITED, EXITING")
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
 	return nil
@@ -91,6 +93,7 @@ func reapChildren() {
 		select {
 		case <-sigs:
 		}
+		fmt.Fprint(os.Stderr, "GOT SIGCHLD, REAPING WITH WAIT4")
 		for {
 			var wstatus syscall.WaitStatus
 			_, err := syscall.Wait4(-1, &wstatus, 0, nil)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/clientaccess"
@@ -38,12 +39,12 @@ func (c *Cluster) ListenAndServe(ctx context.Context) error {
 
 // Start handles writing/reading bootstrap data. If embedded etcd is in use,
 // a secondary call to Cluster.save is made.
-func (c *Cluster) Start(ctx context.Context) error {
+func (c *Cluster) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	if c.config.DisableETCD || c.managedDB == nil {
 		// if etcd is disabled or we're using kine, perform a no-op start of etcd
 		// to close the etcd ready channel. When etcd is in use, this is handled by
 		// c.start() -> c.managedDB.Start() -> etcd.Start() -> executor.ETCD()
-		executor.ETCD(ctx, nil, nil, func(context.Context) error { return nil })
+		executor.ETCD(ctx, wg, nil, nil, func(context.Context) error { return nil })
 	}
 
 	if c.config.DisableETCD {
@@ -51,7 +52,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 	}
 
 	// start managed etcd database; when kine is in use this is a no-op.
-	if err := c.start(ctx); err != nil {
+	if err := c.start(ctx, wg); err != nil {
 		return pkgerrors.WithMessage(err, "start managed database")
 	}
 

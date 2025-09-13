@@ -36,6 +36,7 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
@@ -512,7 +513,23 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
-	ctx := signals.SetupSignalContext()
+	logrus.Error("SETUPSIGNALCONTEXT")
+	sctx := signals.SetupSignalContext()
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-sctx.Done()
+		logrus.Errorf("SIGNAL CONTEXT CANCELLED IN PID %d", os.Getpid())
+		p, _ := os.FindProcess(os.Getpid())
+		p.Signal(unix.SIGABRT)
+		time.Sleep(time.Second * 20)
+		cancel()
+	}()
+
+	wg := &sync.WaitGroup{}
+	defer func() {
+		logrus.Warn("**** WG WAIT ****")
+		wg.Wait()
+	}()
 
 	if err := server.PrepareServer(ctx, &serverConfig, cfg); err != nil {
 		return err
@@ -585,7 +602,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			return err
 		}
 	} else {
-		if err := agent.Run(ctx, agentConfig); err != nil {
+		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
 		}
 	}
@@ -610,8 +627,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	if err := server.StartServer(ctx, &serverConfig, cfg); err != nil {
-		return err
+	if err := server.StartServer(ctx, wg, &serverConfig, cfg); err != nil {
+		return pkgerrors.Wrap(err, "StartServer failed")
 	}
 
 	<-ctx.Done()

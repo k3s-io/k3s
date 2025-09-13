@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/authenticator"
@@ -70,32 +71,40 @@ func Prepare(ctx context.Context, cfg *config.Control) error {
 
 // Server starts the apiserver and whatever other control-plane components are
 // not disabled on this node.
-func Server(ctx context.Context, cfg *config.Control) error {
-	if err := cfg.Cluster.Start(ctx); err != nil {
+func Server(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
+	if err := cfg.Cluster.Start(ctx, wg); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start cluster")
 	}
+
+	sctx, scancel := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Done()
+		logrus.Error("SERVER CONTEXT CANCELLED")
+		time.Sleep(time.Second * 10)
+		scancel()
+	}()
 
 	if !cfg.DisableAPIServer {
 		go waitForAPIServerHandlers(ctx, cfg.Runtime)
 
-		if err := apiServer(ctx, cfg); err != nil {
+		if err := apiServer(sctx, cfg); err != nil {
 			return err
 		}
 	}
 
 	if !cfg.DisableScheduler {
-		if err := scheduler(ctx, cfg); err != nil {
+		if err := scheduler(sctx, cfg); err != nil {
 			return err
 		}
 	}
 	if !cfg.DisableControllerManager {
-		if err := controllerManager(ctx, cfg); err != nil {
+		if err := controllerManager(sctx, cfg); err != nil {
 			return err
 		}
 	}
 
 	if !cfg.DisableCCM || !cfg.DisableServiceLB {
-		if err := cloudControllerManager(ctx, cfg); err != nil {
+		if err := cloudControllerManager(sctx, cfg); err != nil {
 			return err
 		}
 	}
@@ -190,7 +199,9 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 			logrus.Infof("Waiting for untainted node")
 			// this waits forever for an untainted node; if it returns ErrWaitTimeout the context has been cancelled, and it is not a fatal error
 			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
-				logrus.Fatalf("failed to wait for untained node: %v", err)
+				logrus.Errorf("Failed to wait for untained node: %v", err)
+				// TODO: make sure this causes an exit
+				return
 			}
 		}
 	}()
