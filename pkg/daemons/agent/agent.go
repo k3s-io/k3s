@@ -39,13 +39,21 @@ func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	if err := startKubelet(ctx, &nodeConfig.AgentConfig); err != nil {
+	actx, acancel := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Done()
+		logrus.Error("AGENT CONTEXT CANCELLED")
+		time.Sleep(time.Second * 10)
+		acancel()
+	}()
+
+	if err := startKubelet(actx, &nodeConfig.AgentConfig); err != nil {
 		return pkgerrors.WithMessage(err, "failed to start kubelet")
 	}
 
 	go func() {
 		if !config.KubeProxyDisabled(ctx, nodeConfig, proxy) {
-			if err := startKubeProxy(ctx, &nodeConfig.AgentConfig); err != nil {
+			if err := startKubeProxy(actx, &nodeConfig.AgentConfig); err != nil {
 				logrus.Fatalf("Failed to start kube-proxy: %v", err)
 			}
 		}

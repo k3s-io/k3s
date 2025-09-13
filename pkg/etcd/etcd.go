@@ -375,12 +375,9 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 				}
 
 				if len(members.Members) == 1 && members.Members[0].Name == e.name {
-					// Cancel the etcd server context and allow it time to shutdown cleanly.
-					// Ideally we would use a waitgroup and properly sequence shutdown of the various components.
+					// Cancel the etcd server context so that it will shut down.
 					e.cancel()
-					time.Sleep(time.Second * 5)
 					logrus.Infof("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now. Backup and delete ${datadir}/server/db on each peer etcd server and rejoin the nodes")
-					os.Exit(0)
 				}
 			} else {
 				// make sure that peer ips are updated to the node ip in case the test fails

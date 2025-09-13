@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
@@ -108,9 +107,11 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 		err := flannel(ctx, wg, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, nm)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logrus.Errorf("flannel exited: %v", err)
-			os.Exit(1)
+			//os.Exit(1)
+			logrus.Errorf("FLANNEL EXIT 1")
 		}
-		os.Exit(0)
+		//os.Exit(0)
+		logrus.Errorf("FLANNEL EXIT 0")
 	}()
 
 	return nil

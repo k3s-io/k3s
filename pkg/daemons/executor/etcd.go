@@ -62,14 +62,17 @@ func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfi
 		return err
 	}
 
+	logrus.Warn("**** WG ADD ETCD ****")
 	wg.Add(1)
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
+		logrus.Warn("**** WG DONE ETCD ERR ****")
 		wg.Done()
 		return err
 	}
 
 	go func() {
+		defer logrus.Warn("**** WG DONE ETCD CLOSED ****")
 		defer wg.Done()
 		select {
 		case err := <-etcd.Server.ErrNotify():

@@ -552,6 +552,7 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 	defer func() {
 		cancel()
 		c.config.Runtime.EtcdConfig = originalConfig
+		logrus.Warn("**** WG WAIT ****")
 		wg.Wait()
 	}()
 

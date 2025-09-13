@@ -172,9 +172,11 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	// Initialize all healthcheck timers. Otherwise, the system reports heartbeat missing messages
 	hc.SetAlive()
 
+	logrus.Warn("**** WG ADD NETPOL HEALTH ****")
 	wg.Add(1)
 	go hc.RunCheck(healthCh, stopCh, wg)
 
+	logrus.Warn("**** WG ADD NETPOL METRICS ****")
 	wg.Add(1)
 	go metricsRunCheck(mc, healthCh, stopCh, wg)
 
@@ -188,6 +190,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	nsInformer.AddEventHandler(npc.NamespaceEventHandler)
 	npInformer.AddEventHandler(npc.NetworkPolicyEventHandler)
 
+	logrus.Warn("**** WG ADD NETPOL CONTROLLER ****")
 	wg.Add(1)
 	logrus.Infof("Starting network policy controller version %s, built on %s, %s", version.Version, version.BuildDate, runtime.Version())
 	go npc.Run(healthCh, stopCh, wg)
@@ -198,6 +201,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 // metricsRunCheck is a stub version of mc.Run() that doesn't start up a dedicated http server.
 func metricsRunCheck(mc *krmetrics.Controller, healthChan chan<- *healthcheck.ControllerHeartbeat, stopCh <-chan struct{}, wg *sync.WaitGroup) {
 	t := time.NewTicker(3 * time.Second)
+	defer logrus.Warn("**** WG DONE METRICS ****")
 	defer wg.Done()
 
 	// register metrics for this controller

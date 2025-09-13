@@ -175,7 +175,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, cfg cmds.Agent, proxy proxy.Pr
 	go func() {
 		<-executor.APIServerReadyChan()
 		if err := startNetwork(ctx, wg, nodeConfig); err != nil {
-			logrus.Fatalf("Failed to start networking: %v", err)
+			logrus.Errorf("Failed to start networking: %v", err)
+			// TODO: how do we ensure that this triggers an exit?
 		}
 
 		// By default, the server is responsible for notifying systemd
