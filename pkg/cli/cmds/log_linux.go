@@ -12,6 +12,7 @@ import (
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/k3s-io/k3s/pkg/proctitle"
+	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
 	pkgerrors "github.com/pkg/errors"
@@ -58,18 +59,16 @@ func forkIfLoggingOrReaping() error {
 
 		args := append([]string{version.Program}, os.Args[1:]...)
 		env := append(os.Environ(), "_K3S_LOG_REEXEC_=true", "NOTIFY_SOCKET=")
-		cmd := &exec.Cmd{
-			Path:   "/proc/self/exe",
-			Dir:    pwd,
-			Args:   args,
-			Env:    env,
-			Stdin:  os.Stdin,
-			Stdout: stdout,
-			Stderr: stderr,
-			SysProcAttr: &syscall.SysProcAttr{
-				Pdeathsig: unix.SIGTERM,
-			},
-		}
+		ctx := signals.SetupSignalContext()
+		cmd := exec.CommandContext(ctx, "/proc/self/exe")
+		cmd.Args = args
+		cmd.Dir = pwd
+		cmd.Env = env
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: unix.SIGTERM, Setpgid: true}
+		cmd.Cancel = func() error { return cmd.Process.Signal(unix.SIGINT) }
+
 		if err := cmd.Start(); err != nil {
 			return err
 		}
@@ -77,6 +76,7 @@ func forkIfLoggingOrReaping() error {
 		// The child process won't be allowed to notify, so we send one for it as soon as it's started,
 		// and then wait for it to exit and pass along the exit code.
 		systemd.SdNotify(true, "READY=1\n")
+
 		cmd.Wait()
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
@@ -86,7 +86,7 @@ func forkIfLoggingOrReaping() error {
 // reapChildren calls Wait4 whenever SIGCHLD is received
 func reapChildren() {
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGCHLD)
+	signal.Notify(sigs, unix.SIGCHLD)
 	for {
 		select {
 		case <-sigs:
