@@ -1,0 +1,43 @@
+# -------------------------
+# Deployment for Node.js app
+# -------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-node-app
+spec:
+  replicas: 2   # Run 2 pods for scalability
+  selector:
+    matchLabels:
+      app: hello-node
+  template:
+    metadata:
+      labels:
+        app: hello-node
+    spec:
+      containers:
+      - name: hello-node-container
+        image: node:18
+        command: 
+          - "node"
+          - "-e"
+          - "require('http').createServer((req,res)=>res.end('Hello from K3s!')).listen(8080)"
+        ports:
+        - containerPort: 8080
+
+---
+# -------------------------
+# Service to expose Node.js app
+# -------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-node-service
+spec:
+  selector:
+    app: hello-node
+  ports:
+  - protocol: TCP
+    port: 80        # Service exposed on port 80
+    targetPort: 8080 # Redirects to container port
+  type: LoadBalancer # In cloud, creates external LB; in local K3s, use NodePort
