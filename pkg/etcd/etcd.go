@@ -561,6 +561,19 @@ func (e *ETCD) startClient(ctx context.Context) error {
 	return nil
 }
 
+// moveLeader transfers leadership to another cluster member. The request must be made directly
+// to the current leader.
+func (e *ETCD) moveLeader(ctx context.Context, from, to *etcdserverpb.Member) error {
+	client, conn, err := getClient(ctx, e.config, from.ClientURLs...)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	logrus.Infof("Moving etcd cluster leader from %s to %s", from.Name, to.Name)
+	_, err = client.MoveLeader(ctx, to.ID)
+	return err
+}
+
 // join attempts to add a member to an existing cluster
 func (e *ETCD) join(ctx context.Context, clientAccessInfo *clientaccess.Info) error {
 	clientCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -1145,6 +1158,16 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 		return err
 	}
 
+	// build a quick list of potential other leaders, in case we need to transfer
+	// leadership from the peer to be removed.
+	otherMembers := []*etcdserverpb.Member{}
+	for _, member := range members.Members {
+		if !member.IsLearner && member.Name != name {
+			otherMembers = append(otherMembers, member)
+		}
+	}
+
+	// find and remove the selected peer, after moving leadership if necessary
 	for _, member := range members.Members {
 		if member.Name != name {
 			continue
@@ -1158,8 +1181,20 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 				if e.address == address && !allowSelfRemoval {
 					return errors.New("not removing self from etcd cluster")
 				}
+				status, err := e.status(ctx)
+				if err != nil {
+					return err
+				}
+				if status.Leader == member.ID {
+					if len(otherMembers) == 0 {
+						return rpctypes.ErrMemberNotEnoughStarted
+					}
+					if err := e.moveLeader(ctx, member, otherMembers[0]); err != nil {
+						return err
+					}
+				}
 				logrus.Infof("Removing name=%s id=%d address=%s from etcd", member.Name, member.ID, address)
-				_, err := e.client.MemberRemove(ctx, member.ID)
+				_, err = e.client.MemberRemove(ctx, member.ID)
 				if errors.Is(err, rpctypes.ErrGRPCMemberNotFound) {
 					return nil
 				}
