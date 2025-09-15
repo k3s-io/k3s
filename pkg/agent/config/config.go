@@ -456,10 +456,15 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	if err != nil {
 		return nil, pkgerrors.WithMessage(err, "failed to retrieve configuration from server")
 	}
+
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
+	if err != nil {
+		return nil, pkgerrors.WithMessage(err, "failed to get node name and addresses")
+	}
+
 	// If the supervisor and externally-facing apiserver are not on the same port, tell the proxy where to find the apiserver.
 	if controlConfig.SupervisorPort != controlConfig.HTTPSPort {
-		isIPv6 := utilsnet.IsIPv6(net.ParseIP(util.GetFirstValidIPString(envInfo.NodeIP.Value())))
-		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, isIPv6); err != nil {
+		if err := proxy.SetAPIServerPort(controlConfig.HTTPSPort, utilsnet.IsIPv6(nodeIPs[0])); err != nil {
 			return nil, pkgerrors.WithMessagef(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
 		}
 	}
@@ -498,11 +503,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	oldNodePasswordFile := filepath.Join(envInfo.DataDir, "agent", "node-password.txt")
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
-
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
-	if err != nil {
-		return nil, err
-	}
 
 	// If there is a VPN, we must overwrite NodeIP and flannel interface
 	var vpnInfo vpn.VPNInfo
