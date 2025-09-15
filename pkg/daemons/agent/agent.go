@@ -163,8 +163,7 @@ func writeKubeletConfig(path string, config *kubeletconfig.KubeletConfiguration)
 
 func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfiguration, error) {
 	bindAddress := "127.0.0.1"
-	isIPv6 := utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0]))
-	if isIPv6 {
+	if utilsnet.IsIPv6(net.ParseIP([]string{cfg.NodeIP}[0])) {
 		bindAddress = "::1"
 	}
 
