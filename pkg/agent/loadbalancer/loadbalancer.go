@@ -2,15 +2,16 @@ package loadbalancer
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/inetaf/tcpproxy"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/metrics"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
@@ -40,14 +41,11 @@ var (
 // New contstructs a new LoadBalancer instance. The default server URL, and
 // currently active servers, are stored in a file within the dataDir.
 func New(ctx context.Context, dataDir, serviceName, defaultServerURL string, lbServerPort int, isIPv6 bool) (_lb *LoadBalancer, _err error) {
-	config := net.ListenConfig{Control: reusePort}
-	var localAddress string
+	bindAddress := "127.0.0.1"
 	if isIPv6 {
-		localAddress = fmt.Sprintf("[::1]:%d", lbServerPort)
-	} else {
-		localAddress = fmt.Sprintf("127.0.0.1:%d", lbServerPort)
+		bindAddress = "::1"
 	}
-	listener, err := config.Listen(ctx, "tcp", localAddress)
+	listener, err := util.ListenWithLoopback(ctx, bindAddress, strconv.Itoa(lbServerPort))
 	defer func() {
 		if _err != nil {
 			logrus.Warnf("Error starting load balancer: %s", _err)
@@ -67,11 +65,11 @@ func New(ctx context.Context, dataDir, serviceName, defaultServerURL string, lbS
 
 	// Set explicit port from scheme
 	if serverURL.Port() == "" {
-		if strings.ToLower(serverURL.Scheme) == "http" {
-			serverURL.Host += ":80"
-		}
-		if strings.ToLower(serverURL.Scheme) == "https" {
-			serverURL.Host += ":443"
+		switch strings.ToLower(serverURL.Scheme) {
+		case "http":
+			serverURL.Host = net.JoinHostPort(serverURL.Hostname(), "80")
+		case "https":
+			serverURL.Host = net.JoinHostPort(serverURL.Hostname(), "443")
 		}
 	}
 
