@@ -2,16 +2,19 @@ package cluster
 
 import (
 	"context"
+	"net"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/metrics"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -116,8 +119,13 @@ func (c *Cluster) startEtcdProxy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defaultURL.Host = defaultURL.Hostname() + ":2379"
-	etcdProxy, err := etcd.NewETCDProxy(ctx, c.config.SupervisorPort, c.config.DataDir, defaultURL.String(), utilsnet.IsIPv6CIDR(c.config.ServiceIPRanges[0]))
+	_, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP.Value())
+	if err != nil {
+		pkgerrors.WithMessage(err, "failed to get node name and addresses")
+	}
+
+	defaultURL.Host = net.JoinHostPort(defaultURL.Hostname(), "2379")
+	etcdProxy, err := etcd.NewETCDProxy(ctx, c.config.SupervisorPort, c.config.DataDir, defaultURL.String(), utilsnet.IsIPv6(nodeIPs[0]))
 	if err != nil {
 		return err
 	}
