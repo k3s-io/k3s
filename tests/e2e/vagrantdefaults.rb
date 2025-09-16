@@ -71,6 +71,7 @@ def getHardenedArg(vm, hardened, scripts_location)
       - 'audit-log-maxage=30'
       - 'audit-log-maxbackup=10'
       - 'audit-log-maxsize=100'
+      - 'service-account-extend-token-expiration=false'
   HARD
  
   if hardened == "psa" || hardened == "true"
@@ -85,7 +86,7 @@ def getHardenedArg(vm, hardened, scripts_location)
   end
   if vm.box.to_s.include?("ubuntu")
     vm.provision "Install kube-bench", type: "shell", inline: <<-SHELL
-    export KBV=0.8.0
+    export KBV=0.12.0
     curl -L "https://github.com/aquasecurity/kube-bench/releases/download/v${KBV}/kube-bench_${KBV}_linux_amd64.deb" -o "kube-bench_${KBV}_linux_amd64.deb"
     dpkg -i "./kube-bench_${KBV}_linux_amd64.deb"
     SHELL
