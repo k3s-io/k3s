@@ -1,15 +1,15 @@
-name: 'Setup golang with master only caching'
-description: 'A composite action that installs golang, but with a caching strategy that only updates the cache on master branch.'
+name: 'Setup golang with main only caching'
+description: 'A composite action that installs golang, but with a caching strategy that only updates the cache on main branch.'
 runs:
   using: 'composite'
   steps:
     - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'  # Just use whatever version is in the go.mod file
-        cache: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release-1.32' }}
+        cache: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-1.32' }}
 
     - name: Prepare for go cache
-      if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/release-1.32'
+      if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-1.32'
       shell: bash
       run: |
         echo "GO_CACHE=$(go env GOCACHE)" | tee -a "$GITHUB_ENV"
@@ -17,7 +17,7 @@ runs:
         echo "GO_VERSION=$(go env GOVERSION | tr -d 'go')" | tee -a "$GITHUB_ENV"
 
     - name: Setup read-only cache
-      if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/release-1.32'
+      if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-1.32'
       uses: actions/cache/restore@v4
       with:
         path: |
