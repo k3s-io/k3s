@@ -30,6 +30,7 @@ __pycache__
 /tests/.tox/
 /tests/.vscode
 /tests/**/*log.txt
+/tests/**/vagrant.log
 /sonobuoy-output
 *.tmp
 config/local.tfvars
