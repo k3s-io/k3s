@@ -61,14 +61,14 @@ jobs:
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: Vagrant R/W Cache
-        if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/master'
+        if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/main'
         uses: actions/cache@v4
         with:
           path: |
              ~/.vagrant.d/boxes
           key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
       - name: Vagrant Read Cache
-        if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/master'
+        if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/main'
         uses: actions/cache/restore@v4
         with:
           path: |
