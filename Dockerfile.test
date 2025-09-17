@@ -38,7 +38,8 @@ FROM vagrantlibvirt/vagrant-libvirt:sha-a94ce0d AS test-e2e
 RUN apt-get update && apt-get install -y docker.io wget
 
 ENV VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1
-RUN vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+RUN vagrant plugin install vagrant-k3s --plugin-version 0.4.0
+RUN vagrant plugin install vagrant-reload vagrant-scp
 
 # Workaround for older vagrant-libvirt image and new vagrant infra wesbites
 # See https://github.com/hashicorp/vagrant/issues/13571 and

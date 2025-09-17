@@ -78,7 +78,7 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 			return err
 		})
 		// libVirt/Virtualbox needs some time between provisioning nodes
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 	if err := errg.Wait(); err != nil {
 		return etcdNodes, cpNodes, agentNodes, err
@@ -105,8 +105,8 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 			_, err := e2e.RunCommand(cmd)
 			return err
 		})
-		// K3s needs some time between joining nodes to avoid learner issues
-		time.Sleep(10 * time.Second)
+		// libVirt/Virtualbox needs some time between provisioning nodes
+		time.Sleep(2 * time.Second)
 	}
 	if err := errg.Wait(); err != nil {
 		return etcdNodes, cpNodes, agentNodes, err
@@ -121,17 +121,18 @@ func Test_E2ESplitServer(t *testing.T) {
 	RunSpecs(t, "Split Server Test Suite", suiteConfig, reporterConfig)
 }
 
-var (
-	tc         *e2e.TestConfig // We don't use the Server and Agents from this
-	etcdNodes  []e2e.VagrantNode
-	cpNodes    []e2e.VagrantNode
-	agentNodes []e2e.VagrantNode
-	allNodes   []e2e.VagrantNode
-)
-
 var _ = ReportAfterEach(e2e.GenReport)
 
-var _ = Describe("Verify Create", Ordered, func() {
+var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
+	var (
+		tc         *e2e.TestConfig // We don't use the Server and Agents from this
+		etcdNodes  []e2e.VagrantNode
+		cpNodes    []e2e.VagrantNode
+		agentNodes []e2e.VagrantNode
+		allNodes   []e2e.VagrantNode
+		failed     bool
+	)
+
 	Context("Cluster :", func() {
 		It("Starts up with no issues", func() {
 			var err error
@@ -142,22 +143,36 @@ var _ = Describe("Verify Create", Ordered, func() {
 			fmt.Println("Etcd Server Nodes:", etcdNodes)
 			fmt.Println("Control Plane Server Nodes:", cpNodes)
 			fmt.Println("Agent Nodes:", agentNodes)
-			kubeConfigFile, err := e2e.GenKubeconfigFile(cpNodes[0].String())
-			tc = &e2e.TestConfig{
-				KubeconfigFile: kubeConfigFile,
-				Hardened:       *hardened,
+			for _, node := range append(etcdNodes, cpNodes...) {
+				cmd := fmt.Sprintf("systemctl start k3s %s", startFlags)
+				_, err := node.RunCmdOnNode(cmd)
+				Expect(err).NotTo(HaveOccurred(), "failed to start k3s")
 			}
-			Expect(err).NotTo(HaveOccurred())
+			for _, node := range agentNodes {
+				cmd := fmt.Sprintf("systemctl start k3s-agent %s", startFlags)
+				_, err := node.RunCmdOnNode(cmd)
+				Expect(err).NotTo(HaveOccurred(), "failed to start k3s-agent")
+			}
+			Eventually(func() error {
+				kubeConfigFile, err := e2e.GenKubeconfigFile(cpNodes[0].String())
+				tc = &e2e.TestConfig{
+					KubeconfigFile: kubeConfigFile,
+					Hardened:       *hardened,
+				}
+				return err
+			}, "60s", "5s").Should(Succeed(), "failed to get admin kubeconfig")
 		})
 
 		It("Checks node and pod status", func() {
 			allNodes = append(cpNodes, etcdNodes...)
 			allNodes = append(allNodes, agentNodes...)
-			By("Fetching Nodes status")
+			fmt.Printf("\nFetching Nodes status\n")
 			Eventually(func() error {
 				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(allNodes))
 			}, "620s", "5s").Should(Succeed())
+			e2e.DumpNodes(tc.KubeconfigFile)
 
+			fmt.Printf("\nFetching Pods status\n")
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeconfigFile)
 			}, "620s", "5s").Should(Succeed())
@@ -266,21 +281,23 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "420s", "2s").Should(ContainSubstring("kubernetes.default.svc.cluster.local"), "failed cmd: "+cmd)
 		})
 	})
-})
 
-var failed bool
-var _ = AfterEach(func() {
-	failed = failed || CurrentSpecReport().Failed()
-})
+	AfterAll(func() {
+		failed = failed || CurrentSpecReport().Failed()
+	})
 
-var _ = AfterSuite(func() {
-	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, allNodes))
-	} else {
-		Expect(e2e.GetCoverageReport(allNodes)).To(Succeed())
-	}
-	if !failed || *ci {
-		Expect(e2e.DestroyCluster()).To(Succeed())
-		Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
-	}
-})
+	AfterAll(func() {
+		if failed {
+			AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, allNodes))
+		} else {
+			Expect(e2e.GetCoverageReport(allNodes)).To(Succeed())
+		}
+		if !failed || *ci {
+			Expect(e2e.DestroyCluster()).To(Succeed())
+			Expect(os.Remove(tc.KubeconfigFile)).To(Succeed())
+		}
+	})
+},
+	Entry("concurrently", "--no-block"),
+	Entry("sequentially", ""),
+)
