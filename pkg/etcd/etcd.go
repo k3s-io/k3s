@@ -57,12 +57,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	nodeHelper "k8s.io/component-helpers/node/util"
-	nodeUtil "k8s.io/kubernetes/pkg/controller/util/node"
 )
 
 const (
@@ -1247,12 +1243,6 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			return
 		}
 
-		client, err := util.GetClientSet(e.config.Runtime.KubeConfigSupervisor)
-		if err != nil {
-			logrus.Errorf("Failed to get k8s client for patch node status condition: %v", err)
-			return
-		}
-
 		nodes, err := e.getETCDNodes()
 		if err != nil {
 			logrus.Warnf("Failed to list nodes with etcd role: %v", err)
@@ -1286,7 +1276,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 				}
 			}
 			if node == nil {
-				return
+				continue
 			}
 
 			// verify if the member is healthy and set the status
@@ -1295,14 +1285,14 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 				status = StatusUnhealthy
 			}
 
-			if err := e.setEtcdStatusCondition(node, client, member.Name, status, message); err != nil {
+			if err := e.setEtcdStatusCondition(node, member.Name, status, message); err != nil {
 				logrus.Errorf("Unable to set etcd status condition %s: %v", member.Name, err)
 			}
 		}
 
 		for nodeName, node := range nodesMap {
 			if !nodeIsMember[nodeName] {
-				if err := e.setEtcdStatusCondition(node, client, nodeName, StatusUnjoined, ""); err != nil {
+				if err := e.setEtcdStatusCondition(node, nodeName, StatusUnjoined, ""); err != nil {
 					logrus.Errorf("Unable to set etcd status condition for a node that is not a cluster member %s: %v", nodeName, err)
 				}
 			}
@@ -1386,7 +1376,7 @@ func (e *ETCD) getETCDStatus(ctx context.Context, url string) (*clientv3.StatusR
 	return resp, nil
 }
 
-func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client kubernetes.Interface, memberName string, memberStatus MemberStatus, message string) error {
+func (e *ETCD) setEtcdStatusCondition(node *v1.Node, memberName string, memberStatus MemberStatus, message string) error {
 	var newCondition v1.NodeCondition
 	switch memberStatus {
 	case StatusLearner:
@@ -1426,7 +1416,7 @@ func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client kubernetes.Interface
 		newCondition.Message = message
 	}
 
-	if find, condition := nodeUtil.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
+	if find, condition := util.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
 
 		// if the condition is not changing, we only want to update the last heartbeat time
 		if condition.Status == newCondition.Status && condition.Reason == newCondition.Reason && condition.Message == newCondition.Message {
@@ -1438,21 +1428,18 @@ func (e *ETCD) setEtcdStatusCondition(node *v1.Node, client kubernetes.Interface
 				return nil
 			}
 
-			condition.LastHeartbeatTime = metav1.Now()
-			return nodeHelper.SetNodeCondition(client, types.NodeName(node.Name), *condition)
+			return util.SetNodeCondition(e.config.Runtime.Core, node.Name, *condition)
 		}
 
 		logrus.Debugf("Node %s is changing etcd status condition", memberName)
 		condition = &newCondition
-		condition.LastHeartbeatTime = metav1.Now()
 		condition.LastTransitionTime = metav1.Now()
-		return nodeHelper.SetNodeCondition(client, types.NodeName(node.Name), *condition)
+		return util.SetNodeCondition(e.config.Runtime.Core, node.Name, *condition)
 	}
 
 	logrus.Infof("Adding node %s etcd status condition", memberName)
-	newCondition.LastHeartbeatTime = metav1.Now()
 	newCondition.LastTransitionTime = metav1.Now()
-	return nodeHelper.SetNodeCondition(client, types.NodeName(node.Name), newCondition)
+	return util.SetNodeCondition(e.config.Runtime.Core, node.Name, newCondition)
 }
 
 // getLearnerProgress returns the stored learnerProgress struct as retrieved from etcd
