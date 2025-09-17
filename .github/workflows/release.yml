@@ -138,9 +138,9 @@ jobs:
         uses: rancher-eio/read-vault-secrets@main
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/rancher-prime-artifacts/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
-            secret/data/github/repo/${{ github.repository }}/rancher-prime-artifacts/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
-            secret/data/github/repo/${{ github.repository }}/rancher-prime-artifacts/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
 
       - name: Configure AWS Credentials (s3)
         uses: aws-actions/configure-aws-credentials@v4
