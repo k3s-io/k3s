@@ -379,7 +379,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-expose-metrics",
-		Usage:       "(db) Expose etcd metrics to client interface. (default: false)",
+		Usage:       "(db) Expose etcd metrics to client interface",
 		Destination: &ServerConfig.EtcdExposeMetrics,
 	},
 	&cli.BoolFlag{
@@ -389,7 +389,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "etcd-snapshot-name",
-		Usage:       "(db) Set the base name of etcd snapshots (default: etcd-snapshot-<unix-timestamp>)",
+		Usage:       "(db) Set the base name of etcd snapshots, appended with UNIX timestamp",
 		Destination: &ServerConfig.EtcdSnapshotName,
 		Value:       "etcd-snapshot",
 	},

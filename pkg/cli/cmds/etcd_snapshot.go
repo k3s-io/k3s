@@ -42,7 +42,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "name",
-		Usage:       "(db) Set the base name of the etcd on-demand snapshot (appended with UNIX timestamp).",
+		Usage:       "(db) Set the base name of the etcd on-demand snapshot, appended with UNIX timestamp",
 		Destination: &ServerConfig.EtcdSnapshotName,
 		Value:       "on-demand",
 	},
