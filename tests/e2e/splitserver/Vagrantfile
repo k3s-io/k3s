@@ -46,6 +46,7 @@ def provision(vm, role, role_num, node_num)
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.skip_start = true
     end
   elsif role.include?("server") && role.include?("etcd") && role_num != 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
@@ -62,6 +63,7 @@ def provision(vm, role, role_num, node_num)
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.skip_start = true
     end
   elsif role.include?("server") && role.include?("cp")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
@@ -75,6 +77,7 @@ def provision(vm, role, role_num, node_num)
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.skip_start = true
     end
   elsif role.include?("server") && role.include?("all")
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
@@ -85,6 +88,7 @@ def provision(vm, role, role_num, node_num)
       YAML
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.skip_start = true
     end
   end
   if role.include?("agent")
@@ -92,6 +96,7 @@ def provision(vm, role, role_num, node_num)
       k3s.args = %W[agent --server https://#{NETWORK_PREFIX}.101:6443 --flannel-iface=eth1]
       k3s.env = %W[K3S_KUBECONFIG_MODE=0644 K3S_TOKEN=vagrant #{install_type}]
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
+      k3s.skip_start = true
     end
   end
   if vm.box.to_s.include?("microos")
