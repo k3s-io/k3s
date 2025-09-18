@@ -60,7 +60,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			By("Fetching pod status")
 			Eventually(func() error {
 				e2e.DumpPods(tc.KubeconfigFile)
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "10s").Should(Succeed())
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
