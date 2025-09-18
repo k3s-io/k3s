@@ -476,12 +476,9 @@ steps:
   # Cleanup VMs that are older than 2h. Happens if a previous test panics or is canceled
   - tests/e2e/scripts/cleanup_vms.sh
   - tests/e2e/scripts/drone_registries.sh
-   # Stagger the launch of this test with the parallel splitserver test
-   # to prevent conflicts over libvirt network interfaces
   - |
     cd tests/e2e/validatecluster
     ../scripts/cleanup_vms.sh 'validatecluster_([0-9]+)_(server|agent)'
-    sleep 15
     go test -v -timeout=45m ./validatecluster_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/validate-coverage.out
   volumes:
@@ -510,12 +507,37 @@ steps:
   - |
     cd tests/e2e/splitserver
     ../scripts/cleanup_vms.sh 'splitserver_([0-9]+)'
+    # Stagger the launch of this test with the validatecluster test
+    # to prevent conflicts over libvirt network interfaces
+    sleep 15
     go test -v -timeout=30m ./splitserver_test.go -ci -local
     cp ./coverage.out /tmp/artifacts/split-coverage.out
+  volumes:
+  - name: libvirt
+    path: /var/run/libvirt/
+  - name: docker
+    path: /var/run/docker.sock
+  - name: cache
+    path: /tmp/artifacts
+
+- name: test-e2e-upgradecluster
+  depends_on:
+    - build-e2e-image
+  image: test-e2e
+  pull: never
+  resources:
+    cpu: 6000
+    memory: 10Gi
+  environment:
+    E2E_REGISTRY: 'true'
+    E2E_GOCOVER: 'true'
+  commands:
+  - mkdir -p dist/artifacts
+  - cp /tmp/artifacts/* dist/artifacts/
+  - tests/e2e/scripts/drone_registries.sh
   - |
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
-      cd ../upgradecluster
-      ../scripts/cleanup_vms.sh 'upgradecluster_([0-9]+)_(server|agent)'
+      cd tests/e2e/upgradecluster
       # Convert release-1.XX branch to v1.XX channel
       if [ "$DRONE_BRANCH" = "master" ]; then
         UPGRADE_CHANNEL="latest"
@@ -526,10 +548,13 @@ steps:
           UPGRADE_CHANNEL="latest"
         fi
       fi
+      ../scripts/cleanup_vms.sh 'upgradecluster_([0-9]+)_(server|agent)'
+      # Stagger the launch of this test with the splitserver test
+      # to prevent conflicts over libvirt network interfaces
+      sleep 30
       E2E_RELEASE_CHANNEL=$UPGRADE_CHANNEL go test -v -timeout=45m ./upgradecluster_test.go  -ci -local -ginkgo.v
       cp ./coverage.out /tmp/artifacts/upgrade-coverage.out
     fi
-  
   volumes:
   - name: libvirt
     path: /var/run/libvirt/
@@ -537,11 +562,11 @@ steps:
     path: /var/run/docker.sock
   - name: cache
     path: /tmp/artifacts
-
 - name: upload to codecov
   depends_on:
     - test-e2e-validatecluster
     - test-e2e-splitserver
+    - test-e2e-upgradecluster
   image: robertstettner/drone-codecov
   settings:
     token: 
@@ -555,7 +580,6 @@ steps:
   when:
     event:
     - push
-
   volumes:
   - name: cache
     path: /tmp/artifacts
