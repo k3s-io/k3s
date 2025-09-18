@@ -61,7 +61,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Check where the server pod is running
 			var serverNodeName string
 			Eventually(func() (string, error) {
-				pods, err := tests.ParsePods(tc.KubeconfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile, "default")
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-ext") {
@@ -134,7 +134,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// Check that client pods are running
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"client-deployment"}, tc.KubeconfigFile)
+				return tests.CheckDeployments(tc.KubeconfigFile, "default", "client-deployment")
 			}, "50s", "5s").Should(Succeed())
 		})
 
@@ -143,7 +143,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 		It("Verify connectivity in internal traffic policy=local", func() {
 			var clientPod1, clientPod1Node, clientPod1IP, clientPod2, clientPod2Node, clientPod2IP, serverNodeName string
 			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(tc.KubeconfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile, "default")
 				Expect(err).NotTo(HaveOccurred(), "failed to parse pods")
 				for _, pod := range pods {
 					if strings.Contains(pod.Name, "test-loadbalancer-int") {

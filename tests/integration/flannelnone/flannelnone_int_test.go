@@ -42,11 +42,11 @@ var _ = Describe("flannel-backend=none", Ordered, func() {
 		It("checks pods status", func() {
 			// Wait for pods to come up before running the real test
 			Eventually(func() int {
-				pods, _ := testutil.ParsePodsInNS("kube-system")
+				pods, _ := testutil.ParsePods("kube-system")
 				return len(pods)
 			}, "180s", "5s").Should(BeNumerically(">", 0))
 
-			pods, err := testutil.ParsePodsInNS("kube-system")
+			pods, err := testutil.ParsePods("kube-system")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Pods should remain in Pending state because there is no network plugin

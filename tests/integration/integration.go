@@ -373,7 +373,7 @@ func unmountFolder(folder string) error {
 	return nil
 }
 
-func ParsePodsInNS(namespace string) ([]corev1.Pod, error) {
+func ParsePods(namespace string) ([]corev1.Pod, error) {
 	clientSet, err := tests.K8sClient(DefaultConfig)
 	if err != nil {
 		return nil, err

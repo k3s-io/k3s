@@ -57,7 +57,7 @@ var _ = Describe("longhorn", Ordered, func() {
 		})
 		It("starts the longhorn pods with no problems", func() {
 			Eventually(func() error {
-				pods, err := testutil.ParsePodsInNS("longhorn-system")
+				pods, err := testutil.ParsePods("longhorn-system")
 				if err != nil {
 					return err
 				}

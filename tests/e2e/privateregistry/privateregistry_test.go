@@ -62,7 +62,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "10s").Should(Succeed())
 		})
 
@@ -109,7 +109,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			var pod corev1.Pod
 			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(tc.KubeconfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile, "default")
 				for _, p := range pods {
 					if strings.Contains(p.Name, "my-webpage") {
 						pod = p

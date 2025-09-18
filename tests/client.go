@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,12 +17,11 @@ import (
 
 // CheckDefaultDeployments checks if the standard array of K3s deployments are ready, otherwise returns an error
 func CheckDefaultDeployments(kubeconfigFile string) error {
-	return CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, kubeconfigFile)
+	return CheckDeployments(kubeconfigFile, "kube-system", "coredns", "local-path-provisioner", "metrics-server", "traefik")
 }
 
 // CheckDeployments checks if the provided list of deployments are ready, otherwise returns an error
-func CheckDeployments(deployments []string, kubeconfigFile string) error {
-
+func CheckDeployments(kubeconfigFile, namespace string, deployments ...string) error {
 	deploymentSet := make(map[string]bool)
 	for _, d := range deployments {
 		deploymentSet[d] = false
@@ -31,7 +31,7 @@ func CheckDeployments(deployments []string, kubeconfigFile string) error {
 	if err != nil {
 		return err
 	}
-	deploymentList, err := client.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
+	deploymentList, err := client.AppsV1().Deployments(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -79,12 +79,12 @@ func GetInternalIPs(kubeconfigFile string) (map[string]string, error) {
 	return ips, nil
 }
 
-func ParsePods(kubeconfigFile string) ([]corev1.Pod, error) {
+func ParsePods(kubeconfigFile, namespace string) ([]corev1.Pod, error) {
 	clientSet, err := K8sClient(kubeconfigFile)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	pods, err := clientSet.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -93,19 +93,26 @@ func ParsePods(kubeconfigFile string) ([]corev1.Pod, error) {
 }
 
 // AllPodsUp checks if pods on the cluster are Running or Succeeded, otherwise returns an error
-func AllPodsUp(kubeconfigFile string) error {
+func AllPodsUp(kubeconfigFile, namespace string) error {
 	clientSet, err := K8sClient(kubeconfigFile)
 	if err != nil {
 		return err
 	}
-	pods, err := clientSet.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	pods, err := clientSet.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no pods found in %s namespace", namespace)
+	}
 	for _, pod := range pods.Items {
-		// Check if the pod is running
-		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
-			return fmt.Errorf("pod %s is %s", pod.Name, pod.Status.Phase)
+		// pods should be running, except helm job pods which should have succeeded
+		desiredPhase := corev1.PodRunning
+		if strings.HasPrefix(pod.Name, "helm-install-") {
+			desiredPhase = corev1.PodSucceeded
+		}
+		if pod.Status.Phase != desiredPhase {
+			return fmt.Errorf("pod %s/%s is not %s", pod.Namespace, pod.Name, desiredPhase)
 		}
 	}
 	return nil

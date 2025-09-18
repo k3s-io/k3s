@@ -66,7 +66,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			fmt.Printf("\nFetching Pods status\n")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
@@ -303,7 +303,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "5s").Should(Succeed())
 		})
 

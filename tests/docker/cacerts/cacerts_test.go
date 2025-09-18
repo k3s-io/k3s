@@ -64,8 +64,8 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
+			}, "120s", "5s").Should(Succeed())
 		})
 	})
 

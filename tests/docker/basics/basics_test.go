@@ -33,8 +33,8 @@ var _ = Describe("Basic Tests", Ordered, func() {
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
+			}, "180s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())

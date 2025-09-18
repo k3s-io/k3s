@@ -57,7 +57,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 
 		It("Checks pod status", func() {
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
@@ -94,7 +94,7 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 				if strings.Contains(ip, "::") {
 					ip = "[" + ip + "]"
 				}
-				pods, err := tests.ParsePods(tc.KubeconfigFile)
+				pods, err := tests.ParsePods(tc.KubeconfigFile, "kube-system")
 				Expect(err).NotTo(HaveOccurred())
 				for _, pod := range pods {
 					if !strings.HasPrefix(pod.Name, "ds-clusterip-pod") {
