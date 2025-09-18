@@ -323,8 +323,8 @@ func KillK3sCluster(nodes []VagrantNode) error {
 }
 
 func DestroyCluster() error {
-	if _, err := RunCommand("vagrant destroy -f"); err != nil {
-		return err
+	if out, err := RunCommand("vagrant destroy -f"); err != nil {
+		return fmt.Errorf("%v - command output:\n%s", err, out)
 	}
 	return os.Remove("vagrant.log")
 }
