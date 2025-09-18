@@ -64,7 +64,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			config.K3sImage = "rancher/k3s:" + lastMinorVersion
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
 			}, "180s", "5s").Should(Succeed())
 		})
 		It("should match respective versions", func() {
@@ -109,7 +109,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 			config.K3sImage = *k3sImage
 			Expect(config.ProvisionServers(3)).To(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, config.KubeconfigFile)
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
 			}, "240s", "10s").Should(Succeed())
 			Eventually(func(g Gomega) {
 				g.Expect(tests.ParseNodes(config.KubeconfigFile)).To(HaveLen(3))

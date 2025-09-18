@@ -29,8 +29,8 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tc.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
-				return tests.CheckDeployments([]string{"coredns", "local-path-provisioner", "metrics-server", "traefik"}, tc.KubeconfigFile)
-			}, "60s", "5s").Should(Succeed())
+				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
+			}, "120s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(tc.KubeconfigFile, tc.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())

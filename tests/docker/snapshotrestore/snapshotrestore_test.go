@@ -139,16 +139,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			}, "60s", "5s").Should(Succeed())
 
 			By("Fetching Pods status")
-			Eventually(func(g Gomega) {
-				pods, err := tests.ParsePods(config.KubeconfigFile)
-				g.Expect(err).NotTo(HaveOccurred())
-				for _, pod := range pods {
-					if strings.Contains(pod.Name, "helm-install") {
-						g.Expect(string(pod.Status.Phase)).Should(Equal("Succeeded"), pod.Name)
-					} else {
-						g.Expect(string(pod.Status.Phase)).Should(Equal("Running"), pod.Name)
-					}
-				}
+			Eventually(func() error {
+				return tests.AllPodsUp(config.KubeconfigFile, "kube-system")
 			}, "120s", "5s").Should(Succeed())
 		})
 

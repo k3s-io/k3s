@@ -83,7 +83,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 		It("Checks pod status", func() {
 			By("Fetching pod status")
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "10s").Should(Succeed())
 		})
 	})
