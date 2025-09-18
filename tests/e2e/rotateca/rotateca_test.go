@@ -56,7 +56,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			e2e.DumpNodes(tc.KubeconfigFile)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
@@ -93,7 +93,7 @@ var _ = Describe("Verify Custom CA Rotation", Ordered, func() {
 			}, "360s", "5s").Should(Succeed())
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "420s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
