@@ -60,7 +60,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 			e2e.DumpNodes(tc.KubeconfigFile)
 
 			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile)
+				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "620s", "5s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
