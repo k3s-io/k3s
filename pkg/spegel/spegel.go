@@ -50,6 +50,7 @@ var DefaultRegistry = &Config{
 
 var (
 	P2pAddressAnnotation = "p2p." + version.Program + ".cattle.io/node-address"
+	P2pMulAddrAnnotation = "p2p." + version.Program + ".cattle.io/node-addresses"
 	P2pEnabledLabel      = "p2p." + version.Program + ".cattle.io/enabled"
 	P2pPortEnv           = version.ProgramUpper + "_P2P_PORT"
 	P2pEnableLatestEnv   = version.ProgramUpper + "_P2P_ENABLE_LATEST"
@@ -110,16 +111,16 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
 	// distribute images for all configured mirrors. there doesn't need to be a
 	// configured endpoint, just having a key for the registry will do.
-	urls := []url.URL{}
+	urls := []string{}
 	registries := []string{}
 	for host := range nodeConfig.AgentConfig.Registry.Mirrors {
 		if host == localAddr {
 			continue
 		}
-		if u, err := url.Parse("https://" + host); err != nil || docker.IsLocalhost(host) {
+		if _, err := url.Parse("https://" + host); err != nil || docker.IsLocalhost(host) {
 			logrus.Errorf("Distributed registry mirror skipping invalid registry: %s", host)
 		} else {
-			urls = append(urls, *u)
+			urls = append(urls, "https://"+host)
 			registries = append(registries, host)
 		}
 	}
@@ -141,10 +142,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	ipfslog.SetAllLoggers(level)
 
 	// Get containerd client
-	ociOpts := []oci.Option{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
-	ociClient, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
+	ociOpts := []oci.ContainerdOption{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
+	ociStore, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to create OCI client")
+		return pkgerrors.WithMessage(err, "failed to create OCI store")
 	}
 
 	// create or load persistent private key
@@ -216,21 +217,32 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		registry.WithResolveRetries(resolveRetries),
 		registry.WithResolveTimeout(resolveTimeout),
 		registry.WithTransport(client.Transport),
-		registry.WithLogger(logr.FromContextOrDiscard(ctx)),
 	}
-	reg, err := registry.NewRegistry(ociClient, router, registryOpts...)
+	reg, err := registry.NewRegistry(ociStore, router, registryOpts...)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create embedded registry")
 	}
-	regSvr, err := reg.Server(":" + c.RegistryPort)
-	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to create embedded registry server")
+	regSvr := &http.Server{
+		Addr:    ":" + c.RegistryPort,
+		Handler: reg.Handler(logr.FromContextOrDiscard(ctx)),
+	}
+
+	trackerOpts := []state.TrackerOption{
+		state.WithResolveLatestTag(resolveLatestTag),
 	}
 
 	// Track images available in containerd and publish via p2p router
 	go func() {
 		<-criReadyChan
-		state.Track(ctx, ociClient, router, resolveLatestTag)
+		for {
+			logrus.Debug("Starting embedded registry image state tracker")
+			err := state.Track(ctx, ociStore, router, trackerOpts...)
+			if err != nil && errors.Is(err, context.Canceled) {
+				return
+			}
+			logrus.Errorf("Embedded registry image state tracker exited: %v", err)
+			time.Sleep(time.Second)
+		}
 	}()
 
 	mRouter, err := c.Router(ctx, nodeConfig)
