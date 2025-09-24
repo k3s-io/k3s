@@ -40,7 +40,7 @@
       - if the commit is not in the comparison, try comparing the previous release tags
         - example: `https://github.com/k3s-io/k3s/compare/v1.25.0+k3s1...v1.25.2+k3s1`
         - the commit's merge issue should be listed in the release notes
-   1. if you are adding backports, make sure you are using the backport issues, not the one for master
+   1. if you are adding backports, make sure you are using the backport issues, not the one for main
 1. Verify component release versions
    - the list of components is completely static, someone should say something in the PR if we need to add to the list
      - Kubernetes, Kine, SQLite, Etcd, Containerd, Runc, Flannel, Metrics-server, Traefik, CoreDNS, Helm-controller, Local-path-provisioner
@@ -65,7 +65,7 @@
        the build script runs 'make' on whatever was downloaded
        see https://github.com/k3s-io/k3s/blob/v1.23.13-rc2%2Bk3s1/scripts/version.sh#L40
        and https://github.com/k3s-io/k3s/blob/v1.23.13-rc2+k3s1/scripts/download#L29
-       and https://github.com/k3s-io/k3s/blob/master/scripts/build#L138
+       and https://github.com/k3s-io/k3s/blob/main/scripts/build#L138
      flannel: version.sh sets an env variable based on go.mod, then the build script builds it
        see https://github.com/k3s-io/k3s/blob/v1.23.13-rc2+k3s1/go.mod#L83
      metrics-server: version is set in the manifest at manifests/metric-server

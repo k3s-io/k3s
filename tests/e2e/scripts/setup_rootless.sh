@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # GitHub repository URL
-github_url="https://raw.githubusercontent.com/k3s-io/k3s/master/k3s-rootless.service"
+github_url="https://raw.githubusercontent.com/k3s-io/k3s/main/k3s-rootless.service"
 
 # Destination file path
 destination_path="/home/vagrant/.config/systemd/user/"
