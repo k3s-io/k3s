@@ -30,7 +30,7 @@ type Cluster struct {
 	config           *config.Control
 	managedDB        managed.Driver
 	joining          bool
-	storageStarted   bool
+	storageRunning   bool
 	saveBootstrap    bool
 	cnFilterFunc     func(...string) []string
 }
@@ -169,10 +169,17 @@ func (c *Cluster) startEtcdProxy(ctx context.Context) error {
 // and unix domain socket listener if using an external database. In the case of an etcd
 // backend it just returns the user-provided etcd endpoints and tls config.
 func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
-	if c.storageStarted && !c.config.KineTLS {
+	if c.storageRunning {
 		return nil
 	}
-	c.storageStarted = true
+
+	// the datastore is started multiple times when TLS is enabled.
+	// ensure that storage is no longer marked as running after its context is cancelled.
+	go func() {
+		<-ctx.Done()
+		c.storageRunning = false
+	}()
+	c.storageRunning = true
 
 	if !bootstrap {
 		// only register metrics when not bootstrapping, to prevent
