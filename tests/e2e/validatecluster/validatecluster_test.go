@@ -27,7 +27,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 
 // Environment Variables Info:
 // E2E_EXTERNAL_DB: mysql, postgres, etcd (default: etcd)
-// E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from master)
+// E2E_RELEASE_VERSION=v1.23.1+k3s2 (default: latest commit from main)
 // E2E_REGISTRY: true/false (default: false)
 
 func Test_E2EClusterValidation(t *testing.T) {
