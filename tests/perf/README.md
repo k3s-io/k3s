@@ -2,7 +2,7 @@
 
 ---
 
-These scripts uses Terraform to automate building and testing on k3s clusters on AWS, it supports building normal and HA clusters with N master nodes, N workers nodes and multiple storage backends including:
+These scripts uses Terraform to automate building and testing on k3s clusters on AWS, it supports building normal and HA clusters with N primary nodes, N workers nodes and multiple storage backends including:
 
 - MySQL RDS
 - Postgres RDS
@@ -17,7 +17,7 @@ The scripts divides into three sections:
 
 ## Server
 
-The server section deploys the storage backend and then deploys N master nodes, the scripts can be customized to use HA mode or use a single node cluster with sqlite backend, it can also support using 1 master node with external DB, the scripts can also be customized to specify instance type and k3s version, all available options are described in the variable section below.
+The server section deploys the storage backend and then deploys N primary nodes, the scripts can be customized to use HA mode or use a single node cluster with sqlite backend, it can also support using 1 primary node with external DB, the scripts can also be customized to specify instance type and k3s version, all available options are described in the variable section below.
 
 The server section will also create a one or more agent nodes specifically for Prometheus deployment, clusterloader2 will deploy prometheus and grafana.
 
@@ -45,7 +45,7 @@ The scripts can be modified by customizing the variables in `scripts/config`, th
 |       Name       |                                   Description                                  |
 |:----------------:|:------------------------------------------------------------------------------:|
 |   CLUSTER_NAME   |     The cluster name on aws, this will prefix each component in the cluster    |
-|    DOMAIN_NAME   |                 DNS name of the Loadbalancer for k3s master(s)                 |
+|    DOMAIN_NAME   |                 DNS name of the Loadbalancer for k3s primary(s)                |
 |      ZONE_ID     |                 AWS route53 zone id for modifying the dns name                 |
 |    K3S_VERSION   |                 K3S version that will be used with the cluster                 |
 |  EXTRA_SSH_KEYS  |                Public ssh keys that will be added to the servers               |
@@ -68,7 +68,7 @@ The scripts can be modified by customizing the variables in `scripts/config`, th
 |         Name         |                                    Description                                    |
 |:--------------------:|:---------------------------------------------------------------------------------:|
 |       SERVER_HA      | Whether or not to use HA mode, if not then sqlite will be used as storage backend |
-|     SERVER_COUNT     |                               k3s master node count                               |
+|     SERVER_COUNT     |                               k3s primary node count                              |
 | SERVER_INSTANCE_TYPE |                    Ec2 instance type created for k3s server(s)                    |
 
 ### K3S Agent Variables
@@ -89,7 +89,7 @@ The scripts can be modified by customizing the variables in `scripts/config`, th
 
 ### build
 
-The script includes a Makefile that run different sections, to build the master and workers, adjust the config file in `tests/perf/scripts/config` and then use the following:
+The script includes a Makefile that run different sections, to build the primary and workers, adjust the config file in `tests/perf/scripts/config` and then use the following:
 
 ```bash
 cd tests/perf

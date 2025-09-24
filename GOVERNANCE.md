@@ -38,7 +38,7 @@ K3s and its leadership embrace the following values:
 
 ## Maintainers
 
-K3s Maintainers have write access to the [project GitHub repository](https://github.com/k3s-io/k3s/). They can merge their own patches(after approval process) or patches from others. The current Maintainers can be found in [MAINTAINERS.md](https://github.com/k3s-io/k3s/blob/master/MAINTAINERS).  Maintainers collectively manage the project's resources and contributors.
+K3s Maintainers have write access to the [project GitHub repository](https://github.com/k3s-io/k3s/). They can merge their own patches(after approval process) or patches from others. The current Maintainers can be found in [MAINTAINERS.md](https://github.com/k3s-io/k3s/blob/main/MAINTAINERS).  Maintainers collectively manage the project's resources and contributors.
 
 This privilege carries specific responsibilities: Maintainers are people who care about the K3s project and want to help it grow and improve. A Maintainer is not just someone who can make changes, but someone who has demonstrated their ability to collaborate with the team, get the most knowledgeable people to review code and docs, contribute high-quality code, and follow through to fix issues (in code or tests).
 
@@ -64,7 +64,7 @@ Anyone is eligible to become a Maintainer, you need to demonstrate a few or more
 * understanding of how the team works (policies, processes for testing and code review, etc),  
 * understanding of the project's code base and coding and documentation style.
 
-A new Maintainer must be proposed by an existing Maintainer by sending a message to the [developer mailing list](mailto:k3s-maintainers@lists.cncf.io) and opening PR in [MAINTAINERS](https://github.com/k3s-io/k3s/blob/master/MAINTAINERS). A [supermajority](#Supermajority) vote of existing Maintainers approves the application.  Maintainer nominations will be evaluated without prejudice to employer or demographics.
+A new Maintainer must be proposed by an existing Maintainer by sending a message to the [developer mailing list](mailto:k3s-maintainers@lists.cncf.io) and opening PR in [MAINTAINERS](https://github.com/k3s-io/k3s/blob/main/MAINTAINERS). A [supermajority](#Supermajority) vote of existing Maintainers approves the application.  Maintainer nominations will be evaluated without prejudice to employer or demographics.
 
 Maintainers who are selected will be granted the necessary GitHub rights, and invited to the [private Maintainer mailing list](mailto:k3s-maintainers@lists.cncf.io).
 
@@ -179,15 +179,15 @@ If a vote does not meet quorum (e.g., fewer than 50% of Maintainers vote), the v
 
 ## Proposal Process(ADRs)
 
-One of the most important aspects in any open source community is the concept of proposals. Large changes to the codebase and/or new features should be preceded by a proposal in our repository [ADRs]([https://github.com/k3s-io/k3s/tree/master/docs/adrs](https://github.com/k3s-io/k3s/tree/master/docs/adrs)). This process allows for all members of the community to weigh in on the concept (including the technical details), share their comments and ideas, and offer to help. It also ensures that members are not duplicating work or inadvertently stepping on toes by making large conflicting changes.
+One of the most important aspects in any open source community is the concept of proposals. Large changes to the codebase and/or new features should be preceded by a proposal in our repository [ADRs](https://github.com/k3s-io/k3s/tree/main/docs/adrs). This process allows for all members of the community to weigh in on the concept (including the technical details), share their comments and ideas, and offer to help. It also ensures that members are not duplicating work or inadvertently stepping on toes by making large conflicting changes.
 
 The project roadmap is defined by accepted proposals.
 
 Proposals should cover the high-level objectives, use cases, and technical recommendations on how to implement. In general, the community member(s) interested in implementing the proposal should be either deeply engaged in the proposal process or be an author of the proposal.
 
-The proposal should be documented as a separate markdown file pushed [ADRs]([https://github.com/k3s-io/k3s/tree/master/docs/adrs](https://github.com/k3s-io/k3s/tree/master/docs/adrs)).directory in the [k3s](https://github.com/k3s-io/k3s/tree/master/docs/adrs) repository via PR. The name of the file should follow the name pattern `<short meaningful words joined by '-'>.md`, e.g: `clear-old-tags-with-policies.md`.
+The proposal should be documented as a separate markdown file pushed to the [ADRs directory](https://github.com/k3s-io/k3s/tree/main/docs/adrs) in the k3s repository via PR. The name of the file should follow the name pattern `<short meaningful words joined by '-'>.md`, e.g: `clear-old-tags-with-policies.md`.
 
-Use the [Proposal Template](https://github.com/k3s-io/k3s/tree/master/docs/adrs/template.md) as a starting point.(need to open PR for template)
+Use the [Proposal Template](https://github.com/k3s-io/k3s/tree/main/docs/adrs/template.md) as a starting point.(need to open PR for template)
 
 ### Proposal Lifecycle
 
@@ -212,7 +212,7 @@ Smaller, self-contained changes (e.g., bug fixes, minor enhancements, or localiz
 
 Time zones permitting, Maintainers are expected to participate in the public developer meeting, which occurs [Community meetings](https://k3s.io/community/\#community-meetings)
 
-Maintainers will also have closed meetings in order to discuss security reports or [Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md) violations.  Such meetings should be scheduled by any Maintainer on receipt of a security issue or CoC report.  All current Maintainers must be invited to such closed meetings, except for any Maintainer who is accused of a CoC violation.
+Maintainers will also have closed meetings in order to discuss security reports or [Code of Conduct](https://github.com/k3s-io/k3s/blob/main/CODE_OF_CONDUCT.md) violations.  Such meetings should be scheduled by any Maintainer on receipt of a security issue or CoC report.  All current Maintainers must be invited to such closed meetings, except for any Maintainer who is accused of a CoC violation.
 
 ## CNCF Resources
 
@@ -220,7 +220,7 @@ Any Maintainer may suggest a request for CNCF resources, either in the [mailing 
 
 ## Code of Conduct
 
-[Code of Conduct](https://github.com/k3s-io/k3s/blob/master/CODE_OF_CONDUCT.md) violations by community members will be discussed and resolved on the [private Maintainer mailing list](https://lists.cncf.io/g/cncf-k3s-maintainers).  If a Maintainer is directly involved in the report, the Maintainers will instead designate two Maintainers to work with the CNCF Code of Conduct Committee in resolving it.
+[Code of Conduct](https://github.com/k3s-io/k3s/blob/main/CODE_OF_CONDUCT.md) violations by community members will be discussed and resolved on the [private Maintainer mailing list](https://lists.cncf.io/g/cncf-k3s-maintainers).  If a Maintainer is directly involved in the report, the Maintainers will instead designate two Maintainers to work with the CNCF Code of Conduct Committee in resolving it.
 
 ## Security Response Team
 
