@@ -539,15 +539,20 @@ steps:
     if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
       cd tests/e2e/upgradecluster
       # Convert release-1.XX branch to v1.XX channel
+      set +x
+      echo "db: $DRONE_BRANCH"
       if [ "$DRONE_BRANCH" = "master" ]; then
         UPGRADE_CHANNEL="latest"
       else
         UPGRADE_CHANNEL=$(echo $DRONE_BRANCH | sed 's/release-/v/')
+        echo "cut ch: $UPGRADE_CHANNEL"
         # Check if the UPGRADE_CHANNEL exists, in the case of new minor releases it won't
         if ! curl --head --silent --fail https://update.k3s.io/v1-release/channels/$UPGRADE_CHANNEL; then
           UPGRADE_CHANNEL="latest"
         fi
+        echo "final ch: $UPGRADE_CHANNEL"
       fi
+      set -x
       ../scripts/cleanup_vms.sh 'upgradecluster_([0-9]+)_(server|agent)'
       # Stagger the launch of this test with the splitserver test
       # to prevent conflicts over libvirt network interfaces
