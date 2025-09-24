@@ -90,7 +90,7 @@ func TestCluster_certDirsExist(t *testing.T) {
 		config           *config.Control
 		managedDB        managed.Driver
 		shouldBootstrap  bool
-		storageStarted   bool
+		storageRunning   bool
 		saveBootstrap    bool
 	}
 	tests := []struct {
@@ -129,7 +129,7 @@ func TestCluster_certDirsExist(t *testing.T) {
 				clientAccessInfo: tt.fields.clientAccessInfo,
 				config:           tt.fields.config,
 				managedDB:        tt.fields.managedDB,
-				storageStarted:   tt.fields.storageStarted,
+				storageRunning:   tt.fields.storageRunning,
 				saveBootstrap:    tt.fields.saveBootstrap,
 			}
 			defer tt.teardown()
@@ -150,7 +150,7 @@ func TestCluster_migrateBootstrapData(t *testing.T) {
 		config           *config.Control
 		managedDB        managed.Driver
 		joining          bool
-		storageStarted   bool
+		storageRunning   bool
 		saveBootstrap    bool
 		shouldBootstrap  bool
 	}
