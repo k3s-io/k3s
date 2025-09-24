@@ -17,7 +17,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

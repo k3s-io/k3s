@@ -30,7 +30,7 @@ func Test_DockerSkew(t *testing.T) {
 var lastMinorVersion string
 var _ = BeforeSuite(func() {
 	// If this test runs on v1.31 commit, we want the latest v1.30 release
-	// For master and unreleased branches, we want the latest stable release
+	// For main and unreleased branches, we want the latest stable release
 	var upgradeChannel string
 	var err error
 	// We want to substract one from the minor version to get the previous release
