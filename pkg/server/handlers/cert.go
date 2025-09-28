@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -87,7 +88,16 @@ func caCertReplace(control *config.Control, buf io.ReadCloser, force bool) error
 		logrus.Warnf("Save of CA certificates and keys forced, ignoring validation errors: %v", err)
 	}
 
-	return cluster.Save(context.TODO(), tmpControl, true)
+	if err := cluster.Save(context.TODO(), tmpControl, true); err != nil {
+		return err
+	}
+
+	dynamicListenerRegenFilePath := filepath.Join(control.DataDir, "tls", "dynamic-cert-regenerate")
+	if err := os.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
+		logrus.Warnf("Failed to create dynamic-cert-regenerate file: %v", err)
+	}
+
+	return nil
 }
 
 // defaultBootstrap provides default values from the existing bootstrap fields
