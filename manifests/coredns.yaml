@@ -67,12 +67,12 @@ data:
           fallthrough
         }
         prometheus :9153
-        forward . /etc/resolv.conf
         cache 30
         loop
         reload
         loadbalance
         import /etc/coredns/custom/*.override
+        forward . /etc/resolv.conf
     }
     import /etc/coredns/custom/*.server
 ---
