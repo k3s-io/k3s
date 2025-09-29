@@ -82,6 +82,10 @@ func tokenRotate(ctx context.Context, control *config.Control, newToken string) 
 		}
 	}
 
+	if newToken, err = util.NormalizeToken(newToken); err != nil {
+		return err
+	}
+
 	if err := passwd.EnsureUser("server", version.Program+":server", newToken); err != nil {
 		return err
 	}
