@@ -247,7 +247,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			metav1.NamespaceAll,
 			helmcommon.Name,
 			"cluster-admin",
-			strconv.Itoa(config.ControlConfig.APIServerPort),
+			strconv.Itoa(config.ControlConfig.HTTPSPort),
 			k8s,
 			apply,
 			util.BuildControllerEventRecorder(k8s, helmcommon.Name, metav1.NamespaceAll),
