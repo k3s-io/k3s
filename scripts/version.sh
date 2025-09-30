@@ -10,11 +10,11 @@ if [ -z "$NO_DAPPER" ]; then
 fi
 
 get-module-version(){
-  go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $1
+  go list -mod=readonly -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $1
 }
 
 get-module-path(){
-  go list -m -f '{{if .Replace}}{{.Replace.Path}}{{else}}{{.Path}}{{end}}' $1
+  go list -mod=readonly -m -f '{{if .Replace}}{{.Replace.Path}}{{else}}{{.Path}}{{end}}' $1
 }
 
 PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd/v2)
