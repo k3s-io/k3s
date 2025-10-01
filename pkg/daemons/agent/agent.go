@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -35,7 +34,6 @@ import (
 )
 
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
-	rand.Seed(time.Now().UTC().UnixNano())
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	logs.InitLogs()
 	defer logs.FlushLogs()

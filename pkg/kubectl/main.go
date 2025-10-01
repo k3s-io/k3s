@@ -2,11 +2,9 @@ package kubectl
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/sirupsen/logrus"
@@ -44,8 +42,6 @@ func Main() {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	command := cmd.NewDefaultKubectlCommand()
 	if err := cli.RunNoErrOutput(command); err != nil {
 		util.CheckErr(err)

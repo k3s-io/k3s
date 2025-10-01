@@ -3,7 +3,6 @@ package control
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -42,8 +41,6 @@ import (
 // Prepare loads bootstrap data from the datastore and sets up the initial
 // tunnel server request handler and stub authenticator.
 func Prepare(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	if err := prepare(ctx, wg, cfg); err != nil {
 		return pkgerrors.WithMessage(err, "preparing server")
