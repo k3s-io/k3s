@@ -2,9 +2,7 @@ package agent
 
 import (
 	"context"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
@@ -21,7 +19,6 @@ import (
 )
 
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
-	rand.Seed(time.Now().UTC().UnixNano())
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	logs.InitLogs()
 	defer logs.FlushLogs()
