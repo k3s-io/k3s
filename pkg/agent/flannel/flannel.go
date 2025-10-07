@@ -101,10 +101,10 @@ func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interfac
 	prevIPv6Network := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_NETWORK")
 	prevIPv6Subnet := ReadIP6CIDRFromSubnetFile(subnetFile, "FLANNEL_IPV6_SUBNET")
 	if flannelIPv6Masq {
-		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, config.IPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
+		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, config.IPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60, false)
 	} else {
 		//set empty flannel ipv6 Network to prevent masquerading
-		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60)
+		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60, false)
 	}
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to setup masq rules")
