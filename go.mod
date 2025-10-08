@@ -6,7 +6,7 @@ replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.9
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.19-k3s3
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
-	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.5.0
+	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.1-k3s3
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.9.0
 	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.1.4-k3s2
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
@@ -93,7 +93,7 @@ require (
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.27.0
+	github.com/flannel-io/flannel v0.27.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-test/deep v1.0.7
@@ -123,7 +123,7 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.0
-	github.com/prometheus/common v0.65.0
+	github.com/prometheus/common v0.66.1
 	github.com/rancher/dynamiclistener v0.7.0
 	github.com/rancher/lasso v0.2.3
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
@@ -134,7 +134,7 @@ require (
 	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spegel-org/spegel v1.0.18
-	github.com/spf13/pflag v1.0.7
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/vishvananda/netlink v1.3.1
@@ -343,7 +343,7 @@ require (
 	github.com/libp2p/go-yamux/v5 v5.0.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lithammer/dedent v1.1.0 // indirect
-	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
@@ -441,7 +441,7 @@ require (
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/afero v1.14.0 // indirect
+	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
@@ -464,13 +464,13 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
-	go.opentelemetry.io/otel v1.37.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0 // indirect
-	go.opentelemetry.io/otel/metric v1.37.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/dig v1.18.0 // indirect
