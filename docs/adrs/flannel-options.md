@@ -4,7 +4,7 @@ Date: 2023-2-16
 
 ## Status
 
-Discussing
+Not Approved
 
 ## Context
 
@@ -112,6 +112,6 @@ The naming of the flag could be `flannel-arg`, but I don't want users to assume 
 
 ## Decision
 
-
+The amount of flannel options has stablized at a low number. The benefit of reducing the number of flags is low, and the risk of breaking existing users is high.
 
 ## Consequences

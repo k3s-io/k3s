@@ -2,9 +2,13 @@
 
 Date: 2024-02-23
 
-# Context
+## Status
 
-## Background
+Accepted
+
+## Context
+
+### Background
 
 Currently, Testing in K3s is categorized into various types and spread across Github Actions and Drone CI. The types are as follows:
 
@@ -24,14 +28,14 @@ Drone CI:
 
 - Performance Tests: Use Terraform to test large-scale deployments of K3s clusters. These were legacy tests and are never run in CI.
 
-## Problems
+### Problems
 
 - The current testing infrastructure is complex and fragmented, leading to maintenance overhead. Not all testing is grouped inside the [tests directory](../../tests/).
 - GitHub Actions had limited resources, making it unsuitable for running larger tests.
 - GitHub Actions only supported hardware virtualiztion on Mac runners and that support was often broken.
 - Drone CI cannot handle individual testing failures. If a single test fails, the entire build is marked as failed.
 
-## New Developments
+### New Developments
 
 As of late January 2024, GitHub Actions has made significant improvements:
 - The resources available to open source GitHub Actions have been doubled, with 4 CPU cores and 16GB of RAM. See blog post [here](https://github.blog/2024-01-17-github-hosted-runners-double-the-power-for-open-source/).
