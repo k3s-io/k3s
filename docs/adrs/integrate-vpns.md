@@ -4,7 +4,7 @@ Date: 2023-04-26
 
 ## Status
 
-Under review
+Accepted
 
 ## Context
 
@@ -57,7 +57,7 @@ Going a bit deeper into the code, this is a high-level summary of the changes ap
 
 ## Decision
 
-???
+We will integrate tailscale into k3s. The user will be required to have a: the tailscale binary on the node, a tailscale account, and provide the tailscale authkey to k3s.
 
 ## Consequences
 

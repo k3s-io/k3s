@@ -4,7 +4,7 @@ Date: 2024-10-2
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -42,7 +42,7 @@ When the controller receive a event saying that a file was renamed, or removed, 
 
 ## Decision
 
-- Decided
+- We will implement auto importing of images in the containerd image store, by using a watcher on the agent/images folder.
 
 ## Consequences
 
