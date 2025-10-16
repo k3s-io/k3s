@@ -255,8 +255,8 @@ func (config *TestConfig) setupDatabase(startDB bool) (string, error) {
 		startCmd = "docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=docker -p 3306:3306 mysql:8.4"
 		joinFlag = "--datastore-endpoint='mysql://root:docker@tcp(172.17.0.1:3306)/k3s'"
 	case "postgres":
-		startCmd = "docker run -d --name postgres -e POSTGRES_PASSWORD=docker -p 5432:5432 postgres:16-alpine"
-		joinFlag = "--datastore-endpoint='postgres://postgres:docker@tcp(172.17.0.1:5432)/k3s'"
+		startCmd = "docker run -d --name postgres -e POSTGRES_USER=root -e POSTGRES_PASSWORD=docker -p 5432:5432 postgres:16-alpine"
+		joinFlag = "--datastore-endpoint='postgres://root:docker@172.17.0.1:5432/k3s'"
 	case "etcd":
 		if startDB {
 			joinFlag = "--cluster-init"
