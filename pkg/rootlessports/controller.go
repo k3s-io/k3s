@@ -4,6 +4,7 @@ package rootlessports
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/rootless"
@@ -76,9 +77,12 @@ func (h *handler) serviceChanged(key string, svc *v1.Service) (*v1.Service, erro
 		return svc, err
 	}
 
-	boundPorts := map[int]int{}
+	boundPorts := map[string]map[int]int{
+		"tcp": {},
+		"udp": {},
+	}
 	for _, port := range ports {
-		boundPorts[port.Spec.ParentPort] = port.ID
+		boundPorts[port.Spec.Proto][port.Spec.ParentPort] = port.ID
 	}
 
 	toBindPort, err := h.toBindPorts()
@@ -86,45 +90,50 @@ func (h *handler) serviceChanged(key string, svc *v1.Service) (*v1.Service, erro
 		return svc, err
 	}
 
-	for bindPort, childBindPort := range toBindPort {
-		if _, ok := boundPorts[bindPort]; ok {
-			logrus.Debugf("Parent port %d to child already bound", bindPort)
-			delete(boundPorts, bindPort)
-			continue
-		}
+	for proto, ports := range toBindPort {
+		for bindPort, childBindPort := range ports {
+			if _, ok := boundPorts[proto][bindPort]; ok {
+				logrus.Debugf("Parent port %d/%s to child already bound", bindPort, proto)
+				delete(boundPorts[proto], bindPort)
+				continue
+			}
 
-		status, err := h.rootlessClient.PortManager().AddPort(h.ctx, port.Spec{
-			Proto:      "tcp",
-			ParentPort: bindPort,
-			ChildPort:  childBindPort,
-		})
-		if err != nil {
-			return svc, err
-		}
+			status, err := h.rootlessClient.PortManager().AddPort(h.ctx, port.Spec{
+				Proto:      proto,
+				ParentPort: bindPort,
+				ChildPort:  childBindPort,
+			})
+			if err != nil {
+				return svc, err
+			}
 
-		logrus.Infof("Bound parent port %s:%d to child namespace port %d", status.Spec.ParentIP,
-			status.Spec.ParentPort, status.Spec.ChildPort)
+			logrus.Infof("Bound parent port %s:%d/%s to child namespace port %d", status.Spec.ParentIP,
+				status.Spec.ParentPort, proto, status.Spec.ChildPort)
+		}
 	}
 
-	for bindPort, id := range boundPorts {
-		if err := h.rootlessClient.PortManager().RemovePort(h.ctx, id); err != nil {
-			return svc, err
-		}
+	for proto, ports := range boundPorts {
+		for bindPort, id := range ports {
+			if err := h.rootlessClient.PortManager().RemovePort(h.ctx, id); err != nil {
+				return svc, err
+			}
 
-		logrus.Infof("Removed parent port %d to child namespace", bindPort)
+			logrus.Infof("Removed parent port %d/%s to child namespace", bindPort, proto)
+		}
 	}
 
 	return svc, nil
 }
 
-func (h *handler) toBindPorts() (map[int]int, error) {
+func (h *handler) toBindPorts() (map[string]map[int]int, error) {
 	svcs, err := h.serviceCache.List("", labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 
-	toBindPorts := map[int]int{
-		h.httpsPort: h.httpsPort,
+	toBindPorts := map[string]map[int]int{
+		"tcp": {h.httpsPort: h.httpsPort},
+		"udp": {},
 	}
 
 	if !h.enabled {
@@ -138,7 +147,9 @@ func (h *handler) toBindPorts() (map[int]int, error) {
 			}
 
 			for _, port := range svc.Spec.Ports {
-				if port.Protocol != v1.ProtocolTCP {
+				proto := strings.ToLower(string(port.Protocol))
+				if _, ok := toBindPorts[proto]; !ok {
+					logrus.Debugf("Skipping bind for unsupported protocol: %d/%s", port.Port, proto)
 					continue
 				}
 
@@ -147,9 +158,9 @@ func (h *handler) toBindPorts() (map[int]int, error) {
 						continue
 					}
 					if toBindPort <= 1024 {
-						toBindPorts[10000+int(toBindPort)] = int(toBindPort)
+						toBindPorts[proto][10000+int(toBindPort)] = int(toBindPort)
 					} else {
-						toBindPorts[int(toBindPort)] = int(toBindPort)
+						toBindPorts[proto][int(toBindPort)] = int(toBindPort)
 					}
 				}
 			}
