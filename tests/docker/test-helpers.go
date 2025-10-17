@@ -28,6 +28,7 @@ type TestConfig struct {
 	Agents         []DockerNode
 	ServerYaml     string
 	AgentYaml      string
+	DualStack      bool // If true, the docker containers will be attached to a dual-stack network
 }
 
 type DockerNode struct {
@@ -137,6 +138,19 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			skipStart = "INSTALL_K3S_SKIP_START=true"
 		}
 
+		var dualStackConfig string
+		if config.DualStack {
+			// Check if the docker network exists, if not create it
+			networkName := "k3s-test-dualstack"
+			if _, err := RunCommand(fmt.Sprintf("docker network inspect %s", networkName)); err != nil {
+				cmd := fmt.Sprintf("docker network create --ipv6 --subnet=fd11:decf:c0ff:ee::/64 %s", networkName)
+				if _, err := RunCommand(cmd); err != nil {
+					return fmt.Errorf("failed to create dual-stack network: %v", err)
+				}
+			}
+			dualStackConfig = "--network " + networkName
+		}
+
 		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
 		// and start the server using the install script
 		if config.K3sImage == "rancher/systemd-node" {
@@ -146,6 +160,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"--privileged",
 				"-p", fmt.Sprintf("127.0.0.1:%d:6443", port),
 				"--memory", "2048m",
+				dualStackConfig,
 				"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 				"-e", "K3S_DEBUG=true",
 				"-e", "GOCOVERDIR=/tmp/k3s-cov",
@@ -217,7 +232,13 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 
 		// Get the IP address of the container
-		ipOutput, err := RunCommand("docker inspect --format \"{{ .NetworkSettings.IPAddress }}\" " + name)
+		var cmd string
+		if config.DualStack {
+			cmd = "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
+		} else {
+			cmd = "docker inspect --format '{{ .NetworkSettings.IPAddress }}' " + name
+		}
+		ipOutput, err := RunCommand(cmd)
 		if err != nil {
 			return err
 		}
@@ -296,6 +317,10 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				Name: name,
 			}
 
+			var dualStackConfig string
+			if config.DualStack {
+				dualStackConfig = "--network k3s-test-dualstack"
+			}
 			var skipStart string
 			if config.SkipStart {
 				skipStart = "INSTALL_K3S_SKIP_START=true"
@@ -306,6 +331,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"--hostname", name,
 					"--privileged",
 					"--memory", "2048m",
+					dualStackConfig,
 					"-e", fmt.Sprintf("K3S_TOKEN=%s", config.Token),
 					"-e", fmt.Sprintf("K3S_URL=%s", k3sURL),
 					"-v", "/sys/fs/bpf:/sys/fs/bpf",
@@ -361,7 +387,13 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			}
 
 			// Get the IP address of the container
-			ipOutput, err := RunCommand("docker inspect --format \"{{ .NetworkSettings.IPAddress }}\" " + name)
+			var cmd string
+			if config.DualStack {
+				cmd = "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
+			} else {
+				cmd = "docker inspect --format '{{ .NetworkSettings.IPAddress }}' " + name
+			}
+			ipOutput, err := RunCommand(cmd)
 			if err != nil {
 				return err
 			}
@@ -456,6 +488,13 @@ func (config *TestConfig) Cleanup() error {
 		}
 	}
 
+	// Remove dual-stack network if it exists
+	if config.DualStack {
+		if _, err := RunCommand("docker network rm k3s-test-dualstack"); err != nil {
+			errs = append(errs, fmt.Errorf("failed to remove dual-stack network: %v", err))
+		}
+	}
+
 	// Error out if we hit any issues
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup failed: %v", errs)
@@ -500,7 +539,12 @@ func (config *TestConfig) CopyAndModifyKubeconfig() error {
 		return fmt.Errorf("failed to copy kubeconfig: %v", err)
 	}
 
-	cmd = fmt.Sprintf("sed -i -e \"s/:6443/:%d/g\" %s/kubeconfig.yaml", config.Servers[serverID].Port, config.TestDir)
+	// Use the IPv4 localhost, not the IPv6 one, even on dual-stack setups
+	if config.DualStack {
+		cmd = fmt.Sprintf("sed -i -E 's~https://(\\[[^]]+\\]|[^:]+):6443~https://127.0.0.1:%d~g' %s/kubeconfig.yaml", config.Servers[serverID].Port, config.TestDir)
+	} else {
+		cmd = fmt.Sprintf("sed -i -e 's~:6443~:%d~g' %s/kubeconfig.yaml", config.Servers[serverID].Port, config.TestDir)
+	}
 	if _, err := RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to update kubeconfig: %v", err)
 	}
@@ -625,6 +669,20 @@ func (config TestConfig) DeployWorkload(workload string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (config TestConfig) FetchClusterIP(servicename string) (string, error) {
+	if config.DualStack {
+		cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIPs}' --kubeconfig=" + config.KubeconfigFile
+		res, err := RunCommand(cmd)
+		if err != nil {
+			return res, err
+		}
+		res = strings.ReplaceAll(res, "\"", "")
+		return strings.Trim(res, "[]"), nil
+	}
+	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + config.KubeconfigFile
+	return RunCommand(cmd)
 }
 
 type svcExternalIP struct {
