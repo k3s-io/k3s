@@ -21,7 +21,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/deploy"
 	"github.com/k3s-io/k3s/pkg/node"
-	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/rootlessports"
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/server/handlers"
@@ -118,13 +117,6 @@ func runControllers(ctx context.Context, config *Config) error {
 		return pkgerrors.WithMessage(err, "failed to stage files")
 	}
 
-	// run migration before we set controlConfig.Runtime.Core
-	if err := nodepassword.MigrateFile(
-		sc.Core.Core().V1().Secret(),
-		sc.Core.Core().V1().Node(),
-		controlConfig.Runtime.NodePasswdFile); err != nil {
-		logrus.Warn(pkgerrors.WithMessage(err, "error migrating node-password file"))
-	}
 	controlConfig.Runtime.K8s = sc.K8s
 	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
