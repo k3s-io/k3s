@@ -18,6 +18,8 @@ var (
 	// Hasher provides the algorithm for generating and verifying hashes
 	Hasher          = hash.NewSCrypt()
 	ErrVerifyFailed = errVerifyFailed()
+
+	SecretTypeNodePassword = v1.SecretType(version.Program + ".cattle.io/node-password")
 )
 
 type passwordError struct {
@@ -78,6 +80,7 @@ func Ensure(secretClient coreclient.SecretController, nodeName, pass string) err
 			},
 			Immutable: ptr.To(true),
 			Data:      map[string][]byte{"hash": []byte(hash)},
+			Type:      SecretTypeNodePassword,
 		})
 	}
 	return err
