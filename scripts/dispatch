@@ -2,18 +2,33 @@
 set -e
 set -x
 
-REPO="https://api.github.com/repos/k3s-io/k3s-upgrade/dispatches"
+# The ref (branch or tag) to run the workflow on.
+REF_TAG="$DRONE_TAG"
 
-# send dispatch event to REPO
-curl -XPOST -u "${PAT_USERNAME}:${PAT_TOKEN}" \
-        -H "Accept: application/vnd.github.everest-preview+json"  \
-        -H "Content-Type: application/json" $REPO \
-        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
+# --- k3s-io/k3s-upgrade ---
 
-SYSTEM_AGENT_INSTALLER_K3S_REPO="https://api.github.com/repos/rancher/system-agent-installer-k3s/dispatches"
+# API endpoint to target 'create-tag-on-dispatch.yml' directly
+REPO_API_URL="https://api.github.com/repos/k3s-io/k3s-upgrade/actions/workflows/create-tag-on-dispatch.yml/dispatches"
 
-# send dispatch event to SYSTEM_AGENT_INSTALLER_K3S_REPO
-curl -XPOST -H "Authorization: Bearer ${K3S_RELEASE_TOKEN}" \
-        -H "Accept: application/vnd.github.everest-preview+json"  \
-        -H "Content-Type: application/vnd.github+json" $SYSTEM_AGENT_INSTALLER_K3S_REPO \
-        --data '{"event_type": "create_tag", "client_payload": {"tag":"'"$DRONE_TAG"'"}}'
+# Send workflow_dispatch event
+curl -L -XPOST \
+     -H "Accept: application/vnd.github+json" \
+     -H "Authorization: Bearer ${PAT_TOKEN}" \
+     -H "X-GitHub-Api-Version: 2022-11-28" \
+     -H "Content-Type: application/json" \
+     "$REPO_API_URL" \
+     --data "{\"ref\":\"$REF_TAG\", \"inputs\": {\"tag\":\"$REF_TAG\"}}"
+
+# --- rancher/system-agent-installer-k3s ---
+
+# API endpoint to target 'create-tag-on-dispatch.yml' directly
+SYSTEM_AGENT_API_URL="https://api.github.com/repos/rancher/system-agent-installer-k3s/actions/workflows/create-tag-on-dispatch.yml/dispatches"
+
+# Send workflow_dispatch event
+curl -L -XPOST \
+     -H "Accept: application/vnd.github+json" \
+     -H "Authorization: Bearer ${K3S_RELEASE_TOKEN}" \
+     -H "X-GitHub-Api-Version: 2022-11-28" \
+     -H "Content-Type: application/json" \
+     "$SYSTEM_AGENT_API_URL" \
+     --data "{\"ref\":\"$REF_TAG\", \"inputs\": {\"tag\":\"$REF_TAG\"}}"
