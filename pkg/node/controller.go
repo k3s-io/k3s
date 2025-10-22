@@ -7,76 +7,67 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/nodepassword"
-	pkgerrors "github.com/pkg/errors"
 	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
-	core "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/kubernetes"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	toolscache "k8s.io/client-go/tools/cache"
 )
 
 func Register(ctx context.Context,
 	modCoreDNS bool,
-	secrets coreclient.SecretController,
-	configMaps coreclient.ConfigMapController,
+	coreClient kubernetes.Interface,
 	nodes coreclient.NodeController,
 ) error {
+	// create a single-resource watch cache on the coredns configmap so that we
+	// don't have to retrieve it from the apiserver every time a node changes.
+	lw := toolscache.NewListWatchFromClient(coreClient.CoreV1().RESTClient(), "configmaps", metav1.NamespaceSystem, fields.OneTermEqualSelector(metav1.ObjectNameField, "coredns"))
+	informerOpts := toolscache.InformerOptions{ListerWatcher: lw, ObjectType: &corev1.ConfigMap{}, Handler: &toolscache.ResourceEventHandlerFuncs{}}
+	indexer, informer := toolscache.NewInformerWithOptions(informerOpts)
+	go informer.Run(ctx.Done())
+
 	h := &handler{
-		modCoreDNS: modCoreDNS,
-		secrets:    secrets,
-		configMaps: configMaps,
+		modCoreDNS:      modCoreDNS,
+		ctx:             ctx,
+		configMaps:      coreClient.CoreV1().ConfigMaps(metav1.NamespaceSystem),
+		configMapsStore: indexer,
 	}
-	nodes.OnChange(ctx, "node", h.onChange)
-	nodes.OnRemove(ctx, "node", h.onRemove)
+	nodes.OnChange(ctx, "node", h.updateHosts)
+	nodes.OnRemove(ctx, "node", h.updateHosts)
 
 	return nil
 }
 
 type handler struct {
-	modCoreDNS bool
-	secrets    coreclient.SecretController
-	configMaps coreclient.ConfigMapController
+	modCoreDNS      bool
+	ctx             context.Context
+	configMaps      typedcorev1.ConfigMapInterface
+	configMapsStore toolscache.Store
 }
 
-func (h *handler) onChange(key string, node *core.Node) (*core.Node, error) {
-	if node == nil {
-		return nil, nil
-	}
-	return h.updateHosts(node, false)
-}
-
-func (h *handler) onRemove(key string, node *core.Node) (*core.Node, error) {
-	return h.updateHosts(node, true)
-}
-
-func (h *handler) updateHosts(node *core.Node, removed bool) (*core.Node, error) {
-	var (
-		nodeName string
-		hostName string
-		nodeIPv4 string
-		nodeIPv6 string
-	)
-	nodeName = node.Name
-	for _, address := range node.Status.Addresses {
-		switch address.Type {
-		case v1.NodeInternalIP:
-			if strings.Contains(address.Address, ":") {
-				nodeIPv6 = address.Address
-			} else {
-				nodeIPv4 = address.Address
+func (h *handler) updateHosts(key string, node *corev1.Node) (*corev1.Node, error) {
+	if h.modCoreDNS && node != nil {
+		var (
+			hostName string
+			nodeIPv4 string
+			nodeIPv6 string
+		)
+		for _, address := range node.Status.Addresses {
+			switch address.Type {
+			case corev1.NodeInternalIP:
+				if strings.Contains(address.Address, ":") {
+					nodeIPv6 = address.Address
+				} else {
+					nodeIPv4 = address.Address
+				}
+			case corev1.NodeHostName:
+				hostName = address.Address
 			}
-		case v1.NodeHostName:
-			hostName = address.Address
 		}
-	}
-	if removed {
-		if err := h.removeNodePassword(nodeName); err != nil {
-			logrus.Warn(pkgerrors.WithMessage(err, "Unable to remove node password"))
-		}
-	}
-	if h.modCoreDNS {
-		if err := h.updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6, removed); err != nil {
+		if err := h.updateCoreDNSConfigMap(node.Name, hostName, nodeIPv4, nodeIPv6, node.DeletionTimestamp != nil); err != nil {
 			return nil, err
 		}
 	}
@@ -97,9 +88,15 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 		nodeNames += " " + hostName
 	}
 
-	configMap, err := h.configMaps.Get("kube-system", "coredns", metav1.GetOptions{})
-	if err != nil || configMap == nil {
-		logrus.Warn(pkgerrors.WithMessage(err, "Unable to fetch coredns config map"))
+	var configMap *corev1.ConfigMap
+	if val, ok, err := h.configMapsStore.GetByKey("kube-system/coredns"); err != nil {
+		logrus.Errorf("Failed to get coredns ConfigMap from cache: %v", err)
+	} else if ok {
+		if cm, ok := val.(*corev1.ConfigMap); ok {
+			configMap = cm
+		}
+	}
+	if configMap == nil {
 		return nil
 	}
 
@@ -147,7 +144,8 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 		return nil
 	}
 
-	// Something's out of sync, set the desired entries
+	// Something's out of sync, copy the ConfigMap for update and sync the desired entries
+	configMap = configMap.DeepCopy()
 	if nodeIPv4 != "" {
 		addressMap[nodeIPv4] = namesv4
 	}
@@ -174,7 +172,7 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 	}
 	configMap.Data["NodeHosts"] = newHosts
 
-	if _, err := h.configMaps.Update(configMap); err != nil {
+	if _, err := h.configMaps.Update(h.ctx, configMap, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 
@@ -182,12 +180,8 @@ func (h *handler) updateCoreDNSConfigMap(nodeName, hostName, nodeIPv4, nodeIPv6 
 	if removed {
 		actionType = "Removed"
 	} else {
-		actionType = "Updated"
+		actionType = "Synced"
 	}
-	logrus.Infof("%s coredns NodeHosts entry for %s", actionType, nodeName)
+	logrus.Infof("%s coredns NodeHosts entries for %s", actionType, nodeName)
 	return nil
-}
-
-func (h *handler) removeNodePassword(nodeName string) error {
-	return nodepassword.Delete(h.secrets, nodeName)
 }
