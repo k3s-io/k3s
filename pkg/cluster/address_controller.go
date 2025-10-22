@@ -45,12 +45,19 @@ func (a *addressesHandler) filterCN(cns ...string) []string {
 
 // sync updates the allowed address list to include addresses for the node
 func (a *addressesHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
-	if node != nil && (node.Labels[util.ControlPlaneRoleLabelKey] != "" || node.Labels[util.ETCDRoleLabelKey] != "") {
+	if node != nil && len(node.Status.Addresses) > 0 {
 		a.Lock()
 		defer a.Unlock()
 
-		for _, address := range node.Status.Addresses {
-			a.allowed.Insert(address.String())
+		addresses := make([]string, len(node.Status.Addresses))
+		for i, addr := range node.Status.Addresses {
+			addresses[i] = addr.Address
+		}
+
+		if node.DeletionTimestamp == nil && (node.Labels[util.ControlPlaneRoleLabelKey] != "" || node.Labels[util.ETCDRoleLabelKey] != "") {
+			a.allowed = a.allowed.Insert(addresses...)
+		} else {
+			a.allowed = a.allowed.Delete(addresses...)
 		}
 	}
 	return node, nil
