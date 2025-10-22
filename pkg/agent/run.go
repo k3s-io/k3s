@@ -44,10 +44,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 	"k8s.io/component-base/cli/globalflag"
 	"k8s.io/component-base/logs"
@@ -209,7 +208,7 @@ func startNetwork(ctx context.Context, wg *sync.WaitGroup, nodeConfig *daemoncon
 		return err
 	}
 
-	if err := configureNode(ctx, nodeConfig, kubeletClient.CoreV1().Nodes()); err != nil {
+	if err := configureNode(ctx, nodeConfig, kubeletClient); err != nil {
 		return err
 	}
 
@@ -385,20 +384,10 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 
 // configureNode waits for the node object to be created, and if/when it does,
 // ensures that the labels and annotations are up to date.
-func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, nodes typedcorev1.NodeInterface) error {
+func configureNode(ctx context.Context, nodeConfig *daemonconfig.Node, coreClient kubernetes.Interface) error {
+	nodes := coreClient.CoreV1().Nodes()
 	agentConfig := &nodeConfig.AgentConfig
-	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			options.FieldSelector = fieldSelector
-			return nodes.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return nodes.Watch(ctx, options)
-		},
-	}
-
+	lw := toolscache.NewListWatchFromClient(coreClient.CoreV1().RESTClient(), "nodes", metav1.NamespaceNone, fields.OneTermEqualSelector(metav1.ObjectNameField, agentConfig.NodeName))
 	condition := func(ev watch.Event) (bool, error) {
 		node, ok := ev.Object.(*v1.Node)
 		if !ok {
