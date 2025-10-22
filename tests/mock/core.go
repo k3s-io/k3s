@@ -207,6 +207,35 @@ func (m *SecretStore) Get(namespace, name string) (*v1.Secret, error) {
 	return nil, ErrorNotFound("secret", name)
 }
 
+func (m *SecretStore) GetWithOptions(namespace, name string, opts metav1.GetOptions) (*v1.Secret, error) {
+	return m.Get(namespace, name)
+}
+
+func (m *SecretStore) List(namespace string, ls labels.Selector) ([]v1.Secret, error) {
+	secrets := []v1.Secret{}
+	if ls == nil {
+		ls = labels.Everything()
+	}
+	for _, secret := range m.secrets[namespace] {
+		if ls.Matches(labels.Set(secret.Labels)) {
+			secrets = append(secrets, secret)
+		}
+	}
+	return secrets, nil
+}
+
+func (m *SecretStore) ListWithOptions(namespace string, opts metav1.ListOptions) (*v1.SecretList, error) {
+	ls, err := labels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+	secrets, err := m.List(namespace, ls)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.SecretList{Items: secrets}, nil
+}
+
 // mock node store interface
 
 type NodeStore struct {

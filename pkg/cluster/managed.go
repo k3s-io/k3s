@@ -133,8 +133,7 @@ func (c *Cluster) setupEtcdProxy(ctx context.Context, etcdProxy etcd.Proxy) {
 // deleteNodePasswdSecret wipes out the node password secret after restoration
 func (c *Cluster) deleteNodePasswdSecret(ctx context.Context) {
 	nodeName := os.Getenv("NODE_NAME")
-	secretsClient := c.config.Runtime.Core.Core().V1().Secret()
-	if err := nodepassword.Delete(secretsClient, nodeName); err != nil {
+	if err := nodepassword.Delete(nodeName); err != nil {
 		if apierrors.IsNotFound(err) {
 			logrus.Debugf("Node password secret is not found for node %s", nodeName)
 			return
