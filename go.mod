@@ -160,20 +160,20 @@ require (
 	k8s.io/apimachinery v0.34.1
 	k8s.io/apiserver v0.34.1
 	k8s.io/cli-runtime v0.33.5
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/client-go v0.34.1
 	k8s.io/cloud-provider v0.33.5
-	k8s.io/cluster-bootstrap v0.0.0
+	k8s.io/cluster-bootstrap v0.33.5
 	k8s.io/component-base v0.34.1
 	k8s.io/component-helpers v0.33.5
 	k8s.io/cri-api v0.34.1
 	k8s.io/cri-client v0.33.5
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kube-proxy v0.0.0
+	k8s.io/kube-proxy v0.33.5
 	k8s.io/kubectl v0.33.5
 	k8s.io/kubelet v0.33.5
 	k8s.io/kubernetes v1.33.5
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
-	sigs.k8s.io/cri-tools v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/cri-tools v0.33.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
