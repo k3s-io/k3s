@@ -163,10 +163,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
+            arch: arm64
+          - dtest: dualstack
             arch: arm64
           - dtest: secretsencryption
             arch: arm64
@@ -207,7 +209,7 @@ jobs:
         cd ./tests/docker/${{ matrix.dtest }}
         
         # These tests use rancher/systemd-node and have different flags.
-        CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        CI_TESTS="autoimport dualstack hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
