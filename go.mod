@@ -54,6 +54,7 @@ replace (
 	k8s.io/component-helpers => github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.31.13-k3s1
 	k8s.io/controller-manager => github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.31.13-k3s1
 	k8s.io/cri-api => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.31.13-k3s1
+	k8s.io/cri-client => github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-client v1.31.13-k3s1
 	k8s.io/csi-translation-lib => github.com/k3s-io/kubernetes/staging/src/k8s.io/csi-translation-lib v1.31.13-k3s1
 	k8s.io/dynamic-resource-allocation => github.com/k3s-io/kubernetes/staging/src/k8s.io/dynamic-resource-allocation v1.31.13-k3s1
 	k8s.io/endpointslice => github.com/k3s-io/kubernetes/staging/src/k8s.io/endpointslice v1.31.13-k3s1
@@ -163,19 +164,19 @@ require (
 	k8s.io/apimachinery v0.32.9
 	k8s.io/apiserver v0.32.8
 	k8s.io/cli-runtime v0.31.13
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/client-go v0.32.9
 	k8s.io/cloud-provider v0.31.13
-	k8s.io/cluster-bootstrap v0.0.0
-	k8s.io/component-base v0.32.0
-	k8s.io/component-helpers v0.32.0
+	k8s.io/cluster-bootstrap v0.31.13
+	k8s.io/component-base v0.31.13
+	k8s.io/component-helpers v0.31.13
 	k8s.io/cri-api v0.32.8
-	k8s.io/cri-client v0.32.0
+	k8s.io/cri-client v0.31.13
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kube-proxy v0.0.0
+	k8s.io/kube-proxy v0.31.13
 	k8s.io/kubectl v0.31.13
 	k8s.io/kubernetes v1.31.13
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
-	sigs.k8s.io/cri-tools v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/cri-tools v0.31.1
 	sigs.k8s.io/yaml v1.6.0
 )
 
