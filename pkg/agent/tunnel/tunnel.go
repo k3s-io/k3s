@@ -31,10 +31,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/cluster/ports"
 )
@@ -238,20 +237,8 @@ func (a *agentTunnel) watchPods(ctx context.Context, rbacReady <-chan struct{}, 
 	<-rbacReady
 
 	nodeName := os.Getenv("NODE_NAME")
-	pods := a.client.CoreV1().Pods(metav1.NamespaceNone)
-	fieldSelector := fields.Set{"spec.nodeName": nodeName}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			options.FieldSelector = fieldSelector
-			return pods.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return pods.Watch(ctx, options)
-		},
-	}
-
-	logrus.Infof("Tunnnel authorizer watching Pods")
+	lw := toolscache.NewListWatchFromClient(a.client.CoreV1().RESTClient(), "pods", metav1.NamespaceAll, fields.OneTermEqualSelector("spec.nodeName", nodeName))
+	logrus.Infof("Tunnel authorizer watching Pods")
 	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &v1.Pod{})
 
 	defer func() {
@@ -310,25 +297,8 @@ func (a *agentTunnel) watchEndpoints(ctx context.Context, rbacReady <-chan struc
 
 	<-rbacReady
 
-	endpoints := a.client.CoreV1().Endpoints(metav1.NamespaceDefault)
-	fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			// if we're being called to re-list, then likely there was an
-			// interruption to the apiserver connection and the listwatch is retrying
-			// its connection. This is a good suggestion that it might be necessary
-			// to refresh the apiserver address from the supervisor.
-			go refreshFromSupervisor(ctx)
-			options.FieldSelector = fieldSelector
-			return endpoints.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return endpoints.Watch(ctx, options)
-		},
-	}
-
-	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &v1.Endpoints{})
+	lw := toolscache.NewListWatchFromClient(a.client.CoreV1().RESTClient(), "endpoints", metav1.NamespaceDefault, fields.OneTermEqualSelector(metav1.ObjectNameField, "kubernetes"))
+	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(wrapListWithRefresh(ctx, lw, refreshFromSupervisor), &v1.Endpoints{})
 
 	defer func() {
 		watch.Stop()
@@ -540,6 +510,21 @@ func (a *agentTunnel) getProxySyncer(ctx context.Context, proxy proxy.Proxy) pro
 				}
 			}
 		}()
+	}
+}
+
+// wrapListWithRefresh injects a call to refreshFromSupervisor into the ListWatch's list calls.
+// If we're being called to re-list, then likely there was an interruption to
+// the apiserver connection and the listwatch is retrying its connection.  This
+// is a good suggestion that it might be necessary to refresh the apiserver
+// address from the supervisor.
+func wrapListWithRefresh(ctx context.Context, lw *toolscache.ListWatch, refreshFunc func(ctx context.Context)) *toolscache.ListWatch {
+	return &toolscache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			go refreshFunc(ctx)
+			return lw.ListFunc(options)
+		},
+		WatchFunc: lw.WatchFunc,
 	}
 }
 

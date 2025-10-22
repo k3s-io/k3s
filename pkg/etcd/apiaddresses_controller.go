@@ -10,26 +10,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/cache"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 )
 
 func registerEndpointsHandlers(ctx context.Context, etcd *ETCD) {
-	endpoints := etcd.config.Runtime.Core.Core().V1().Endpoints()
-	fieldSelector := fields.Set{metav1.ObjectNameField: "kubernetes"}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			options.FieldSelector = fieldSelector
-			return endpoints.List(metav1.NamespaceDefault, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return endpoints.Watch(metav1.NamespaceDefault, options)
-		},
-	}
-
+	lw := toolscache.NewListWatchFromClient(etcd.config.Runtime.K8s.CoreV1().RESTClient(), "endpoints", metav1.NamespaceDefault, fields.OneTermEqualSelector(metav1.ObjectNameField, "kubernetes"))
 	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &v1.Endpoints{})
 
 	go func() {
