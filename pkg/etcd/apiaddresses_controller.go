@@ -10,26 +10,14 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/cache"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 )
 
 func registerEndpointsHandlers(ctx context.Context, etcd *ETCD) {
-	endpointslice := etcd.config.Runtime.Discovery.Discovery().V1().EndpointSlice()
 	labelSelector := labels.Set{discoveryv1.LabelServiceName: "kubernetes"}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			options.LabelSelector = labelSelector
-			return endpointslice.List(metav1.NamespaceDefault, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.LabelSelector = labelSelector
-			return endpointslice.Watch(metav1.NamespaceDefault, options)
-		},
-	}
-
+	lw := toolscache.NewFilteredListWatchFromClient(etcd.config.Runtime.K8s.DiscoveryV1().RESTClient(), "endpointslices", metav1.NamespaceDefault, func(options *metav1.ListOptions) { options.LabelSelector = labelSelector })
 	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &discoveryv1.EndpointSlice{})
 
 	go func() {

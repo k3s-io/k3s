@@ -118,13 +118,11 @@ func runControllers(ctx context.Context, config *Config) error {
 		return pkgerrors.WithMessage(err, "failed to stage files")
 	}
 
-	// run migration before we set controlConfig.Runtime.Core
-	if err := nodepassword.MigrateFile(
-		sc.Core.Core().V1().Secret(),
-		sc.Core.Core().V1().Node(),
-		controlConfig.Runtime.NodePasswdFile); err != nil {
-		logrus.Warn(pkgerrors.WithMessage(err, "error migrating node-password file"))
+	// start the nodepassword controller before we set controlConfig.Runtime.Core
+	if err := nodepassword.Register(ctx, sc.K8s, sc.Core.Core().V1().Secret(), sc.Core.Core().V1().Node()); err != nil {
+		return pkgerrors.WithMessage(err, "failed to start node-password secret controller")
 	}
+
 	controlConfig.Runtime.K8s = sc.K8s
 	controlConfig.Runtime.K3s = sc.K3s
 	controlConfig.Runtime.Event = sc.Event
@@ -206,7 +204,7 @@ func runOrDie(ctx context.Context, name string, cb leader.Callback) {
 }
 
 // coreControllers starts the following controllers, if they are enabled:
-// * Node controller (manages nodes passwords and coredns hosts file)
+// * Node controller (manages coredns node hosts file)
 // * Helm controller
 // * Secrets encryption
 // * Rootless ports
@@ -214,8 +212,7 @@ func runOrDie(ctx context.Context, name string, cb leader.Callback) {
 func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	if err := node.Register(ctx,
 		!config.ControlConfig.Skips["coredns"],
-		sc.Core.Core().V1().Secret(),
-		sc.Core.Core().V1().ConfigMap(),
+		sc.K8s,
 		sc.Core.Core().V1().Node()); err != nil {
 		return err
 	}

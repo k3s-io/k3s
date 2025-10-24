@@ -1,18 +1,15 @@
 package nodepassword
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/authenticator/hash"
-	"github.com/k3s-io/k3s/pkg/passwd"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
-	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +20,8 @@ var (
 	// Hasher provides the algorithm for generating and verifying hashes
 	Hasher          = hash.NewSCrypt()
 	ErrVerifyFailed = errVerifyFailed()
+
+	SecretTypeNodePassword = v1.SecretType(version.Program + ".cattle.io/node-password")
 )
 
 type passwordError struct {
@@ -52,9 +51,8 @@ func getSecretName(nodeName string) string {
 	return strings.ToLower(nodeName + ".node-password." + version.Program)
 }
 
-func verifyHash(secretClient coreclient.SecretController, nodeName, pass string) error {
-	name := getSecretName(nodeName)
-	secret, err := secretClient.Cache().Get(metav1.NamespaceSystem, name)
+func (npc *nodePasswordController) verifyHash(nodeName, pass string, cached bool) error {
+	secret, err := npc.getSecret(nodeName, cached)
 	if err != nil {
 		return &passwordError{node: nodeName, err: err}
 	}
@@ -67,68 +65,47 @@ func verifyHash(secretClient coreclient.SecretController, nodeName, pass string)
 	return &passwordError{node: nodeName, err: errors.New("password hash not found in node secret")}
 }
 
-// Ensure will verify a node-password secret if it exists, otherwise it will create one
-func Ensure(secretClient coreclient.SecretController, nodeName, pass string) error {
-	err := verifyHash(secretClient, nodeName, pass)
+// ensure will verify a node-password secret if it exists, otherwise it will create one
+func (npc *nodePasswordController) ensure(nodeName, pass string) error {
+	err := npc.verifyHash(nodeName, pass, true)
 	if apierrors.IsNotFound(err) {
 		var hash string
 		hash, err = Hasher.CreateHash(pass)
 		if err != nil {
 			return &passwordError{node: nodeName, err: err}
 		}
-		_, err = secretClient.Create(&v1.Secret{
+		_, err = npc.secrets.Create(&v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getSecretName(nodeName),
 				Namespace: metav1.NamespaceSystem,
 			},
 			Immutable: ptr.To(true),
 			Data:      map[string][]byte{"hash": []byte(hash)},
+			Type:      SecretTypeNodePassword,
 		})
+		if apierrors.IsAlreadyExists(err) {
+			// secret already exists, try to verify again without cache
+			return npc.verifyHash(nodeName, pass, false)
+		}
 	}
 	return err
 }
 
-// Delete will remove a node-password secret
-func Delete(secretClient coreclient.SecretController, nodeName string) error {
-	return secretClient.Delete(metav1.NamespaceSystem, getSecretName(nodeName), &metav1.DeleteOptions{})
-}
-
-// MigrateFile moves password file entries to secrets
-func MigrateFile(secretClient coreclient.SecretController, nodeClient coreclient.NodeController, passwordFile string) error {
-	_, err := os.Stat(passwordFile)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	passwd, err := passwd.Read(passwordFile)
-	if err != nil {
-		return err
-	}
-
-	nodeNames := []string{}
-	nodeList, _ := nodeClient.Cache().List(nil)
-	for _, node := range nodeList {
-		nodeNames = append(nodeNames, node.Name)
-	}
-	if len(nodeNames) == 0 {
-		nodeNames = append(nodeNames, passwd.Users()...)
-	}
-
-	logrus.Infof("Migrating node password entries from '%s'", passwordFile)
-	ensured := int64(0)
-	start := time.Now()
-	for _, nodeName := range nodeNames {
-		if pass, ok := passwd.Pass(nodeName); ok {
-			if err := Ensure(secretClient, nodeName, pass); err != nil {
-				logrus.Warn(pkgerrors.WithMessagef(err, "error migrating node password entry for node '%s'", nodeName))
-			} else {
-				ensured++
-			}
+// verifyNode confirms that a node with the given name exists, to prevent auth
+// from succeeding with a client certificate for a node that has been deleted from the cluster.
+func (npc *nodePasswordController) verifyNode(ctx context.Context, node *nodeInfo) error {
+	if nodeName, isNodeAuth := identifier.NodeIdentity(node.User); isNodeAuth {
+		if _, err := npc.nodes.Cache().Get(nodeName); err != nil {
+			return pkgerrors.WithMessage(err, "unable to verify node identity")
 		}
 	}
-	logrus.Infof("Migrated %d node password entries in %s", ensured, time.Since(start))
-	return os.Remove(passwordFile)
+	return nil
+}
+
+// Delete uses the controller to delete the secret for a node, if the controller has been started
+func Delete(nodeName string) error {
+	if controller == nil {
+		return util.ErrCoreNotReady
+	}
+	return controller.secrets.Delete(metav1.NamespaceSystem, getSecretName(nodeName), &metav1.DeleteOptions{})
 }

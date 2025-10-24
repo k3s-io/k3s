@@ -20,10 +20,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/kubernetes"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 	utilsnet "k8s.io/utils/net"
 )
@@ -96,7 +95,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 		return err
 	}
 
-	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient.CoreV1().Nodes()); err != nil {
+	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient); err != nil {
 		return pkgerrors.WithMessage(err, "flannel failed to wait for PodCIDR assignment")
 	}
 
@@ -116,18 +115,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 }
 
 // waitForPodCIDR watches nodes with this node's name, and returns when the PodCIDR has been set.
-func waitForPodCIDR(ctx context.Context, nodeName string, nodes typedcorev1.NodeInterface) error {
-	fieldSelector := fields.Set{metav1.ObjectNameField: nodeName}.String()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object runtime.Object, e error) {
-			options.FieldSelector = fieldSelector
-			return nodes.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			options.FieldSelector = fieldSelector
-			return nodes.Watch(ctx, options)
-		},
-	}
+func waitForPodCIDR(ctx context.Context, nodeName string, coreClient kubernetes.Interface) error {
+	lw := toolscache.NewListWatchFromClient(coreClient.CoreV1().RESTClient(), "nodes", metav1.NamespaceNone, fields.OneTermEqualSelector(metav1.ObjectNameField, nodeName))
 	condition := func(ev watch.Event) (bool, error) {
 		if n, ok := ev.Object.(*v1.Node); ok {
 			return n.Spec.PodCIDR != "", nil

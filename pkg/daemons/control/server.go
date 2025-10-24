@@ -23,11 +23,10 @@ import (
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
+	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 	logsapi "k8s.io/component-base/logs/api/v1"
@@ -456,24 +455,12 @@ func promise(f func() error) <-chan error {
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as
 // uninitialized by the external cloud provider.
 func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
-	restConfig, err := util.GetRESTConfig(kubeConfig)
+	client, err := util.GetClientSet(kubeConfig)
 	if err != nil {
 		return err
 	}
-	coreClient, err := typedcorev1.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-	nodes := coreClient.Nodes()
 
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (object k8sruntime.Object, e error) {
-			return nodes.List(ctx, options)
-		},
-		WatchFunc: func(options metav1.ListOptions) (i watch.Interface, e error) {
-			return nodes.Watch(ctx, options)
-		},
-	}
+	lw := toolscache.NewListWatchFromClient(client.CoreV1().RESTClient(), "nodes", metav1.NamespaceNone, fields.Everything())
 
 	condition := func(ev watch.Event) (bool, error) {
 		if node, ok := ev.Object.(*v1.Node); ok {
