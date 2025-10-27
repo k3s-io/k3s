@@ -128,7 +128,7 @@ jobs:
         run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
 
       - name: Upload Airgap sha256sum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: k3s-airgap-images-${{ matrix.arch }}.sha256sum
           path: dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum

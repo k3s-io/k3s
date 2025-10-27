@@ -96,7 +96,7 @@ jobs:
           cd tests/e2e/${{ matrix.etest }}
           go test -timeout=45m ./${{ matrix.etest }}_test.go -test.v -ginkgo.v -ci -local
       - name: On Failure, Upload Journald Logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: ${{ failure() }}
         with:
           name: e2e-${{ matrix.etest }}-logs
@@ -134,7 +134,7 @@ jobs:
         mkdir -p ./dist/artifacts
         go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
     - name: Upload Go Tests
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts/*.test
