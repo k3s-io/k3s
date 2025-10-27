@@ -77,7 +77,7 @@ jobs:
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
       - name: "Download K3s build"
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -163,7 +163,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: "Download Binaries and Airgap sha256sum"
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         pattern: k3s*
         path: ./dist/artifacts

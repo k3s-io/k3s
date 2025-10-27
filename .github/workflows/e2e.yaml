@@ -83,7 +83,7 @@ jobs:
            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
            sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - name: "Download k3s binary"
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: k3s-amd64
           path: ./dist/artifacts
@@ -183,7 +183,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
     - name: "Download K3s image"
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
@@ -197,7 +197,7 @@ jobs:
         IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
         echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
     - name: Download Go Tests
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts

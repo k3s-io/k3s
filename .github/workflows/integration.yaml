@@ -55,7 +55,7 @@ jobs:
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: k3s-amd64
         path: ./dist/artifacts
@@ -101,7 +101,7 @@ jobs:
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Download k3s binary
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: k3s-windows
         path: dist/artifacts/
