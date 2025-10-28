@@ -193,3 +193,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  dispatch-k3s-upgrade:
+    name: Dispatch k3s-upgrade Workflow
+    runs-on: ubuntu-latest
+    needs: [upload-release-assets]
+    steps:
+      - name: Dispatch k3s-upgrade Workflow
+        run: |
+          curl -L -XPOST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.K3S_UPGRADE_PAT }}" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/${{ github.repository_owner }}/k3s-upgrade/dispatches \
+            -d '{"event_type":"tag-release","client_payload":{"tag":"${{ github.ref_name }}"}}'
+
