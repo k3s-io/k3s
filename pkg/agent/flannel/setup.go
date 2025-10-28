@@ -13,6 +13,7 @@ import (
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/signals"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/k3s-io/k3s/pkg/util"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -242,6 +243,12 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 		if len(routes) == 0 {
 			return fmt.Errorf("incorrect netMode for flannel tailscale backend")
+		}
+		advertisedRoutes, err := vpn.GetAdvertisedRoutes()
+		if err == nil && advertisedRoutes != nil {
+			for _, advertisedRoute := range advertisedRoutes {
+				routes = append(routes, advertisedRoute.String())
+			}
 		}
 		backendConf = strings.ReplaceAll(tailscaledBackend, "%Routes%", strings.Join(routes, ","))
 	case BackendWireguardNative:
