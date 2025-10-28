@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"strings"
 
@@ -20,10 +21,16 @@ const (
 
 type TailscaleOutput struct {
 	TailscaleIPs []string `json:"TailscaleIPs"`
+	BackendState string `json:"BackendState"`
+}
+
+type TailscalePrefsOutput struct {
+	AdvertiseRoutes []netip.Prefix `json:"AdvertiseRoutes"`
 }
 
 // VPNInfo includes node information of the VPN. It is a general struct in case we want to add more vpn integrations
 type VPNInfo struct {
+	BackendState string
 	IPv4Address  net.IP
 	IPv6Address  net.IP
 	NodeID       string
@@ -49,6 +56,11 @@ func StartVPN(vpnAuthConfigFile string) error {
 	logrus.Infof("Starting VPN: %s", authInfo.Name)
 	switch authInfo.Name {
 	case "tailscale":
+		vpnInfo, err := getTailscaleInfo()
+		if err == nil && vpnInfo.BackendState == "Running" {
+			logrus.Debugf("Tailscale is already running, skipping tailscale up")
+			return nil
+		}
 		args := []string{
 			"up", "--authkey", authInfo.JoinKey, "--timeout=30s", "--reset",
 		}
@@ -148,7 +160,26 @@ func getTailscaleInfo() (VPNInfo, error) {
 	ipv4Address, _ := util.GetFirst4String(tailscaleOutput.TailscaleIPs)
 	ipv6Address, _ := util.GetFirst6String(tailscaleOutput.TailscaleIPs)
 
-	return VPNInfo{IPv4Address: net.ParseIP(ipv4Address), IPv6Address: net.ParseIP(ipv6Address), NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
+	return VPNInfo{BackendState: tailscaleOutput.BackendState, IPv4Address: net.ParseIP(ipv4Address), IPv6Address: net.ParseIP(ipv6Address), NodeID: "", ProviderName: "tailscale", VPNInterface: tailscaleIf}, nil
+}
+
+// get Tailscale advertised route list
+func GetAdvertisedRoutes() ([]netip.Prefix, error) {
+	output, err := util.ExecCommand("tailscale", []string{"debug", "prefs"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to run tailscale debug prefs: %v", err)
+	}
+
+	logrus.Debugf("Output from tailscale debug prefs: %v", output)
+
+	var tailscaleOutput TailscalePrefsOutput
+	err = json.Unmarshal([]byte(output), &tailscaleOutput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tailscale output: %v", err)
+	}
+
+	return tailscaleOutput.AdvertiseRoutes, nil
+
 }
 
 // processCLIArgs separates the extraArgs part from the command.
