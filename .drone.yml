@@ -49,25 +49,6 @@ steps:
     event:
       - push
       - tag
-- name: docker-publish
-  image: plugins/docker
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/main
-    - refs/tags/*
-    event:
-    - tag
 
 - name: test
   image: rancher/dapper:v0.6.0
@@ -174,26 +155,6 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: docker-publish
-  image: plugins/docker
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/main
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
@@ -275,25 +236,6 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
-- name: docker-publish
-  image: plugins/docker:linux-arm
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/main
-    - refs/tags/*
-    event:
-    - tag
 
 - name: test
   # Refer to comment for arm/build.
@@ -318,63 +260,6 @@ volumes:
 - name: docker
   host:
     path: /var/run/docker.sock
-
----
-kind: pipeline
-name: manifest
-
-platform:
-  os: linux
-  arch: amd64
-
-steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-main} || echo ${DRONE_COMMIT_SHA}~)
-  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - if [ -z "$DIFF" ]; then
-        echo "All files in PR are on ignore list";
-        exit 78;
-    else
-        echo "Some files in PR are not ignored, $DIFF";
-    fi;
-  when:
-    event:
-    - push
-    - pull_request
-
-- name: manifest
-  image: plugins/docker
-  environment:
-    DOCKER_USERNAME:
-      from_secret: docker_username
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-  settings:
-    dry_run: true
-    dockerfile: Dockerfile.manifest
-    repo: "rancher/k3s-manifest"
-    build_args_from_env:
-    - DOCKER_USERNAME
-    - DOCKER_PASSWORD
-    - DRONE_TAG
-trigger:
-  instance:
-  - drone-publish.k3s.io
-  ref:
-  - refs/head/main
-  - refs/tags/*
-  event:
-    include:
-    - tag
-    exclude:
-      - cron
-
-depends_on:
-- amd64
-- arm64
-- arm
 
 ---
 kind: pipeline
