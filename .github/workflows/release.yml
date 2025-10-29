@@ -42,6 +42,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: "Read Vault secrets"
+        if: github.repository_owner == 'k3s-io'
+        uses: rancher-eio/read-vault-secrets@main
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
+    
+      - name: Login to DockerHub with Rancher Secrets
+        if: github.repository_owner == 'k3s-io'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+
+      # For forks, setup DockerHub login with GHA secrets
+      - name: Login to DockerHub with GHA Secrets
+        if: github.repository_owner != 'k3s-io'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -67,12 +90,21 @@ jobs:
           type=semver,pattern=v{{major}}.{{minor}}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Set DockerHub Org
+        run: |
+          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+            echo "DOCKERHUB_ORG=rancher" >> $GITHUB_ENV
+          else
+            echo "DOCKERHUB_ORG=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
+          fi
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
+            docker.io/${{ env.DOCKERHUB_ORG }}/k3s
           flavor: latest=false
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
