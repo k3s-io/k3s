@@ -10,7 +10,7 @@ Accepted
 
 Currently the network policy agent included in k3s is in fact a copied code of
 [kube-router's](https://github.com/cloudnativelabs/kube-router) network policy
-controller, which can be found [here](https://github.com/k3s-io/k3s/tree/master/pkg/agent/netpol).
+controller, which can be found [here](https://github.com/k3s-io/k3s/tree/main/pkg/agent/netpol).
 
 The first and the most important issue is that kube-router lacks support for
 dual-stack (and even IPv6 in general in the most of its components). However,
