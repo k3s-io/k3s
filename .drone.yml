@@ -86,6 +86,13 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/tags/*
+    event:
+    - tag
 
 volumes:
 - name: docker
@@ -204,6 +211,13 @@ steps:
   volumes:
   - name: docker
     path: /var/run/docker.sock
+  when:
+    instance:
+    - drone-publish.k3s.io
+    ref:
+    - refs/tags/*
+    event:
+    - tag
 
 volumes:
 - name: docker
