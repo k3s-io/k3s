@@ -306,13 +306,7 @@ func KillK3sCluster(nodes []VagrantNode) error {
 		if _, err := node.RunCmdOnNode("k3s-killall.sh"); err != nil {
 			return err
 		}
-		if _, err := node.RunCmdOnNode("sh -c 'docker ps -qa | xargs -r docker rm -fv'"); err != nil {
-			return err
-		}
 		if _, err := node.RunCmdOnNode("rm -rf /etc/rancher/k3s/config.yaml.d /var/lib/kubelet/pods /var/lib/rancher/k3s/agent/etc /var/lib/rancher/k3s/agent/containerd /var/lib/rancher/k3s/server/db /var/log/pods /run/k3s /run/flannel"); err != nil {
-			return err
-		}
-		if _, err := node.RunCmdOnNode("systemctl restart containerd docker"); err != nil {
 			return err
 		}
 		if _, err := node.RunCmdOnNode("journalctl --flush --sync --rotate --vacuum-size=1"); err != nil {
