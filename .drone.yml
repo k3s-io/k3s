@@ -388,7 +388,7 @@ steps:
       else
         UPGRADE_CHANNEL=$(echo $DRONE_BRANCH | sed 's/release-/v/')
         # Check if the UPGRADE_CHANNEL exists, in the case of new minor releases it won't
-        if ! curl --head --silent --fail https://update.k3s.io/v1-release/channels/$UPGRADE_CHANNEL; then
+        if ! curl --silent --fail https://update.k3s.io/v1-release/channels/$UPGRADE_CHANNEL; then
           UPGRADE_CHANNEL="latest"
         fi
       fi
