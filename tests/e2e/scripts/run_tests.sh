@@ -10,7 +10,7 @@ E2E_EXTERNAL_DB=$db && export E2E_EXTERNAL_DB
 E2E_REGISTRY=true && export E2E_REGISTRY
 
 cd
-cd k3s && git pull --rebase origin master
+cd k3s && git pull --rebase origin main
 /usr/local/go/bin/go mod tidy
 
 cd tests/e2e
