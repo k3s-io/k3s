@@ -373,23 +373,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-	Context("Verify server fails to start with bootstrap token", func() {
-		It("Fails to start with a meaningful error", func() {
-			tokenYAML := "token: aaaaaa.bbbbbbbbbbbbbbbb"
-			err := StartK3sCluster(tc.AllNodes(), tokenYAML, tokenYAML)
-			Expect(err).To(HaveOccurred())
-			Eventually(func(g Gomega) {
-				logs, err := tc.Servers[0].GetJournalLogs()
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(logs).To(ContainSubstring("failed to normalize server token"))
-			}, "120s", "5s").Should(Succeed())
-
-		})
-		It("Kills the cluster", func() {
-			err := e2e.KillK3sCluster(tc.AllNodes())
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
 	Context("Verify CRI-Dockerd", func() {
 		It("Starts K3s with no issues", func() {
 			dockerYAML := "docker: true"

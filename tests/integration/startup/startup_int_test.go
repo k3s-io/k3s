@@ -116,6 +116,30 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+	When("A server fails to start with bootstrap token", func() {
+		It("Fails to start with a meaningful error", func() {
+			var err error
+			startupServerArgs = []string{"--token", "aaaaaa.bbbbbbbbbbbbbbbb"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("search for the error log", func() {
+			Eventually(func() error {
+				match, err := testutil.SearchK3sLog(startupServer, "failed to normalize server token")
+				if err != nil {
+					return err
+				}
+				if match {
+					return nil
+				}
+				return errors.New("no error found for invalid bootstrap token")
+			}, "30s", "2s").Should(Succeed())
+		})
+		It("cleans up", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
 	When("a server without traefik is created", func() {
 		It("is created with disable arguments", func() {
 			var err error
