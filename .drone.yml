@@ -45,7 +45,7 @@ steps:
       - drone-publish.k3s.io
     ref:
       include:
-        - "refs/heads/master"
+        - "refs/heads/main"
         - "refs/heads/release-*"
     event:
       - push
@@ -65,7 +65,7 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
+    - refs/head/main
     - refs/tags/*
     event:
     - tag
@@ -184,7 +184,7 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
+    - refs/head/main
     - refs/tags/*
     event:
     - tag
@@ -233,7 +233,7 @@ steps:
 - name: skipfiles
   image: plugins/git
   commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-main} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
@@ -279,7 +279,7 @@ steps:
     instance:
     - drone-publish.k3s.io
     ref:
-    - refs/head/master
+    - refs/head/main
     - refs/tags/*
     event:
     - tag
@@ -320,7 +320,7 @@ steps:
 - name: skipfiles
   image: plugins/git
   commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-main} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
@@ -352,7 +352,7 @@ trigger:
   instance:
   - drone-publish.k3s.io
   ref:
-  - refs/head/master
+  - refs/head/main
   - refs/tags/*
   event:
     include:
@@ -380,7 +380,7 @@ steps:
 - name: skipfiles
   image: plugins/git
   commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-main} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
@@ -412,7 +412,7 @@ trigger:
   instance:
     - drone-publish.k3s.io
   ref:
-    - refs/head/master
+    - refs/head/main
     - refs/tags/*
   event:
     - tag
@@ -436,7 +436,7 @@ steps:
 - name: skipfiles
   image: plugins/git
   commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
+  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-main} || echo ${DRONE_COMMIT_SHA}~)
   - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
   - if [ -z "$DIFF" ]; then
         echo "All files in PR are on ignore list";
@@ -520,7 +520,7 @@ steps:
       cd ../upgradecluster
       ../scripts/cleanup_vms.sh 'upgradecluster_([0-9]+)_(server|agent)'
       # Convert release-1.XX branch to v1.XX channel
-      if [ "$DRONE_BRANCH" = "master" ]; then
+      if [ "$DRONE_BRANCH" = "main" ]; then
         UPGRADE_CHANNEL="latest"
       else
         UPGRADE_CHANNEL=$(echo $DRONE_BRANCH | sed 's/release-/v/')
