@@ -624,20 +624,21 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	nodeConfig := &config.Node{
-		Docker:                   envInfo.Docker,
-		SELinux:                  envInfo.EnableSELinux,
-		ContainerRuntimeEndpoint: envInfo.ContainerRuntimeEndpoint,
-		ImageServiceEndpoint:     envInfo.ImageServiceEndpoint,
-		EnablePProf:              envInfo.EnablePProf,
-		EmbeddedRegistry:         controlConfig.EmbeddedRegistry,
-		FlannelBackend:           controlConfig.FlannelBackend,
-		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
-		FlannelExternalIP:        controlConfig.FlannelExternalIP,
-		EgressSelectorMode:       controlConfig.EgressSelectorMode,
-		ServerHTTPSPort:          controlConfig.HTTPSPort,
-		SupervisorPort:           controlConfig.SupervisorPort,
-		SupervisorMetrics:        controlConfig.SupervisorMetrics,
-		Token:                    info.String(),
+		Docker:                          envInfo.Docker,
+		SELinux:                         envInfo.EnableSELinux,
+		ContainerRuntimeEndpoint:        envInfo.ContainerRuntimeEndpoint,
+		ImageServiceEndpoint:            envInfo.ImageServiceEndpoint,
+		EnablePProf:                     envInfo.EnablePProf,
+		EmbeddedRegistry:                controlConfig.EmbeddedRegistry,
+		FlannelBackend:                  controlConfig.FlannelBackend,
+		FlannelIPv6Masq:                 controlConfig.FlannelIPv6Masq,
+		FlannelIPMasqDisableRandomFully: controlConfig.FlannelIPMasqDisableRandomFully,
+		FlannelExternalIP:               controlConfig.FlannelExternalIP,
+		EgressSelectorMode:              controlConfig.EgressSelectorMode,
+		ServerHTTPSPort:                 controlConfig.HTTPSPort,
+		SupervisorPort:                  controlConfig.SupervisorPort,
+		SupervisorMetrics:               controlConfig.SupervisorMetrics,
+		Token:                           info.String(),
 	}
 	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")

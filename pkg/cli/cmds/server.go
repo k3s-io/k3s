@@ -39,81 +39,82 @@ type Server struct {
 	// The port which custom k3s API runs on
 	SupervisorPort int
 	// The port which kube-apiserver runs on
-	APIServerPort            int
-	APIServerBindAddress     string
-	DataDir                  string
-	DisableAgent             bool
-	KubeConfigOutput         string
-	KubeConfigMode           string
-	KubeConfigGroup          string
-	HelmJobImage             string
-	TLSSan                   cli.StringSlice
-	TLSSanSecurity           bool
-	ExtraAPIArgs             cli.StringSlice
-	ExtraEtcdArgs            cli.StringSlice
-	ExtraSchedulerArgs       cli.StringSlice
-	ExtraControllerArgs      cli.StringSlice
-	ExtraCloudControllerArgs cli.StringSlice
-	Rootless                 bool
-	DatastoreEndpoint        string
-	DatastoreCAFile          string
-	DatastoreCertFile        string
-	DatastoreKeyFile         string
-	KineTLS                  bool
-	AdvertiseIP              string
-	AdvertisePort            int
-	DisableScheduler         bool
-	ServerURL                string
-	FlannelBackend           string
-	FlannelIPv6Masq          bool
-	FlannelExternalIP        bool
-	EgressSelectorMode       string
-	DefaultLocalStoragePath  string
-	DisableCCM               bool
-	DisableNPC               bool
-	DisableHelmController    bool
-	DisableKubeProxy         bool
-	DisableAPIServer         bool
-	DisableControllerManager bool
-	DisableETCD              bool
-	EmbeddedRegistry         bool
-	ClusterInit              bool
-	ClusterReset             bool
-	ClusterResetRestorePath  string
-	EncryptSecrets           bool
-	EncryptForce             bool
-	EncryptOutput            string
-	EncryptSkip              bool
-	EncryptProvider          string
-	SystemDefaultRegistry    string
-	StartupHooks             []StartupHook
-	SupervisorMetrics        bool
-	EtcdSnapshotName         string
-	EtcdDisableSnapshots     bool
-	EtcdExposeMetrics        bool
-	EtcdSnapshotDir          string
-	EtcdSnapshotCron         string
-	EtcdSnapshotReconcile    time.Duration
-	EtcdSnapshotRetention    int
-	EtcdSnapshotCompress     bool
-	EtcdListFormat           string
-	EtcdS3                   bool
-	EtcdS3Endpoint           string
-	EtcdS3EndpointCA         string
-	EtcdS3SkipSSLVerify      bool
-	EtcdS3AccessKey          string
-	EtcdS3SecretKey          string
-	EtcdS3SessionToken       string
-	EtcdS3BucketName         string
-	EtcdS3Retention          int
-	EtcdS3BucketLookupType   string
-	EtcdS3Region             string
-	EtcdS3Folder             string
-	EtcdS3Proxy              string
-	EtcdS3ConfigSecret       string
-	EtcdS3Timeout            time.Duration
-	EtcdS3Insecure           bool
-	ServiceLBNamespace       string
+	APIServerPort                   int
+	APIServerBindAddress            string
+	DataDir                         string
+	DisableAgent                    bool
+	KubeConfigOutput                string
+	KubeConfigMode                  string
+	KubeConfigGroup                 string
+	HelmJobImage                    string
+	TLSSan                          cli.StringSlice
+	TLSSanSecurity                  bool
+	ExtraAPIArgs                    cli.StringSlice
+	ExtraEtcdArgs                   cli.StringSlice
+	ExtraSchedulerArgs              cli.StringSlice
+	ExtraControllerArgs             cli.StringSlice
+	ExtraCloudControllerArgs        cli.StringSlice
+	Rootless                        bool
+	DatastoreEndpoint               string
+	DatastoreCAFile                 string
+	DatastoreCertFile               string
+	DatastoreKeyFile                string
+	KineTLS                         bool
+	AdvertiseIP                     string
+	AdvertisePort                   int
+	DisableScheduler                bool
+	ServerURL                       string
+	FlannelBackend                  string
+	FlannelIPv6Masq                 bool
+	FlannelIPMasqDisableRandomFully bool
+	FlannelExternalIP               bool
+	EgressSelectorMode              string
+	DefaultLocalStoragePath         string
+	DisableCCM                      bool
+	DisableNPC                      bool
+	DisableHelmController           bool
+	DisableKubeProxy                bool
+	DisableAPIServer                bool
+	DisableControllerManager        bool
+	DisableETCD                     bool
+	EmbeddedRegistry                bool
+	ClusterInit                     bool
+	ClusterReset                    bool
+	ClusterResetRestorePath         string
+	EncryptSecrets                  bool
+	EncryptForce                    bool
+	EncryptOutput                   string
+	EncryptSkip                     bool
+	EncryptProvider                 string
+	SystemDefaultRegistry           string
+	StartupHooks                    []StartupHook
+	SupervisorMetrics               bool
+	EtcdSnapshotName                string
+	EtcdDisableSnapshots            bool
+	EtcdExposeMetrics               bool
+	EtcdSnapshotDir                 string
+	EtcdSnapshotCron                string
+	EtcdSnapshotReconcile           time.Duration
+	EtcdSnapshotRetention           int
+	EtcdSnapshotCompress            bool
+	EtcdListFormat                  string
+	EtcdS3                          bool
+	EtcdS3Endpoint                  string
+	EtcdS3EndpointCA                string
+	EtcdS3SkipSSLVerify             bool
+	EtcdS3AccessKey                 string
+	EtcdS3SecretKey                 string
+	EtcdS3SessionToken              string
+	EtcdS3BucketName                string
+	EtcdS3Retention                 int
+	EtcdS3BucketLookupType          string
+	EtcdS3Region                    string
+	EtcdS3Folder                    string
+	EtcdS3Proxy                     string
+	EtcdS3ConfigSecret              string
+	EtcdS3Timeout                   time.Duration
+	EtcdS3Insecure                  bool
+	ServiceLBNamespace              string
 }
 
 var (
@@ -253,6 +254,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "flannel-ipv6-masq",
 		Usage:       "(networking) Enable IPv6 masquerading for pod",
 		Destination: &ServerConfig.FlannelIPv6Masq,
+	},
+	&cli.BoolFlag{
+		Name:        "flannel-ip-masq-disable-random-fully",
+		Usage:       "(networking) Disable random fully-formed IP masquerading for Flannel",
+		Destination: &ServerConfig.FlannelIPMasqDisableRandomFully,
 	},
 	&cli.BoolFlag{
 		Name:        "flannel-external-ip",
