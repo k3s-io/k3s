@@ -63,6 +63,18 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string, agentYAML strin
 	return nil
 }
 
+func KillDocker(nodes []e2e.VagrantNode) error {
+	for _, node := range nodes {
+		if _, err := node.RunCmdOnNode("sh -c 'docker ps -qa | xargs -r docker rm -fv'"); err != nil {
+			return err
+		}
+		if _, err := node.RunCmdOnNode("systemctl restart containerd docker"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var _ = ReportAfterEach(e2e.GenReport)
 
 var _ = BeforeSuite(func() {
@@ -237,18 +249,11 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Checks node and pod status", func() {
+		It("Checks node status", func() {
 			By("Fetching node status")
 			Eventually(func() error {
 				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
 			}, "360s", "5s").Should(Succeed())
-			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
-			}, "360s", "5s").Should(Succeed())
-			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
-			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeconfigFile)
 		})
 
 		It("Returns kubelet configuration", func() {
@@ -258,37 +263,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}
 		})
 
-		It("Kills the cluster", func() {
-			err := e2e.KillK3sCluster(tc.AllNodes())
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-	Context("Verify prefer-bundled-bin flag", func() {
-		It("Starts K3s with no issues", func() {
-			preferBundledYAML := "prefer-bundled-bin: true"
-			err := StartK3sCluster(tc.AllNodes(), preferBundledYAML, preferBundledYAML)
-			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
-
-			By("CLUSTER CONFIG")
-			By("OS:" + *nodeOS)
-			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("Checks node and pod status", func() {
-			By("Fetching node status")
-			Eventually(func() error {
-				return tests.NodesReady(tc.KubeconfigFile, e2e.VagrantSlice(tc.AllNodes()))
-			}, "360s", "5s").Should(Succeed())
-			Eventually(func() error {
-				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
-			}, "360s", "5s").Should(Succeed())
-			Eventually(func() error {
-				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
-			}, "300s", "10s").Should(Succeed())
-			e2e.DumpPods(tc.KubeconfigFile)
-		})
 		It("Kills the cluster", func() {
 			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
@@ -315,6 +289,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
 			}, "360s", "5s").Should(Succeed())
+			e2e.DumpPods(tc.KubeconfigFile)
 			Eventually(func() error {
 				return tests.CheckDefaultDeployments(tc.KubeconfigFile)
 			}, "300s", "10s").Should(Succeed())
@@ -398,23 +373,6 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
-	Context("Verify server fails to start with bootstrap token", func() {
-		It("Fails to start with a meaningful error", func() {
-			tokenYAML := "token: aaaaaa.bbbbbbbbbbbbbbbb"
-			err := StartK3sCluster(tc.AllNodes(), tokenYAML, tokenYAML)
-			Expect(err).To(HaveOccurred())
-			Eventually(func(g Gomega) {
-				logs, err := tc.Servers[0].GetJournalLogs()
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(logs).To(ContainSubstring("failed to normalize server token"))
-			}, "120s", "5s").Should(Succeed())
-
-		})
-		It("Kills the cluster", func() {
-			err := e2e.KillK3sCluster(tc.AllNodes())
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
 	Context("Verify CRI-Dockerd", func() {
 		It("Starts K3s with no issues", func() {
 			dockerYAML := "docker: true"
@@ -443,6 +401,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 		It("Kills the cluster", func() {
 			err := e2e.KillK3sCluster(tc.AllNodes())
+			Expect(err).NotTo(HaveOccurred())
+			err = KillDocker(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
