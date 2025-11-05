@@ -19,7 +19,7 @@ replace (
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.1
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.3
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common => github.com/prometheus/common v0.62.0
@@ -120,7 +120,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
-	github.com/opencontainers/cgroups v0.0.1
+	github.com/opencontainers/cgroups v0.0.4
 	github.com/opencontainers/selinux v1.12.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
@@ -238,7 +238,7 @@ require (
 	github.com/coreos/go-oidc v2.3.0+incompatible // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
+	github.com/cyphar/filepath-securejoin v0.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
@@ -401,7 +401,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opencontainers/runc v1.3.0 // indirect
+	github.com/opencontainers/runc v1.3.3 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
