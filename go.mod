@@ -20,6 +20,7 @@ replace (
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.14.1
 	github.com/kubernetes-sigs/cri-tools => github.com/k3s-io/cri-tools v1.29.0-k3s1
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/common => github.com/prometheus/common v0.45.0
@@ -125,7 +126,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
-	github.com/opencontainers/runc v1.2.6
+	github.com/opencontainers/runc v1.2.8
 	github.com/opencontainers/selinux v1.12.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
@@ -209,7 +210,7 @@ require (
 	github.com/container-storage-interface/spec v1.8.0 // indirect
 	github.com/containerd/btrfs/v2 v2.0.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
-	github.com/containerd/console v1.0.4 // indirect
+	github.com/containerd/console v1.0.5 // indirect
 	github.com/containerd/containerd/api v1.9.0 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
@@ -230,7 +231,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
+	github.com/cyphar/filepath-securejoin v0.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/daviddengcn/go-colortext v1.0.0 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
