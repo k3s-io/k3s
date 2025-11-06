@@ -78,16 +78,17 @@ func (npc *nodePasswordController) onChangeNode(key string, node *corev1.Node) (
 		}
 		return nil, err
 	}
+	gvk := npc.nodes.GroupVersionKind()
 	for _, ref := range secret.OwnerReferences {
-		if ref.APIVersion == node.APIVersion && ref.Kind == node.Kind && ref.Name == node.Name && ref.UID == node.UID {
+		if ref.APIVersion == gvk.Version && ref.Kind == gvk.Kind && ref.Name == node.Name && ref.UID == node.UID {
 			return node, nil
 		}
 	}
 	logrus.Infof("Adding node OwnerReference to node-password secret %s", secret.Name)
 	secret = secret.DeepCopy()
 	secret.OwnerReferences = append(secret.OwnerReferences, metav1.OwnerReference{
-		APIVersion: node.APIVersion,
-		Kind:       node.Kind,
+		APIVersion: gvk.Version,
+		Kind:       gvk.Kind,
 		Name:       node.Name,
 		UID:        node.UID,
 	})
