@@ -127,7 +127,7 @@ require (
 	github.com/rancher/dynamiclistener v0.7.1
 	github.com/rancher/lasso v0.2.3
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
-	github.com/rancher/remotedialer v0.5.1-0.20250827012652-e6b68fd83a6b
+	github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d
 	github.com/rancher/wharfie v0.7.0
 	github.com/rancher/wrangler/v3 v3.2.3
 	github.com/robfig/cron/v3 v3.0.1
