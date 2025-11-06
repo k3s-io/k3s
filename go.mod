@@ -134,8 +134,8 @@ require (
 	github.com/rancher/dynamiclistener v0.6.4-rc.2
 	github.com/rancher/lasso v0.2.2
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
-	github.com/rancher/remotedialer v0.4.1
-	github.com/rancher/wharfie v0.6.7
+	github.com/rancher/remotedialer v0.4.5-rc.5
+	github.com/rancher/wharfie v0.6.9
 	github.com/rancher/wrangler/v3 v3.2.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
@@ -454,7 +454,6 @@ require (
 	github.com/tchap/go-patricia/v2 v2.3.2 // indirect
 	github.com/tidwall/btree v1.8.1 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
-	github.com/urfave/cli v1.22.16 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
