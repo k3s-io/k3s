@@ -30,7 +30,7 @@ func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfi
 	if e.etcdReady != nil {
 		go func() {
 			for {
-				if err := test(ctx); err != nil {
+				if err := test(ctx, true); err != nil {
 					logrus.Infof("Failed to test etcd connection: %v", err)
 				} else {
 					logrus.Info("Connection to etcd is ready")
