@@ -564,7 +564,7 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 	}
 
 	for {
-		if err := e.Test(reconcileCtx); err != nil && !errors.Is(err, etcd.ErrNotMember) {
+		if err := e.Test(reconcileCtx, true); err != nil && !errors.Is(err, etcd.ErrNotMember) {
 			logrus.Infof("Failed to test temporary data store connection: %v", err)
 		} else {
 			logrus.Info(e.EndpointName() + " temporary data store connection OK")
