@@ -27,6 +27,7 @@ type Driver interface {
 	ReconcileSnapshotData(ctx context.Context) error
 	GetMembersClientURLs(ctx context.Context) ([]string, error)
 	RemoveSelf(ctx context.Context) error
+	Test(ctx context.Context, enableMaintenance bool) error
 }
 
 func RegisterDriver(d Driver) {
