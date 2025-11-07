@@ -45,15 +45,17 @@ func (c *Cluster) ListenAndServe(ctx context.Context) error {
 // Start handles writing/reading bootstrap data. If embedded etcd is in use,
 // a secondary call to Cluster.save is made.
 func (c *Cluster) Start(ctx context.Context, wg *sync.WaitGroup) error {
-	if c.config.DisableETCD || c.managedDB == nil {
-		// if etcd is disabled or we're using kine, perform a no-op start of etcd
-		// to close the etcd ready channel. When etcd is in use, this is handled by
-		// c.start() -> c.managedDB.Start() -> etcd.Start() -> executor.ETCD()
-		executor.ETCD(ctx, wg, nil, nil, func(context.Context) error { return nil })
+	// if etcd is disabled or we're using kine, perform a no-op start of etcd
+	// to close the etcd ready channel. When etcd is in use, this is handled by
+	// c.start() -> c.managedDB.Start() -> etcd.Start() -> executor.ETCD()
+	if c.config.DisableETCD {
+		return executor.ETCD(ctx, wg, nil, nil, func(ctx context.Context, _ bool) error { return c.managedDB.Test(ctx, false) })
 	}
 
-	if c.config.DisableETCD {
-		return nil
+	if c.managedDB == nil {
+		if err := executor.ETCD(ctx, wg, nil, nil, func(context.Context, bool) error { return nil }); err != nil {
+			return err
+		}
 	}
 
 	// start managed etcd database; when kine is in use this is a no-op.
