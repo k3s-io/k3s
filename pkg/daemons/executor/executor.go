@@ -21,8 +21,9 @@ var (
 	executor Executor
 )
 
-// TestFunc is the signature of a function that returns nil error when the component is ready
-type TestFunc func(context.Context) error
+// TestFunc is the signature of a function that returns nil error when the component is ready.
+// The enableMaintenance flag enables attempts to perform corrective maintenance during the test process.
+type TestFunc func(ctx context.Context, enableMaintenance bool) error
 
 type Executor interface {
 	Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error

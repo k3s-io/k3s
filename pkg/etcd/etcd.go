@@ -204,8 +204,9 @@ func (e *ETCD) SetControlConfig(config *config.Control) error {
 // Test ensures that the local node is a voting member of the target cluster,
 // and that the datastore is defragmented and not in maintenance mode due to alarms.
 // If it is still a learner or not a part of the cluster, an error is raised.
+// If enableMaintenance is true, an attempt will be made to defagment the datastore and clear alarms.
 // If it cannot be defragmented or has any alarms that cannot be disarmed, an error is raised.
-func (e *ETCD) Test(ctx context.Context) error {
+func (e *ETCD) Test(ctx context.Context, enableMaintenance bool) error {
 	if e.config == nil {
 		return errors.New("control config not set")
 	}
@@ -223,8 +224,13 @@ func (e *ETCD) Test(ctx context.Context) error {
 	}
 
 	logrus.Infof("Connected to etcd v%s - datastore using %d of %d bytes", status.Version, status.DbSizeInUse, status.DbSize)
+
 	if len(status.Errors) > 0 {
 		logrus.Warnf("Errors present on etcd cluster: %s", strings.Join(status.Errors, ","))
+	}
+
+	if !enableMaintenance {
+		return nil
 	}
 
 	// defrag this node to reclaim freed space from compacted revisions
@@ -349,7 +355,7 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 			<-executor.CRIReadyChan()
 		}
 		wait.PollUntilContextCancel(ctx, time.Second*5, true, func(ctx context.Context) (bool, error) {
-			if err := e.Test(ctx); err == nil {
+			if err := e.Test(ctx, true); err == nil {
 				// reset the apiaddresses to nil since we are doing a restoration
 				if _, err := e.client.Put(ctx, AddressKey, ""); err != nil {
 					logrus.Warnf("failed to reset api addresses key in etcd: %v", err)
