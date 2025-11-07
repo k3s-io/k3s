@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   packages: read
+  id-token: write
 
 jobs:
   build-amd64:
@@ -42,6 +43,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Read registry secrets (staging)
+        uses: rancher-eio/read-vault-secrets@main
+        if: ${{ github.event.release.prerelease && github.repository_owner == 'k3s-io' }}
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | REGISTRY ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials username | REGISTRY_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials password | REGISTRY_PASSWORD
+
+      - name: Read registry secrets (prime)
+        uses: rancher-eio/read-vault-secrets@main
+        if: ${{ ! github.event.release.prerelease && github.repository_owner == 'k3s-io' }}
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials username | REGISTRY_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials password | REGISTRY_PASSWORD
+
       - name: "Read Vault secrets"
         if: github.repository_owner == 'k3s-io'
         uses: rancher-eio/read-vault-secrets@main
@@ -64,6 +83,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Login to Prime Registry
+        if: github.repository_owner == 'k3s-io'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -105,11 +132,12 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
             docker.io/${{ env.DOCKERHUB_ORG }}/k3s
+            ${{ env.REGISTRY }}/rancher/k3s
           flavor: latest=false
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
       - name: "Download K3s build"
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -145,6 +173,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Read Prime artifacts secrets
+        uses: rancher-eio/read-vault-secrets@main
+        with:
+          secrets: |
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
+            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
+
+      - name: Configure AWS Credentials (s3)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -160,7 +203,7 @@ jobs:
         run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
 
       - name: Upload Airgap sha256sum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: k3s-airgap-images-${{ matrix.arch }}.sha256sum
           path: dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
@@ -184,6 +227,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Assets
+        env:
+          S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
+        run: |
+          aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s-images.txt" --include "k3s-airgap-images*"
+
   upload-release-assets:
     name: Prepare and Upload Release Assets
     permissions: 
@@ -194,8 +243,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
 
+    - name: Read Prime artifacts secrets
+      uses: rancher-eio/read-vault-secrets@main
+      with:
+        secrets: |
+          secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
+          secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
+          secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
+
+    - name: Configure AWS Credentials (s3)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
     - name: "Download Binaries and Airgap sha256sum"
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         pattern: k3s*
         path: ./dist/artifacts
@@ -224,6 +288,12 @@ jobs:
           dist/artifacts/sha256sum*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Assets
+      env:
+        S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
+      run: |
+        aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s*" --include "sha256sum*"
 
   dispatch-k3s-upgrade:
     name: Dispatch k3s-upgrade Workflow
