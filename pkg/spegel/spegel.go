@@ -182,7 +182,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	storeOpts := []oci.ContainerdOption{
 		oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content")),
 	}
-	ociStore, err := oci.NewContainerd(ctx, nodeConfig.Containerd.Address, registryNamespace, storeOpts...)
+	ociStore, err := NewDeferredContainerd(ctx, nodeConfig.Containerd.Address, registryNamespace, storeOpts...)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create OCI store")
 	}
@@ -270,9 +270,13 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 
 	// Track images available in containerd and publish via p2p router
 	go func() {
+		defer ociStore.Close()
 		<-criReadyChan
 		for {
 			logrus.Debug("Starting embedded registry image state tracker")
+			if err := ociStore.Start(); err != nil {
+				logrus.Errorf("Failed to start deferred OCI store: %v", err)
+			}
 			err := state.Track(ctx, ociStore, c.router, trackerOpts...)
 			if err != nil && errors.Is(err, context.Canceled) {
 				return
