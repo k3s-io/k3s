@@ -2,6 +2,8 @@ package spegel
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,12 +12,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/k3s-io/k3s/pkg/agent/https"
-	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util/logger"
@@ -94,8 +96,8 @@ type Config struct {
 
 // These values are not currently configurable
 const (
-	resolveRetries    = 0
-	resolveTimeout    = time.Second * 5
+	resolveRetries    = 3
+	resolveTimeout    = time.Millisecond * 20
 	registryNamespace = "k8s.io"
 	defaultRouterPort = "5001"
 )
@@ -130,6 +132,18 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		return nil
 	}
 
+	filters := []oci.Filter{}
+	regFilter, err := oci.FilterForMirroredRegistries(urls)
+	if err != nil {
+		return err
+	}
+	if regFilter != nil {
+		filters = append(filters, *regFilter)
+	}
+	if !resolveLatestTag {
+		filters = append(filters, oci.RegexFilter{Regex: regexp.MustCompile(`:latest$`)})
+	}
+
 	logrus.Infof("Starting distributed registry mirror at https://%s:%s/v2 for registries %v",
 		c.ExternalAddress, c.RegistryPort, registries)
 
@@ -142,8 +156,31 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	ipfslog.SetAllLoggers(level)
 
 	// Get containerd client
-	ociOpts := []oci.ContainerdOption{oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content"))}
-	ociStore, err := oci.NewContainerd(nodeConfig.Containerd.Address, registryNamespace, nodeConfig.Containerd.Registry, urls, ociOpts...)
+	caCert, err := os.ReadFile(c.ServerCAFile)
+	if err != nil {
+		return pkgerrors.WithMessage(err, "failed to read server CA")
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(caCert)
+
+	clientCert, err := tls.LoadX509KeyPair(c.ClientCertFile, c.ClientKeyFile)
+	if err != nil {
+		return err
+	}
+
+	clientOpts := []oci.ClientOption{
+		oci.WithTLS(certPool, []tls.Certificate{clientCert}),
+	}
+	ociClient, err := oci.NewClient(clientOpts...)
+	if err != nil {
+		return err
+	}
+
+	storeOpts := []oci.ContainerdOption{
+		oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content")),
+	}
+	ociStore, err := oci.NewContainerd(ctx, nodeConfig.Containerd.Address, registryNamespace, storeOpts...)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create OCI store")
 	}
@@ -206,17 +243,12 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	}
 	go router.Run(ctx)
 
-	caCert, err := os.ReadFile(c.ServerCAFile)
-	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to read server CA")
-	}
-	client := clientaccess.GetHTTPClient(caCert, c.ClientCertFile, c.ClientKeyFile)
 	metrics.Register()
 	registryOpts := []registry.RegistryOption{
-		registry.WithResolveLatestTag(resolveLatestTag),
+		registry.WithRegistryFilters(filters),
 		registry.WithResolveRetries(resolveRetries),
 		registry.WithResolveTimeout(resolveTimeout),
-		registry.WithTransport(client.Transport),
+		registry.WithOCIClient(ociClient),
 	}
 	reg, err := registry.NewRegistry(ociStore, router, registryOpts...)
 	if err != nil {
@@ -228,7 +260,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	}
 
 	trackerOpts := []state.TrackerOption{
-		state.WithResolveLatestTag(resolveLatestTag),
+		state.WithRegistryFilters(filters),
 	}
 
 	// Track images available in containerd and publish via p2p router
