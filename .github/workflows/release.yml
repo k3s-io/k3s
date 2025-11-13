@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: 
       packages: write # Needed to push images to GHCR
+      id-token: write
     needs: [build-amd64, build-arm64, build-arm]
     steps:
       - name: Checkout code
@@ -165,6 +166,7 @@ jobs:
     runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
     permissions: 
       contents: write  # Needed to update release with assets
+      id-token: write
     strategy:
       matrix:
         arch: [amd64, arm64, arm]
@@ -237,6 +239,7 @@ jobs:
     name: Prepare and Upload Release Assets
     permissions: 
       contents: write # Needed to update release with assets
+      id-token: write
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64, build-arm, upload-release-airgap]
     steps:
