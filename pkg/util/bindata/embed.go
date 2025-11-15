@@ -3,7 +3,7 @@ package bindata
 import (
 	"embed"
 	"io/fs"
-	"path/filepath"
+	"path"
 	"sort"
 	"strings"
 )
@@ -16,7 +16,7 @@ type Bindata struct {
 }
 
 func (b Bindata) Asset(name string) ([]byte, error) {
-	return b.FS.ReadFile(filepath.Join(b.Prefix, name))
+	return b.FS.ReadFile(path.Join(b.Prefix, name))
 }
 
 func (b Bindata) AssetNames() []string {
