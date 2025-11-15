@@ -71,7 +71,6 @@ fi
 
 CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}
 
-GOOS=linux CC=gcc CXX=g++ "${GO}" generate
 LDFLAGS="
     -X github.com/k3s-io/k3s/pkg/version.Version=$VERSION
     -X github.com/k3s-io/k3s/pkg/version.GitCommit=${COMMIT:0:8}
