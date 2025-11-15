@@ -20,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/yl2chen/cidranger"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/client-go/kubernetes"
 )
@@ -73,6 +74,7 @@ var _ cidranger.RangerEntry = &tunnelEntry{}
 type tunnelEntry struct {
 	kubeletPort string
 	nodeName    string
+	podID       types.UID
 	cidr        net.IPNet
 }
 
@@ -148,11 +150,22 @@ func (t *TunnelServer) onChangePod(podName string, pod *v1.Pod) (*v1.Pod, error)
 			for _, ip := range pod.Status.PodIPs {
 				if cidr, err := util.IPStringToIPNet(ip.IP); err == nil {
 					if pod.DeletionTimestamp != nil {
-						logrus.Debugf("Tunnel server egress proxy removing Node %s Pod IP %v", nodeName, cidr)
-						t.cidrs.Remove(*cidr)
+						if nets, err := t.cidrs.ContainingNetworks(cidr.IP); err != nil && len(nets) > 0 {
+							if n, ok := nets[0].(*tunnelEntry); ok {
+								if n.podID == pod.UID {
+									// only remove when the latest owner pod is deleted, otherwise a Complete Pod (job) may cause deleting the n
+									logrus.Debugf("Tunnel server egress proxy removing Node %s Pod IP %v", nodeName, cidr)
+									t.cidrs.Remove(*cidr)
+								}
+							}
+						}
 					} else {
 						logrus.Debugf("Tunnel server egress proxy updating Node %s Pod IP %s", nodeName, cidr)
-						t.cidrs.Insert(&tunnelEntry{cidr: *cidr, nodeName: nodeName})
+						t.cidrs.Insert(&tunnelEntry{
+							cidr:     *cidr,
+							nodeName: nodeName,
+							podID:    pod.UID,
+						})
 					}
 				}
 			}
