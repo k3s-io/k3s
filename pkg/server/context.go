@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	k3scrds "github.com/k3s-io/api/pkg/crds"
@@ -102,7 +103,7 @@ func (c *Context) registerCRDs(ctx context.Context) error {
 	for _, list := range listers {
 		l, err := list()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get CRDs from %s: %v", util.GetFunctionName(list), err)
 		}
 		crds = append(crds, l...)
 	}
