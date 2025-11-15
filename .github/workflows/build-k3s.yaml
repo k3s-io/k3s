@@ -72,6 +72,7 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
+          GOOS=${{ inputs.os }}
         push: false
         provenance: mode=min
         outputs: type=local,dest=.
