@@ -262,8 +262,8 @@ github.com/MakeNowJust/heredoc v1.0.0 h1:cXCdzVdstXyiTqTvfqk9SDHpKNjxuom+DOlyEeQ
 github.com/MakeNowJust/heredoc v1.0.0/go.mod h1:mG5amYoWBHf8vpLOuehzbGGw0EHxpZZ6lCpQ4fNJ8LE=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/Microsoft/hcsshim v0.12.9 h1:2zJy5KA+l0loz1HzEGqyNnjd3fyZA31ZBCGKacp6lLg=
-github.com/Microsoft/hcsshim v0.12.9/go.mod h1:fJ0gkFAna6ukt0bLdKB8djt4XIJhF/vEPuoIWYVvZ8Y=
+github.com/Microsoft/hcsshim v0.13.0 h1:/BcXOiS6Qi7N9XqUcv27vkIuVOkBEcWstd2pMlWSeaA=
+github.com/Microsoft/hcsshim v0.13.0/go.mod h1:9KWJ/8DgU+QzYGupX4tzMhRQE8h6w90lH6HAaclpEok=
 github.com/NYTimes/gziphandler v1.1.1 h1:ZUDjpQae29j0ryrS0u/B8HZfJBtBQHjqw2rQ2cqUQ3I=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/Rican7/retry v0.3.1 h1:scY4IbO8swckzoA/11HgBwaZRJEyY9vaNJshcdhp1Mc=
@@ -809,8 +809,8 @@ github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfV
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
-github.com/k3s-io/api v0.1.3 h1:ltwDq5EGe+f72LpWWfYDRvn7KcyyPuubDE2y+JTMuqY=
-github.com/k3s-io/api v0.1.3/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
+github.com/k3s-io/api v0.1.4 h1:mnu1pgtEEwplvDHgjeyekbC96wykUWsq0E5ouJoRkM4=
+github.com/k3s-io/api v0.1.4/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
 github.com/k3s-io/cadvisor v0.51.0-k3s1 h1:g44OgQMVywt+UlcLOu7OW0H32h8XVkc0pm12EPn4bvo=
 github.com/k3s-io/cadvisor v0.51.0-k3s1/go.mod h1:WmF2AKcyCdI0ERO3oSvLnHmiMOjRvfd2iwvoPc6urHE=
 github.com/k3s-io/containerd/v2 v2.1.5-k3s1.32 h1:I+L9OXiWtW/Vx7Ojx4+RyrbBOv6soaCkGibcXRiunBE=
@@ -835,8 +835,8 @@ github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1 h1:sZIV+qFhbGPyOXRiIC6zjdGS00GPjeDo/
 github.com/k3s-io/etcd/raft/v3 v3.5.21-k3s1/go.mod h1:fmcuY5R2SNkklU4+fKVBQi2biVp5vafMrWUEj4TJ4Cs=
 github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1 h1:N7yuD8/WUf7oEOu4nlXbsoSTvF5yPMMOU2uc3WrJ/eM=
 github.com/k3s-io/etcd/server/v3 v3.5.21-k3s1/go.mod h1:G1mOzdwuzKT1VRL7SqRchli/qcFrtLBTAQ4lV20sXXo=
-github.com/k3s-io/helm-controller v0.16.16 h1:ysiQEaXdk67MF63+CGbIf2H6Xz7J/Ly0YbwXp8XivaI=
-github.com/k3s-io/helm-controller v0.16.16/go.mod h1:jmrgGttLQbh2yB1kcf9XFAigNW6U8oWCswCSuEjkxXU=
+github.com/k3s-io/helm-controller v0.16.17 h1:VXMmXQmmTB49x6bnN/PsJUTVKHb0r69b+SffIDUTMTM=
+github.com/k3s-io/helm-controller v0.16.17/go.mod h1:jmrgGttLQbh2yB1kcf9XFAigNW6U8oWCswCSuEjkxXU=
 github.com/k3s-io/kine v0.14.6-k3s1.31 h1:W2KLeTit3xpVaBxRDE/Vt/JvKmaKNMKIEqOlWmfOQME=
 github.com/k3s-io/kine v0.14.6-k3s1.31/go.mod h1:ASTPT/An64cRJ/FKn1U9r9scLLeacubtHCwcxmbNxVk=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
