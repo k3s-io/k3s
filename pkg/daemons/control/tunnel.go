@@ -151,12 +151,11 @@ func (t *TunnelServer) onChangePod(podName string, pod *v1.Pod) (*v1.Pod, error)
 				if cidr, err := util.IPStringToIPNet(ip.IP); err == nil {
 					if pod.DeletionTimestamp != nil {
 						if nets, err := t.cidrs.ContainingNetworks(cidr.IP); err != nil && len(nets) > 0 {
-							if n, ok := nets[0].(*tunnelEntry); ok {
-								if n.podID == pod.UID {
-									// only remove when the latest owner pod is deleted, otherwise a Complete Pod (job) may cause deleting the n
-									logrus.Debugf("Tunnel server egress proxy removing Node %s Pod IP %v", nodeName, cidr)
-									t.cidrs.Remove(*cidr)
-								}
+							if n, ok := nets[0].(*tunnelEntry); ok && n.podID == pod.UID {
+								// only remove entry when the matching pod is deleted; some CNIs allow
+								// IP reuse and the entry may have been replaced by a newer pod.
+								logrus.Debugf("Tunnel server egress proxy removing Node %s Pod IP %v", nodeName, cidr)
+								t.cidrs.Remove(*cidr)
 							}
 						}
 					} else {
