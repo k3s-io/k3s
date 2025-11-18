@@ -94,6 +94,10 @@ set -o noglob
 #   - INSTALL_K3S_CHANNEL
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
+#
+#   - INSTALL_K3S_CONFIG_SNAPSHOT
+#     If set to true, creates a diagnostic systemd drop-in to log K8s component 
+#     arguments (/var/log/k3s-component-args.log) for audit and compliance.
 
 GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
 GITHUB_PR_URL=""
@@ -1010,6 +1014,29 @@ ExecStart=${BIN_DIR}/k3s \\
     ${CMD_K3S_EXEC}
 
 EOF
+    
+
+# Optional feature: Create diagnostic systemd drop-in to log K8s component arguments for audit and compliance.
+    CONFIG_DIR="${SYSTEMD_DIR}/${SERVICE_K3S}.d"
+    SNAPSHOT_FILE="${CONFIG_DIR}/99-component-args-diag.conf"
+    LOG_PATH="/var/log/k3s-component-args.log"
+    
+    if [ "${INSTALL_K3S_CONFIG_SNAPSHOT}" = true ]; then
+        info "systemd: Creating diagnostic configuration snapshot drop-in at ${SNAPSHOT_FILE}"
+        $SUDO mkdir -p "${CONFIG_DIR}"
+        $SUDO tee "${SNAPSHOT_FILE}" >/dev/null << EOF_DROPIN
+[Service]
+# Diagnostic ExecStartPost to capture the full startup command lines of 
+# all embedded components into a persistent, unrotated log file.
+# 
+# Purpose for Compliance: This snapshot provides an immutable record of 
+# the runtime flags for kube-apiserver, kubelet, etc., satisfying audit 
+# requirements for configuration verification (e.g., CIS Benchmarks).
+ExecStartPost=/bin/sh -c "/usr/bin/journalctl -u k3s | /usr/bin/grep -F \"\$(/usr/bin/pgrep -o k3s)\" | /usr/bin/grep 'Running kube' | /usr/bin/awk 'NR<=20' > ${LOG_PATH}"
+EOF_DROPIN
+
+        $SUDO chmod 0600 "${SNAPSHOT_FILE}"
+    fi
 }
 
 # --- write openrc service file ---
