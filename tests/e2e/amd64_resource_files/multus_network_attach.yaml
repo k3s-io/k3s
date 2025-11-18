@@ -7,7 +7,7 @@ spec:
     {
       "cniVersion": "1.0.0",
       "type": "macvlan",
-      "master": "eth2",
+      "master": "eth1",
       "mode": "bridge",
       "ipam": {
         "type": "whereabouts",

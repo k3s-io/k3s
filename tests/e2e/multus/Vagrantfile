@@ -18,8 +18,8 @@ def provision(vm, role, role_num, node_num)
   node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
   vm.network "private_network", :ip => node_ip4, :netmask => "255.255.255.0"
   #2nd interface to be used by multus
-  multus_ip4 = "#{MULTUS_PREFIX}.#{100+node_num}"
-  vm.network "private_network", ip:multus_ip4, netmask: "255.255.255.0"
+  # multus_ip4 = "#{MULTUS_PREFIX}.#{100+node_num}"
+  # vm.network "private_network", ip:multus_ip4, netmask: "255.255.255.0"
   
   scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
   vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
@@ -59,8 +59,8 @@ def provision(vm, role, role_num, node_num)
   end
   # Make sure cluster traffic cannot flow via eth1 
   vm.provision "Disable forwarding", type: "shell", inline: "sysctl -w net.ipv4.conf.eth1.forwarding=0"
-  # Make sure cluster traffic cannot flow via eth1 
-  vm.provision "Disable forwarding", type: "shell", inline: "sysctl -w net.ipv4.conf.eth2.forwarding=0"
+  # # Make sure cluster traffic cannot flow via eth1 
+  # vm.provision "Disable forwarding", type: "shell", inline: "sysctl -w net.ipv4.conf.eth2.forwarding=0"
 end
 
 Vagrant.configure("2") do |config|

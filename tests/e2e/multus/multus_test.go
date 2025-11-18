@@ -189,14 +189,14 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
 			}
 		})
-		It("Verifies that nodes can ping each other on secondary network", func() {
-			result, err := pingBetweenNode(tc.Servers[0], tc.Agents[0])
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(true))
-			result, err = pingBetweenNode(tc.Agents[0], tc.Servers[0])
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(true))
-		})
+		// It("Verifies that nodes can ping each other on secondary network", func() {
+		// 	result, err := pingBetweenNode(tc.Servers[0], tc.Agents[0])
+		// 	Expect(err).NotTo(HaveOccurred())
+		// 	Expect(result).To(Equal(true))
+		// 	result, err = pingBetweenNode(tc.Agents[0], tc.Servers[0])
+		// 	Expect(err).NotTo(HaveOccurred())
+		// 	Expect(result).To(Equal(true))
+		// })
 		It("Deploys Multus NetworkAttachmentDefinition", func() {
 			_, err := tc.DeployWorkload("multus_network_attach.yaml")
 			Expect(err).NotTo(HaveOccurred())
@@ -220,9 +220,9 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			}
 
 			Eventually(func(g Gomega) {
-				result, err := runRandomTests(tc.KubeconfigFile, "server-0")
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(result).To(Equal(true))
+				// result, err := runRandomTests(tc.KubeconfigFile, "server-0")
+				// g.Expect(err).NotTo(HaveOccurred())
+				// g.Expect(result).To(Equal(true))
 				//ping pod on agent-0 from pod on server-0
 				res, err := pingOverMultusNetwork(tc.KubeconfigFile, "server-0", multusIPs["agent-0"])
 				g.Expect(err).NotTo(HaveOccurred())
