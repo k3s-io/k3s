@@ -352,7 +352,11 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 		defer wg.Done()
 		if executor.IsSelfHosted() {
 			// if the executor requires cri/kubelet to be up to run etcd, wait for container runtime
-			<-executor.CRIReadyChan()
+			select {
+			case <-executor.CRIReadyChan():
+			case <-ctx.Done():
+				return
+			}
 		}
 		wait.PollUntilContextCancel(ctx, time.Second*5, true, func(ctx context.Context) (bool, error) {
 			if err := e.Test(ctx, true); err == nil {
@@ -503,7 +507,11 @@ func (e *ETCD) Start(ctx context.Context, wg *sync.WaitGroup, clientAccessInfo *
 		defer wg.Done()
 		if executor.IsSelfHosted() {
 			// if the executor requires cri/kubelet to be up to run etcd, wait for container runtime
-			<-executor.CRIReadyChan()
+			select {
+			case <-executor.CRIReadyChan():
+			case <-ctx.Done():
+				return
+			}
 		}
 		// pollJoin blocks until the join is successful, or times out and initiates shutdown
 		e.pollJoin(ctx, wg, clientAccessInfo)
@@ -1217,7 +1225,11 @@ func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRe
 func (e *ETCD) manageLearners(ctx context.Context) {
 	if executor.IsSelfHosted() {
 		// if the executor requires cri/kubelet to be up to run etcd, wait for container runtime
-		<-executor.CRIReadyChan()
+		select {
+		case <-executor.CRIReadyChan():
+		case <-ctx.Done():
+			return
+		}
 	}
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
 		ctx, cancel := context.WithTimeout(ctx, manageTickerTime)
