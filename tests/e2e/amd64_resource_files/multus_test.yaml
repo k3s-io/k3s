@@ -1,0 +1,80 @@
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: macvlan-conf
+spec: 
+  config: '{
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "macvlan",
+          "capabilities": { "ips": true },
+          "master": "eth1",
+          "mode": "bridge",
+          "ipam": {
+            "type": "static",
+            "routes": [
+              {
+                "dst": "0.0.0.0/0",
+                "gw": "10.1.1.1"
+              }
+            ] 
+          }
+        }, {
+          "capabilities": { "mac": true },
+          "type": "tuning"
+        }
+      ]
+    }'
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: pod-macvlan
+  name: pod-macvlan
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[
+            { "name": "macvlan-conf",
+              "ips": [ "10.1.1.101/24" ],
+              "mac": "c2:b0:57:49:47:f1",
+              "gateway": [ "10.1.1.1" ]
+            }]'
+spec:
+  containers:
+  - image: rancher/mirrored-library-busybox:1.36.1
+    command:
+      - sleep
+      - infinity
+    imagePullPolicy: Always
+    name: busybox
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN","NET_RAW"]
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: pod2-macvlan
+  name: pod2-macvlan
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[
+            { "name": "macvlan-conf",
+              "ips": [ "10.1.1.102/24" ],
+              "mac": "c2:b0:57:45:47:f1",
+              "gateway": [ "10.1.1.1" ]
+            }]'
+spec:
+  containers:
+  - image: rancher/mirrored-library-busybox:1.36.1
+    command:
+      - sleep
+      - infinity
+    imagePullPolicy: Always
+    name: busybox
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN","NET_RAW"]
