@@ -127,6 +127,7 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if failed {
 		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
+		AddReportEntry("docker-containers", docker.ListContainers())
 		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
 	}
 	if config != nil && (*ci || !failed) {

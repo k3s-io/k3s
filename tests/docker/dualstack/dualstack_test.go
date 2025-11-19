@@ -148,6 +148,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 	AfterAll(func() {
 		if failed {
 			AddReportEntry("describe", docker.DescribeNodesAndPods(tc))
+			AddReportEntry("docker-containers", docker.ListContainers())
 			logLen := 100
 			if *ci {
 				logLen = 1000
