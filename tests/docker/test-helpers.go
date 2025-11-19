@@ -240,7 +240,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 		ipOutput, err := RunCommand(cmd)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get container IP address: %s: %v", ipOutput, err)
 		}
 		ip := strings.TrimSpace(ipOutput)
 
@@ -735,7 +735,18 @@ func DescribeNodesAndPods(config *TestConfig) string {
 	return out
 }
 
+func ListContainers() string {
+	o, err := RunCommand("docker container list --all --no-trunc")
+	if err != nil {
+		return fmt.Sprintf("** failed to list docker containers: %v **\n%s\n", err, o)
+	}
+	return fmt.Sprintf("** docker container list **\n%s\n", o)
+}
+
 func TailDockerLogs(lines int, nodes []DockerNode) string {
+	if len(nodes) == 0 {
+		return "** no nodes to read docker logs from **\n"
+	}
 	logs := &strings.Builder{}
 	for _, node := range nodes {
 		cmd := fmt.Sprintf("docker logs %s --tail=%d", node.Name, lines)
