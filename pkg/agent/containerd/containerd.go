@@ -3,6 +3,7 @@ package containerd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +13,9 @@ import (
 	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/pkg/labels"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/containerd/errdefs"
 	docker "github.com/distribution/reference"
@@ -23,6 +26,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/rancher/wrangler/v3/pkg/merr"
@@ -196,10 +201,10 @@ func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Clien
 	if err := retagImages(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
 		return pkgerrors.WithMessage(err, "failed to retag images")
 	}
-
-	for _, image := range images {
-		logrus.Infof("Imported %s", image.Name)
+	if err := labelContent(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
+		return pkgerrors.WithMessage(err, "failed to add source labels to layer content")
 	}
+
 	return nil
 }
 
@@ -275,34 +280,124 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 	for _, image := range images {
 		name, err := parseNamedTagged(image.Name)
 		if err != nil {
-			errs = append(errs, pkgerrors.WithMessage(err, "failed to parse tags for image "+image.Name))
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to parse tag for image "+image.Name))
 			continue
 		}
+		logrus.Infof("Imported %s", image.Name)
+		newNames := []string{fmt.Sprintf("%s@%s", name.Name(), image.Target.Digest)}
 		for _, registry := range registries {
-			newName := fmt.Sprintf("%s/%s:%s", registry, docker.Path(name), name.Tag())
-			if newName == image.Name {
+			newNames = append(newNames,
+				fmt.Sprintf("%s/%s:%s", registry, docker.Path(name), name.Tag()),
+				fmt.Sprintf("%s/%s@%s", registry, docker.Path(name), image.Target.Digest),
+			)
+		}
+		for _, name := range newNames {
+			if name == image.Name {
 				continue
 			}
-			image.Name = newName
-			if _, err = imageService.Create(ctx, image); err != nil {
-				if errdefs.IsAlreadyExists(err) {
-					if err = imageService.Delete(ctx, image.Name); err != nil {
-						errs = append(errs, pkgerrors.WithMessage(err, "failed to delete existing image "+image.Name))
-						continue
-					}
-					if _, err = imageService.Create(ctx, image); err != nil {
-						errs = append(errs, pkgerrors.WithMessage(err, "failed to tag after deleting existing image "+image.Name))
-						continue
-					}
-				} else {
-					errs = append(errs, pkgerrors.WithMessage(err, "failed to tag image "+image.Name))
-					continue
-				}
+			if err := forceCreateTag(ctx, imageService, image, name); err != nil {
+				errs = append(errs, err)
+			} else {
+				logrus.Infof("Tagged %s", name)
 			}
-			logrus.Infof("Tagged %s", image.Name)
 		}
 	}
 	return merr.NewErrors(errs...)
+}
+
+// forceCreateTag retags an image with the provided reference.
+func forceCreateTag(ctx context.Context, imageService images.Store, image images.Image, targetRef string) error {
+	image.Name = targetRef
+	if _, err := imageService.Create(ctx, image); err != nil {
+		if errdefs.IsAlreadyExists(err) {
+			if err = imageService.Delete(ctx, image.Name); err != nil {
+				return pkgerrors.WithMessage(err, "failed to delete existing image "+image.Name)
+			}
+			if _, err = imageService.Create(ctx, image); err != nil {
+				return pkgerrors.WithMessage(err, "failed to tag after deleting existing image "+image.Name)
+			}
+		} else {
+			return pkgerrors.WithMessage(err, "failed to tag image "+image.Name)
+		}
+	}
+	return nil
+}
+
+// labelContent adds distribution source labels to layer content.
+// This is required for spegel to properly filter content from images that are
+// imported instead of being directly pulled.
+func labelContent(ctx context.Context, client *containerd.Client, images []images.Image, registries []string) error {
+	var errs []error
+	contentStore := client.ContentStore()
+	for _, image := range images {
+		name, err := parseNamedTagged(image.Name)
+		if err != nil {
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to parse tags for image "+image.Name))
+			continue
+		}
+		registries := append(registries, docker.Domain(name))
+		digests, err := getDigests(ctx, contentStore, image.Target)
+		if err != nil {
+			errs = append(errs, pkgerrors.WithMessage(err, "failed to get content digests for image "+image.Name))
+			continue
+		}
+		for _, digest := range digests {
+			info := content.Info{
+				Digest: digest,
+				Labels: map[string]string{},
+			}
+			paths := []string{}
+			for _, registry := range registries {
+				paths = append(paths, "labels."+labels.LabelDistributionSource+"."+registry)
+				info.Labels[labels.LabelDistributionSource+"."+registry] = docker.Path(name)
+			}
+
+			if _, err := contentStore.Update(ctx, info, paths...); err != nil {
+				if !errdefs.IsNotFound(err) {
+					errs = append(errs, pkgerrors.WithMessage(err, "failed to add source labels to content with digest "+digest.String()))
+				}
+				continue
+			}
+		}
+	}
+	return merr.NewErrors(errs...)
+}
+
+// getDigests returns layer and config digests for the provided descriptor
+func getDigests(ctx context.Context, store content.InfoReaderProvider, desc ocispec.Descriptor) ([]digest.Digest, error) {
+	b, err := content.ReadBlob(ctx, store, desc)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	digests := []digest.Digest{desc.Digest}
+	if images.IsManifestType(desc.MediaType) {
+		var manifest ocispec.Manifest
+		if err := json.Unmarshal(b, &manifest); err != nil {
+			return nil, err
+		}
+
+		digests = append(digests, manifest.Config.Digest)
+		for i := range manifest.Layers {
+			digests = append(digests, manifest.Layers[i].Digest)
+		}
+	} else if images.IsIndexType(desc.MediaType) {
+		var idx ocispec.Index
+		if err := json.Unmarshal(b, &idx); err != nil {
+			return nil, err
+		}
+
+		for i := range idx.Manifests {
+			dgs, err := getDigests(ctx, store, idx.Manifests[i])
+			if err != nil {
+				return nil, err
+			}
+			digests = append(digests, dgs...)
+		}
+	}
+	return digests, nil
 }
 
 // parseNamedTagged parses and normalizes an image name, and converts the resulting reference
