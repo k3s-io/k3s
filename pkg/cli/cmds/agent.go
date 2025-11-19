@@ -150,10 +150,10 @@ var (
 		Value:       "/etc/rancher/" + version.Program + "/registries.yaml",
 	}
 	AirgapExtraRegistryFlag = &cli.StringSliceFlag{
-		Name:   "airgap-extra-registry",
-		Usage:  "(agent/runtime) Additional registry to tag airgap images as being sourced from",
-		Value:  &AgentConfig.AirgapExtraRegistry,
-		Hidden: true,
+		Name:        "airgap-extra-registry",
+		Usage:       "(agent/runtime) Additional registry to tag airgap images as being sourced from",
+		Destination: &AgentConfig.AirgapExtraRegistry,
+		Hidden:      true,
 	}
 	PauseImageFlag = &cli.StringFlag{
 		Name:        "pause-image",
