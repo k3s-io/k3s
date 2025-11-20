@@ -129,5 +129,5 @@ data:
     spec:
       containers:
       - name: helper-pod
-        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.36.1"
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-library-busybox:1.37.0"
         imagePullPolicy: IfNotPresent
