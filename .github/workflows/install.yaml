@@ -56,6 +56,10 @@ jobs:
         with:
           name: k3s-amd64
           path: tests/install/${{ matrix.vm }}
+      - name: Remove Unnecessary Tools
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/share/boost
+          df -khl
       - name: "Vagrant Up"
         run: vagrant up --no-tty --no-provision
       - name: "Upload k3s binary to VM"
