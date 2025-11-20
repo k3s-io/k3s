@@ -411,6 +411,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 var failed bool
 var _ = AfterEach(func() {
 	failed = failed || CurrentSpecReport().Failed()
+	out, err := e2e.RunCommand("free -h; df -khl; mpstat 2 1; virt-top -b -n 1; docker ps --no-trunc --all")
+	Expect(err).NotTo(HaveOccurred(), "failed to collect stats: %s: %v", out, err)
+	fmt.Println("** system usage statistics**\n" + out)
 })
 
 var _ = AfterSuite(func() {

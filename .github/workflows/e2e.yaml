@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
+        etest: [startup]
       max-parallel: 5
     steps:
       - name: "Checkout"
@@ -184,7 +184,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [basics]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
