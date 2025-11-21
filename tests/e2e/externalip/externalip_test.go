@@ -96,10 +96,12 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			}
 		})
 		It("Verifies that each pod has vagrant IP or clusterCIDR IP", func() {
-			podIPs, err := e2e.GetPodIPs(tc.KubeconfigFile)
+			pods, err := tests.ParsePods(tc.KubeconfigFile, "kube-system")
 			Expect(err).NotTo(HaveOccurred())
-			for _, pod := range podIPs {
-				Expect(pod.IPv4).Should(Or(ContainSubstring("10.10."), ContainSubstring("10.42.")), pod.Name)
+			for _, pod := range pods {
+				podIPs, err := tests.GetPodIPs(pod.Name, pod.Namespace, tc.KubeconfigFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(podIPs).Should(ContainElement(Or(ContainSubstring("10.10."), ContainSubstring("10.42."))), pod.Name)
 			}
 		})
 		It("Verifies that flannel added the correct annotation for the external-ip", func() {

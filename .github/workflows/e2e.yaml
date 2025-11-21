@@ -57,7 +57,11 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v5
         with: {fetch-depth: 1}
-      
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          version: type=image,tag=28
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: Vagrant R/W Cache
@@ -87,7 +91,24 @@ jobs:
         with:
           name: k3s-amd64
           path: ./dist/artifacts
-      
+      - name: Remove Unnecessary Tools
+        run: |
+          sudo rm -rf \
+            /home/linuxbrew \
+            /home/packer \
+            /opt/az \
+            /opt/microsoft \
+            /usr/lib/firefox \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/julia* \
+            /usr/local/share/boost \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/az* \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+          df -khl
       - name: Run ${{ matrix.etest }} Test
         env:
           E2E_GOCOVER: "true"
@@ -163,10 +184,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
+            arch: arm64
+          - dtest: dualstack
             arch: arm64
           - dtest: secretsencryption
             arch: arm64
@@ -185,6 +208,11 @@ jobs:
       with:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v4
+      with:
+        version: type=image,tag=28
+        daemon-config: '{"features":{"containerd-snapshotter":true}}'
     - name: Load and set K3s image
       run: |
         if [ ${{ matrix.arch }} = "arm64" ]; then
@@ -199,6 +227,24 @@ jobs:
       with:
         name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts
+    - name: Remove Unnecessary Tools
+      run: |
+        sudo rm -rf \
+          /home/linuxbrew \
+          /home/packer \
+          /opt/az \
+          /opt/microsoft \
+          /usr/lib/firefox \
+          /usr/lib/google-cloud-sdk \
+          /usr/local/julia* \
+          /usr/local/share/boost \
+          /usr/local/share/chromium \
+          /usr/local/share/powershell \
+          /usr/share/az* \
+          /usr/share/dotnet \
+          /usr/share/miniconda \
+          /usr/share/swift
+        df -khl
     - name: Run ${{ matrix.dtest }} Test
       # Put the compiled test binary back in the same place as the test source
       run: |
@@ -207,7 +253,7 @@ jobs:
         cd ./tests/docker/${{ matrix.dtest }}
         
         # These tests use rancher/systemd-node and have different flags.
-        CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        CI_TESTS="autoimport dualstack hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then

@@ -90,11 +90,13 @@ type Config struct {
 
 	// HandlerFunc will be called to add the registry API handler to an existing router.
 	Router https.RouterFunc
+
+	router *routing.P2PRouter
 }
 
 // These values are not currently configurable
 const (
-	resolveRetries    = 0
+	resolveRetries    = 3
 	resolveTimeout    = time.Second * 5
 	registryNamespace = "k8s.io"
 	defaultRouterPort = "5001"
@@ -200,11 +202,11 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		libp2p.Peerstore(ps),
 		libp2p.PrivateNetwork(c.PSK),
 	)
-	router, err := routing.NewP2PRouter(ctx, routerAddr, c.Bootstrapper, c.RegistryPort, opts)
+	c.router, err = routing.NewP2PRouter(ctx, routerAddr, NewNotSelfBootstrapper(c.Bootstrapper), c.RegistryPort, opts)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create P2P router")
 	}
-	go router.Run(ctx)
+	go c.router.Run(ctx)
 
 	caCert, err := os.ReadFile(c.ServerCAFile)
 	if err != nil {
@@ -218,7 +220,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		registry.WithResolveTimeout(resolveTimeout),
 		registry.WithTransport(client.Transport),
 	}
-	reg, err := registry.NewRegistry(ociStore, router, registryOpts...)
+	reg, err := registry.NewRegistry(ociStore, c.router, registryOpts...)
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create embedded registry")
 	}
@@ -236,7 +238,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		<-criReadyChan
 		for {
 			logrus.Debug("Starting embedded registry image state tracker")
-			err := state.Track(ctx, ociStore, router, trackerOpts...)
+			err := state.Track(ctx, ociStore, c.router, trackerOpts...)
 			if err != nil && errors.Is(err, context.Canceled) {
 				return
 			}
@@ -254,15 +256,21 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	sRouter.Use(auth.MaxInFlight(maxNonMutatingPeerInfoRequests, maxMutatingPeerInfoRequests))
 	sRouter.Handle("", c.peerInfo())
 
-	// Wait up to 5 seconds for the p2p network to find peers. This will return
-	// immediately if the node is bootstrapping from itself.
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(_ context.Context) (bool, error) {
-		ready, _ := router.Ready(ctx)
+	// Wait up to 5 seconds for the p2p network to find peers.
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(ctx context.Context) (bool, error) {
+		ready, _ := c.router.Ready(ctx)
 		return ready, nil
 	}); err != nil {
-		logrus.Warnf("Failed to wait for P2P mesh to become ready, will retry in the background: %v", err)
+		logrus.Warn("Failed to wait for distributed registry to become ready, will retry in the background")
 	}
 	return nil
+}
+
+func (c *Config) Ready(ctx context.Context) (bool, error) {
+	if c.router == nil {
+		return false, nil
+	}
+	return c.router.Ready(ctx)
 }
 
 // peerInfo sends a peer address retrieved from the bootstrapper via HTTP
