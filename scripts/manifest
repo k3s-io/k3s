@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ -z "${DRONE_TAG}" ]; then
-  echo "DRONE_TAG not defined" >&2
+if [ -z "${TAG}" ]; then
+  echo "TAG not defined" >&2
   exit 1
 fi
 
@@ -10,7 +10,7 @@ set -e -x
 REPO="rancher/k3s"
 
 # docker can not contain '+' in the tag, so transform '+' to '-'
-DOCKER_TAG=$(echo "${DRONE_TAG}" | sed -e 's/+/-/g')
+DOCKER_TAG=$(echo "${TAG}" | sed -e 's/+/-/g')
 
 # export variables for drone-manifest
 export PLUGIN_TEMPLATE="${REPO}:${DOCKER_TAG}-ARCH"
@@ -20,7 +20,7 @@ export PLUGIN_PLATFORMS="linux/amd64,linux/arm64,linux/arm"
 PLUGIN_TARGET="${REPO}:${DOCKER_TAG}" drone-manifest
 
 # do not tag in docker as latest if the github tag contains a '-'
-if echo "${DRONE_TAG}" | grep -q '-'; then
+if echo "${TAG}" | grep -q '-'; then
   exit 0
 fi
 
@@ -34,7 +34,7 @@ version_ge() {
 }
 
 # do not tag in docker as latest if we are not greater than or equal to the latest github tag
-if ! version_ge "${DRONE_TAG}" "${VERSION_K3S}"; then
+if ! version_ge "${TAG}" "${VERSION_K3S}"; then
   exit 0
 fi
 
