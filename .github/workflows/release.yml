@@ -165,7 +165,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            DRONE_TAG=${{ github.ref_name }}
+            TAG=${{ github.ref_name }}
 
   upload-release-airgap:
     name: Build Airgap Pkg (${{ matrix.arch }})
