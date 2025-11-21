@@ -42,6 +42,12 @@ jobs:
       with:
         cache-image: false
 
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v4
+      with:
+        version: type=image,tag=28
+        daemon-config: '{"features":{"containerd-snapshotter":true}}'
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -72,6 +78,7 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
+          GOOS=${{ inputs.os }}
         push: false
         provenance: mode=min
         outputs: type=local,dest=.
