@@ -20,7 +20,7 @@ replace (
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.3
-	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.1
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.13.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common => github.com/prometheus/common v0.62.0
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.4.0-k3s3
