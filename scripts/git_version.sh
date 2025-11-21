@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GIT_TAG=$DRONE_TAG
+GIT_TAG=$TAG
 TREE_STATE=clean
-COMMIT=$DRONE_COMMIT
+COMMIT=$GITHUB_SHA
 
 if [ -d .git ]; then
     if [ -z "$GIT_TAG" ]; then
