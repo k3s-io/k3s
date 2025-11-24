@@ -49,7 +49,7 @@ jobs:
       max-parallel: 3
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 1
     - name: Install Go
@@ -96,7 +96,7 @@ jobs:
       GOCOVERDIR: "D:/tmp/k3scov"
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with: {fetch-depth: 1}
     - name: Install Go
       uses: ./.github/actions/setup-go

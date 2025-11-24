@@ -55,7 +55,7 @@ jobs:
       max-parallel: 5
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: {fetch-depth: 1}
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
@@ -147,7 +147,7 @@ jobs:
       channel: ${{ steps.channel_step.outputs.channel }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Build Go Tests
@@ -202,7 +202,7 @@ jobs:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: "Download K3s image"
       uses: actions/download-artifact@v6
       with:
