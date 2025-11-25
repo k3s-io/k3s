@@ -273,26 +273,50 @@ SUDO=
 [ $(id -u) -ne 0 ] && SUDO=sudo
 
 check_firewall_ports() {
-  ports="6443 10250 5001 2379 2380"
-  blocked_ports=""
+  fw_prog="$1"
+  tcp_ports="6443 10250 5001 2379 2380"
+  udp_ports="8472 51820 51821"
+  blocked_tcp_ports=""
+  blocked_udp_ports=""
+  open_ports=""
 
-  for port in $ports; do
-    if [ "$1" = "firewalld" ]; then
-      if $SUDO firewall-cmd --list-ports | grep -q "$port/tcp"; then
-        blocked_ports="$blocked_ports $port "
-      fi
-    elif [ "$1" = "ufw" ]; then
-      if $SUDO ufw status | grep -q "$port/tcp\s\+DENY"; then
-        blocked_ports="$blocked_ports $port "
-      fi
+  # returns 0 if port is blocked
+  is_blocked() {
+    local port=$1 proto=$2
+    if [ "$fw_prog" = "firewalld" ]; then
+      ! $SUDO firewall-cmd --list-ports | grep -q "$port/$proto"
+    elif [ "$fw_prog" = "ufw" ]; then
+      $SUDO ufw status | grep -q "$port/$proto\s\+DENY"
+    else
+      warning "unknown firewall program: $fw_prog"
+      return 1
+    fi
+  }
+  
+  for port in $tcp_ports; do
+    if is_blocked "$port" "tcp"; then
+      blocked_tcp_ports="$blocked_tcp_ports $port "
+    else
+      open_ports="$open_ports $port "
+    fi
+  done
+  for port in $udp_ports; do
+    if is_blocked "$port" "udp"; then
+      blocked_udp_ports="$blocked_udp_ports $port "
+    else
+      open_ports="$open_ports $port "
     fi
   done
   
-  if [ -n "$blocked_ports" ]; then
-    for port in $blocked_ports; do
-      wrap_bad "  - Port $port is blocked"
-    done
-  fi
+  for port in $blocked_tcp_ports; do
+    wrap_bad "  - Port $port is blocked"
+  done
+  for port in $blocked_udp_ports; do
+    wrap_warn "  - Port $port is blocked" "Required for Flannel VXLAN/WireGuard"
+  done
+  for port in $open_ports; do
+    wrap_good "  - Port $port is open" 'ok'
+  done
 }
 
 if check_command firewall-cmd; then
