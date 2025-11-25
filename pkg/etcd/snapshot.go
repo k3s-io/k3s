@@ -37,7 +37,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/util/retry"
@@ -872,25 +871,12 @@ func (e *ETCD) reconcileSnapshotData(ctx context.Context, res *managed.SnapshotR
 	}
 
 	// Update our Node object to note the timestamp of the snapshot storages that have been reconciled
-	patch := []map[string]string{
-		{
-			"op":    "add",
-			"value": now.Format(time.RFC3339),
-			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationLocalReconciled, "/", "~1"),
-		},
-	}
+	patch := util.NewPatchList().Add(now.Format(time.RFC3339), "metadata", "annotations", annotationLocalReconciled)
+	patcher := util.NewPatcher[*v1.Node](nodes)
 	if e.config.EtcdS3 != nil {
-		patch = append(patch, map[string]string{
-			"op":    "add",
-			"value": now.Format(time.RFC3339),
-			"path":  "/metadata/annotations/" + strings.ReplaceAll(annotationS3Reconciled, "/", "~1"),
-		})
+		patch.Add(now.Format(time.RFC3339), "metadata", "annotations", annotationS3Reconciled)
 	}
-	b, err := json.Marshal(patch)
-	if err != nil {
-		return err
-	}
-	_, err = nodes.Patch(nodeNames[0], types.JSONPatchType, b)
+	_, err = patcher.Patch(ctx, patch, nodeNames[0])
 	return err
 }
 
