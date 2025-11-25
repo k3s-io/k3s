@@ -104,6 +104,20 @@ func (mr *ExecutorMockRecorder) Bootstrap(ctx, nodeConfig, cfg any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Bootstrap", reflect.TypeOf((*Executor)(nil).Bootstrap), ctx, nodeConfig, cfg)
 }
 
+// CNI mocks base method.
+func (m *Executor) CNI(ctx context.Context, wg *sync.WaitGroup, node *config.Node) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CNI", ctx, wg, node)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CNI indicates an expected call of CNI.
+func (mr *ExecutorMockRecorder) CNI(ctx, wg, node any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CNI", reflect.TypeOf((*Executor)(nil).CNI), ctx, wg, node)
+}
+
 // CRI mocks base method.
 func (m *Executor) CRI(ctx context.Context, node *config.Node) error {
 	m.ctrl.T.Helper()
