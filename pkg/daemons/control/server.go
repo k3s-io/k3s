@@ -233,11 +233,7 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 		argsMap["advertise-address"] = cfg.AdvertiseIP
 	}
 	argsMap["secure-port"] = strconv.Itoa(cfg.APIServerPort)
-	if cfg.APIServerBindAddress == "" {
-		argsMap["bind-address"] = cfg.Loopback(false)
-	} else {
-		argsMap["bind-address"] = cfg.APIServerBindAddress
-	}
+	argsMap["bind-address"] = cfg.APIServerBindAddress
 	if cfg.EgressSelectorMode != config.EgressSelectorModeDisabled {
 		argsMap["enable-aggregator-routing"] = "true"
 		argsMap["egress-selector-config-file"] = runtime.EgressSelectorConfig
@@ -294,6 +290,10 @@ func defaults(config *config.Control) {
 		} else {
 			config.APIServerPort = 6444
 		}
+	}
+
+	if config.APIServerBindAddress == "" {
+		config.APIServerBindAddress = config.Loopback(false)
 	}
 
 	if config.DataDir == "" {
