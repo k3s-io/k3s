@@ -17,7 +17,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
-	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	"github.com/k3s-io/k3s/pkg/agent/syssetup"
 	"github.com/k3s-io/k3s/pkg/agent/tunnel"
@@ -199,8 +198,7 @@ func startCRI(ctx context.Context, nodeConfig *daemonconfig.Node) error {
 	}
 }
 
-// startNetwork updates the network annotations on the node, and starts flannel
-// and the kube-router netpol controller, if enabled.
+// startNetwork updates the network annotations on the node and starts the CNI
 func startNetwork(ctx context.Context, wg *sync.WaitGroup, nodeConfig *daemonconfig.Node) error {
 	// Use the kubelet kubeconfig to update annotations on the local node
 	kubeletClient, err := util.GetClientSet(nodeConfig.AgentConfig.KubeConfigKubelet)
@@ -212,19 +210,7 @@ func startNetwork(ctx context.Context, wg *sync.WaitGroup, nodeConfig *daemoncon
 		return err
 	}
 
-	if !nodeConfig.NoFlannel {
-		if err := flannel.Run(ctx, wg, nodeConfig); err != nil {
-			return err
-		}
-	}
-
-	if !nodeConfig.AgentConfig.DisableNPC {
-		if err := netpol.Run(ctx, wg, nodeConfig); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return executor.CNI(ctx, wg, nodeConfig)
 }
 
 // getConntrackConfig uses the kube-proxy code to parse the user-provided kube-proxy-arg values, and

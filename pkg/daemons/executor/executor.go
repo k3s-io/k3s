@@ -39,6 +39,7 @@ type Executor interface {
 	Containerd(ctx context.Context, node *daemonconfig.Node) error
 	Docker(ctx context.Context, node *daemonconfig.Node) error
 	CRI(ctx context.Context, node *daemonconfig.Node) error
+	CNI(ctx context.Context, wg *sync.WaitGroup, node *daemonconfig.Node) error
 	APIServerReadyChan() <-chan struct{}
 	ETCDReadyChan() <-chan struct{}
 	CRIReadyChan() <-chan struct{}
@@ -200,6 +201,10 @@ func Docker(ctx context.Context, config *daemonconfig.Node) error {
 
 func CRI(ctx context.Context, config *daemonconfig.Node) error {
 	return executor.CRI(ctx, config)
+}
+
+func CNI(ctx context.Context, wg *sync.WaitGroup, config *daemonconfig.Node) error {
+	return executor.CNI(ctx, wg, config)
 }
 
 func APIServerReadyChan() <-chan struct{} {
