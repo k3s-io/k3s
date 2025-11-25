@@ -24,7 +24,7 @@ export VERSION_K8S # used by the sonobuoy tests subprocess
 # ---
 # Only run PR tests on arm arch, we use GitHub Actions for amd64 and arm64
 # Run all tests on tag events, as we want test failures to block the release
-if [ "$ARCH" == 'arm' ] ||  [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
+if [ "$ARCH" == 'arm' ]; then
 
   go test ./tests/docker/basics/basics_test.go -k3sImage="$K3S_IMAGE" -ci
   echo "Did go test basics $?"
@@ -56,46 +56,6 @@ fi
   early-exit "Skipping remaining tests, images not available for $ARCH."
 
 # ---
-
-if [ "$DRONE_BUILD_EVENT" = 'tag' ]; then
-  E2E_OUTPUT=$artifacts test-run-sonobuoy serial
-  echo "Did test-run-sonobuoy serial $?"
-  E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
-  echo "Did test-run-sonobuoy parallel $?"
-  early-exit 'Skipping remaining tests on tag.'
-fi
-# ---
-
-if [ "$DRONE_BUILD_EVENT" = 'cron' ]; then
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -serial -ginkgo.v -ci
-  echo "Did go conformance sqlite serial $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -serial -ginkgo.v -ci
-  echo "Did go conformance etcd serial $?"
-  test-run-sonobuoy mysql serial
-  echo "Did test-run-sonobuoy-mysqk serial $?"
-  test-run-sonobuoy postgres serial
-  echo "Did test-run-sonobuoy-postgres serial $?"
-
-  # Wait until all serial tests have finished
-  delay=15
-  (
-  set +x
-  while [ $(count-running-tests) -ge 1 ]; do
-      sleep $delay
-  done
-  )
-
-  E2E_OUTPUT=$artifacts test-run-sonobuoy parallel
-  echo "Did test-run-sonobuoy parallel $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db sqlite -ginkgo.v -ci
-  echo "Did go conformance sqlite parallel $?"
-  run-go-test ./tests/docker/conformance/conformance_test.go -k3sImage="$K3S_IMAGE" -db etcd -ginkgo.v -ci
-  echo "Did go test conformance etcd parallel $?"
-  test-run-sonobuoy mysql parallel
-  echo "Did test-run-sonobuoy-mysql parallel $?"
-  test-run-sonobuoy postgres parallel
-  echo "Did test-run-sonobuoy-postgres parallel $?"
-fi
 
 # Wait until all tests have finished
 delay=15

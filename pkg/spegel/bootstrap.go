@@ -29,6 +29,7 @@ import (
 
 // explicit interface checks
 var _ routing.Bootstrapper = &selfBootstrapper{}
+var _ routing.Bootstrapper = &notSelfBootstrapper{}
 var _ routing.Bootstrapper = &agentBootstrapper{}
 var _ routing.Bootstrapper = &serverBootstrapper{}
 var _ routing.Bootstrapper = &chainingBootstrapper{}
@@ -52,6 +53,34 @@ func (s *selfBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 		return nil, errors.New("p2p peer not ready")
 	}
 	return []peer.AddrInfo{*s.id}, nil
+}
+
+type notSelfBootstrapper struct {
+	id *peer.AddrInfo
+	b  routing.Bootstrapper
+}
+
+// NewNotSelfBootstrapper wraps an existing bootstrapper,
+// and will never return a list of peers containing only itself.
+// This is best used to prevent the spegel router from considering
+// itself as "Ready" when it has no peers.
+func NewNotSelfBootstrapper(b routing.Bootstrapper) routing.Bootstrapper {
+	return &notSelfBootstrapper{
+		b: b,
+	}
+}
+
+func (ns *notSelfBootstrapper) Run(ctx context.Context, id peer.AddrInfo) error {
+	ns.id = &id
+	return ns.b.Run(ctx, id)
+}
+
+func (ns *notSelfBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
+	peers, err := ns.b.Get(ctx)
+	if err == nil && len(peers) == 1 && ns.id != nil && peers[0].ID == ns.id.ID {
+		return nil, nil
+	}
+	return peers, err
 }
 
 type agentBootstrapper struct {
@@ -165,7 +194,7 @@ func NewServerBootstrapper(controlConfig *config.Control) routing.Bootstrapper {
 	}
 }
 
-func (s *serverBootstrapper) Run(ctx context.Context, _ peer.AddrInfo) error {
+func (s *serverBootstrapper) Run(ctx context.Context, id peer.AddrInfo) error {
 	return waitForDone(ctx)
 }
 
