@@ -7,14 +7,13 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 
 func Test_DockerBootstrapToken(t *testing.T) {
 	flag.Parse()
@@ -27,7 +26,7 @@ var _ = Describe("Boostrap Token Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {
