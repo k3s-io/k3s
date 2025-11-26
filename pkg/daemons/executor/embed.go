@@ -255,6 +255,15 @@ func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 
 func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
 	if !cfg.NoFlannel {
+		if (cfg.FlannelExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
+			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
+		} else if (cfg.FlannelExternalIP) && (cfg.FlannelBackend != daemonconfig.FlannelBackendWireguardNative) {
+			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", cfg.FlannelBackend)
+		}
+		if err := flannel.Prepare(ctx, cfg); err != nil {
+			return err
+		}
+
 		if err := flannel.Run(ctx, wg, cfg); err != nil {
 			return err
 		}
