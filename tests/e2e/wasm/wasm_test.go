@@ -81,14 +81,14 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 		It("Wait for slight Pod to be up and running", func() {
 			Eventually(func() (string, error) {
 				cmd := "kubectl get pods -o=name -l app=wasm-slight --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "240s", "5s").Should(ContainSubstring("pod/wasm-slight"))
 		})
 
 		It("Wait for spin Pod to be up and running", func() {
 			Eventually(func() (string, error) {
 				cmd := "kubectl get pods -o=name -l app=wasm-spin --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("pod/wasm-spin"))
 		})
 
@@ -108,7 +108,7 @@ var _ = Describe("Verify K3s can run Wasm workloads", Ordered, func() {
 				cmd := "curl -m 5 -s -f -v " + url
 
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "120s", "5s").Should(ContainSubstring("200 OK"))
 			}
 		})
