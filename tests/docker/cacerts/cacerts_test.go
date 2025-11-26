@@ -10,14 +10,13 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 var testID string
 
 func Test_DockerCACerts(t *testing.T) {
@@ -36,7 +35,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 		// share it with the other containers that need the file.
 		It("should configure CA certs", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.MkdirAll(filepath.Join(config.TestDir, "pause"), 0755)).To(Succeed())
 
