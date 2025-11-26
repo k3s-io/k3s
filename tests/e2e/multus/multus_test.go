@@ -85,7 +85,7 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 		It("Verifies multus daemonset comes up", func() {
 			Eventually(func() (string, error) {
 				cmd := "kubectl get ds multus -n kube-system -o jsonpath='{.status.numberReady}' --kubeconfig=" + tc.KubeconfigFile
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("2"))
 		})
 		It("Deploys Multus NetworkAttachmentDefinition and test pods", func() {
@@ -96,7 +96,7 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 		It("Verifies internode connectivity over multus network", func() {
 			cmd := "kubectl exec pod-macvlan --kubeconfig=" + tc.KubeconfigFile + " -- ping -c 1 -w 2 10.1.1.102"
 			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("0% packet loss"), "failed cmd: "+cmd)
 		})
 	})

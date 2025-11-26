@@ -80,7 +80,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() (string, error) {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-				return docker.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("ds-clusterip-pod"))
 
 			// Checks both IPv4 and IPv6
@@ -100,7 +100,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 			_, err := tc.DeployWorkload("dualstack_ingress.yaml")
 			Expect(err).NotTo(HaveOccurred(), "Ingress manifest not deployed")
 			cmd := "kubectl get ingress ds-ingress --kubeconfig=" + tc.KubeconfigFile + " -o jsonpath=\"{.spec.rules[*].host}\""
-			hostName, err := docker.RunCommand(cmd)
+			hostName, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 			for _, node := range append(tc.Servers, tc.Agents...) {
 				ips, err := tests.GetNodeIPs(node.Name, tc.KubeconfigFile)
@@ -112,7 +112,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 					}
 					cmd := fmt.Sprintf("curl  --header host:%s http://%s/name.html", hostName, ip)
 					Eventually(func() (string, error) {
-						return docker.RunCommand(cmd)
+						return tests.RunCommand(cmd)
 					}, "10s", "2s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
 				}
 			}
@@ -122,7 +122,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 			_, err := tc.DeployWorkload("dualstack_nodeport.yaml")
 			Expect(err).NotTo(HaveOccurred())
 			cmd := "kubectl get service ds-nodeport-svc --kubeconfig=" + tc.KubeconfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
-			nodeport, err := docker.RunCommand(cmd)
+			nodeport, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 			for _, node := range append(tc.Servers, tc.Agents...) {
 				ips, err := tests.GetNodeIPs(node.Name, tc.KubeconfigFile)
@@ -134,7 +134,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 					}
 					cmd = "curl -L --insecure http://" + ip + ":" + nodeport + "/name.html"
 					Eventually(func() (string, error) {
-						return docker.RunCommand(cmd)
+						return tests.RunCommand(cmd)
 					}, "10s", "1s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
 				}
 			}

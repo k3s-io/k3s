@@ -97,7 +97,7 @@ func VerifyAirgapImages(config *tester.TestConfig) error {
 	// Collect all images from nodes
 	for _, node := range config.GetNodeNames() {
 		cmd := fmt.Sprintf("docker exec %s crictl images -o json | jq -r '.images[].repoTags[0] | select(. != null)'", node)
-		output, err := tester.RunCommand(cmd)
+		output, err := tests.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred(), "failed to execute crictl and jq: %v", err)
 
 		for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
