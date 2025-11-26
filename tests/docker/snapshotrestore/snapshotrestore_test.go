@@ -8,7 +8,6 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/utils/set"
@@ -17,7 +16,7 @@ import (
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
-var config *tester.TestConfig
+var config *docker.TestConfig
 var snapshotname string
 
 func Test_DockerSnapshotRestore(t *testing.T) {
@@ -31,7 +30,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = tester.NewTestConfig("rancher/systemd-node")
+			config, err = docker.NewTestConfig("rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())
