@@ -48,8 +48,6 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 		return node, nil
 	}
 
-	node = node.DeepCopy()
-
 	if removalRequested, ok := node.Annotations[removalAnnotation]; ok {
 		// removal requires node name and address annotations; fail if either are not found
 		name, ok := node.Annotations[NodeNameAnnotation]
@@ -62,15 +60,18 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 		}
 		lf := logrus.Fields{"name": name, "address": address}
 
+		patch := util.NewPatchList()
+		patcher := util.NewPatcher[*v1.Node](e.nodeController)
+
 		// Check to see if the node was previously removed from the cluster
 		if removed, ok := node.Annotations[removedNodeNameAnnotation]; ok {
 			if removed != name {
 				// If the current node name is not the same as the removed node name, clear the removal annotations,
 				// as this indicates that the node has been re-added with a new name.
 				logrus.WithFields(lf).Info("Resetting removed node flag as removed node name does not match current node name")
-				delete(node.Annotations, removedNodeNameAnnotation)
-				delete(node.Annotations, removalAnnotation)
-				return e.nodeController.Update(node)
+				patch.Remove("metadata", "annotations", removedNodeNameAnnotation)
+				patch.Remove("metadata", "annotations", removalAnnotation)
+				return patcher.Patch(e.ctx, patch, node.Name)
 			}
 			// Current node name matches removed node name; don't need to do anything
 			return node, nil
@@ -85,8 +86,8 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 				// the annotation again, once there are more cluster members.
 				if errors.Is(err, rpctypes.ErrMemberNotEnoughStarted) {
 					logrus.WithFields(lf).Errorf("etcd member removal rejected, clearing remove annotation: %v", err)
-					delete(node.Annotations, removalAnnotation)
-					return e.nodeController.Update(node)
+					patch.Remove("metadata", "annotations", removalAnnotation)
+					return patcher.Patch(e.ctx, patch, node.Name)
 				}
 				return node, err
 			}
@@ -94,11 +95,11 @@ func (e *etcdMemberHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
 			logrus.WithFields(lf).Info("etcd emember removed successfully")
 			// Set the removed node name annotation and delete the etcd name and address annotations.
 			// These will be re-set to their new value when the member rejoins the cluster.
-			node.Annotations[removedNodeNameAnnotation] = name
-			delete(node.Annotations, removalAnnotation)
-			delete(node.Annotations, NodeNameAnnotation)
-			delete(node.Annotations, NodeAddressAnnotation)
-			return e.nodeController.Update(node)
+			patch.Add(name, "metadata", "annotations", removedNodeNameAnnotation)
+			patch.Remove("metadata", "annotations", removalAnnotation)
+			patch.Remove("metadata", "annotations", NodeNameAnnotation)
+			patch.Remove("metadata", "annotations", NodeAddressAnnotation)
+			return patcher.Patch(e.ctx, patch, node.Name)
 		}
 		// In the event that we had an unexpected removal annotation value, simply return.
 		// Fallthrough to the non-op below.
