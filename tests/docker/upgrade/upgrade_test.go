@@ -94,18 +94,18 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 			By("Remove old servers and agents")
 			for _, server := range config.Servers {
 				cmd := fmt.Sprintf("docker stop %s", server.Name)
-				Expect(tester.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 				cmd = fmt.Sprintf("docker rm %s", server.Name)
-				Expect(tester.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 				fmt.Printf("Stopped %s\n", server.Name)
 			}
 			config.Servers = nil
 
 			for _, agent := range config.Agents {
 				cmd := fmt.Sprintf("docker stop %s", agent.Name)
-				Expect(tester.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 				cmd = fmt.Sprintf("docker rm %s", agent.Name)
-				Expect(tester.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 			}
 			config.Agents = nil
 
