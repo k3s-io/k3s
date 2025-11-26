@@ -77,22 +77,33 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
 
 	kubeConfig := nodeConfig.AgentConfig.KubeConfigKubelet
+	coreClient, err := util.GetClientSet(kubeConfig)
+	if err != nil {
+		return err
+	}
+
+	// use the kubelet kubeconfig to add node annotations, as the k3s-controller
+	// rbac does not allow create or update of nodes.
+	if err := setAnnotations(ctx, nodeConfig, coreClient); err != nil {
+		return pkgerrors.WithMessage(err, "flannel failed to set address annotations")
+	}
+
 	resourceAttrs := authorizationv1.ResourceAttributes{Verb: "list", Resource: "nodes"}
 
 	// Compatibility code for AuthorizeNodeWithSelectors feature-gate.
+	// Flannel needs to watch all nodes in the cluster, which the kubelet is not allowed to do on recent versions of Kubernetes.
 	// If the kubelet cannot list nodes, then wait for the k3s-controller RBAC to become ready, and use that kubeconfig instead.
 	if canListNodes, err := util.CheckRBAC(ctx, kubeConfig, resourceAttrs, ""); err != nil {
 		return pkgerrors.WithMessage(err, "failed to check if RBAC allows node list")
 	} else if !canListNodes {
 		kubeConfig = nodeConfig.AgentConfig.KubeConfigK3sController
+		coreClient, err = util.GetClientSet(kubeConfig)
+		if err != nil {
+			return err
+		}
 		if err := util.WaitForRBACReady(ctx, kubeConfig, util.DefaultAPIServerReadyTimeout, resourceAttrs, ""); err != nil {
 			return pkgerrors.WithMessage(err, "flannel failed to wait for RBAC")
 		}
-	}
-
-	coreClient, err := util.GetClientSet(kubeConfig)
-	if err != nil {
-		return err
 	}
 
 	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient); err != nil {
@@ -263,4 +274,21 @@ func findNetMode(cidrs []*net.IPNet) (netMode, error) {
 		}
 	}
 	return 0, errors.New("Failed checking netMode")
+}
+
+func setAnnotations(ctx context.Context, nodeConfig *config.Node, coreClient kubernetes.Interface) error {
+	patch := util.NewPatchList()
+	patcher := util.NewPatcher[*v1.Node](coreClient.CoreV1().Nodes())
+	if nodeConfig.AgentConfig.NodeExternalIP != "" && nodeConfig.FlannelExternalIP {
+		for _, ipAddress := range nodeConfig.AgentConfig.NodeExternalIPs {
+			if utilsnet.IsIPv4(ipAddress) {
+				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv4Annotation)
+			}
+			if utilsnet.IsIPv6(ipAddress) {
+				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv6Annotation)
+			}
+		}
+	}
+	_, err := patcher.Patch(ctx, patch, nodeConfig.AgentConfig.NodeName)
+	return err
 }
