@@ -49,8 +49,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed: "+res)
 
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + config.KubeconfigFile
-				res, err := tester.RunCommand(cmd)
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running"
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: %q result: %s", cmd, res)
 			}, "240s", "5s").Should(Succeed())
@@ -72,8 +72,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			res, err := config.DeployWorkload("nodeport.yaml")
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed: "+res)
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + config.KubeconfigFile
-				res, err := tester.RunCommand(cmd)
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running"
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 			}, "240s", "5s").Should(Succeed())
@@ -146,8 +146,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		})
 
 		It("Verifies that workload1 exists and workload2 does not", func() {
-			cmd := "kubectl get pods --kubeconfig=" + config.KubeconfigFile
-			res, err := tester.RunCommand(cmd)
+			cmd := "kubectl get pods"
+			res, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).Should(ContainSubstring("test-clusterip"))
 			Expect(res).ShouldNot(ContainSubstring("test-nodeport"))
@@ -178,7 +178,7 @@ func CheckNodeStatus(kubeconfigFile string, readyNodes, notReadyNodes []string) 
 	foundNotReadyNodes := make(set.Set[string], 0)
 
 	cmd := "kubectl get nodes --no-headers --kubeconfig=" + kubeconfigFile
-	res, err := tester.RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return err
 	}

@@ -107,14 +107,14 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			for _, externalIP := range lbSvcExternalIPs {
 				Eventually(func() (string, error) {
 					cmd := "curl -m 5 -s -f http://" + externalIP + ":81/ip"
-					return docker.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "25s", "5s").Should(ContainSubstring("10.42"))
 			}
 
 			// Verify connectivity to the external IP of the lbsvcExt service and the IP should not be the flannel interface IP
 			Eventually(func() (string, error) {
 				cmd := "curl -m 5 -s -f http://" + lbSvcExtExternalIPs[0] + ":82/ip"
-				return docker.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "25s", "5s").ShouldNot(ContainSubstring("10.42"))
 		})
 
@@ -128,7 +128,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Check that service exists
 			Eventually(func() (string, error) {
 				cmd := "kubectl get svc nginx-loadbalancer-svc-int -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + tc.KubeconfigFile
-				clusterIP, _ := docker.RunCommand(cmd)
+				clusterIP, _ := tests.RunCommand(cmd)
 				return clusterIP, nil
 			}, "25s", "5s").Should(ContainSubstring("10.43"))
 
@@ -185,7 +185,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			}
 
 			Eventually(func() (string, error) {
-				out, err := docker.RunCommand(workingCmd)
+				out, err := tests.RunCommand(workingCmd)
 				return out, err
 			}, "25s", "5s").Should(SatisfyAny(
 				ContainSubstring(clientPod1IP),
@@ -194,7 +194,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// Check the non working command fails because of internal traffic policy=local
 			Eventually(func() bool {
-				_, err := docker.RunCommand(nonWorkingCmd)
+				_, err := tests.RunCommand(nonWorkingCmd)
 				if err != nil && strings.Contains(err.Error(), "exit status") {
 					// Treat exit status as a successful condition
 					return true
@@ -206,7 +206,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			for _, pod := range []string{clientPod1, clientPod2} {
 				cmd := "kubectl exec " + "--kubeconfig=" + tc.KubeconfigFile + " " + pod + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc:81/ip"
 				Eventually(func() (string, error) {
-					return docker.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "20s", "5s").Should(SatisfyAny(
 					ContainSubstring(clientPod1IP),
 					ContainSubstring(clientPod2IP),
@@ -235,7 +235,7 @@ spec:
     k8s-app: nginx-app-loadbalancer-ext
 `
 			By("Removing the service nginx-loadbalancer-svc-ext")
-			_, err := docker.RunCommand("kubectl --kubeconfig=" + tc.KubeconfigFile + " delete svc nginx-loadbalancer-svc-ext")
+			_, err := tests.RunCommand("kubectl --kubeconfig=" + tc.KubeconfigFile + " delete svc nginx-loadbalancer-svc-ext")
 			Expect(err).NotTo(HaveOccurred(), "failed to remove service nginx-loadbalancer-svc-ext")
 
 			// Parse and execute the template with the node IP
@@ -259,12 +259,12 @@ spec:
 
 			By("Applying the new manifest")
 			applyCmd := fmt.Sprintf("kubectl apply --kubeconfig=%s -f %s", tc.KubeconfigFile, tmpFile.Name())
-			out, err := docker.RunCommand(applyCmd)
+			out, err := tests.RunCommand(applyCmd)
 			Expect(err).NotTo(HaveOccurred(), out)
 
 			Eventually(func() (string, error) {
 				cmd := "kubectl get svc nginx-loadbalancer-svc-ext-firewall -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + tc.KubeconfigFile
-				clusterIP, _ := docker.RunCommand(cmd)
+				clusterIP, _ := tests.RunCommand(cmd)
 				return clusterIP, nil
 			}, "25s", "5s").Should(ContainSubstring("10.43"))
 		})

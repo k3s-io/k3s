@@ -3,6 +3,8 @@ package tests
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +16,21 @@ import (
 
 // This file consolidates functions that are used across multiple testing frameworks.
 // Most of it relates to interacting with the Kubernetes API and checking the status of resources.
+
+func RunCommand(cmd string) (string, error) {
+	c := exec.Command("bash", "-c", cmd)
+	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
+	if kc, ok := os.LookupEnv("DOCKER_KUBECONFIG"); ok {
+		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
+	}
+	out, err := c.CombinedOutput()
+	if err != nil {
+		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
+	}
+	return string(out), err
+}
 
 // CheckDefaultDeployments checks if the standard array of K3s deployments are ready, otherwise returns an error
 func CheckDefaultDeployments(kubeconfigFile string) error {

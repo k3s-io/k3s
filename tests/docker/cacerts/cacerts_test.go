@@ -45,16 +45,16 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			tlsMount := fmt.Sprintf("--mount type=volume,src=%s,dst=/var/lib/rancher/k3s/server/tls", pauseName)
 			cmd := fmt.Sprintf("docker run -d --name %s --hostname %s %s rancher/mirrored-pause:3.6",
 				pauseName, pauseName, tlsMount)
-			_, err = tester.RunCommand(cmd)
+			_, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 
 			dataDir := filepath.Join(config.TestDir, "pause/k3s")
 			cmd = fmt.Sprintf("DATA_DIR=%s ../../../contrib/util/generate-custom-ca-certs.sh", dataDir)
-			_, err = tester.RunCommand(cmd)
+			_, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 
 			cmd = fmt.Sprintf("docker cp %s %s:/var/lib/rancher", dataDir, pauseName)
-			_, err = tester.RunCommand(cmd)
+			_, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Set SERVER_ARGS to include the custom CA certs
@@ -76,7 +76,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			// Example: Check if the custom CA certs are present in the server container
 			for _, server := range config.Servers {
 				cmd := fmt.Sprintf("docker exec %s ls /var/lib/rancher/k3s/server/tls", server.Name)
-				output, err := tester.RunCommand(cmd)
+				output, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred(), "failed to list custom CA certs: %v", err)
 				Expect(output).To(ContainSubstring("ca.crt"))
 			}
@@ -98,13 +98,13 @@ var _ = AfterSuite(func() {
 	if config != nil && !failed {
 		config.Cleanup()
 		cmd := fmt.Sprintf("docker stop k3s-pause-%s", testID)
-		_, err := tester.RunCommand(cmd)
+		_, err := tests.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
 		cmd = fmt.Sprintf("docker rm -v k3s-pause-%s", testID)
-		_, err = tester.RunCommand(cmd)
+		_, err = tests.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
 		cmd = fmt.Sprintf("docker volume rm k3s-pause-%s", testID)
-		_, err = tester.RunCommand(cmd)
+		_, err = tests.RunCommand(cmd)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
