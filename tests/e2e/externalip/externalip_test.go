@@ -27,7 +27,7 @@ var local = flag.Bool("local", false, "deploy a locally built K3s binary")
 // getLBServiceIPs returns the externalIP configured for flannel
 func getExternalIPs(kubeConfigFile string) ([]string, error) {
 	cmd := `kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.annotations.flannel\.alpha\.coreos\.com/public-ip-overwrite}'  --kubeconfig=` + kubeConfigFile
-	res, err := e2e.RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			for _, ip := range clientIPs {
 				cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "30s", "10s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
 			}
 		})
@@ -138,7 +138,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			cmd := "kubectl get svc -l k8s-app=nginx-app-loadbalancer -o=jsonpath='{range .items[*]}{.metadata.name}{.status.loadBalancer.ingress[*].ip}{end}'"
 			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("10.100.100"), "failed cmd: "+cmd)
 		})
 	})
