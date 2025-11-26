@@ -11,7 +11,6 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -21,7 +20,7 @@ import (
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 
 var numServers = 1
 var numAgents = 1
@@ -45,14 +44,14 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 				*channel = "latest"
 			}
 
-			latestVersion, err = tester.GetVersionFromChannel(*channel)
+			latestVersion, err = docker.GetVersionFromChannel(*channel)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latestVersion).To(ContainSubstring("v1."))
 			fmt.Println("Using latest version: ", latestVersion)
 		})
 		It("should setup environment", func() {
 			var err error
-			config, err = tester.NewTestConfig("rancher/k3s:" + latestVersion)
+			config, err = docker.NewTestConfig("rancher/k3s:" + latestVersion)
 			testID := filepath.Base(config.TestDir)
 			Expect(err).NotTo(HaveOccurred())
 			for i := 0; i < numServers; i++ {
@@ -119,9 +118,9 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should confirm commit version", func() {
 			for _, server := range config.Servers {
-				Expect(tester.VerifyValidVersion(server, "kubectl")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server, "ctr")).To(Succeed())
-				Expect(tester.VerifyValidVersion(server, "crictl")).To(Succeed())
+				Expect(docker.VerifyValidVersion(server, "kubectl")).To(Succeed())
+				Expect(docker.VerifyValidVersion(server, "ctr")).To(Succeed())
+				Expect(docker.VerifyValidVersion(server, "crictl")).To(Succeed())
 
 				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
