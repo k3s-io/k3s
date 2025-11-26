@@ -13,7 +13,6 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +21,7 @@ var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision cont
 var db = flag.String("db", "", "The database to use for the tests (sqlite, etcd, mysql, postgres)")
 var serial = flag.Bool("serial", false, "Run the Serial Conformance Tests")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 
 func Test_DockerConformance(t *testing.T) {
 	flag.Parse()
@@ -35,7 +34,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			config.DBType = *db
 			Expect(config.ProvisionServers(1)).To(Succeed())
