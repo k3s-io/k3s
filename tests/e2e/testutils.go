@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -14,22 +13,38 @@ import (
 	"time"
 
 	json "github.com/json-iterator/go"
+	"github.com/k3s-io/k3s/tests"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"golang.org/x/sync/errgroup"
 )
 
 // defining the VagrantNode type allows methods like RunCmdOnNode to be defined on it.
 // This makes test code more consistent, as similar functions can exists in Docker and E2E tests.
-type VagrantNode string
+type VagrantNode struct {
+	Name string
+}
 
-func (v VagrantNode) String() string {
-	return string(v)
+// RunCmdOnNode executes a command from within the given node as sudo
+func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
+	injectEnv := ""
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
+		injectEnv = "GOCOVERDIR=/tmp/k3scov "
+	}
+	runcmd := "vagrant ssh --no-tty " + v.Name + " -c \"sudo " + injectEnv + cmd + "\""
+	out, err := tests.RunCommand(runcmd)
+	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
+	// these are added to the command output and need to be removed
+	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
+	if err != nil {
+		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, v.Name, out, err)
+	}
+	return out, nil
 }
 
 func VagrantSlice(v []VagrantNode) []string {
 	nodes := make([]string, 0, len(v))
 	for _, node := range v {
-		nodes = append(nodes, node.String())
+		nodes = append(nodes, node.Name)
 	}
 	return nodes
 }
@@ -104,11 +119,11 @@ func newNodeError(cmd string, node VagrantNode, err error) *NodeError {
 func genNodeEnvs(nodeOS string, serverCount, agentCount int) ([]VagrantNode, []VagrantNode, string) {
 	serverNodes := make([]VagrantNode, serverCount)
 	for i := 0; i < serverCount; i++ {
-		serverNodes[i] = VagrantNode("server-" + strconv.Itoa(i))
+		serverNodes[i] = VagrantNode{Name: "server-" + strconv.Itoa(i)}
 	}
 	agentNodes := make([]VagrantNode, agentCount)
 	for i := 0; i < agentCount; i++ {
-		agentNodes[i] = VagrantNode("agent-" + strconv.Itoa(i))
+		agentNodes[i] = VagrantNode{Name: "agent-" + strconv.Itoa(i)}
 	}
 
 	nodeRoles := strings.Join(VagrantSlice(serverNodes), " ") + " " + strings.Join(VagrantSlice(agentNodes), " ")
@@ -133,25 +148,25 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 		}
 	}
 	// Bring up the first server node
-	cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
+	cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0].Name)
 	fmt.Println(cmd)
-	if _, err := RunCommand(cmd); err != nil {
+	if _, err := tests.RunCommand(cmd); err != nil {
 		return nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &>> vagrant.log`, nodeEnvs, testOptions, node.String())
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty %s &>> vagrant.log`, nodeEnvs, testOptions, node.Name)
 		fmt.Println(cmd)
 		errg.Go(func() error {
-			if _, err := RunCommand(cmd); err != nil {
+			if _, err := tests.RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
 			}
 			return nil
 		})
 		// We must wait a bit between provisioning nodes to avoid too many learners attempting to join the cluster
-		if strings.Contains(node.String(), "agent") {
+		if strings.Contains(node.Name, "agent") {
 			time.Sleep(5 * time.Second)
 		} else {
 			time.Sleep(30 * time.Second)
@@ -168,7 +183,7 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 	var err error
 	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -185,12 +200,12 @@ func CreateCluster(nodeOS string, serverCount, agentCount int) (*TestConfig, err
 
 func scpK3sBinary(nodeNames []VagrantNode) error {
 	for _, node := range nodeNames {
-		cmd := fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node.String())
-		if _, err := RunCommand(cmd); err != nil {
+		cmd := fmt.Sprintf(`vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node.Name)
+		if _, err := tests.RunCommand(cmd); err != nil {
 			return fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
 		}
-		cmd = "vagrant ssh " + node.String() + " -c \"sudo mv /tmp/k3s /usr/local/bin/\""
-		if _, err := RunCommand(cmd); err != nil {
+		cmd = "vagrant ssh " + node.Name + " -c \"sudo mv /tmp/k3s /usr/local/bin/\""
+		if _, err := tests.RunCommand(cmd); err != nil {
 			return err
 		}
 	}
@@ -215,18 +230,18 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 
 	// Provision the first server node. In GitHub Actions, this also imports the VM image into libvirt, which
 	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
-	cmd = fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0])
+	cmd = fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeEnvs, testOptions, serverNodes[0].Name)
 	fmt.Println(cmd)
-	if _, err := RunCommand(cmd); err != nil {
+	if _, err := tests.RunCommand(cmd); err != nil {
 		return nil, newNodeError(cmd, serverNodes[0], err)
 	}
 
 	// Bring up the rest of the nodes in parallel
 	errg, _ := errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes[1:], agentNodes...) {
-		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		cmd := fmt.Sprintf(`%s %s vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeEnvs, testOptions, node.Name)
 		errg.Go(func() error {
-			if _, err := RunCommand(cmd); err != nil {
+			if _, err := tests.RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
 			}
 			return nil
@@ -244,9 +259,9 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	// Install K3s on all nodes in parallel
 	errg, _ = errgroup.WithContext(context.Background())
 	for _, node := range append(serverNodes, agentNodes...) {
-		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node)
+		cmd = fmt.Sprintf(`%s %s vagrant provision %s &>> vagrant.log`, nodeEnvs, testOptions, node.Name)
 		errg.Go(func() error {
-			if _, err := RunCommand(cmd); err != nil {
+			if _, err := tests.RunCommand(cmd); err != nil {
 				return newNodeError(cmd, node, err)
 			}
 			return nil
@@ -265,7 +280,7 @@ func CreateLocalCluster(nodeOS string, serverCount, agentCount int) (*TestConfig
 	var err error
 	res, _ := serverNodes[0].RunCmdOnNode("systemctl is-active k3s")
 	if !strings.Contains(res, "inactive") && strings.Contains(res, "active") {
-		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].String())
+		kubeConfigFile, err = GenKubeconfigFile(serverNodes[0].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +310,7 @@ func (tc TestConfig) DeployWorkload(workload string) (string, error) {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {
 			cmd := "kubectl apply -f " + filename + " --kubeconfig=" + tc.KubeconfigFile
-			return RunCommand(cmd)
+			return tests.RunCommand(cmd)
 		}
 	}
 	return "", nil
@@ -323,7 +338,7 @@ func KillK3sCluster(nodes []VagrantNode) error {
 }
 
 func DestroyCluster() error {
-	if out, err := RunCommand("vagrant destroy -f"); err != nil {
+	if out, err := tests.RunCommand("vagrant destroy -f"); err != nil {
 		return fmt.Errorf("%v - command output:\n%s", err, out)
 	}
 	return os.Remove("vagrant.log")
@@ -332,7 +347,7 @@ func DestroyCluster() error {
 func FetchClusterIP(kubeconfig string, servicename string, dualStack bool) (string, error) {
 	if dualStack {
 		cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIPs}' --kubeconfig=" + kubeconfig
-		res, err := RunCommand(cmd)
+		res, err := tests.RunCommand(cmd)
 		if err != nil {
 			return res, err
 		}
@@ -340,14 +355,14 @@ func FetchClusterIP(kubeconfig string, servicename string, dualStack bool) (stri
 		return strings.Trim(res, "[]"), nil
 	}
 	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.spec.clusterIP}' --kubeconfig=" + kubeconfig
-	return RunCommand(cmd)
+	return tests.RunCommand(cmd)
 }
 
 // FetchExternalIPs fetches the external IPs of a service
 func FetchExternalIPs(kubeconfig string, servicename string) ([]string, error) {
 	var externalIPs []string
 	cmd := "kubectl get svc " + servicename + " -o jsonpath='{.status.loadBalancer.ingress}' --kubeconfig=" + kubeconfig
-	output, err := RunCommand(cmd)
+	output, err := tests.RunCommand(cmd)
 	if err != nil {
 		return externalIPs, err
 	}
@@ -368,7 +383,7 @@ func FetchExternalIPs(kubeconfig string, servicename string) ([]string, error) {
 
 func FetchIngressIP(kubeconfig string) ([]string, error) {
 	cmd := "kubectl get ing  ingress  -o jsonpath='{.status.loadBalancer.ingress[*].ip}' --kubeconfig=" + kubeconfig
-	res, err := RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +410,7 @@ func (v VagrantNode) FetchNodeExternalIP() (string, error) {
 func GenKubeconfigFile(nodeName string) (string, error) {
 	kubeconfigFile := fmt.Sprintf("kubeconfig-%s", nodeName)
 	cmd := fmt.Sprintf("vagrant scp %s:/etc/rancher/k3s/k3s.yaml ./%s", nodeName, kubeconfigFile)
-	_, err := RunCommand(cmd)
+	_, err := tests.RunCommand(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -407,7 +422,7 @@ func GenKubeconfigFile(nodeName string) (string, error) {
 
 	re := regexp.MustCompile(`(?m)==> vagrant:.*\n`)
 	modifiedKubeConfig := re.ReplaceAllString(string(kubeConfig), "")
-	vNode := VagrantNode(nodeName)
+	vNode := VagrantNode{nodeName}
 	nodeIP, err := vNode.FetchNodeExternalIP()
 	if err != nil {
 		return "", err
@@ -469,7 +484,7 @@ func SaveDocker(nodes []VagrantNode) error {
 		if err != nil {
 			logs = fmt.Sprintf("** failed to list docker containers and logs for node %s: %v **", node, err)
 		}
-		lf, err := os.Create(node.String() + "-dockerlog.txt")
+		lf, err := os.Create(node.Name + "-dockerlog.txt")
 		if err != nil {
 			return err
 		}
@@ -488,7 +503,7 @@ func SaveKernel(nodes []VagrantNode) error {
 		if err != nil {
 			logs = fmt.Sprintf("** failed to read kernel message log for node %s: %v **", node, err)
 		}
-		lf, err := os.Create(node.String() + "-kernlog.txt")
+		lf, err := os.Create(node.Name + "-kernlog.txt")
 		if err != nil {
 			return err
 		}
@@ -507,7 +522,7 @@ func SaveNetwork(nodes []VagrantNode) error {
 		if err != nil {
 			logs = fmt.Sprintf("** failed to read network config for node %s: %v **", node, err)
 		}
-		lf, err := os.Create(node.String() + "-netlog.txt")
+		lf, err := os.Create(node.Name + "-netlog.txt")
 		if err != nil {
 			return err
 		}
@@ -527,7 +542,7 @@ func TailPodLogs(lines int, nodes []VagrantNode) error {
 		if err != nil {
 			logs = fmt.Sprintf("** failed to read pod logs for node %s: %v **", node, err)
 		}
-		lf, err := os.Create(node.String() + "-podlog.txt")
+		lf, err := os.Create(node.Name + "-podlog.txt")
 		if err != nil {
 			return err
 		}
@@ -543,7 +558,7 @@ func TailPodLogs(lines int, nodes []VagrantNode) error {
 // When used in GHA CI, the logs are uploaded as an artifact on failure.
 func SaveJournalLogs(nodes []VagrantNode) error {
 	for _, node := range nodes {
-		lf, err := os.Create(node.String() + "-jlog.txt")
+		lf, err := os.Create(node.Name + "-jlog.txt")
 		if err != nil {
 			return err
 		}
@@ -595,19 +610,19 @@ func GetVagrantLog(cErr error) string {
 
 func DumpNodes(kubeConfig string) {
 	cmd := "kubectl get nodes --no-headers -o wide -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
+	res, _ := tests.RunCommand(cmd)
 	fmt.Println(strings.TrimSpace(res))
 }
 
 func DumpPods(kubeConfig string) {
 	cmd := "kubectl get pods -o wide --no-headers -A --kubeconfig=" + kubeConfig
-	res, _ := RunCommand(cmd)
+	res, _ := tests.RunCommand(cmd)
 	fmt.Println(strings.TrimSpace(res))
 }
 
 func DescribePods(kubeConfig string) string {
 	cmd := "kubectl describe pod -A --kubeconfig=" + kubeConfig
-	res, err := RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return fmt.Sprintf("Failed to describe pods: %v", err)
 	}
@@ -629,7 +644,7 @@ func RestartCluster(nodes []VagrantNode) error {
 func StartCluster(nodes []VagrantNode) error {
 	for _, node := range nodes {
 		cmd := "systemctl start k3s"
-		if strings.Contains(node.String(), "agent") {
+		if strings.Contains(node.Name, "agent") {
 			cmd += "-agent"
 		}
 		if _, err := node.RunCmdOnNode(cmd); err != nil {
@@ -650,35 +665,6 @@ func StopCluster(nodes []VagrantNode) error {
 	return nil
 }
 
-// RunCmdOnNode executes a command from within the given node as sudo
-func (v VagrantNode) RunCmdOnNode(cmd string) (string, error) {
-	injectEnv := ""
-	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "k3s") {
-		injectEnv = "GOCOVERDIR=/tmp/k3scov "
-	}
-	runcmd := "vagrant ssh --no-tty " + v.String() + " -c \"sudo " + injectEnv + cmd + "\""
-	out, err := RunCommand(runcmd)
-	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
-	// these are added to the command output and need to be removed
-	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
-	if err != nil {
-		return out, fmt.Errorf("failed to run command: %s on node %s: %s, %v", cmd, v.String(), out, err)
-	}
-	return out, nil
-}
-
-func RunCommand(cmd string) (string, error) {
-	c := exec.Command("bash", "-c", cmd)
-	if kc, ok := os.LookupEnv("E2E_KUBECONFIG"); ok {
-		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
-	}
-	out, err := c.CombinedOutput()
-	if err != nil {
-		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
-	}
-	return string(out), err
-}
-
 func UpgradeCluster(nodes []VagrantNode, local bool) error {
 	upgradeVersion := "E2E_RELEASE_CHANNEL=commit"
 	if local {
@@ -688,8 +674,8 @@ func UpgradeCluster(nodes []VagrantNode, local bool) error {
 		upgradeVersion = "E2E_RELEASE_VERSION=skip"
 	}
 	for _, node := range nodes {
-		cmd := upgradeVersion + " vagrant provision " + node.String()
-		if out, err := RunCommand(cmd); err != nil {
+		cmd := upgradeVersion + " vagrant provision " + node.Name
+		if out, err := tests.RunCommand(cmd); err != nil {
 			fmt.Println("Error Upgrading Cluster", out)
 			return err
 		}
@@ -703,17 +689,17 @@ func GetCoverageReport(nodes []VagrantNode) error {
 	}
 	covDirs := []string{}
 	for _, node := range nodes {
-		covDir := node.String() + "-cov"
+		covDir := node.Name + "-cov"
 		covDirs = append(covDirs, covDir)
 		os.MkdirAll(covDir, 0755)
-		cmd := "vagrant scp " + node.String() + ":/tmp/k3scov/* " + covDir
-		if _, err := RunCommand(cmd); err != nil {
+		cmd := "vagrant scp " + node.Name + ":/tmp/k3scov/* " + covDir
+		if _, err := tests.RunCommand(cmd); err != nil {
 			return err
 		}
 	}
 	coverageFile := "coverage.out"
 	cmd := "go tool covdata textfmt -i=" + strings.Join(covDirs, ",") + " -o=" + coverageFile
-	if out, err := RunCommand(cmd); err != nil {
+	if out, err := tests.RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to generate coverage report: %s, %v", out, err)
 	}
 
@@ -740,7 +726,7 @@ func GetCoverageReport(nodes []VagrantNode) error {
 // GetDaemonsetReady returns the number of ready pods for the given daemonset
 func GetDaemonsetReady(daemonset string, kubeConfigFile string) (int, error) {
 	cmd := "kubectl get ds " + daemonset + " -o jsonpath='{range .items[*]}{.status.numberReady}' --kubeconfig=" + kubeConfigFile
-	out, err := RunCommand(cmd)
+	out, err := tests.RunCommand(cmd)
 	if err != nil {
 		return 0, err
 	}
@@ -762,7 +748,7 @@ func GetNodeIPs(kubeConfigFile string) ([]ObjIP, error) {
 // GetObjIPs executes a command to collect IPs
 func GetObjIPs(cmd string) ([]ObjIP, error) {
 	var objIPs []ObjIP
-	res, err := RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return nil, err
 	}

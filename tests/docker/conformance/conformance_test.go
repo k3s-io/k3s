@@ -58,7 +58,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 			hydrophoneURL := fmt.Sprintf("https://github.com/kubernetes-sigs/hydrophone/releases/download/%s/hydrophone_Linux_%s.tar.gz",
 				hydrophoneVersion, hydrophoneArch)
 			cmd := fmt.Sprintf("curl -L %s | tar -xzf - -C %s", hydrophoneURL, config.TestDir)
-			_, err := tester.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.Chmod(filepath.Join(config.TestDir, "hydrophone"), 0755)).To(Succeed())
 		})
@@ -84,7 +84,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 					if hc.ProcessState != nil {
 						break
 					}
-					res, _ := tester.RunCommand(cmd)
+					res, _ := tests.RunCommand(cmd)
 					res = strings.TrimSpace(res)
 					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
 				}
@@ -109,7 +109,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 						break
 					}
 					time.Sleep(120 * time.Second)
-					res, _ := tester.RunCommand(cmd)
+					res, _ := tests.RunCommand(cmd)
 					res = strings.TrimSpace(res)
 					fmt.Printf("Status Report %d: %s tests complete\n", i, res)
 				}

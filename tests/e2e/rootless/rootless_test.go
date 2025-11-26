@@ -45,10 +45,10 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string) error {
 		if _, err := node.RunCmdOnNode(yamlCmd); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlessNode("systemctl --user daemon-reload", node.String()); err != nil {
+		if _, err := RunCmdOnRootlessNode("systemctl --user daemon-reload", node.Name); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlessNode(startCmd, node.String()); err != nil {
+		if _, err := RunCmdOnRootlessNode(startCmd, node.Name); err != nil {
 			return err
 		}
 	}
@@ -57,13 +57,13 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string) error {
 
 func KillK3sCluster(nodes []e2e.VagrantNode) error {
 	for _, node := range nodes {
-		if _, err := RunCmdOnRootlessNode(`systemctl --user stop k3s-rootless`, node.String()); err != nil {
+		if _, err := RunCmdOnRootlessNode(`systemctl --user stop k3s-rootless`, node.Name); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlessNode("k3s-killall.sh", node.String()); err != nil {
+		if _, err := RunCmdOnRootlessNode("k3s-killall.sh", node.Name); err != nil {
 			return err
 		}
-		if _, err := RunCmdOnRootlessNode("rm -rf /home/vagrant/.rancher/k3s/server/db", node.String()); err != nil {
+		if _, err := RunCmdOnRootlessNode("rm -rf /home/vagrant/.rancher/k3s/server/db", node.Name); err != nil {
 			return err
 		}
 	}
@@ -97,7 +97,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By(tc.Status())
 
 			Eventually(func() error {
-				kubeConfigFile, err := GenRootlessKubeconfigFile(tc.Servers[0].String())
+				kubeConfigFile, err := GenRootlessKubeconfigFile(tc.Servers[0].Name)
 				tc.KubeconfigFile = kubeConfigFile
 				return err
 			}, "360s", "5s").Should(Succeed())
@@ -118,29 +118,41 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
-			var res string
+			var res, logs string
 			var err error
 			Eventually(func() error {
-				res, err = e2e.RunCommand(cmd)
+				res, err = tests.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = tests.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
 				return err
-			}, "600s", "5s").Should(Succeed(), "failed to get pod metrics: %s", res)
+			}, "600s", "5s").Should(Succeed(), "failed to get pod metrics: %s: %s", res, logs)
 		})
 
 		It("Returns node metrics", func() {
 			cmd := "kubectl top node"
-			res, err := e2e.RunCommand(cmd)
-			Expect(err).NotTo(HaveOccurred(), "failed to get node metrics: %s", res)
+			var res, logs string
+			var err error
+			Eventually(func() error {
+				res, err = tests.RunCommand(cmd)
+				// Common error: metrics not available yet, pull more logs
+				if err != nil && strings.Contains(res, "metrics not available yet") {
+					logs, _ = tests.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+				}
+				return err
+			}, "30s", "5s").Should(Succeed(), "failed to get node metrics: %s: %s", res, logs)
 		})
 
 		It("Runs an interactive command a pod", func() {
 			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.34.1 -- uname -a"
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -176,7 +188,7 @@ func RunCmdOnRootlessNode(cmd string, nodename string) (string, error) {
 		injectEnv = "GOCOVERDIR=/tmp/k3scov "
 	}
 	runcmd := "vagrant ssh " + nodename + " -c \"" + injectEnv + cmd + "\""
-	out, err := e2e.RunCommand(runcmd)
+	out, err := tests.RunCommand(runcmd)
 	// On GHA CI we see warnings about "[fog][WARNING] Unrecognized arguments: libvirt_ip_command"
 	// these are added to the command output and need to be removed
 	out = strings.ReplaceAll(out, "[fog][WARNING] Unrecognized arguments: libvirt_ip_command\n", "")
@@ -191,7 +203,7 @@ func GenRootlessKubeconfigFile(serverName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	vNode := e2e.VagrantNode(serverName)
+	vNode := e2e.VagrantNode{Name: serverName}
 	nodeIP, err := vNode.FetchNodeExternalIP()
 	if err != nil {
 		return "", err
@@ -211,13 +223,13 @@ func GenRootlessKubeconfigFile(serverName string) (string, error) {
 // When used in GHA CI, the logs are uploaded as an artifact on failure.
 func SaveRootlessJournalLogs(nodes []e2e.VagrantNode) error {
 	for _, node := range nodes {
-		lf, err := os.Create(node.String() + "-jlog.txt")
+		lf, err := os.Create(node.Name + "-jlog.txt")
 		if err != nil {
 			return err
 		}
 		defer lf.Close()
-		cmd := "vagrant ssh --no-tty " + node.String() + " -c \"journalctl -u --user k3s-rootless --no-pager\""
-		logs, err := e2e.RunCommand(cmd)
+		cmd := "vagrant ssh --no-tty " + node.Name + " -c \"journalctl -u --user k3s-rootless --no-pager\""
+		logs, err := tests.RunCommand(cmd)
 		if err != nil {
 			return err
 		}
