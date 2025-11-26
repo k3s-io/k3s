@@ -13,8 +13,8 @@ import (
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/signals"
-	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -94,6 +94,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	coreClient, err := util.GetClientSet(kubeConfig)
 	if err != nil {
 		return err
+	}
+
+	if err := setAnnotations(ctx, nodeConfig, coreClient); err != nil {
+		return pkgerrors.WithMessage(err, "flannel failed to set address annotations")
 	}
 
 	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient); err != nil {
@@ -270,4 +274,19 @@ func findNetMode(cidrs []*net.IPNet) (netMode, error) {
 		}
 	}
 	return 0, errors.New("Failed checking netMode")
+}
+
+func setAnnotations(ctx context.Context, nodeConfig *config.Node, coreClient kubernetes.Interface) error {
+	patch := util.NewPatchList[*v1.Node]()
+	if nodeConfig.AgentConfig.NodeExternalIP != "" && nodeConfig.FlannelExternalIP {
+		for _, ipAddress := range nodeConfig.AgentConfig.NodeExternalIPs {
+			if utilsnet.IsIPv4(ipAddress) {
+				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv4Annotation)
+			}
+			if utilsnet.IsIPv6(ipAddress) {
+				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv6Annotation)
+			}
+		}
+	}
+	return patch.ApplyTo(ctx, coreClient.CoreV1().Nodes(), nodeConfig.AgentConfig.NodeName)
 }

@@ -16,6 +16,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
+	"github.com/k3s-io/k3s/pkg/agent/flannel"
+	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/signals"
@@ -249,6 +251,31 @@ func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 		return CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
 	}
 	return CloseIfNilErr(nil, e.criReady)
+}
+
+func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
+	if !cfg.NoFlannel {
+		if (cfg.FlannelExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
+			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
+		} else if (cfg.FlannelExternalIP) && (cfg.FlannelBackend != daemonconfig.FlannelBackendWireguardNative) {
+			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", cfg.FlannelBackend)
+		}
+		if err := flannel.Prepare(ctx, cfg); err != nil {
+			return err
+		}
+
+		if err := flannel.Run(ctx, wg, cfg); err != nil {
+			return err
+		}
+	}
+
+	if !cfg.AgentConfig.DisableNPC {
+		if err := netpol.Run(ctx, wg, cfg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (e *Embedded) APIServerReadyChan() <-chan struct{} {
