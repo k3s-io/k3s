@@ -37,13 +37,13 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 	agentNodes := make([]e2e.VagrantNode, agentCount)
 
 	for i := 0; i < etcdCount; i++ {
-		etcdNodes[i] = e2e.VagrantNode("server-etcd-" + strconv.Itoa(i))
+		etcdNodes[i] = e2e.VagrantNode{Name: "server-etcd-" + strconv.Itoa(i)}
 	}
 	for i := 0; i < controlPlaneCount; i++ {
-		cpNodes[i] = e2e.VagrantNode("server-cp-" + strconv.Itoa(i))
+		cpNodes[i] = e2e.VagrantNode{Name: "server-cp-" + strconv.Itoa(i)}
 	}
 	for i := 0; i < agentCount; i++ {
-		agentNodes[i] = e2e.VagrantNode("agent-" + strconv.Itoa(i))
+		agentNodes[i] = e2e.VagrantNode{Name: "agent-" + strconv.Itoa(i)}
 	}
 	nodeRoles := strings.Join(e2e.VagrantSlice(etcdNodes), " ") + " " + strings.Join(e2e.VagrantSlice(cpNodes), " ") + " " + strings.Join(e2e.VagrantSlice(agentNodes), " ")
 
@@ -63,9 +63,9 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 
 	// Provision the first etcd node. In GitHub Actions, this also imports the VM image into libvirt, which
 	// takes time and can cause the next vagrant up to fail if it is not given enough time to complete.
-	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeRoles, nodeBoxes, etcdNodes[0].String())
+	cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-tty --no-provision %s &> vagrant.log`, nodeRoles, nodeBoxes, etcdNodes[0].Name)
 	fmt.Println(cmd)
-	if _, err := e2e.RunCommand(cmd); err != nil {
+	if _, err := tests.RunCommand(cmd); err != nil {
 		return etcdNodes, cpNodes, agentNodes, err
 	}
 
@@ -74,7 +74,7 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 	for _, node := range allNodeNames[1:] {
 		cmd := fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" vagrant up --no-tty --no-provision %s &>> vagrant.log`, nodeRoles, nodeBoxes, node)
 		errg.Go(func() error {
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			return err
 		})
 		// libVirt/Virtualbox needs some time between provisioning nodes
@@ -88,11 +88,11 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 		testOptions += " E2E_RELEASE_VERSION=skip"
 		for _, node := range allNodeNames {
 			cmd := fmt.Sprintf(`E2E_NODE_ROLES=%s vagrant scp ../../../dist/artifacts/k3s  %s:/tmp/`, node, node)
-			if _, err := e2e.RunCommand(cmd); err != nil {
+			if _, err := tests.RunCommand(cmd); err != nil {
 				return etcdNodes, cpNodes, agentNodes, fmt.Errorf("failed to scp k3s binary to %s: %v", node, err)
 			}
 			cmd = fmt.Sprintf(`E2E_NODE_ROLES=%s vagrant ssh %s -c "sudo mv /tmp/k3s /usr/local/bin/"`, node, node)
-			if _, err := e2e.RunCommand(cmd); err != nil {
+			if _, err := tests.RunCommand(cmd); err != nil {
 				return etcdNodes, cpNodes, agentNodes, err
 			}
 		}
@@ -102,7 +102,7 @@ func createSplitCluster(nodeOS string, etcdCount, controlPlaneCount, agentCount 
 	for _, node := range allNodeNames {
 		cmd = fmt.Sprintf(`E2E_NODE_ROLES="%s" E2E_NODE_BOXES="%s" %s vagrant provision %s &>> vagrant.log`, nodeRoles, nodeBoxes, testOptions, node)
 		errg.Go(func() error {
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			return err
 		})
 		// libVirt/Virtualbox needs some time between provisioning nodes
@@ -154,7 +154,7 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 				Expect(err).NotTo(HaveOccurred(), "failed to start k3s-agent")
 			}
 			Eventually(func() error {
-				kubeConfigFile, err := e2e.GenKubeconfigFile(cpNodes[0].String())
+				kubeConfigFile, err := e2e.GenKubeconfigFile(cpNodes[0].Name)
 				tc = &e2e.TestConfig{
 					KubeconfigFile: kubeConfigFile,
 					Hardened:       *hardened,
@@ -185,7 +185,7 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 
 			cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "240s", "5s").Should(ContainSubstring("test-clusterip"), "failed cmd: "+cmd)
 
 			clusterip, _ := e2e.FetchClusterIP(tc.KubeconfigFile, "nginx-clusterip-svc", false)
@@ -204,17 +204,17 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 			for _, node := range cpNodes {
 				nodeExternalIP, _ := node.FetchNodeExternalIP()
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + tc.KubeconfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
-				nodeport, err := e2e.RunCommand(cmd)
+				nodeport, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 
 				cmd = "curl -m 5 -s -f http://" + nodeExternalIP + ":" + nodeport + "/name.html"
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-nodeport"), "failed cmd: "+cmd)
 			}
 		})
@@ -227,17 +227,17 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 				ip, _ := node.FetchNodeExternalIP()
 
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + tc.KubeconfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
-				port, err := e2e.RunCommand(cmd)
+				port, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				cmd = "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"), "failed cmd: "+cmd)
 
 				cmd = "curl -m 5 -s -f http://" + ip + ":" + port + "/name.html"
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-loadbalancer"), "failed cmd: "+cmd)
 			}
 		})
@@ -250,7 +250,7 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 				ip, _ := node.FetchNodeExternalIP()
 				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
-					return e2e.RunCommand(cmd)
+					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-ingress"), "failed cmd: "+cmd)
 			}
 		})
@@ -272,12 +272,12 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 
 			cmd := "kubectl get pods dnsutils --kubeconfig=" + tc.KubeconfigFile
 			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "420s", "2s").Should(ContainSubstring("dnsutils"), "failed cmd: "+cmd)
 
 			cmd = "kubectl --kubeconfig=" + tc.KubeconfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
 			Eventually(func() (string, error) {
-				return e2e.RunCommand(cmd)
+				return tests.RunCommand(cmd)
 			}, "420s", "2s").Should(ContainSubstring("kubernetes.default.svc.cluster.local"), "failed cmd: "+cmd)
 		})
 	})
