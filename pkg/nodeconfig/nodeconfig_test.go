@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,14 +40,15 @@ var FakeNodeWithAnnotation = &corev1.Node{
 
 func Test_UnitSetExistingNodeConfigAnnotations(t *testing.T) {
 	// adding same config
+	patch := util.NewPatchList()
 	os.Args = []string{version.Program, "server", "--flannel-backend=none"}
 	os.Setenv(version.ProgramUpper+"_NODE_NAME", "fakeNode-with-annotation")
-	nodeUpdated, err := SetNodeConfigAnnotations(FakeNodeConfig, FakeNodeWithAnnotation)
+	err := SetNodeConfigAnnotations(FakeNodeConfig, patch, FakeNodeWithAnnotation)
 	if err != nil {
 		t.Fatalf("Failed to set node config annotation: %v", err)
 	}
-	if nodeUpdated {
-		t.Errorf("Test_UnitSetExistingNodeConfigAnnotations() expected false")
+	if j, _ := patch.ToJSON(); j != "[]" {
+		t.Errorf("Test_UnitSetExistingNodeConfigAnnotations() expected empty patch, got %v", j)
 	}
 }
 
@@ -64,13 +66,10 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 		return os.Unsetenv(TestEnvName)
 	}
 	tests := []struct {
-		name               string
-		args               args
-		want               bool
-		wantErr            bool
-		wantNodeArgs       string
-		wantNodeEnv        string
-		wantNodeConfigHash string
+		name     string
+		args     args
+		wantErr  bool
+		wantJSON string
 	}{
 		{
 			name: "Set empty NodeConfigAnnotations",
@@ -79,10 +78,9 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 				node:   FakeNodeWithAnnotation,
 				osArgs: []string{version.Program, "server", "--flannel-backend=none"},
 			},
-			want:               true,
-			wantNodeArgs:       `["server","--flannel-backend","none"]`,
-			wantNodeEnv:        `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
-			wantNodeConfigHash: "DRWW63TXZZGSKLARSFZLNSJ3RZ6VR7LQ46WPKZMSLTSGNI2J42WA====",
+			wantJSON: `[{"op":"add","path":"/metadata/annotations/k3s.io~1node-config-hash","value":"DRWW63TXZZGSKLARSFZLNSJ3RZ6VR7LQ46WPKZMSLTSGNI2J42WA===="},` +
+				`{"op":"add","path":"/metadata/annotations/k3s.io~1node-env","value":"{\"K3S_NODE_NAME\":\"fakeNode-with-no-annotation\"}"},` +
+				`{"op":"add","path":"/metadata/annotations/k3s.io~1node-args","value":"[\"server\",\"--flannel-backend\",\"none\"]"}]`,
 		},
 		{
 			name: "Set args with equal",
@@ -91,35 +89,26 @@ func Test_UnitSetNodeConfigAnnotations(t *testing.T) {
 				node:   FakeNodeWithNoAnnotation,
 				osArgs: []string{version.Program, "server", "--flannel-backend=none", "--write-kubeconfig-mode=777"},
 			},
-			want:         true,
-			wantNodeArgs: `["server","--flannel-backend","none","--write-kubeconfig-mode","777"]`,
-			wantNodeEnv:  `{"` + TestEnvName + `":"fakeNode-with-no-annotation"}`,
+			wantJSON: `[{"op":"add","path":"/metadata/annotations/k3s.io~1node-config-hash","value":"IOESDALHLYKDFVH2D3QV7ELCIOBMPEJVCK37ANBYFODYKKPS7HWA===="},` +
+				`{"op":"add","path":"/metadata/annotations/k3s.io~1node-env","value":"{\"K3S_NODE_NAME\":\"fakeNode-with-no-annotation\"}"},` +
+				`{"op":"add","path":"/metadata/annotations/k3s.io~1node-args","value":"[\"server\",\"--flannel-backend\",\"none\",\"--write-kubeconfig-mode\",\"777\"]"}]`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			defer teardown()
+			patch := util.NewPatchList()
 			if err := setup(tt.args.osArgs); err != nil {
 				t.Errorf("Setup for SetNodeConfigAnnotations() failed = %v", err)
 				return
 			}
-			got, err := SetNodeConfigAnnotations(tt.args.config, tt.args.node)
+			err := SetNodeConfigAnnotations(tt.args.config, patch, tt.args.node)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetNodeConfigAnnotations() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantRes = %+v", got, tt.want)
-			}
-			nodeAnn := tt.args.node.Annotations
-			if nodeAnn[NodeArgsAnnotation] != tt.wantNodeArgs {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeArgs = %+v", nodeAnn[NodeArgsAnnotation], tt.wantNodeArgs)
-			}
-			if nodeAnn[NodeEnvAnnotation] != tt.wantNodeEnv {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeEnv = %+v", nodeAnn[NodeEnvAnnotation], tt.wantNodeEnv)
-			}
-			if tt.wantNodeConfigHash != "" && nodeAnn[NodeConfigHashAnnotation] != tt.wantNodeConfigHash {
-				t.Errorf("SetNodeConfigAnnotations() = %+v\nWantAnn.nodeConfigHash = %+v", nodeAnn[NodeConfigHashAnnotation], tt.wantNodeConfigHash)
+			if j, _ := patch.ToJSON(); j != tt.wantJSON {
+				t.Errorf("Test_UnitSetNodeConfigAnnotations() JSON= %v, wantJSON %v", j, tt.wantJSON)
 			}
 		})
 	}
