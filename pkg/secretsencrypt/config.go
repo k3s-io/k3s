@@ -221,31 +221,35 @@ func getEncryptionHashFile(runtime *config.ControlRuntime) (string, error) {
 	return string(curEncryptionByte), nil
 }
 
-func BootstrapEncryptionHashAnnotation(node *corev1.Node, runtime *config.ControlRuntime) error {
+func BootstrapEncryptionHashAnnotation(ctx context.Context, runtime *config.ControlRuntime, nodeName string) error {
 	existingAnn, err := getEncryptionHashFile(runtime)
 	if err != nil {
 		return err
 	}
-	node.Annotations[EncryptionHashAnnotation] = existingAnn
-	return nil
+	patch := util.NewPatchList()
+	patcher := util.NewPatcher[*corev1.Node](runtime.Core.Core().V1().Node())
+	patch.Add(existingAnn, "metadata", "annotations", EncryptionHashAnnotation)
+
+	_, err = patcher.Patch(ctx, patch, nodeName)
+	return err
 }
 
 // WriteEncryptionHashAnnotation writes the encryption hash to the node annotation and optionally to a file.
 // The file is used to track the last stage of the reencryption process.
-func WriteEncryptionHashAnnotation(runtime *config.ControlRuntime, node *corev1.Node, skipFile bool, stage string) error {
+func WriteEncryptionHashAnnotation(ctx context.Context, runtime *config.ControlRuntime, nodeName string, skipFile bool, stage string) error {
 	encryptionConfigHash, err := GenEncryptionConfigHash(runtime)
 	if err != nil {
 		return err
 	}
-	if node.Annotations == nil {
-		return fmt.Errorf("node annotations do not exist for %s", node.ObjectMeta.Name)
-	}
 	ann := stage + "-" + encryptionConfigHash
-	node.Annotations[EncryptionHashAnnotation] = ann
-	if _, err = runtime.Core.Core().V1().Node().Update(node); err != nil {
+
+	patch := util.NewPatchList()
+	patcher := util.NewPatcher[*corev1.Node](runtime.Core.Core().V1().Node())
+	patch.Add(ann, "metadata", "annotations", EncryptionHashAnnotation)
+	if _, err = patcher.Patch(ctx, patch, nodeName); err != nil {
 		return err
 	}
-	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", node.ObjectMeta.Name)
+	logrus.Debugf("encryption hash annotation set successfully on node: %s\n", nodeName)
 	if skipFile {
 		return nil
 	}

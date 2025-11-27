@@ -37,6 +37,7 @@ import (
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
@@ -552,47 +553,32 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 	if config.DisableAgent || config.ControlConfig.DisableAPIServer {
 		return nil
 	}
-	for {
+
+	patcher := util.NewPatcher[*corev1.Node](nodes)
+	return wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
 			logrus.Info("Waiting for control-plane node agent startup")
-			time.Sleep(1 * time.Second)
-			continue
+			return false, nil
 		}
-		node, err := nodes.Get(nodeName, metav1.GetOptions{})
-		if err != nil {
-			logrus.Infof("Waiting for control-plane node %s startup: %v", nodeName, err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if node.Labels == nil {
-			node.Labels = make(map[string]string)
-		}
-		v, ok := node.Labels[util.ControlPlaneRoleLabelKey]
-		if !ok || v != "true" {
-			node.Labels[util.ControlPlaneRoleLabelKey] = "true"
-			node.Labels[util.MasterRoleLabelKey] = "true"
+
+		patch := util.NewPatchList()
+		patch.Add("true", "metadata", "labels", util.ControlPlaneRoleLabelKey)
+		patch.Add("true", "metadata", "labels", util.MasterRoleLabelKey)
+		if _, err := patcher.Patch(ctx, patch, nodeName); err != nil {
+			logrus.Infof("Unable to set master and control-plane role labels: %v", err)
+			return false, nil
 		}
 
 		if config.ControlConfig.EncryptSecrets {
-			if err = secretsencrypt.BootstrapEncryptionHashAnnotation(node, config.ControlConfig.Runtime); err != nil {
-				logrus.Infof("Unable to set encryption hash annotation %s", err.Error())
-				break
+			if err := secretsencrypt.BootstrapEncryptionHashAnnotation(ctx, config.ControlConfig.Runtime, nodeName); err != nil {
+				logrus.Infof("Unable to set encryption hash annotation %v", err)
+				return false, nil
 			}
 		}
-
-		_, err = nodes.Update(node)
-		if err == nil {
-			logrus.Infof("Labels and annotations have been set successfully on node: %s", nodeName)
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-		}
-	}
-	return nil
+		logrus.Infof("Labels and annotations have been set successfully on node: %s", nodeName)
+		return true, nil
+	})
 }
 
 func setClusterDNSConfig(ctx context.Context, config *Config, configMap v1.ConfigMapClient) error {
