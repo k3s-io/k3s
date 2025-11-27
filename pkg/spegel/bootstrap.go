@@ -21,7 +21,6 @@ import (
 	"github.com/spegel-org/spegel/pkg/routing"
 	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
@@ -117,37 +116,31 @@ func (c *agentBootstrapper) Run(ctx context.Context, id peer.AddrInfo) error {
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to create kubernetes client")
 	}
-	nodes := client.CoreV1().Nodes()
 
 	go wait.PollUntilContextCancel(ctx, 1*time.Second, true, func(ctx context.Context) (bool, error) {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
 			return false, nil
 		}
-		node, err := nodes.Get(ctx, nodeName, metav1.GetOptions{})
-		if err != nil {
-			logrus.Debugf("Failed to update P2P address annotations and labels: %v", err)
-			return false, nil
-		}
-		if node.Annotations == nil {
-			node.Annotations = map[string]string{}
-		}
 		b, err := id.MarshalJSON()
 		if err != nil {
 			return false, err
 		}
-		node.Annotations[P2pMulAddrAnnotation] = string(b)
-		node.Annotations[P2pAddressAnnotation] = fmt.Sprintf("%s/p2p/%s", id.Addrs[0].String(), id.ID.String())
+		addresses := string(b)
+		address := fmt.Sprintf("%s/p2p/%s", id.Addrs[0].String(), id.ID.String())
 
-		if node.Labels == nil {
-			node.Labels = map[string]string{}
-		}
-		node.Labels[P2pEnabledLabel] = "true"
-		if _, err = nodes.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
+		patch := util.NewPatchList()
+		patcher := util.NewPatcher[*v1.Node](client.CoreV1().Nodes())
+
+		patch.Add(addresses, "metadata", "annotations", P2pMulAddrAnnotation)
+		patch.Add(address, "metadata", "annotations", P2pAddressAnnotation)
+		patch.Add("true", "metadata", "labels", P2pEnabledLabel)
+
+		if _, err = patcher.Patch(ctx, patch, nodeName); err != nil {
 			logrus.Debugf("Failed to update P2P address annotations and labels: %v", err)
 			return false, nil
 		}
-		logrus.Infof("Node P2P address annotations and labels added: %s %s", node.Annotations[P2pAddressAnnotation], node.Annotations[P2pMulAddrAnnotation])
+		logrus.Infof("Node P2P address annotations and labels added: %s %s", address, addresses)
 		return true, nil
 	})
 	return waitForDone(ctx)
