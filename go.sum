@@ -832,8 +832,8 @@ github.com/k3s-io/kine v0.14.8-k3s1.31 h1:FA/x9daJq2FfawrJ2M/EMCoy9UCKDClGwFjhrp
 github.com/k3s-io/kine v0.14.8-k3s1.31/go.mod h1:9HJ6jfXqZBxxDIOtVHOyzYIVY+y3tJt0EDXQy0g+aQk=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1 h1:7twAHPFpZA21KdMnMNnj68STQMPldAxF2Zsaol57dxw=
 github.com/k3s-io/klog/v2 v2.120.1-k3s1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
-github.com/k3s-io/kube-router/v2 v2.6.1-k3s3 h1:5fnTCJTe59mJC6sPMS1CGmLjG7oGNLgHRXhay2/SFm0=
-github.com/k3s-io/kube-router/v2 v2.6.1-k3s3/go.mod h1:JQISxvjmJWno2LYGGbvKZmvVpsBcb6t1sPBqlmiHbHg=
+github.com/k3s-io/kube-router/v2 v2.6.3-k3s1 h1:RZjUBIuitXCuYoCzm1aM6p5EgQFC5k3N72j4pBIc2j4=
+github.com/k3s-io/kube-router/v2 v2.6.3-k3s1/go.mod h1:RaxDc+SBKB33+fjao+LeDue4CaUajk02eCHXVK/V4YE=
 github.com/k3s-io/kubernetes v1.31.14-k3s1 h1:Yhl4eGQneW+vWbpnf+fdEVKXhxgYcOi065B/BGa96CA=
 github.com/k3s-io/kubernetes v1.31.14-k3s1/go.mod h1:9xmT2buyTYj8TRKwRae7FcuY8k5+xlxv7VivvO0KKfs=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.31.14-k3s1 h1:O20SXGUUWmg01scQlroOTSqMbA7kDmq4G0c1/aPZ2sE=
