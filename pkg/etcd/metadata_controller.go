@@ -3,6 +3,7 @@ package etcd
 import (
 	"context"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -94,6 +95,9 @@ func (m *metadataHandler) checkReset() {
 }
 
 func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
+	patch := util.NewPatchList()
+	patcher := util.NewPatcher[*v1.Node](m.nodeController)
+
 	if m.etcd.config.DisableETCD {
 		if node.Annotations[NodeNameAnnotation] == "" &&
 			node.Annotations[NodeAddressAnnotation] == "" &&
@@ -101,23 +105,20 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 			return node, nil
 		}
 
-		node = node.DeepCopy()
-		if node.Annotations == nil {
-			node.Annotations = map[string]string{}
+		if position, _ := nodeutil.GetNodeCondition(&node.Status, etcdStatusType); position >= 0 {
+			patch.Remove("status", "conditions", strconv.Itoa(position))
 		}
-		if node.Labels == nil {
-			node.Labels = map[string]string{}
+		if _, ok := node.Annotations[NodeNameAnnotation]; ok {
+			patch.Remove("metadata", "annotations", NodeNameAnnotation)
+		}
+		if _, ok := node.Annotations[NodeAddressAnnotation]; ok {
+			patch.Remove("metadata", "annotations", NodeAddressAnnotation)
+		}
+		if _, ok := node.Labels[util.ETCDRoleLabelKey]; ok {
+			patch.Remove("metadata", "labels", util.ETCDRoleLabelKey)
 		}
 
-		if find, _ := nodeutil.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
-			node.Status.Conditions = append(node.Status.Conditions[:find], node.Status.Conditions[find+1:]...)
-		}
-
-		delete(node.Annotations, NodeNameAnnotation)
-		delete(node.Annotations, NodeAddressAnnotation)
-		delete(node.Labels, util.ETCDRoleLabelKey)
-
-		return m.nodeController.Update(node)
+		return patcher.Patch(m.ctx, patch, node.Name)
 	}
 
 	m.once.Do(m.checkReset)
@@ -128,17 +129,9 @@ func (m *metadataHandler) handleSelf(node *v1.Node) (*v1.Node, error) {
 		return node, nil
 	}
 
-	node = node.DeepCopy()
-	if node.Annotations == nil {
-		node.Annotations = map[string]string{}
-	}
-	if node.Labels == nil {
-		node.Labels = map[string]string{}
-	}
+	patch.Add(m.etcd.name, "metadata", "annotations", NodeNameAnnotation)
+	patch.Add(m.etcd.address, "metadata", "annotations", NodeAddressAnnotation)
+	patch.Add("true", "metadata", "labels", util.ETCDRoleLabelKey)
 
-	node.Annotations[NodeNameAnnotation] = m.etcd.name
-	node.Annotations[NodeAddressAnnotation] = m.etcd.address
-	node.Labels[util.ETCDRoleLabelKey] = "true"
-
-	return m.nodeController.Update(node)
+	return patcher.Patch(m.ctx, patch, node.Name)
 }
