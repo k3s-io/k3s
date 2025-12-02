@@ -80,10 +80,9 @@ kubelet-arg:
 		It("applies network policies", func() {
 			_, err := config.DeployWorkload("hardened-ingress.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() (string, error) {
-				cmd := "kubectl get daemonset -n default example -o jsonpath='{.status.numberReady}'"
-				return tests.RunCommand(cmd)
-			}, "60s", "5s").Should(Equal("2"))
+			Eventually(func() (int, error) {
+				return tests.GetDaemonsetReady("example", config.KubeconfigFile)
+			}, "60s", "5s").Should(Equal(2))
 			_, err = config.DeployWorkload("hardened-netpool.yaml")
 			Expect(err).NotTo(HaveOccurred())
 		})
