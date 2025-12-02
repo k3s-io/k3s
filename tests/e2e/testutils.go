@@ -723,16 +723,6 @@ func GetCoverageReport(nodes []VagrantNode) error {
 	return nil
 }
 
-// GetDaemonsetReady returns the number of ready pods for the given daemonset
-func GetDaemonsetReady(daemonset string, kubeConfigFile string) (int, error) {
-	cmd := "kubectl get ds " + daemonset + " -o jsonpath='{range .items[*]}{.status.numberReady}' --kubeconfig=" + kubeConfigFile
-	out, err := tests.RunCommand(cmd)
-	if err != nil {
-		return 0, err
-	}
-	return strconv.Atoi(out)
-}
-
 // GetPodIPs returns the IPs of all pods
 func GetPodIPs(kubeConfigFile string) ([]ObjIP, error) {
 	cmd := `kubectl get pods -A -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIPs[*].ip}{"\n"}{end}' --kubeconfig=` + kubeConfigFile
