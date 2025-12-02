@@ -7,5 +7,5 @@ metadata:
 spec:
   containers:
   - name: dummy
-    image: ranchertest/mytestcontainer
+    image: rancher/mirrored-library-nginx:1.29.1-alpine
     imagePullPolicy: IfNotPresent
