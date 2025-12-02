@@ -176,12 +176,12 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			var workingCmd, nonWorkingCmd string
 			if serverNodeName == clientPod1Node {
-				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
-				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
+				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
+				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
 			}
 			if serverNodeName == clientPod2Node {
-				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
-				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- curl -m 5 -s -f http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
+				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
+				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
 			}
 
 			Eventually(func() (string, error) {
@@ -204,7 +204,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// curling a service with internal traffic policy=cluster. It should work on both pods
 			for _, pod := range []string{clientPod1, clientPod2} {
-				cmd := "kubectl exec " + "--kubeconfig=" + tc.KubeconfigFile + " " + pod + " -- curl -m 5 -s -f http://nginx-loadbalancer-svc:81/ip"
+				cmd := "kubectl exec " + "--kubeconfig=" + tc.KubeconfigFile + " " + pod + " -- wget -T 5 -q -O - http://nginx-loadbalancer-svc:81/ip"
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "20s", "5s").Should(SatisfyAny(

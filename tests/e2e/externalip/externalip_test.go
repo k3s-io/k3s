@@ -127,7 +127,7 @@ var _ = Describe("Verify External-IP config", Ordered, func() {
 			}, "40s", "5s").Should(Succeed(), "failed getClientIPs")
 
 			for _, ip := range clientIPs {
-				cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://" + ip.IPv4 + "/name.html"
+				cmd := "kubectl exec svc/client-wget -- wget -T 5 -q -O - http://" + ip.IPv4 + "/name.html"
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "30s", "10s").Should(ContainSubstring("client-deployment"), "failed cmd: "+cmd)
