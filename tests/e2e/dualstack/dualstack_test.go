@@ -153,21 +153,20 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 		It("Verifies podSelector Network Policy", func() {
 			_, err := tc.DeployWorkload("pod_client.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd := "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
+			cmd := "kubectl exec svc/client-wget -- wget -T 5 -O - -q http://ds-clusterip-svc/name.html"
 			Eventually(func() (string, error) {
 				return tests.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
 			_, err = tc.DeployWorkload("netpol-fail.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd = "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
-			Eventually(func() error {
+			cmd = "kubectl exec svc/client-wget -- wget -T 5 -O - -q http://ds-clusterip-svc/name.html"
+			Consistently(func() error {
 				_, err = tests.RunCommand(cmd)
-				Expect(err).To(HaveOccurred())
 				return err
-			}, "20s", "3s")
+			}, "20s", "3s").ShouldNot(Succeed())
 			_, err = tc.DeployWorkload("netpol-work.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			cmd = "kubectl exec svc/client-curl -- curl -m 5 -s -f http://ds-clusterip-svc/name.html"
+			cmd = "kubectl exec svc/client-wget -- wget -T 5 -O - -q http://ds-clusterip-svc/name.html"
 			Eventually(func() (string, error) {
 				return tests.RunCommand(cmd)
 			}, "20s", "3s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
