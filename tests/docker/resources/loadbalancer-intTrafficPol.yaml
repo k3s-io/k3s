@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: ranchertest/mytestcontainer
+        image: rancher/mirrored-library-nginx:1.29.1-alpine
         ports:
         - containerPort: 80
         volumeMounts:
