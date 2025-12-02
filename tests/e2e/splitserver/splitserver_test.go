@@ -260,7 +260,7 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 			Expect(err).NotTo(HaveOccurred(), "Daemonset manifest not deployed")
 
 			Eventually(func(g Gomega) {
-				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
+				count, err := tests.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(cpNodes).To(HaveLen(count), "Daemonset pod count does not match node count")
 			}, "240s", "10s").Should(Succeed())
