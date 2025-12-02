@@ -242,12 +242,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		}
 
 		// Get the IP address of the container
-		var cmd string
-		if config.DualStack {
-			cmd = "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
-		} else {
-			cmd = "docker inspect --format '{{ .NetworkSettings.IPAddress }}' " + name
-		}
+		cmd := "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
 		ipOutput, err := tests.RunCommand(cmd)
 		if err != nil {
 			return fmt.Errorf("failed to get container IP address: %s: %v", ipOutput, err)
@@ -397,12 +392,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			}
 
 			// Get the IP address of the container
-			var cmd string
-			if config.DualStack {
-				cmd = "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
-			} else {
-				cmd = "docker inspect --format '{{ .NetworkSettings.IPAddress }}' " + name
-			}
+			cmd := "docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf \"%s\" $v.IPAddress}}{{end}}' " + name
 			ipOutput, err := tests.RunCommand(cmd)
 			if err != nil {
 				return err
