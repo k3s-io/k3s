@@ -15,9 +15,10 @@ spec:
         app: client
     spec:
       containers:
-      - image: ranchertest/mytestcontainer
+      - image: rancher/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         imagePullPolicy: Always
-        name: client-curl
+        name: client-wget
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -32,10 +33,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: client-curl
+  name: client-wget
   labels:
     app: client
-    service: client-curl
+    service: client-wget
 spec:
   type: ClusterIP
   selector:
