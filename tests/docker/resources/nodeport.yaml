@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: ranchertest/mytestcontainer
+        image: rancher/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         ports:
         - containerPort: 80
 ---
