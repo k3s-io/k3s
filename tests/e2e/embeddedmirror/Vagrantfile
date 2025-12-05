@@ -33,7 +33,9 @@ def provision(vm, role, role_num, node_num)
   writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
   mkdir -p /etc/rancher/k3s/
   echo "mirrors:
-    docker.io:" > /etc/rancher/k3s/registries.yaml
+    docker.io:
+    registry.example.com:
+  " > /etc/rancher/k3s/registries.yaml
   SCRIPT
 
   if role.include?("server") && role_num == 0

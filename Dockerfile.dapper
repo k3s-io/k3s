@@ -20,8 +20,8 @@ RUN case "$(go env GOARCH)" in \
     amd64) TRIVY_ARCH="64bit" ;; \
     s390x) TRIVY_ARCH="s390x" ;; \
     *) TRIVY_ARCH="" ;; \
-    esac
-RUN if [ -n "${TRIVY_ARCH}" ]; then \ 
+    esac && \
+    if [ -n "${TRIVY_ARCH}" ]; then \ 
         wget --no-verbose "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" \
         && tar -zxvf "trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" \
         && mv trivy /usr/local/bin; \
