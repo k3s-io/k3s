@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -32,7 +31,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/k3s-io/k3s/pkg/vpn"
 	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/wharfie/pkg/registries"
@@ -470,14 +468,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 	apiServerURL := proxy.APIServerURL()
 
-	var flannelIface *net.Interface
-	if controlConfig.FlannelBackend != config.FlannelBackendNone && len(envInfo.FlannelIface) > 0 {
-		flannelIface, err = net.InterfaceByName(envInfo.FlannelIface)
-		if err != nil {
-			return nil, pkgerrors.WithMessagef(err, "unable to find interface %s", envInfo.FlannelIface)
-		}
-	}
-
 	clientCAFile := filepath.Join(envInfo.DataDir, "agent", "client-ca.crt")
 	if err := getHostFile(clientCAFile, info); err != nil {
 		return nil, err
@@ -503,47 +493,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	oldNodePasswordFile := filepath.Join(envInfo.DataDir, "agent", "node-password.txt")
 	newNodePasswordFile := filepath.Join(nodeConfigPath, "password")
 	upgradeOldNodePasswordPath(oldNodePasswordFile, newNodePasswordFile)
-
-	// If there is a VPN, we must overwrite NodeIP and flannel interface
-	var vpnInfo vpn.VPNInfo
-	if envInfo.VPNAuth != "" {
-		vpnInfo, err = vpn.GetVPNInfo(envInfo.VPNAuth)
-		if err != nil {
-			return nil, err
-		}
-
-		// Pass ipv4, ipv6 or both depending on nodeIPs mode
-		var vpnIPs []net.IP
-		if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
-			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-			if vpnInfo.IPv6Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-			}
-		} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
-			vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-			if vpnInfo.IPv4Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-			}
-		} else {
-			return nil, fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
-		}
-
-		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
-		if len(vpnIPs) != 0 {
-			logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
-			if len(envInfo.NodeIP.Value()) != 0 {
-				logrus.Warn("VPN provider overrides configured node-ip parameter")
-			}
-			if len(envInfo.NodeExternalIP.Value()) != 0 {
-				logrus.Warn("VPN provider overrides node-external-ip parameter")
-			}
-			nodeIPs = vpnIPs
-			flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
-			if err != nil {
-				return nil, pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
-			}
-		}
-	}
 
 	if controlConfig.ClusterIPRange != nil {
 		if utilsnet.IPFamilyOfCIDR(controlConfig.ClusterIPRange) != utilsnet.IPFamilyOf(nodeIPs[0]) && len(nodeIPs) > 1 {
@@ -633,7 +582,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		SupervisorMetrics:        controlConfig.SupervisorMetrics,
 		Token:                    info.String(),
 	}
-	nodeConfig.FlannelIface = flannelIface
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
 	nodeConfig.AgentConfig.NodeName = nodeName
 	nodeConfig.AgentConfig.NodeConfigPath = nodeConfigPath
@@ -697,29 +645,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		nodeInternalDNSs = append(nodeInternalDNSs, strings.Split(dnsString, ",")...)
 	}
 	nodeConfig.AgentConfig.NodeInternalDNSs = nodeInternalDNSs
-
-	nodeConfig.NoFlannel = nodeConfig.FlannelBackend == config.FlannelBackendNone
-	if !nodeConfig.NoFlannel {
-		hostLocal, err := exec.LookPath("host-local")
-		if err != nil {
-			return nil, pkgerrors.WithMessagef(err, "failed to find host-local")
-		}
-
-		if envInfo.FlannelConf == "" {
-			nodeConfig.FlannelConfFile = filepath.Join(envInfo.DataDir, "agent", "etc", "flannel", "net-conf.json")
-		} else {
-			nodeConfig.FlannelConfFile = envInfo.FlannelConf
-			nodeConfig.FlannelConfOverride = true
-		}
-		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
-		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(envInfo.DataDir, "agent", "etc", "cni", "net.d")
-		nodeConfig.AgentConfig.FlannelCniConfFile = envInfo.FlannelCniConfFile
-
-		// It does not make sense to use VPN without its flannel backend
-		if envInfo.VPNAuth != "" {
-			nodeConfig.FlannelBackend = vpnInfo.ProviderName
-		}
-	}
 
 	if nodeConfig.ImageServiceEndpoint != "" {
 		nodeConfig.AgentConfig.ImageServiceSocket = nodeConfig.ImageServiceEndpoint
