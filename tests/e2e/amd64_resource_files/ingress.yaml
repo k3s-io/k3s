@@ -18,34 +18,35 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
- name: nginx-ingress-svc
- labels:
-   k8s-app: nginx-app-ingress
+  name: nginx-ingress-svc
+  labels:
+    k8s-app: nginx-app-ingress
 spec:
- ports:
- - port: 80
-   targetPort: 80
-   protocol: TCP
-   name: http
- selector:
-   k8s-app: nginx-app-ingress
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    k8s-app: nginx-app-ingress
 ---
 apiVersion: v1
 kind: ReplicationController
 metadata:
- name: test-ingress
+  name: test-ingress
 spec:
- replicas: 2
- selector:
-   k8s-app: nginx-app-ingress
- template:
-   metadata:
-     labels:
-       k8s-app: nginx-app-ingress
-   spec:
-     terminationGracePeriodSeconds: 60
-     containers:
-     - name: testcontainer
-       image: ranchertest/mytestcontainer
-       ports:
-       - containerPort: 80
+  replicas: 2
+  selector:
+    k8s-app: nginx-app-ingress
+  template:
+    metadata:
+      labels:
+        k8s-app: nginx-app-ingress
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: testcontainer
+        image: rancher/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
+        ports:
+        - containerPort: 80

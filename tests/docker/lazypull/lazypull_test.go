@@ -8,14 +8,13 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var k3sImage = flag.String("k3sImage", "", "The k3s image used to provision containers")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 
 func Test_DockerLazyPull(t *testing.T) {
 	flag.Parse()
@@ -28,7 +27,7 @@ var _ = Describe("LazyPull Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			config.ServerYaml = "snapshotter: stargz"
 			Expect(config.ProvisionServers(1)).To(Succeed())
@@ -90,7 +89,7 @@ func lookLayers(node, layer string) error {
 	for layersNum = 0; layersNum < 100; layersNum++ {
 		// We use RunCommand instead of RunCmdOnNode because we pipe the output to jq
 		cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io snapshot --snapshotter=stargz info %s | jq -r '.Parent'", node, layer)
-		layer, err = tester.RunCommand(cmd)
+		layer, err = tests.RunCommand(cmd)
 		if err != nil {
 			return fmt.Errorf("failed to get parent layer: %v", err)
 		}
@@ -100,7 +99,7 @@ func lookLayers(node, layer string) error {
 			break
 		}
 		cmd = fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io snapshots --snapshotter=stargz info %s | jq -r '.Labels.\"%s\"'", node, layer, remoteSnapshotLabel)
-		label, err := tester.RunCommand(cmd)
+		label, err := tests.RunCommand(cmd)
 		if err != nil {
 			return fmt.Errorf("failed to get layer label: %v", err)
 		}
@@ -123,7 +122,7 @@ func lookLayers(node, layer string) error {
 func getTopmostLayer(node, container string) (string, error) {
 	var targetContainer string
 	cmd := fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io c ls -q labels.\"io.kubernetes.container.name\"==\"%s\" | sed -n 1p", node, container)
-	targetContainer, err := tester.RunCommand(cmd)
+	targetContainer, err := tests.RunCommand(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to get target container: %v", err)
 	}
@@ -133,7 +132,7 @@ func getTopmostLayer(node, container string) (string, error) {
 		return "", fmt.Errorf("failed to get target container")
 	}
 	cmd = fmt.Sprintf("docker exec -i %s ctr --namespace=k8s.io c info %s | jq -r '.SnapshotKey'", node, targetContainer)
-	layer, err := tester.RunCommand(cmd)
+	layer, err := tests.RunCommand(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to get topmost layer: %v", err)
 	}

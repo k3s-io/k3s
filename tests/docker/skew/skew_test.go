@@ -9,7 +9,6 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -19,7 +18,7 @@ import (
 var k3sImage = flag.String("k3sImage", "", "The current commit build of K3s")
 var channel = flag.String("channel", "latest", "The release channel to test")
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-var config *tester.TestConfig
+var config *docker.TestConfig
 
 func Test_DockerSkew(t *testing.T) {
 	flag.Parse()
@@ -39,7 +38,7 @@ var _ = BeforeSuite(func() {
 	sV.Minor--
 	upgradeChannel = fmt.Sprintf("v%d.%d", sV.Major, sV.Minor)
 
-	lastMinorVersion, err = tester.GetVersionFromChannel(upgradeChannel)
+	lastMinorVersion, err = docker.GetVersionFromChannel(upgradeChannel)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lastMinorVersion).To(ContainSubstring("v1."))
 
@@ -50,7 +49,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 	Context("Setup Cluster with Server newer than Agent", func() {
 		It("should provision new server and old agent", func() {
 			var err error
-			config, err = tester.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(*k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			config.K3sImage = "rancher/k3s:" + lastMinorVersion
@@ -91,7 +90,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 	Context("Test cluster with 1 Server older and 2 Servers newer", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = tester.NewTestConfig("rancher/k3s:" + lastMinorVersion)
+			config, err = docker.NewTestConfig("rancher/k3s:" + lastMinorVersion)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers", func() {

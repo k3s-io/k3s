@@ -8,7 +8,6 @@ import (
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
-	tester "github.com/k3s-io/k3s/tests/docker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/utils/set"
@@ -17,7 +16,7 @@ import (
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
-var config *tester.TestConfig
+var config *docker.TestConfig
 var snapshotname string
 
 func Test_DockerSnapshotRestore(t *testing.T) {
@@ -31,7 +30,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = tester.NewTestConfig("rancher/systemd-node")
+			config, err = docker.NewTestConfig("rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())
@@ -49,8 +48,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Cluster IP manifest not deployed: "+res)
 
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + config.KubeconfigFile
-				res, err := tester.RunCommand(cmd)
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running"
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: %q result: %s", cmd, res)
 			}, "240s", "5s").Should(Succeed())
@@ -72,8 +71,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			res, err := config.DeployWorkload("nodeport.yaml")
 			Expect(err).NotTo(HaveOccurred(), "NodePort manifest not deployed: "+res)
 			Eventually(func(g Gomega) {
-				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + config.KubeconfigFile
-				res, err := tester.RunCommand(cmd)
+				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running"
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 			}, "240s", "5s").Should(Succeed())
@@ -146,8 +145,8 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 		})
 
 		It("Verifies that workload1 exists and workload2 does not", func() {
-			cmd := "kubectl get pods --kubeconfig=" + config.KubeconfigFile
-			res, err := tester.RunCommand(cmd)
+			cmd := "kubectl get pods"
+			res, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).Should(ContainSubstring("test-clusterip"))
 			Expect(res).ShouldNot(ContainSubstring("test-nodeport"))
@@ -178,7 +177,7 @@ func CheckNodeStatus(kubeconfigFile string, readyNodes, notReadyNodes []string) 
 	foundNotReadyNodes := make(set.Set[string], 0)
 
 	cmd := "kubectl get nodes --no-headers --kubeconfig=" + kubeconfigFile
-	res, err := tester.RunCommand(cmd)
+	res, err := tests.RunCommand(cmd)
 	if err != nil {
 		return err
 	}

@@ -41,7 +41,7 @@ func StartK3sCluster(nodes []e2e.VagrantNode, serverYAML string, agentYAML strin
 		var yamlCmd string
 		var resetCmd string
 		var startCmd string
-		if strings.Contains(node.String(), "server") {
+		if strings.Contains(node.Name, "server") {
 			resetCmd = "head -n 4 /etc/rancher/k3s/config.yaml > /tmp/config.yaml && sudo mv /tmp/config.yaml /etc/rancher/k3s/config.yaml"
 			yamlCmd = fmt.Sprintf("echo '%s' >> /etc/rancher/k3s/config.yaml", serverYAML)
 			startCmd = "systemctl start k3s"
@@ -103,7 +103,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -124,14 +124,14 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		It("Returns pod metrics", func() {
 			cmd := "kubectl top pod -A"
 			Eventually(func() error {
-				_, err := e2e.RunCommand(cmd)
+				_, err := tests.RunCommand(cmd)
 				return err
 			}, "600s", "5s").Should(Succeed())
 		})
 
 		It("Returns node metrics", func() {
 			cmd := "kubectl top node"
-			res, err := e2e.RunCommand(cmd)
+			res, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed to get node metrics: %s", res)
 		})
 
@@ -143,7 +143,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l k8s-app=metrics-server -c metrics-server"
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -161,7 +161,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Fetching node status")
@@ -199,7 +199,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			Eventually(func() (string, error) {
 				cmd := "kubectl get nodes -l node-role.kubernetes.io/etcd=true"
 				return tc.Servers[0].RunCmdOnNode(cmd)
-			}, "120s", "5s").Should(ContainSubstring(tc.Servers[0].String()))
+			}, "120s", "5s").Should(ContainSubstring(tc.Servers[0].Name))
 		})
 
 		It("Checks node and pod status after migration", func() {
@@ -245,7 +245,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -258,8 +258,8 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Returns kubelet configuration", func() {
 			for _, node := range tc.AllNodes() {
-				cmd := "kubectl get --raw /api/v1/nodes/" + node.String() + "/proxy/configz"
-				Expect(e2e.RunCommand(cmd)).To(ContainSubstring(`"shutdownGracePeriod":"19s","shutdownGracePeriodCriticalPods":"13s"`))
+				cmd := "kubectl get --raw /api/v1/nodes/" + node.Name + "/proxy/configz"
+				Expect(tests.RunCommand(cmd)).To(ContainSubstring(`"shutdownGracePeriod":"19s","shutdownGracePeriodCriticalPods":"13s"`))
 			}
 		})
 
@@ -277,7 +277,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -301,10 +301,10 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			var res, logs string
 			var err error
 			Eventually(func() error {
-				res, err = e2e.RunCommand(cmd)
+				res, err = tests.RunCommand(cmd)
 				// Common error: metrics not available yet, pull more logs
 				if err != nil && strings.Contains(res, "metrics not available yet") {
-					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+					logs, _ = tests.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
 				}
 				return err
 			}, "300s", "10s").Should(Succeed(), "failed to get pod metrics: %s: %s", res, logs)
@@ -315,10 +315,10 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			var err error
 			cmd := "kubectl top node"
 			Eventually(func() error {
-				res, err = e2e.RunCommand(cmd)
+				res, err = tests.RunCommand(cmd)
 				// Common error: metrics not available yet, pull more logs
 				if err != nil && strings.Contains(res, "metrics not available yet") {
-					logs, _ = e2e.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
+					logs, _ = tests.RunCommand("kubectl logs -n kube-system -l k8s-app=metrics-server")
 				}
 				return err
 			}, "30s", "5s").Should(Succeed(), "failed to get node metrics: %s: %s", res, logs)
@@ -332,7 +332,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 
 		It("Collects logs from a pod", func() {
 			cmd := "kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -c traefik"
-			_, err := e2e.RunCommand(cmd)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -359,7 +359,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("has loaded the test container image", func() {
@@ -382,7 +382,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			By("CLUSTER CONFIG")
 			By("OS:" + *nodeOS)
 			By(tc.Status())
-			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].String())
+			tc.KubeconfigFile, err = e2e.GenKubeconfigFile(tc.Servers[0].Name)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

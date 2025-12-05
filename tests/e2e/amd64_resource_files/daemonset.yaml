@@ -13,6 +13,6 @@ spec:
     spec:
       containers:
         - name: webserver
-          image: nginx
+          image: rancher/mirrored-library-nginx:1.29.1-alpine
           ports:
           - containerPort: 80

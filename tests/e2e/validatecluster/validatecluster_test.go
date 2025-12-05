@@ -77,7 +77,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-clusterip --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				g.Expect(res).Should((ContainSubstring("test-clusterip")), "failed cmd: %q result: %s", cmd, res)
 			}, "240s", "5s").Should(Succeed())
@@ -100,12 +100,12 @@ var _ = Describe("Verify Create", Ordered, func() {
 			for _, node := range tc.Servers {
 				nodeExternalIP, _ := node.FetchNodeExternalIP()
 				cmd := "kubectl get service nginx-nodeport-svc --kubeconfig=" + tc.KubeconfigFile + " --output jsonpath=\"{.spec.ports[0].nodePort}\""
-				nodeport, err := e2e.RunCommand(cmd)
+				nodeport, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func(g Gomega) {
 					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-nodeport --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-					res, err := e2e.RunCommand(cmd)
+					res, err := tests.RunCommand(cmd)
 					Expect(err).NotTo(HaveOccurred())
 					g.Expect(res).Should(ContainSubstring("test-nodeport"), "nodeport pod was not created")
 				}, "240s", "5s").Should(Succeed())
@@ -113,7 +113,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				cmd = "curl -m 5 -s -f http://" + nodeExternalIP + ":" + nodeport + "/name.html"
 
 				Eventually(func(g Gomega) {
-					res, err := e2e.RunCommand(cmd)
+					res, err := tests.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 					g.Expect(res).Should(ContainSubstring("test-nodeport"))
 				}, "240s", "5s").Should(Succeed())
@@ -128,19 +128,19 @@ var _ = Describe("Verify Create", Ordered, func() {
 				ip, _ := node.FetchNodeExternalIP()
 
 				cmd := "kubectl get service nginx-loadbalancer-svc --kubeconfig=" + tc.KubeconfigFile + " --output jsonpath=\"{.spec.ports[0].port}\""
-				port, err := e2e.RunCommand(cmd)
+				port, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(func(g Gomega) {
 					cmd := "kubectl get pods -o=name -l k8s-app=nginx-app-loadbalancer --field-selector=status.phase=Running --kubeconfig=" + tc.KubeconfigFile
-					res, err := e2e.RunCommand(cmd)
+					res, err := tests.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 					g.Expect(res).Should(ContainSubstring("test-loadbalancer"))
 				}, "240s", "5s").Should(Succeed())
 
 				Eventually(func(g Gomega) {
 					cmd = "curl -m 5 -s -f http://" + ip + ":" + port + "/name.html"
-					res, err := e2e.RunCommand(cmd)
+					res, err := tests.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 					g.Expect(res).Should(ContainSubstring("test-loadbalancer"))
 				}, "240s", "5s").Should(Succeed())
@@ -157,7 +157,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				fmt.Println(cmd)
 
 				Eventually(func(g Gomega) {
-					res, err := e2e.RunCommand(cmd)
+					res, err := tests.RunCommand(cmd)
 					g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 					g.Expect(res).Should(ContainSubstring("test-ingress"))
 				}, "240s", "5s").Should(Succeed())
@@ -182,7 +182,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods dnsutils --kubeconfig=" + tc.KubeconfigFile
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 				g.Expect(res).Should(ContainSubstring("dnsutils"))
 			}, "420s", "2s").Should(Succeed())
@@ -190,7 +190,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Eventually(func(g Gomega) {
 				cmd := "kubectl --kubeconfig=" + tc.KubeconfigFile + " exec -i -t dnsutils -- nslookup kubernetes.default"
 
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 				g.Expect(res).Should(ContainSubstring("kubernetes.default.svc.cluster.local"))
 			}, "420s", "2s").Should(Succeed())
@@ -202,7 +202,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pvc local-path-pvc --kubeconfig=" + tc.KubeconfigFile
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 				g.Expect(res).Should(ContainSubstring("local-path-pvc"))
 				g.Expect(res).Should(ContainSubstring("Bound"))
@@ -210,18 +210,18 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pod volume-test --kubeconfig=" + tc.KubeconfigFile
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 				g.Expect(res).Should(ContainSubstring("volume-test"))
 				g.Expect(res).Should(ContainSubstring("Running"))
 			}, "420s", "2s").Should(Succeed())
 
 			cmd := "kubectl --kubeconfig=" + tc.KubeconfigFile + " exec volume-test -- sh -c 'echo local-path-test > /data/test'"
-			res, err = e2e.RunCommand(cmd)
+			res, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 
 			cmd = "kubectl delete pod volume-test --kubeconfig=" + tc.KubeconfigFile
-			res, err = e2e.RunCommand(cmd)
+			res, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 
 			_, err = tc.DeployWorkload("local-path-provisioner.yaml")
@@ -229,13 +229,13 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pods -o=name -l app=local-path-provisioner --field-selector=status.phase=Running -n kube-system --kubeconfig=" + tc.KubeconfigFile
-				res, _ := e2e.RunCommand(cmd)
+				res, _ := tests.RunCommand(cmd)
 				g.Expect(res).Should(ContainSubstring("local-path-provisioner"))
 			}, "420s", "2s").Should(Succeed())
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl get pod volume-test --kubeconfig=" + tc.KubeconfigFile
-				res, err := e2e.RunCommand(cmd)
+				res, err := tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 
 				g.Expect(res).Should(ContainSubstring("volume-test"))
@@ -244,7 +244,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			Eventually(func(g Gomega) {
 				cmd := "kubectl exec volume-test --kubeconfig=" + tc.KubeconfigFile + " -- cat /data/test"
-				res, err = e2e.RunCommand(cmd)
+				res, err = tests.RunCommand(cmd)
 				g.Expect(err).NotTo(HaveOccurred(), "failed cmd: %q result: %s", cmd, res)
 				fmt.Println("Data after re-creation", res)
 				g.Expect(res).Should(ContainSubstring("local-path-test"))
@@ -282,7 +282,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			for _, node := range tc.Servers {
 				cmd := "k3s certificate rotate"
 				_, err := node.RunCmdOnNode(cmd)
-				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+node.String())
+				Expect(err).NotTo(HaveOccurred(), "Certificate could not be rotated successfully on "+node.Name)
 			}
 		})
 
@@ -298,7 +298,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 				for _, node := range tc.Servers {
 					cmd := "test ! -e /var/lib/rancher/k3s/server/tls/dynamic-cert-regenerate"
 					_, err := node.RunCmdOnNode(cmd)
-					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+node.String())
+					Expect(err).NotTo(HaveOccurred(), "Dynamic cert regenerate file not removed on "+node.Name)
 				}
 			}, "620s", "5s").Should(Succeed())
 
@@ -324,16 +324,16 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			for _, node := range tc.Servers {
 				grCert, errGrep := node.RunCmdOnNode(grepCert)
-				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+node.String())
+				Expect(errGrep).NotTo(HaveOccurred(), "TLS dirs could not be listed on "+node.Name)
 				re := regexp.MustCompile("tls-[0-9]+")
 				tls := re.FindAllString(grCert, -1)[0]
 				diff := fmt.Sprintf("diff -sr /var/lib/rancher/k3s/server/tls/ /var/lib/rancher/k3s/server/%s/"+
 					"| grep -i identical | cut -f4 -d ' ' | xargs basename -a \n", tls)
 				result, err := node.RunCmdOnNode(diff)
-				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+node.String())
+				Expect(err).NotTo(HaveOccurred(), "Certificate diff not created successfully on "+node.Name)
 
 				certArray := strings.Split(result, "\n")
-				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+node.String())
+				Expect((certArray)).Should((Equal(expectResult)), "Certificate diff does not match the expected results on "+node.Name)
 			}
 
 			errRestartAgent := e2e.RestartCluster(tc.Agents)

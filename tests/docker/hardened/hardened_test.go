@@ -55,7 +55,7 @@ kubelet-arg:
 
 			for _, server := range config.Servers {
 				cmd := "docker cp ./cluster-level-pss.yaml " + server.Name + ":/tmp/cluster-level-pss.yaml"
-				Expect(docker.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 
 				cmd = "mkdir -p /var/lib/rancher/k3s/server/logs"
 				Expect(server.RunCmdOnNode(cmd)).Error().NotTo(HaveOccurred())
@@ -81,8 +81,8 @@ kubelet-arg:
 			_, err := config.DeployWorkload("hardened-ingress.yaml")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(func() (string, error) {
-				cmd := "kubectl get daemonset -n default example -o jsonpath='{.status.numberReady}' --kubeconfig=" + config.KubeconfigFile
-				return docker.RunCommand(cmd)
+				cmd := "kubectl get daemonset -n default example -o jsonpath='{.status.numberReady}'"
+				return tests.RunCommand(cmd)
 			}, "60s", "5s").Should(Equal("2"))
 			_, err = config.DeployWorkload("hardened-netpool.yaml")
 			Expect(err).NotTo(HaveOccurred())
@@ -92,23 +92,23 @@ kubelet-arg:
 				Eventually(func(g Gomega) {
 					for _, server := range config.Servers {
 						cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' %s://%s/", scheme, server.IP)
-						g.Expect(docker.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+						g.Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 					}
 					for _, agent := range config.Agents {
 						cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' %s://%s/", scheme, agent.IP)
-						g.Expect(docker.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+						g.Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 					}
 				}, "30s", "10s").Should(Succeed())
 			}
 		})
 		It("confirms we can make a request through the nodeport service", func() {
 			for _, server := range config.Servers {
-				cmd := "kubectl get service/example -o 'jsonpath={.spec.ports[*].nodePort}' --kubeconfig=" + config.KubeconfigFile
-				ports, err := docker.RunCommand(cmd)
+				cmd := "kubectl get service/example -o 'jsonpath={.spec.ports[*].nodePort}'"
+				ports, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				for _, port := range strings.Split(ports, " ") {
 					cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' http://%s:%s", server.IP, port)
-					Expect(docker.RunCommand(cmd)).Error().NotTo(HaveOccurred())
+					Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 				}
 			}
 		})

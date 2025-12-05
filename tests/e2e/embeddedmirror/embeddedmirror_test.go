@@ -51,13 +51,13 @@ var _ = Describe("Verify Create", Ordered, func() {
 			By(tc.Status())
 		})
 		It("Saves image into server images dir", func() {
-			res, err := e2e.RunCommand("docker image pull docker.io/rancher/mirrored-library-busybox:1.34.1")
+			res, err := tests.RunCommand("docker image pull docker.io/rancher/mirrored-library-busybox:1.34.1")
 			Expect(err).NotTo(HaveOccurred(), "failed to pull image: "+res)
-			res, err = e2e.RunCommand("docker image tag docker.io/rancher/mirrored-library-busybox:1.34.1 registry.example.com/rancher/mirrored-library-busybox:1.34.1")
+			res, err = tests.RunCommand("docker image tag docker.io/rancher/mirrored-library-busybox:1.34.1 registry.example.com/rancher/mirrored-library-busybox:1.34.1")
 			Expect(err).NotTo(HaveOccurred(), "failed to tag image: "+res)
-			res, err = e2e.RunCommand("docker image save registry.example.com/rancher/mirrored-library-busybox:1.34.1 -o mirrored-library-busybox.tar")
+			res, err = tests.RunCommand("docker image save registry.example.com/rancher/mirrored-library-busybox:1.34.1 -o mirrored-library-busybox.tar")
 			Expect(err).NotTo(HaveOccurred(), "failed to save image: "+res)
-			res, err = e2e.RunCommand("vagrant scp mirrored-library-busybox.tar " + tc.Servers[0].String() + ":/tmp/mirrored-library-busybox.tar")
+			res, err = tests.RunCommand("vagrant scp mirrored-library-busybox.tar " + tc.Servers[0].Name + ":/tmp/mirrored-library-busybox.tar")
 			Expect(err).NotTo(HaveOccurred(), "failed to 'vagrant scp' image tarball: "+res)
 			res, err = tc.Servers[0].RunCmdOnNode("mv /tmp/mirrored-library-busybox.tar /var/lib/rancher/k3s/agent/images/mirrored-library-busybox.tar")
 			Expect(err).NotTo(HaveOccurred(), "failed to move image tarball: "+res)
@@ -75,80 +75,80 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "10s").Should(Succeed())
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
-			res, err := e2e.RunCommand("kubectl create deployment my-deployment-1 --image=docker.io/rancher/mirrored-library-busybox:1.37.0 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-1 --image=docker.io/rancher/mirrored-library-busybox:1.37.0 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-deployment-1 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-deployment-1"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCommand(patchCmd)
+			res, err = tests.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl rollout status deployment my-deployment-1 --watch=true --timeout=360s")
+			res, err = tests.RunCommand("kubectl rollout status deployment my-deployment-1 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl delete deployment my-deployment-1")
+			res, err = tests.RunCommand("kubectl delete deployment my-deployment-1")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		// @sha256:101b4afd76732482eff9b95cae5f94bcf295e521fbec4e01b69c5421f3f3f3e5 is :1.37.0 which has already been pulled and should be reused
 		It("Should create and validate deployment with embedded registry mirror using image digest for existing tag", func() {
-			res, err := e2e.RunCommand("kubectl create deployment my-deployment-2 --image=docker.io/rancher/mirrored-library-busybox@sha256:101b4afd76732482eff9b95cae5f94bcf295e521fbec4e01b69c5421f3f3f3e5 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-2 --image=docker.io/rancher/mirrored-library-busybox@sha256:101b4afd76732482eff9b95cae5f94bcf295e521fbec4e01b69c5421f3f3f3e5 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-deployment-2 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-deployment-2"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCommand(patchCmd)
+			res, err = tests.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl rollout status deployment my-deployment-2 --watch=true --timeout=360s")
+			res, err = tests.RunCommand("kubectl rollout status deployment my-deployment-2 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl delete deployment my-deployment-2")
+			res, err = tests.RunCommand("kubectl delete deployment my-deployment-2")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		// @sha256:8a45424ddf949bbe9bb3231b05f9032a45da5cd036eb4867b511b00734756d6f is :1.36.1 which should not have been pulled yet
 		It("Should create and validate deployment with embedded registry mirror using image digest without existing tag", func() {
-			res, err := e2e.RunCommand("kubectl create deployment my-deployment-3 --image=docker.io/rancher/mirrored-library-busybox@sha256:8a45424ddf949bbe9bb3231b05f9032a45da5cd036eb4867b511b00734756d6f -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-3 --image=docker.io/rancher/mirrored-library-busybox@sha256:8a45424ddf949bbe9bb3231b05f9032a45da5cd036eb4867b511b00734756d6f -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-deployment-3 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-deployment-3"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCommand(patchCmd)
+			res, err = tests.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl rollout status deployment my-deployment-3 --watch=true --timeout=360s")
+			res, err = tests.RunCommand("kubectl rollout status deployment my-deployment-3 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl delete deployment my-deployment-3")
+			res, err = tests.RunCommand("kubectl delete deployment my-deployment-3")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		// create deployment from imported image
 		It("Should create and validate deployment with embedded registry mirror using image tag from import", func() {
-			res, err := e2e.RunCommand("kubectl create deployment my-deployment-4 --image=registry.example.com/rancher/mirrored-library-busybox:1.34.1 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-4 --image=registry.example.com/rancher/mirrored-library-busybox:1.34.1 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-deployment-4 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-deployment-4"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCommand(patchCmd)
+			res, err = tests.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl rollout status deployment my-deployment-4 --watch=true --timeout=360s")
+			res, err = tests.RunCommand("kubectl rollout status deployment my-deployment-4 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl delete deployment my-deployment-4")
+			res, err = tests.RunCommand("kubectl delete deployment my-deployment-4")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -159,20 +159,20 @@ var _ = Describe("Verify Create", Ordered, func() {
 		// snapshotter does not and will flatten the manifest list to a single-platform image with a different digest.
 		// If this test fails, make sure the `docker image save` command above is run on a host that is using containerd-snapshotter.
 		It("Should create and validate deployment with embedded registry mirror using image digest from import", func() {
-			res, err := e2e.RunCommand("kubectl create deployment my-deployment-5 --image=registry.example.com/rancher/mirrored-library-busybox@sha256:125dfcbe72a0158c16781d3ad254c0d226a6534b59cc7c2bf549cdd50c6e8989 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-5 --image=registry.example.com/rancher/mirrored-library-busybox@sha256:125dfcbe72a0158c16781d3ad254c0d226a6534b59cc7c2bf549cdd50c6e8989 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
 			patchCmd := fmt.Sprintf(`kubectl patch deployment my-deployment-5 --patch '{"spec":{"replicas":%d,"revisionHistoryLimit":0,"strategy":{"type":"Recreate", "rollingUpdate": null},"template":{"spec":{"affinity":{"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"app","operator":"In","values":["my-deployment-5"]}]},"topologyKey":"kubernetes.io/hostname"}]}}}}}}'`, *serverCount+*agentCount)
-			res, err = e2e.RunCommand(patchCmd)
+			res, err = tests.RunCommand(patchCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl rollout status deployment my-deployment-5 --watch=true --timeout=360s")
+			res, err = tests.RunCommand("kubectl rollout status deployment my-deployment-5 --watch=true --timeout=360s")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
-			res, err = e2e.RunCommand("kubectl delete deployment my-deployment-5")
+			res, err = tests.RunCommand("kubectl delete deployment my-deployment-5")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -180,7 +180,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 		/* Disabled, ref: https://github.com/spegel-org/spegel/issues/1023
 		It("Should expose embedded registry metrics", func() {
 			grepCmd := fmt.Sprintf("kubectl get --raw /api/v1/nodes/%s/proxy/metrics | grep -F 'spegel_advertised_images{registry=\"docker.io\"}'", tc.Servers[0])
-			res, err := e2e.RunCommand(grepCmd)
+			res, err := tests.RunCommand(grepCmd)
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 		})
