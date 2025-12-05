@@ -43,12 +43,18 @@ import (
 
 const (
 	subnetFile = "/run/flannel/subnet.env"
+
+	BackendNone            = "none"
+	BackendVXLAN           = "vxlan"
+	BackendHostGW          = "host-gw"
+	BackendWireguardNative = "wireguard-native"
+	BackendTailscale       = "tailscale"
 )
 
 var (
-	FlannelBaseAnnotation         = "flannel.alpha.coreos.com"
-	FlannelExternalIPv4Annotation = FlannelBaseAnnotation + "/public-ip-overwrite"
-	FlannelExternalIPv6Annotation = FlannelBaseAnnotation + "/public-ipv6-overwrite"
+	BaseAnnotation         = "flannel.alpha.coreos.com"
+	ExternalIPv4Annotation = BaseAnnotation + "/public-ip-overwrite"
+	ExternalIPv6Annotation = BaseAnnotation + "/public-ipv6-overwrite"
 )
 
 func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interface, flannelConf, kubeConfigFile string, flannelIPv6Masq bool, nm netMode) error {
@@ -60,7 +66,7 @@ func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interfac
 	sm, err := kube.NewSubnetManager(ctx,
 		"",
 		kubeConfigFile,
-		FlannelBaseAnnotation,
+		BaseAnnotation,
 		flannelConf,
 		false)
 	if err != nil {

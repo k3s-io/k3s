@@ -23,7 +23,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/flannel"
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/daemons/config"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -81,17 +80,15 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		}
 	})
 
-	if nodeConfig.FlannelBackend != config.FlannelBackendNone {
+	if nodeConfig.Flannel.Backend != flannel.BackendNone {
 		var err error
 
-		var flannelIface *net.Interface
 		if len(cfg.FlannelIface) > 0 {
-			flannelIface, err = net.InterfaceByName(cfg.FlannelIface)
+			nodeConfig.Flannel.Iface, err = net.InterfaceByName(cfg.FlannelIface)
 			if err != nil {
 				return pkgerrors.WithMessagef(err, "unable to find interface %s", cfg.FlannelIface)
 			}
 		}
-		nodeConfig.FlannelIface = flannelIface
 
 		// If there is a VPN, we must overwrite NodeIP and flannel interface
 		var vpnInfo vpn.VPNInfo
@@ -128,7 +125,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 					logrus.Warn("VPN provider overrides node-external-ip parameter")
 				}
 				nodeIPs = vpnIPs
-				flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
+				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.VPNInterface)
 				if err != nil {
 					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
 				}
@@ -142,18 +139,17 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		}
 
 		if cfg.FlannelConf == "" {
-			nodeConfig.FlannelConfFile = filepath.Join(cfg.DataDir, "agent", "etc", "flannel", "net-conf.json")
+			nodeConfig.Flannel.ConfFile = filepath.Join(cfg.DataDir, "agent", "etc", "flannel", "net-conf.json")
 		} else {
-			nodeConfig.FlannelConfFile = cfg.FlannelConf
-			nodeConfig.FlannelConfOverride = true
+			nodeConfig.Flannel.ConfFile = cfg.FlannelConf
+			nodeConfig.Flannel.ConfOverride = true
 		}
 		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(cfg.DataDir, "agent", "etc", "cni", "net.d")
-		nodeConfig.AgentConfig.FlannelCniConfFile = cfg.FlannelCniConfFile
 
 		// It does not make sense to use VPN without its flannel backend
 		if cfg.VPNAuth != "" {
-			nodeConfig.FlannelBackend = vpnInfo.ProviderName
+			nodeConfig.Flannel.Backend = vpnInfo.ProviderName
 		}
 	}
 
@@ -337,11 +333,11 @@ func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 }
 
 func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
-	if cfg.FlannelBackend != daemonconfig.FlannelBackendNone {
-		if (cfg.FlannelExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
+	if cfg.Flannel.Backend != flannel.BackendNone {
+		if (cfg.Flannel.ExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
 			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
-		} else if (cfg.FlannelExternalIP) && (cfg.FlannelBackend != daemonconfig.FlannelBackendWireguardNative) {
-			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", cfg.FlannelBackend)
+		} else if (cfg.Flannel.ExternalIP) && (cfg.Flannel.Backend != flannel.BackendWireguardNative) {
+			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", cfg.Flannel.Backend)
 		}
 		if err := flannel.Prepare(ctx, cfg); err != nil {
 			return err
