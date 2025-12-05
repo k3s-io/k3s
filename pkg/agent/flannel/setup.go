@@ -74,7 +74,7 @@ func Prepare(ctx context.Context, nodeConfig *config.Node) error {
 }
 
 func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error {
-	logrus.Infof("Starting flannel with backend %s", nodeConfig.FlannelBackend)
+	logrus.Infof("Starting flannel with backend %s", nodeConfig.Flannel.Backend)
 
 	kubeConfig := nodeConfig.AgentConfig.KubeConfigKubelet
 	coreClient, err := util.GetClientSet(kubeConfig)
@@ -115,7 +115,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 		return pkgerrors.WithMessage(err, "failed to check netMode for flannel")
 	}
 	go func() {
-		err := flannel(ctx, wg, nodeConfig.FlannelIface, nodeConfig.FlannelConfFile, kubeConfig, nodeConfig.FlannelIPv6Masq, nm)
+		err := flannel(ctx, wg, nodeConfig.Flannel.Iface, nodeConfig.Flannel.ConfFile, kubeConfig, nodeConfig.Flannel.IPv6Masq, nm)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			signals.RequestShutdown(pkgerrors.WithMessage(err, "flannel exited"))
 		}
@@ -150,14 +150,14 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 	}
 	p := filepath.Join(dir, "10-flannel.conflist")
 
-	if nodeConfig.AgentConfig.FlannelCniConfFile != "" {
-		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.AgentConfig.FlannelCniConfFile)
-		return agentutil.CopyFile(nodeConfig.AgentConfig.FlannelCniConfFile, p, false)
+	if nodeConfig.Flannel.CNIConfFile != "" {
+		logrus.Debugf("Using %s as the flannel CNI conf", nodeConfig.Flannel.CNIConfFile)
+		return agentutil.CopyFile(nodeConfig.Flannel.CNIConfFile, p, false)
 	}
 
 	cniConfJSON := cniConf
 	if goruntime.GOOS == "windows" {
-		extIface, err := LookupExtInterface(nodeConfig.FlannelIface, ipv4)
+		extIface, err := LookupExtInterface(nodeConfig.Flannel.Iface, ipv4)
 		if err != nil {
 			return err
 		}
@@ -171,12 +171,12 @@ func createCNIConf(dir string, nodeConfig *config.Node) error {
 }
 
 func createFlannelConf(nodeConfig *config.Node) error {
-	logrus.Debugf("Creating the flannel configuration for backend %s in file %s", nodeConfig.FlannelBackend, nodeConfig.FlannelConfFile)
-	if nodeConfig.FlannelConfFile == "" {
+	logrus.Debugf("Creating the flannel configuration for backend %s in file %s", nodeConfig.Flannel.Backend, nodeConfig.Flannel.ConfFile)
+	if nodeConfig.Flannel.ConfFile == "" {
 		return errors.New("Flannel configuration not defined")
 	}
-	if nodeConfig.FlannelConfOverride {
-		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.FlannelConfFile)
+	if nodeConfig.Flannel.ConfOverride {
+		logrus.Infof("Using custom flannel conf defined at %s", nodeConfig.Flannel.ConfFile)
 		return nil
 	}
 	nm, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
@@ -218,21 +218,21 @@ func createFlannelConf(nodeConfig *config.Node) error {
 	var backendConf string
 
 	// precheck and error out unsupported flannel backends.
-	switch nodeConfig.FlannelBackend {
-	case config.FlannelBackendHostGW:
-	case config.FlannelBackendTailscale:
-	case config.FlannelBackendWireguardNative:
+	switch nodeConfig.Flannel.Backend {
+	case BackendHostGW:
+	case BackendTailscale:
+	case BackendWireguardNative:
 		if goruntime.GOOS == "windows" {
-			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.FlannelBackend)
+			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.Flannel.Backend)
 		}
 	}
 
-	switch nodeConfig.FlannelBackend {
-	case config.FlannelBackendVXLAN:
+	switch nodeConfig.Flannel.Backend {
+	case BackendVXLAN:
 		backendConf = vxlanBackend
-	case config.FlannelBackendHostGW:
+	case BackendHostGW:
 		backendConf = hostGWBackend
-	case config.FlannelBackendTailscale:
+	case BackendTailscale:
 		var routes []string
 		if nm.IPv4Enabled() {
 			routes = append(routes, "$SUBNET")
@@ -244,15 +244,15 @@ func createFlannelConf(nodeConfig *config.Node) error {
 			return fmt.Errorf("incorrect netMode for flannel tailscale backend")
 		}
 		backendConf = strings.ReplaceAll(tailscaledBackend, "%Routes%", strings.Join(routes, ","))
-	case config.FlannelBackendWireguardNative:
+	case BackendWireguardNative:
 		backendConf = wireguardNativeBackend
 	default:
-		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.FlannelBackend)
+		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.Flannel.Backend)
 	}
 	confJSON = strings.ReplaceAll(confJSON, "%backend%", backendConf)
 
 	logrus.Debugf("The flannel configuration is %s", confJSON)
-	return agentutil.WriteFile(nodeConfig.FlannelConfFile, confJSON)
+	return agentutil.WriteFile(nodeConfig.Flannel.ConfFile, confJSON)
 }
 
 // fundNetMode returns the mode (ipv4, ipv6 or dual-stack) in which flannel is operating
@@ -279,13 +279,13 @@ func findNetMode(cidrs []*net.IPNet) (netMode, error) {
 func setAnnotations(ctx context.Context, nodeConfig *config.Node, coreClient kubernetes.Interface) error {
 	patch := util.NewPatchList()
 	patcher := util.NewPatcher[*v1.Node](coreClient.CoreV1().Nodes())
-	if nodeConfig.AgentConfig.NodeExternalIP != "" && nodeConfig.FlannelExternalIP {
+	if nodeConfig.AgentConfig.NodeExternalIP != "" && nodeConfig.Flannel.ExternalIP {
 		for _, ipAddress := range nodeConfig.AgentConfig.NodeExternalIPs {
 			if utilsnet.IsIPv4(ipAddress) {
-				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv4Annotation)
+				patch.Add(ipAddress.String(), "metadata", "annotations", ExternalIPv4Annotation)
 			}
 			if utilsnet.IsIPv6(ipAddress) {
-				patch.Add(ipAddress.String(), "metadata", "annotations", FlannelExternalIPv6Annotation)
+				patch.Add(ipAddress.String(), "metadata", "annotations", ExternalIPv6Annotation)
 			}
 		}
 	}
