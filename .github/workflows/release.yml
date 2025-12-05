@@ -39,7 +39,7 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
 
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
@@ -179,7 +179,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
 
       - name: Read Prime artifacts secrets
         uses: rancher-eio/read-vault-secrets@main
@@ -256,7 +256,7 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm, upload-release-airgap]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.0
 
     - name: Read Prime artifacts secrets
       uses: rancher-eio/read-vault-secrets@main
