@@ -39,7 +39,6 @@ type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	ImageServiceEndpoint     string
-	NoFlannel                bool
 	SELinux                  bool
 	EnablePProf              bool
 	SupervisorMetrics        bool
