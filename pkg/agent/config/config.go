@@ -579,14 +579,16 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		ImageServiceEndpoint:     envInfo.ImageServiceEndpoint,
 		EnablePProf:              envInfo.EnablePProf,
 		EmbeddedRegistry:         controlConfig.EmbeddedRegistry,
-		FlannelBackend:           controlConfig.FlannelBackend,
-		FlannelIPv6Masq:          controlConfig.FlannelIPv6Masq,
-		FlannelExternalIP:        controlConfig.FlannelExternalIP,
 		EgressSelectorMode:       controlConfig.EgressSelectorMode,
 		ServerHTTPSPort:          controlConfig.HTTPSPort,
 		SupervisorPort:           controlConfig.SupervisorPort,
 		SupervisorMetrics:        controlConfig.SupervisorMetrics,
 		Token:                    info.String(),
+		Flannel: config.Flannel{
+			Backend:    controlConfig.FlannelBackend,
+			IPv6Masq:   controlConfig.FlannelIPv6Masq,
+			ExternalIP: controlConfig.FlannelExternalIP,
+		},
 	}
 	nodeConfig.Images = filepath.Join(envInfo.DataDir, "agent", "images")
 	nodeConfig.AgentConfig.NodeName = nodeName
