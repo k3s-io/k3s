@@ -1,7 +1,7 @@
 //go:build !no_embedded_executor
 // +build !no_embedded_executor
 
-package executor
+package embed
 
 import (
 	"context"
@@ -24,6 +24,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/executor/embed/etcd"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -52,7 +54,17 @@ import (
 var once sync.Once
 
 func init() {
-	executor = &Embedded{}
+	executor.Set(&Embedded{})
+}
+
+// explicit type check
+var _ executor.Executor = &Embedded{}
+
+type Embedded struct {
+	apiServerReady <-chan struct{}
+	etcdReady      chan struct{}
+	criReady       chan struct{}
+	nodeConfig     *daemonconfig.Node
 }
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
@@ -312,24 +324,50 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	return nil
 }
 
-func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
-	return InitialOptions{}, nil
+func (e *Embedded) CurrentETCDOptions() (executor.InitialOptions, error) {
+	return executor.InitialOptions{}, nil
+}
+
+func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
+	// Start a goroutine to call the provided test function until it returns true.
+	// The test function is reponsible for ensuring that the etcd server is up
+	// and ready to accept client requests.
+	if e.etcdReady != nil {
+		go func() {
+			for {
+				if err := test(ctx, true); err != nil {
+					logrus.Infof("Failed to test etcd connection: %v", err)
+				} else {
+					logrus.Info("Connection to etcd is ready")
+					close(e.etcdReady)
+					return
+				}
+
+				select {
+				case <-time.After(5 * time.Second):
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+	return etcd.StartETCD(ctx, wg, args, extraArgs)
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
-	return CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
+	return executor.CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
-	return CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
+	return executor.CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 	// agentless sets cri socket path to /dev/null to indicate no CRI is needed
 	if cfg.ContainerRuntimeEndpoint != "/dev/null" {
-		return CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
+		return executor.CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
 	}
-	return CloseIfNilErr(nil, e.criReady)
+	return executor.CloseIfNilErr(nil, e.criReady)
 }
 
 func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
