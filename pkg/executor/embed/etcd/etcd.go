@@ -1,4 +1,4 @@
-package executor
+package etcd
 
 import (
 	"context"
@@ -6,49 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
-	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 )
 
-// Embedded is defined here so that we can use embedded.ETCD even when the rest
-// of the embedded execututor is disabled by build flags
-type Embedded struct {
-	apiServerReady <-chan struct{}
-	etcdReady      chan struct{}
-	criReady       chan struct{}
-	nodeConfig     *daemonconfig.Node
-}
-
-func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error {
-	// An unbootstrapped executor is used to start up a temporary embedded etcd when reconciling.
-	// This temporary executor doesn't have any ready channels set up, so don't bother testing.
-	if e.etcdReady != nil {
-		go func() {
-			for {
-				if err := test(ctx, true); err != nil {
-					logrus.Infof("Failed to test etcd connection: %v", err)
-				} else {
-					logrus.Info("Connection to etcd is ready")
-					close(e.etcdReady)
-					return
-				}
-
-				select {
-				case <-time.After(5 * time.Second):
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	// nil args indicates a no-op start; all we need to do is wait for the test
-	// func to indicate readiness and close the channel.
+// StartETCD runs an embedded etcd server instance with the provided config.
+// This function will return if the server has been successfully started.
+// The server will continue to run until the context is cancelled or some internal error occurs.
+func StartETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfig, extraArgs []string) error {
+	// nil args indicates a no-op start
 	if args == nil {
 		return nil
 	}
