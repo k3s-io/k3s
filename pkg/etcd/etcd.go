@@ -28,6 +28,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd/s3"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
+	embedded "github.com/k3s-io/k3s/pkg/executor/embed/etcd"
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -1125,8 +1126,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context, wg *sync.WaitGroup) e
 		return err
 	}
 
-	embedded := executor.Embedded{}
-	return embedded.ETCD(ctx, wg, &executor.ETCDConfig{
+	return embedded.StartETCD(ctx, wg, &executor.ETCDConfig{
 		InitialOptions:       executor.InitialOptions{AdvertisePeerURL: peerURL},
 		DataDir:              tmpDataDir,
 		ForceNewCluster:      true,
@@ -1146,7 +1146,7 @@ func (e *ETCD) StartEmbeddedTemporary(ctx context.Context, wg *sync.WaitGroup) e
 		},
 		ExperimentalInitialCorruptCheck:         true,
 		ExperimentalWatchProgressNotifyInterval: e.config.Datastore.NotifyInterval,
-	}, append(e.config.ExtraEtcdArgs, "--max-snapshots=0", "--max-wals=0"), e.Test)
+	}, append(e.config.ExtraEtcdArgs, "--max-snapshots=0", "--max-wals=0"))
 }
 
 func addPort(address string, offset int) (string, error) {
