@@ -23,37 +23,26 @@ import (
 )
 
 const (
-	FlannelBackendNone            = "none"
-	FlannelBackendVXLAN           = "vxlan"
-	FlannelBackendHostGW          = "host-gw"
-	FlannelBackendWireguardNative = "wireguard-native"
-	FlannelBackendTailscale       = "tailscale"
-	EgressSelectorModeAgent       = "agent"
-	EgressSelectorModeCluster     = "cluster"
-	EgressSelectorModeDisabled    = "disabled"
-	EgressSelectorModePod         = "pod"
-	CertificateRenewDays          = 120
-	StreamServerPort              = "10010"
+	EgressSelectorModeAgent    = "agent"
+	EgressSelectorModeCluster  = "cluster"
+	EgressSelectorModeDisabled = "disabled"
+	EgressSelectorModePod      = "pod"
+	CertificateRenewDays       = 120
+	StreamServerPort           = "10010"
 )
 
 type Node struct {
 	Docker                   bool
 	ContainerRuntimeEndpoint string
 	ImageServiceEndpoint     string
-	NoFlannel                bool
 	SELinux                  bool
 	EnablePProf              bool
 	SupervisorMetrics        bool
 	EmbeddedRegistry         bool
-	FlannelBackend           string
-	FlannelConfFile          string
-	FlannelConfOverride      bool
-	FlannelIface             *net.Interface
-	FlannelIPv6Masq          bool
-	FlannelExternalIP        bool
 	EgressSelectorMode       string
 	Containerd               Containerd
 	CRIDockerd               CRIDockerd
+	Flannel                  Flannel
 	Images                   string
 	AgentConfig              Agent
 	Token                    string
@@ -104,6 +93,16 @@ type CRIDockerd struct {
 	Debug   bool
 }
 
+type Flannel struct {
+	Backend      string
+	CNIConfFile  string
+	ConfFile     string
+	ConfOverride bool
+	Iface        *net.Interface
+	IPv6Masq     bool
+	ExternalIP   bool
+}
+
 type Agent struct {
 	PodManifests            string
 	NodeName                string
@@ -149,7 +148,6 @@ type Agent struct {
 	ImageCredProvBinDir     string
 	ImageCredProvConfig     string
 	IPSECPSK                string
-	FlannelCniConfFile      string
 	Registry                *registries.Registry
 	SystemDefaultRegistry   string
 	AirgapExtraRegistry     []string

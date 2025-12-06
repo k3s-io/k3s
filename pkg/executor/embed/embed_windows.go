@@ -1,7 +1,7 @@
 //go:build windows && !no_embedded_executor
 // +build windows,!no_embedded_executor
 
-package executor
+package embed
 
 import (
 	"encoding/json"

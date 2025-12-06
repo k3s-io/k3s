@@ -1,13 +1,17 @@
 //go:build !no_embedded_executor
 // +build !no_embedded_executor
 
-package executor
+package embed
 
 import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
+	"net"
 	"net/http"
+	"os/exec"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -16,11 +20,16 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/agent/cridockerd"
+	"github.com/k3s-io/k3s/pkg/agent/flannel"
+	"github.com/k3s-io/k3s/pkg/agent/netpol"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/executor/embed/etcd"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/k3s/pkg/vpn"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -36,6 +45,7 @@ import (
 	proxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	sapp "k8s.io/kubernetes/cmd/kube-scheduler/app"
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
+	utilsnet "k8s.io/utils/net"
 
 	// registering k3s cloud provider
 	_ "github.com/k3s-io/k3s/pkg/cloudprovider"
@@ -44,7 +54,17 @@ import (
 var once sync.Once
 
 func init() {
-	executor = &Embedded{}
+	executor.Set(&Embedded{})
+}
+
+// explicit type check
+var _ executor.Executor = &Embedded{}
+
+type Embedded struct {
+	apiServerReady <-chan struct{}
+	etcdReady      chan struct{}
+	criReady       chan struct{}
+	nodeConfig     *daemonconfig.Node
 }
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
@@ -71,6 +91,81 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 			}
 		}
 	})
+
+	if nodeConfig.Flannel.Backend != flannel.BackendNone {
+		var err error
+
+		var flannelIface *net.Interface
+		if len(cfg.FlannelIface) > 0 {
+			flannelIface, err = net.InterfaceByName(cfg.FlannelIface)
+			if err != nil {
+				return pkgerrors.WithMessagef(err, "unable to find interface %s", cfg.FlannelIface)
+			}
+		}
+		nodeConfig.Flannel.Iface = flannelIface
+
+		// If there is a VPN, we must overwrite NodeIP and flannel interface
+		var vpnInfo vpn.VPNInfo
+		if cfg.VPNAuth != "" {
+			vpnInfo, err = vpn.GetVPNInfo(cfg.VPNAuth)
+			if err != nil {
+				return err
+			}
+
+			// Pass ipv4, ipv6 or both depending on nodeIPs mode
+			nodeIPs := nodeConfig.AgentConfig.NodeIPs
+			var vpnIPs []net.IP
+			if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+				if vpnInfo.IPv6Address != nil {
+					vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+				}
+			} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+				if vpnInfo.IPv4Address != nil {
+					vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+				}
+			} else {
+				return fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
+			}
+
+			// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
+			if len(vpnIPs) != 0 {
+				logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
+				if len(cfg.NodeIP.Value()) != 0 {
+					logrus.Warn("VPN provider overrides configured node-ip parameter")
+				}
+				if len(cfg.NodeExternalIP.Value()) != 0 {
+					logrus.Warn("VPN provider overrides node-external-ip parameter")
+				}
+				nodeIPs = vpnIPs
+				flannelIface, err = net.InterfaceByName(vpnInfo.VPNInterface)
+				if err != nil {
+					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
+				}
+			}
+		}
+
+		// set paths for embedded flannel if enabled
+		hostLocal, err := exec.LookPath("host-local")
+		if err != nil {
+			return pkgerrors.WithMessagef(err, "failed to find host-local")
+		}
+
+		if cfg.FlannelConf == "" {
+			nodeConfig.Flannel.ConfFile = filepath.Join(cfg.DataDir, "agent", "etc", "flannel", "net-conf.json")
+		} else {
+			nodeConfig.Flannel.ConfFile = cfg.FlannelConf
+			nodeConfig.Flannel.ConfOverride = true
+		}
+		nodeConfig.AgentConfig.CNIBinDir = filepath.Dir(hostLocal)
+		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(cfg.DataDir, "agent", "etc", "cni", "net.d")
+
+		// It does not make sense to use VPN without its flannel backend
+		if cfg.VPNAuth != "" {
+			nodeConfig.Flannel.Backend = vpnInfo.ProviderName
+		}
+	}
 
 	return nil
 }
@@ -231,24 +326,75 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 	return nil
 }
 
-func (e *Embedded) CurrentETCDOptions() (InitialOptions, error) {
-	return InitialOptions{}, nil
+func (e *Embedded) CurrentETCDOptions() (executor.InitialOptions, error) {
+	return executor.InitialOptions{}, nil
+}
+
+func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
+	// Start a goroutine to call the provided test function until it returns true.
+	// The test function is reponsible for ensuring that the etcd server is up
+	// and ready to accept client requests.
+	if e.etcdReady != nil {
+		go func() {
+			for {
+				if err := test(ctx, true); err != nil {
+					logrus.Infof("Failed to test etcd connection: %v", err)
+				} else {
+					logrus.Info("Connection to etcd is ready")
+					close(e.etcdReady)
+					return
+				}
+
+				select {
+				case <-time.After(5 * time.Second):
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+	return etcd.StartETCD(ctx, wg, args, extraArgs)
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
-	return CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
+	return executor.CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
-	return CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
+	return executor.CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 	// agentless sets cri socket path to /dev/null to indicate no CRI is needed
 	if cfg.ContainerRuntimeEndpoint != "/dev/null" {
-		return CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
+		return executor.CloseIfNilErr(cri.WaitForService(ctx, cfg.ContainerRuntimeEndpoint, "CRI"), e.criReady)
 	}
-	return CloseIfNilErr(nil, e.criReady)
+	return executor.CloseIfNilErr(nil, e.criReady)
+}
+
+func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
+	if cfg.Flannel.Backend != flannel.BackendNone {
+		if (cfg.Flannel.ExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
+			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
+		} else if (cfg.Flannel.ExternalIP) && (cfg.Flannel.Backend != flannel.BackendWireguardNative) {
+			logrus.Warnf("Flannel is using external addresses with an insecure backend: %v. Please consider using an encrypting flannel backend.", cfg.Flannel.Backend)
+		}
+		if err := flannel.Prepare(ctx, cfg); err != nil {
+			return err
+		}
+
+		if err := flannel.Run(ctx, wg, cfg); err != nil {
+			return err
+		}
+	}
+
+	if !cfg.AgentConfig.DisableNPC {
+		if err := netpol.Run(ctx, wg, cfg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (e *Embedded) APIServerReadyChan() <-chan struct{} {
