@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ import (
 
 var (
 	executor Executor
+
+	ErrNotInitialized = errors.New("executor not initialized")
 )
 
 // TestFunc is the signature of a function that returns nil error when the component is ready.
@@ -152,54 +155,93 @@ func Set(driver Executor) {
 }
 
 func Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.Bootstrap(ctx, nodeConfig, cfg)
 }
 
 func Kubelet(ctx context.Context, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.Kubelet(ctx, args)
 }
 
 func KubeProxy(ctx context.Context, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.KubeProxy(ctx, args)
 }
 
 func APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error) {
+	if executor == nil {
+		return nil, nil, ErrNotInitialized
+	}
 	return executor.APIServerHandlers(ctx)
 }
 
 func APIServer(ctx context.Context, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.APIServer(ctx, args)
 }
 
 func Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.Scheduler(ctx, nodeReady, args)
 }
 
 func ControllerManager(ctx context.Context, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.ControllerManager(ctx, args)
 }
 
 func CurrentETCDOptions() (InitialOptions, error) {
+	if executor == nil {
+		return InitialOptions{}, ErrNotInitialized
+	}
 	return executor.CurrentETCDOptions()
 }
 
 func ETCD(ctx context.Context, wg *sync.WaitGroup, args *ETCDConfig, extraArgs []string, test TestFunc) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.ETCD(ctx, wg, args, extraArgs, test)
 }
 
 func CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.CloudControllerManager(ctx, ccmRBACReady, args)
 }
 
 func Containerd(ctx context.Context, config *daemonconfig.Node) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.Containerd(ctx, config)
 }
 
 func Docker(ctx context.Context, config *daemonconfig.Node) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.Docker(ctx, config)
 }
 
 func CRI(ctx context.Context, config *daemonconfig.Node) error {
+	if executor == nil {
+		return ErrNotInitialized
+	}
 	return executor.CRI(ctx, config)
 }
 
@@ -208,18 +250,30 @@ func CNI(ctx context.Context, wg *sync.WaitGroup, config *daemonconfig.Node) err
 }
 
 func APIServerReadyChan() <-chan struct{} {
+	if executor == nil {
+		return nil
+	}
 	return executor.APIServerReadyChan()
 }
 
 func ETCDReadyChan() <-chan struct{} {
+	if executor == nil {
+		return nil
+	}
 	return executor.ETCDReadyChan()
 }
 
 func CRIReadyChan() <-chan struct{} {
+	if executor == nil {
+		return nil
+	}
 	return executor.CRIReadyChan()
 }
 
 func IsSelfHosted() bool {
+	if executor == nil {
+		return false
+	}
 	return executor.IsSelfHosted()
 }
 
