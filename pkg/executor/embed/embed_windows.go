@@ -1,7 +1,7 @@
 //go:build windows && !no_embedded_executor
 // +build windows,!no_embedded_executor
 
-package executor
+package embed
 
 import (
 	"encoding/json"
@@ -11,11 +11,8 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/sirupsen/logrus"
-
-	// registering k3s cloud provider
-	_ "github.com/k3s-io/k3s/pkg/cloudprovider"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/sirupsen/logrus"
 )
 
 const (

@@ -17,6 +17,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+
+	_ "github.com/k3s-io/k3s/pkg/executor/embed"
 )
 
 func main() {
