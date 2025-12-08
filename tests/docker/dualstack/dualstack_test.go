@@ -90,7 +90,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 				if strings.Contains(ip, "::") {
 					ip = "[" + ip + "]"
 				}
-				cmd := fmt.Sprintf("curl -L --insecure http://%s", ip)
+				cmd := fmt.Sprintf("curl -vksf -m 5 http://%s", ip)
 				Eventually(func() (string, error) {
 					return tc.Servers[0].RunCmdOnNode(cmd)
 				}, "60s", "5s").Should(ContainSubstring("Welcome to nginx!"), "failed cmd: "+cmd)
@@ -110,10 +110,10 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 					if strings.Contains(ip, "::") {
 						ip = "[" + ip + "]"
 					}
-					cmd := fmt.Sprintf("curl  --header host:%s http://%s/name.html", hostName, ip)
+					cmd := fmt.Sprintf("curl -vksf -m 5 -H 'Host: %s' http://%s/name.html", hostName, ip)
 					Eventually(func() (string, error) {
 						return tests.RunCommand(cmd)
-					}, "10s", "2s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
+					}, "30s", "5s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
 				}
 			}
 		})
@@ -132,10 +132,10 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 					if strings.Contains(ip, "::") {
 						ip = "[" + ip + "]"
 					}
-					cmd = "curl -L --insecure http://" + ip + ":" + nodeport + "/name.html"
+					cmd = "curl -vksf -m 5 http://" + ip + ":" + nodeport + "/name.html"
 					Eventually(func() (string, error) {
 						return tests.RunCommand(cmd)
-					}, "10s", "1s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
+					}, "30s", "5s").Should(ContainSubstring("ds-nodeport-pod"), "failed cmd: "+cmd)
 				}
 			}
 		})

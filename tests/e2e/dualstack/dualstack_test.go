@@ -120,11 +120,11 @@ var _ = Describe("Verify DualStack Configuration", Ordered, func() {
 			nodeIPs, err := e2e.GetNodeIPs(tc.KubeconfigFile)
 			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
 			for _, node := range nodeIPs {
-				cmd := fmt.Sprintf("curl --header host:%s -m 5 -s -f http://%s/name.html", hostName, node.IPv4)
+				cmd := fmt.Sprintf("curl -m 5 -s -f -H 'Host: %s' http://%s/name.html", hostName, node.IPv4)
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "10s", "2s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
-				cmd = fmt.Sprintf("curl --header host:%s -m 5 -s -f http://[%s]/name.html", hostName, node.IPv6)
+				cmd = fmt.Sprintf("curl -m 5 -s -f -H 'Host: %s' http://[%s]/name.html", hostName, node.IPv6)
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "5s", "1s").Should(ContainSubstring("ds-clusterip-pod"), "failed cmd: "+cmd)
