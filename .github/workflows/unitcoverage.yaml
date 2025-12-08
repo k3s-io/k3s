@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: 1
     - name: Install Go
@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: 1
     - name: Install Go
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.1
     - name: Build test-mods
       run: docker build --target test-mods -t k3s:mod -f Dockerfile.test .
     - name: Run test-mods
