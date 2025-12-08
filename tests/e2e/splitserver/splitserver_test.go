@@ -248,7 +248,7 @@ var _ = DescribeTableSubtree("Verify Create", Ordered, func(startFlags string) {
 
 			for _, node := range cpNodes {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
+				cmd := "curl -m 5 -s -f -H 'foo1.bar.com' http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-ingress"), "failed cmd: "+cmd)

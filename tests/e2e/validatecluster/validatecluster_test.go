@@ -153,7 +153,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
+				cmd := "curl -m 5 -s -f -H 'Host: foo1.bar.com' http://" + ip + "/name.html"
 				fmt.Println(cmd)
 
 				Eventually(func(g Gomega) {
