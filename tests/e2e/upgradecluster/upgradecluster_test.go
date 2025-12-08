@@ -134,7 +134,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
+				cmd := "curl -m 5 -s -f -H 'Host: foo1.bar.com' http://" + ip + "/name.html"
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "240s", "5s").Should(ContainSubstring("test-ingress"), "failed cmd: "+cmd)
@@ -302,7 +302,7 @@ var _ = Describe("Verify Upgrade", Ordered, func() {
 		It("After upgrade verifies Ingress", func() {
 			for _, node := range tc.Servers {
 				ip, _ := node.FetchNodeExternalIP()
-				cmd := "curl --header host:foo1.bar.com -m 5 -s -f http://" + ip + "/name.html"
+				cmd := "curl -m 5 -s -f -H 'Host: foo1.bar.com' http://" + ip + "/name.html"
 				fmt.Println(cmd)
 
 				Eventually(func() (string, error) {
