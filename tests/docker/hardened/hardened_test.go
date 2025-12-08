@@ -91,11 +91,11 @@ kubelet-arg:
 			for _, scheme := range []string{"http", "https"} {
 				Eventually(func(g Gomega) {
 					for _, server := range config.Servers {
-						cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' %s://%s/", scheme, server.IP)
+						cmd := fmt.Sprintf("curl -vksf -m 5 -H 'Host: example.com' %s://%s/", scheme, server.IP)
 						g.Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 					}
 					for _, agent := range config.Agents {
-						cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' %s://%s/", scheme, agent.IP)
+						cmd := fmt.Sprintf("curl -vksf -m 5 -H 'Host: example.com' %s://%s/", scheme, agent.IP)
 						g.Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 					}
 				}, "30s", "10s").Should(Succeed())
@@ -107,7 +107,7 @@ kubelet-arg:
 				ports, err := tests.RunCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				for _, port := range strings.Split(ports, " ") {
-					cmd := fmt.Sprintf("curl -vksf -H 'Host: example.com' http://%s:%s", server.IP, port)
+					cmd := fmt.Sprintf("curl -vksf -m 5 -H 'Host: example.com' http://%s:%s", server.IP, port)
 					Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 				}
 			}
