@@ -309,10 +309,10 @@ check_firewall_ports() {
   done
   
   for port in $blocked_tcp_ports; do
-    wrap_bad "  - Port $port is blocked"
+    wrap_bad "  - TCP Port $port is blocked"
   done
   for port in $blocked_udp_ports; do
-    wrap_warn "  - Port $port is blocked" "Required for Flannel VXLAN/WireGuard"
+    wrap_warn "  - UDP Port $port is blocked" "Required for Flannel VXLAN/WireGuard"
   done
   for port in $open_ports; do
     wrap_good "  - Port $port is open" 'ok'
