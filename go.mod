@@ -111,7 +111,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.16.17
-	github.com/k3s-io/kine v0.14.7
+	github.com/k3s-io/kine v0.14.8
 	github.com/klauspost/compress v1.18.2
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/minio/minio-go/v7 v7.0.91
@@ -157,15 +157,15 @@ require (
 	golang.org/x/sys v0.36.0
 	google.golang.org/grpc v1.75.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.34.1
+	k8s.io/api v0.34.2
 	k8s.io/apiextensions-apiserver v0.33.6
-	k8s.io/apimachinery v0.34.1
-	k8s.io/apiserver v0.34.1
+	k8s.io/apimachinery v0.34.2
+	k8s.io/apiserver v0.34.2
 	k8s.io/cli-runtime v0.33.6
-	k8s.io/client-go v0.34.1
+	k8s.io/client-go v0.34.2
 	k8s.io/cloud-provider v0.33.6
 	k8s.io/cluster-bootstrap v0.33.6
-	k8s.io/component-base v0.34.1
+	k8s.io/component-base v0.34.2
 	k8s.io/component-helpers v0.33.6
 	k8s.io/cri-api v0.34.1
 	k8s.io/cri-client v0.33.6
