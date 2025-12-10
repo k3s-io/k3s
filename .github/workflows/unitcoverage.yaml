@@ -63,9 +63,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Install Go
-      uses: actions/setup-go@v6
-      with:
-        cache: false
+      uses: ./.github/actions/setup-go
     - name: Run Unit Tests
       run: |
         go test -coverpkg ./pkg/... -coverprofile coverage.out ./pkg/... -run Unit
