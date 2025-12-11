@@ -28,6 +28,7 @@ if [ -z "$VERSION_CRICTL" ]; then
     VERSION_CRICTL="v0.0.0"
 fi
 
+PKG_KUBERNETES_K3S=$(get-module-path k8s.io/kubernetes)
 VERSION_K8S_K3S=$(get-module-version k8s.io/kubernetes)
 VERSION_K8S=${VERSION_K8S_K3S%-k3s*}
 if [ -z "$VERSION_K8S" ]; then
@@ -66,8 +67,7 @@ VERSION_ROOT="v0.15.0"
 
 VERSION_HELM_JOB="v0.9.12-build20251215"
 
-DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
-VERSION_GOLANG="go"$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)
+VERSION_GOLANG="go"$(curl -sL "https://raw.githubusercontent.com${PKG_KUBERNETES_K3S/github.com/}/refs/tags/${VERSION_K8S_K3S}/.go-version")
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
