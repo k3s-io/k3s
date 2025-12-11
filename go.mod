@@ -111,7 +111,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.16.17
-	github.com/k3s-io/kine v0.14.8
+	github.com/k3s-io/kine v0.14.9
 	github.com/klauspost/compress v1.18.2
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/minio/minio-go/v7 v7.0.91
