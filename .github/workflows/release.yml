@@ -46,6 +46,7 @@ jobs:
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
+          set-host: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -167,16 +168,17 @@ jobs:
           build-args: |
             TAG=${{ github.ref_name }}
 
+  build-airgap:
+    uses: ./.github/workflows/airgap.yaml
+
   upload-release-airgap:
-    name: Build Airgap Pkg (${{ matrix.arch }})
-    runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
+    name: Release Airgap Image Tarballs
+    runs-on: ubuntu-latest
     permissions: 
       contents: write  # Needed to update release with assets
       id-token: write
     strategy:
-      matrix:
-        arch: [amd64, arm64, arm]
-
+    needs: [build-airgap]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -196,56 +198,30 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v6
         with:
-          version: type=image,tag=28
-          daemon-config: '{"features":{"containerd-snapshotter":true}}'
- 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          pattern: images-*
+          merge-multiple: true
+          path: dist/artifacts/
 
-      - name: Install Dependencies
-        run: sudo apt-get update -y && sudo apt-get install -y zstd pigz
-
-      - name: Create Airgap Package (${{ matrix.arch }})
-        run: |
-          mkdir -p ./dist/artifacts
-          ./scripts/package-airgap ${{ matrix.arch }}
-
-      - name: Caculate Airgap sha256sum
-        run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
-
-      - name: Upload Airgap sha256sum
-        uses: actions/upload-artifact@v5
-        with:
-          name: k3s-airgap-images-${{ matrix.arch }}.sha256sum
-          path: dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
-      
-      - name: Upload k3s-images.txt to Release
-        uses: softprops/action-gh-release@v2
-        # This action is recommended by GITHUB, they don't support a first party action for releases
-        # See https://github.com/actions/create-release?tab=readme-ov-file#github-action---releases-api
-        if: ${{ matrix.arch == 'amd64' }}
-        with:
-          files: |
-            dist/artifacts/k3s-images.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Airgap Assets to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/artifacts/k3s-airgap-images*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Assets
+      - name: Upload Airgap Assets to S3
         env:
           S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
         run: |
+          cp scripts/airgap/image-list.txt dist/artifacts/k3s-images.txt
           aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s-images.txt" --include "k3s-airgap-images*"
+
+      - name: Upload Airgap Assets to Release
+        uses: softprops/action-gh-release@v2
+        # This action is recommended by GITHUB, they don't support a first party action for releases
+        # See https://github.com/actions/create-release?tab=readme-ov-file#github-action---releases-api
+        with:
+          files: |
+            dist/artifacts/k3s-images.txt
+            dist/artifacts/k3s-airgap-images*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   upload-release-assets:
     name: Prepare and Upload Release Assets
