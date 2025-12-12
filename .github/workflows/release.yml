@@ -177,7 +177,6 @@ jobs:
     permissions: 
       contents: write  # Needed to update release with assets
       id-token: write
-    strategy:
     needs: [build-airgap]
     steps:
       - name: Checkout code
