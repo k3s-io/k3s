@@ -14,7 +14,7 @@ OPT_ARCH=${1:-""}
 if [ -n "${OPT_ARCH}" ]; then
   ARCH=${OPT_ARCH}
   if [ "${ARCH}" = "arm" ]; then
-    OPT_PLATFORM="--platform=linux/arm/v7"
+    OPT_PLATFORM="--platform=linux/arm/v6 --platform=linux/arm/v7"
   else
     OPT_PLATFORM="--platform=linux/${ARCH}"
   fi
@@ -22,8 +22,8 @@ fi
 
 airgap_image_file='scripts/airgap/image-list.txt'
 images=$(cat "${airgap_image_file}")
-xargs -n1 docker pull ${OPT_PLATFORM} <<< "${images}"
-docker save ${images} ${OPT_PLATFORM} -o dist/artifacts/k3s-airgap-images-${ARCH}.tar
+xargs -tn1 ctr --debug -n moby images pull ${OPT_PLATFORM} <<< "${images}" || true
+ctr -n moby images export ${OPT_PLATFORM} dist/artifacts/k3s-airgap-images-${ARCH}.tar ${images}
 zstd --no-progress -T0 -16 -f --long=25 dist/artifacts/k3s-airgap-images-${ARCH}.tar -o dist/artifacts/k3s-airgap-images-${ARCH}.tar.zst
 pigz -v -c dist/artifacts/k3s-airgap-images-${ARCH}.tar > dist/artifacts/k3s-airgap-images-${ARCH}.tar.gz
 if [ ${ARCH} = amd64 ]; then
