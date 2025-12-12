@@ -30,14 +30,15 @@ spec:
   selector:
     k8s-app: nginx-app-ingress
 ---
-apiVersion: v1
-kind: ReplicationController
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: test-ingress
 spec:
   replicas: 2
   selector:
-    k8s-app: nginx-app-ingress
+    matchLabels:
+      k8s-app: nginx-app-ingress
   template:
     metadata:
       labels:
