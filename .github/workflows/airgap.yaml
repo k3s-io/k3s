@@ -1,15 +1,15 @@
-name: Airgap Test
+name: Airgap Image Tarballs
 on:
   pull_request:
     paths:
       - "scripts/package-airgap"
       - "scripts/airgap/image-list.txt"
       - ".github/workflows/airgap.yaml"
-  workflow_dispatch: {}
+  workflow_call: {}
 
 jobs:
   build-airgap:
-    name: Build Airgap Pkg (${{ matrix.arch }})
+    name: Export Images (${{ matrix.arch }})
     runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
     strategy:
       matrix:
@@ -24,6 +24,7 @@ jobs:
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
+          set-host: true
  
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,9 +32,20 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get update -y && sudo apt-get install -y zstd pigz
 
-      - name: Create Airgap Package (${{ matrix.arch }})
+      - name: Create Airgap Package
         run: |
           mkdir -p ./dist/artifacts
-          sudo chgrp $(id -g) /run/containerd /run/containerd/containerd.sock
+          export CONTAINERD_ADDRESS=$(docker info --format '{{.Containerd.Address}}')
+          sudo chgrp $(id -g) $CONTAINERD_ADDRESS $(dirname $CONTAINERD_ADDRESS)
           ./scripts/package-airgap ${{ matrix.arch }}
 
+      - name: Caculate Airgap sha256sum
+        run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: images-${{ matrix.arch }}
+          path: dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.*
+          if-no-files-found: error
+          retention-days: 7
