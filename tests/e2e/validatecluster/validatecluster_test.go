@@ -170,7 +170,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			nodes, _ := tests.ParseNodes(tc.KubeconfigFile)
 			Eventually(func(g Gomega) {
-				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
+				count, err := tests.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(nodes).To(HaveLen(count), "Daemonset pod count does not match node count")
 			}, "240s", "10s").Should(Succeed())
@@ -267,7 +267,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 						}
 					}
 				}
-				count, err := e2e.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
+				count, err := tests.GetDaemonsetReady("test-daemonset", tc.KubeconfigFile)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).Should((Equal(count)), "Daemonset pods that are ready does not match node count")
 			}, "620s", "5s").Should(Succeed())

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -64,6 +65,16 @@ func CheckDeployments(kubeconfigFile, namespace string, deployments ...string) e
 	}
 
 	return nil
+}
+
+// GetDaemonsetReady returns the number of ready pods for the given daemonset
+func GetDaemonsetReady(daemonset string, kubeConfigFile string) (int, error) {
+	cmd := "kubectl get ds " + daemonset + " -o jsonpath='{range .items[*]}{.status.numberReady}' --kubeconfig=" + kubeConfigFile
+	out, err := RunCommand(cmd)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(out)
 }
 
 func ParseNodes(kubeconfigFile string) ([]corev1.Node, error) {
