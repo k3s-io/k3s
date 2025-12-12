@@ -31,7 +31,7 @@ spec:
     k8s-app: nginx-app-ingress
 ---
 apiVersion: v1
-kind: ReplicationController
+kind: Deployment
 metadata:
   name: test-ingress
 spec:
