@@ -1,0 +1,50 @@
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+linters:
+  default: none
+  enable:
+    - govet
+    - revive
+  settings:
+    revive:
+      enable-all-rules: true
+      rules:
+        - {name: add-constant, disabled: true}
+        - {name: cognitive-complexity, disabled: true}
+        - {name: confusing-naming, disabled: true}
+        - {name: confusing-results, disabled: true}
+        - {name: cyclomatic, disabled: true}
+        - {name: early-return, disabled: true}
+        - {name: enforce-switch-style, disabled: true}
+        - {name: flag-parameter, disabled: true}
+        - {name: function-length, disabled: true}
+        - {name: function-result-limit, disabled: true}
+        - {name: import-shadowing, disabled: true}
+        - {name: line-length-limit, disabled: true}
+        - {name: redundant-import-alias, disabled: true}
+        - {name: max-control-nesting, disabled: true}
+        - {name: max-public-structs, disabled: true}
+        - {name: unused-parameter, disabled: true}
+        - {name: unused-receiver, disabled: true}
+        - {name: var-naming, disabled: true}
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - tests/
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+version: "2"
