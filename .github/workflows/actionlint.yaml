@@ -1,0 +1,19 @@
+name: Lint Action Workflows
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/*"
+
+jobs:
+  acitonlint:
+    name: Lint GitHub Workflows
+    runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          shellcheck: false
+          pyflakes: false
+
