@@ -62,6 +62,7 @@ jobs:
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
+          set-host: true
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: Vagrant R/W Cache
@@ -213,6 +214,7 @@ jobs:
       with:
         version: type=image,tag=28
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
+        set-host: true
     - name: Load and set K3s image
       run: |
         if [ ${{ matrix.arch }} = "arm64" ]; then

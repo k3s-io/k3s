@@ -47,6 +47,7 @@ jobs:
       with:
         version: type=image,tag=28
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
+        set-host: true
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
