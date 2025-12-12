@@ -1,0 +1,63 @@
+name: Validate
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - "!tests/docker**"
+      - ".github/**"
+      - "!.github/actions/**"
+      - "!.github/workflows/validate.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ github.event.pull_request.commits }}
+
+      - name: Set Go Version
+        run: |
+          source ./scripts/version.sh
+          {
+            echo "GOTOOLCHAIN=${VERSION_GOLANG/go}"
+          } >> "$GITHUB_ENV"
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "${{ env.GOTOOLCHAIN }}"
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.7
+          args: "--new-from-merge-base ${{ github.event.pull_request.base.sha }}"
+
+      - name: Lint (windows)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.7
+          args: "--new-from-merge-base ${{ github.event.pull_request.base.sha }} ./pkg/... ./cmd/..."
+        env:
+          GOOS: "windows"
+
+      - name: Validate
+        run: ./scripts/validate
+        env:
+          SKIP_LINT: "true"
+
+      - name: Validate (windows)
+        run: ./scripts/validate
+        env:
+          SKIP_LINT: "true"
+          GOOS: "windows"
