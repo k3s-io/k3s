@@ -169,58 +169,8 @@ jobs:
             TAG=${{ github.ref_name }}
 
   build-airgap:
+    name: Airgap Image Tarballs
     uses: ./.github/workflows/airgap.yaml
-
-  upload-release-airgap:
-    name: Release Airgap Image Tarballs
-    runs-on: ubuntu-latest
-    permissions: 
-      contents: write  # Needed to update release with assets
-      id-token: write
-    needs: [build-airgap]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Read Prime artifacts secrets
-        uses: rancher-eio/read-vault-secrets@main
-        with:
-          secrets: |
-            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
-            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
-            secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
-
-      - name: Configure AWS Credentials (s3)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v6
-        with:
-          pattern: images-*
-          merge-multiple: true
-          path: dist/artifacts/
-
-      - name: Upload Airgap Assets to S3
-        env:
-          S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
-        run: |
-          cp scripts/airgap/image-list.txt dist/artifacts/k3s-images.txt
-          aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s-images.txt" --include "k3s-airgap-images*"
-
-      - name: Upload Airgap Assets to Release
-        uses: softprops/action-gh-release@v2
-        # This action is recommended by GITHUB, they don't support a first party action for releases
-        # See https://github.com/actions/create-release?tab=readme-ov-file#github-action---releases-api
-        with:
-          files: |
-            dist/artifacts/k3s-images.txt
-            dist/artifacts/k3s-airgap-images*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   upload-release-assets:
     name: Prepare and Upload Release Assets
@@ -228,11 +178,8 @@ jobs:
       contents: write # Needed to update release with assets
       id-token: write
     runs-on: ubuntu-latest
-    needs: [build-amd64, build-arm64, build-arm, upload-release-airgap]
+    needs: [build-amd64, build-arm64, build-arm, build-airgap]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
     - name: Read Prime artifacts secrets
       uses: rancher-eio/read-vault-secrets@main
       with:
@@ -248,27 +195,27 @@ jobs:
         aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: "Download Binaries and Airgap sha256sum"
+    - name: "Download Artifacts"
       uses: actions/download-artifact@v6
       with:
-        pattern: k3s*
+        pattern: "*"
         path: ./dist/artifacts
         merge-multiple: true
     
     - name: "Combine and format sha256sum files"
       run: |
-        for arch in amd64 arm64 arm; do
-          output_file="./dist/artifacts/sha256sum-${arch}.txt"
-          cat ./dist/artifacts/k3s-airgap-images-$arch*.sha256sum >> "$output_file"
-          rm ./dist/artifacts/k3s-airgap-images-$arch*.sha256sum
-          if [[ "$arch" == "amd64" ]]; then
-            cat ./dist/artifacts/k3s.sha256sum >> "$output_file"
+        for ARCH in amd64 arm64 arm; do
+          OUTPUT_FILE="./dist/artifacts/sha256sum-${ARCH}.txt"
+          cat ./dist/artifacts/k3s-airgap-images-${ARCH}*.sha256sum >> "${OUTPUT_FILE}"
+          rm ./dist/artifacts/k3s-airgap-images-${ARCH}*.sha256sum # Remove the original file to avoid uploading it
+          if [[ "${ARCH}" == "amd64" ]]; then
+            cat ./dist/artifacts/k3s.sha256sum >> "${OUTPUT_FILE}"
             rm ./dist/artifacts/k3s.sha256sum # Remove the original file to avoid uploading it
           else
-            cat ./dist/artifacts/k3s-${arch}.sha256sum >> "$output_file"
-            rm ./dist/artifacts/k3s-${arch}.sha256sum # Remove the original file to avoid uploading it
+            cat ./dist/artifacts/k3s-${ARCH}.sha256sum >> "${OUTPUT_FILE}"
+            rm ./dist/artifacts/k3s-${ARCH}.sha256sum # Remove the original file to avoid uploading it
           fi
-        done    
+        done
     
     - name: Upload Assets to Release
       uses: softprops/action-gh-release@v2.2.1
@@ -279,7 +226,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Assets
+    - name: Upload Assets to S3
       env:
         S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
       run: |
