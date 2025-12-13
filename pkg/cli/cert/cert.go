@@ -51,12 +51,12 @@ type CertificateInfo struct {
 }
 
 // collectCertInfo collects information about certificates
-func collectCertInfo(controlConfig config.Control, ServicesList []string) (*CertificateInfo, error) {
+func collectCertInfo(controlConfig config.Control, servicesList []string) (*CertificateInfo, error) {
 	result := &CertificateInfo{}
 	now := time.Now()
 	warn := now.Add(time.Hour * 24 * config.CertificateRenewDays)
 
-	fileMap, err := services.FilesForServices(controlConfig, ServicesList)
+	fileMap, err := services.FilesForServices(controlConfig, servicesList)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,6 @@ func collectCertInfo(controlConfig config.Control, ServicesList []string) (*Cert
 			}
 
 			for _, cert := range certs {
-
 				expiration := cert.NotAfter
 				status := k3sutil.GetCertStatus(cert, now, warn)
 				if status == k3sutil.CertStatusNotYetValid {
@@ -93,8 +92,8 @@ func collectCertInfo(controlConfig config.Control, ServicesList []string) (*Cert
 	return result, nil
 }
 
-// CertFormatter defines the interface for formatting certificate information
-type CertFormatter interface {
+// Formatter defines the interface for formatting certificate information
+type Formatter interface {
 	Format(*CertificateInfo) error
 }
 
@@ -233,7 +232,7 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 	}
 	outFmt := app.String("output")
 
-	var formatter CertFormatter
+	var formatter Formatter
 	switch outFmt {
 	case "text":
 		formatter = &TextFormatter{Writer: os.Stdout}

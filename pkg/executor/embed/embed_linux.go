@@ -1,5 +1,4 @@
 //go:build linux && !no_embedded_executor
-// +build linux,!no_embedded_executor
 
 package embed
 

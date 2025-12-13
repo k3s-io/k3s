@@ -296,7 +296,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// if not set, try setting advertise-ip from agent VPN
 	if cmds.AgentConfig.VPNAuth != "" {
-		vpnInfo, err := vpn.GetVPNInfo(cmds.AgentConfig.VPNAuth)
+		vpnInfo, err := vpn.GetInfo(cmds.AgentConfig.VPNAuth)
 		if err != nil {
 			return err
 		}
@@ -326,7 +326,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
 	} else {
-
 		// if not set, try setting advertise-ip from agent node-external-ip
 		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
 			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
@@ -340,7 +339,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
 	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
-	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
+	// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if serverConfig.ControlConfig.AdvertiseIP != "" {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
@@ -567,7 +566,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan []string)
-		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
+		go pollAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
 	}
 
 	// Until the agent is run and retrieves config from the server, we won't know
@@ -626,11 +625,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	if err := server.StartServer(ctx, wg, &serverConfig, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return server.StartServer(ctx, wg, &serverConfig, cfg)
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.
@@ -648,7 +643,7 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	return nil
 }
 
-func getAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agentConfig cmds.Agent) {
+func pollAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agentConfig cmds.Agent) {
 	defer close(agentConfig.APIAddressCh)
 	for {
 		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)

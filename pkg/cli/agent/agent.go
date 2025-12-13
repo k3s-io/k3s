@@ -145,9 +145,5 @@ func Run(clx *cli.Context) (rerr error) {
 		return https.Start(ctx, nodeConfig, nil)
 	}
 
-	if err := agent.Run(ctx, wg, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return agent.Run(ctx, wg, cfg)
 }

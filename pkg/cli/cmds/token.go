@@ -35,6 +35,7 @@ var (
 	}
 )
 
+//revive:disable-next-line:redefines-builtin-id
 func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:            TokenCommand,

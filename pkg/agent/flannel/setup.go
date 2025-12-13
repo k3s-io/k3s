@@ -218,16 +218,6 @@ func createFlannelConf(nodeConfig *config.Node) error {
 
 	var backendConf string
 
-	// precheck and error out unsupported flannel backends.
-	switch nodeConfig.Flannel.Backend {
-	case BackendHostGW:
-	case BackendTailscale:
-	case BackendWireguardNative:
-		if goruntime.GOOS == "windows" {
-			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.Flannel.Backend)
-		}
-	}
-
 	switch nodeConfig.Flannel.Backend {
 	case BackendVXLAN:
 		backendConf = vxlanBackend
@@ -252,6 +242,9 @@ func createFlannelConf(nodeConfig *config.Node) error {
 		}
 		backendConf = strings.ReplaceAll(tailscaledBackend, "%Routes%", strings.Join(routes, ","))
 	case BackendWireguardNative:
+		if goruntime.GOOS == "windows" {
+			return fmt.Errorf("unsupported flannel backend '%s' for Windows", nodeConfig.Flannel.Backend)
+		}
 		backendConf = wireguardNativeBackend
 	default:
 		return fmt.Errorf("Cannot configure unknown flannel backend '%s'", nodeConfig.Flannel.Backend)

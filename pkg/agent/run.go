@@ -180,9 +180,8 @@ func startCRI(ctx context.Context, nodeConfig *daemonconfig.Node) error {
 			return err
 		}
 		return executor.Containerd(ctx, nodeConfig)
-	} else {
-		return executor.CRI(ctx, nodeConfig)
 	}
+	return executor.CRI(ctx, nodeConfig)
 }
 
 // startNetwork updates the network annotations on the node and starts the CNI
@@ -226,11 +225,11 @@ func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubePro
 		return nil, err
 	}
 	ctConfig.MaxPerCore = &maxPerCore
-	min, err := cmd.Flags().GetInt32("conntrack-min")
+	conntrackMin, err := cmd.Flags().GetInt32("conntrack-min")
 	if err != nil {
 		return nil, err
 	}
-	ctConfig.Min = &min
+	ctConfig.Min = &conntrackMin
 	establishedTimeout, err := cmd.Flags().GetDuration("conntrack-tcp-timeout-established")
 	if err != nil {
 		return nil, err

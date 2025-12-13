@@ -53,5 +53,4 @@ func (p *proxy) pipe(src, dst io.ReadWriter) {
 			return
 		}
 	}
-
 }

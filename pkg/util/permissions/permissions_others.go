@@ -1,10 +1,9 @@
 //go:build !windows
-// +build !windows
 
 package permissions
 
 import (
-	"fmt"
+	"errors"
 	"os"
 )
 
@@ -12,7 +11,7 @@ import (
 // Ref: https://github.com/kubernetes/kubernetes/pull/96616
 func IsPrivileged() error {
 	if os.Getuid() != 0 {
-		return fmt.Errorf("not running as root")
+		return errors.New("not running as root")
 	}
 	return nil
 }

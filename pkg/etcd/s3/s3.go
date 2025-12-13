@@ -159,9 +159,11 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 	// Try to get an existing client from cache.  The entire EtcdS3 struct
 	// (including the key id and secret) is used as the cache key, but we only
 	// print the endpoint and bucket name to avoid leaking creds into the logs.
-	if client, ok := c.clientCache.Get(*etcdS3); ok {
-		logrus.Infof("Reusing cached S3 client for endpoint=%q bucket=%q folder=%q", scheme+etcdS3.Endpoint, etcdS3.Bucket, etcdS3.Folder)
-		return client.(*Client), nil
+	if v, ok := c.clientCache.Get(*etcdS3); ok {
+		if client, ok := v.(*Client); ok {
+			logrus.Infof("Reusing cached S3 client for endpoint=%q bucket=%q folder=%q", scheme+etcdS3.Endpoint, etcdS3.Bucket, etcdS3.Folder)
+			return client, nil
+		}
 	}
 	logrus.Infof("Attempting to create new S3 client for endpoint=%q bucket=%q folder=%q", scheme+etcdS3.Endpoint, etcdS3.Bucket, etcdS3.Folder)
 

@@ -1,5 +1,6 @@
 package control
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"net/http"

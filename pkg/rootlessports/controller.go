@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 package rootlessports
 
@@ -9,7 +8,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/rootless"
-	coreClients "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
+	corev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 	"github.com/sirupsen/logrus"
@@ -21,7 +20,7 @@ var (
 	all = "_all_"
 )
 
-func Register(ctx context.Context, serviceController coreClients.ServiceController, enabled bool, httpsPort int) error {
+func Register(ctx context.Context, serviceController corev1.ServiceController, enabled bool, httpsPort int) error {
 	var (
 		err            error
 		rootlessClient client.Client
@@ -35,10 +34,9 @@ func Register(ctx context.Context, serviceController coreClients.ServiceControll
 		rootlessClient, err = client.New(rootless.Sock)
 		if err == nil {
 			break
-		} else {
-			logrus.Infof("Waiting for rootless API socket %s: %v", rootless.Sock, err)
-			time.Sleep(1 * time.Second)
 		}
+		logrus.Infof("Waiting for rootless API socket %s: %v", rootless.Sock, err)
+		time.Sleep(1 * time.Second)
 	}
 	if err != nil {
 		return err
@@ -61,8 +59,8 @@ func Register(ctx context.Context, serviceController coreClients.ServiceControll
 type handler struct {
 	enabled        bool
 	rootlessClient client.Client
-	serviceClient  coreClients.ServiceController
-	serviceCache   coreClients.ServiceCache
+	serviceClient  corev1.ServiceController
+	serviceCache   corev1.ServiceCache
 	httpsPort      int
 	ctx            context.Context
 }
