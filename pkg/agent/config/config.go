@@ -343,7 +343,7 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 		}
 	}
 
-	return
+	return certPem, keyPem
 }
 
 // getKubeletClientCert fills the kubelet client certificate with content returned
@@ -392,9 +392,8 @@ func isValidResolvConf(resolvConfFile string) bool {
 		if len(ipMatch) == 2 {
 			if !isValidNameserver(ipMatch[1]) {
 				return false
-			} else {
-				foundNameserver = true
 			}
+			foundNameserver = true
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -833,7 +832,7 @@ func validateNetworkConfig(nodeConfig *config.Node) error {
 	// Old versions of the server do not send enough information to correctly start the NPC. Users
 	// need to upgrade the server to at least the same version as the agent, or disable the NPC
 	// cluster-wide.
-	if nodeConfig.AgentConfig.DisableNPC == false && (nodeConfig.AgentConfig.ServiceCIDR == nil || nodeConfig.AgentConfig.ServiceNodePortRange.Size == 0) {
+	if !nodeConfig.AgentConfig.DisableNPC && (nodeConfig.AgentConfig.ServiceCIDR == nil || nodeConfig.AgentConfig.ServiceNodePortRange.Size == 0) {
 		return fmt.Errorf("incompatible down-level server detected; servers must be upgraded to at least %s, or restarted with --disable-network-policy", version.Version)
 	}
 

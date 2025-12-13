@@ -21,21 +21,21 @@ type clientPatcher[T runtime.Object] interface {
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (T, error)
 }
 
-// patchWrapper wraps the Patch functions provided by either wrangler or client-go
-type patchWrapper[T runtime.Object] struct {
+// PatchWrapper wraps the Patch functions provided by either wrangler or client-go
+type PatchWrapper[T runtime.Object] struct {
 	patcher any
 }
 
 // NewPatcher wraps the provided controller or client for use as a generic patcher
 // note that the patcher is not validated for use until `Patch` is called
-func NewPatcher[T runtime.Object](patcher any) *patchWrapper[T] {
-	return &patchWrapper[T]{
+func NewPatcher[T runtime.Object](patcher any) *PatchWrapper[T] {
+	return &PatchWrapper[T]{
 		patcher: patcher,
 	}
 }
 
 // Patch applies the provided PatchList to the specified resource
-func (p *patchWrapper[T]) Patch(ctx context.Context, pl *PatchList, name string, subresources ...string) (T, error) {
+func (p *PatchWrapper[T]) Patch(ctx context.Context, pl *PatchList, name string, subresources ...string) (T, error) {
 	var t T
 	if pl == nil {
 		pl = NewPatchList()

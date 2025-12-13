@@ -100,6 +100,7 @@ func Delete(app *cli.Context) error {
 	return delete(app, &cmds.TokenConfig)
 }
 
+//revive:disable-next-line:redefines-builtin-id
 func delete(app *cli.Context, cfg *cmds.Token) error {
 	args := app.Args()
 	if args.Len() < 1 {

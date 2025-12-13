@@ -55,6 +55,7 @@ type ETCDSocketOpts struct {
 }
 
 type ETCDConfig struct {
+	//revive:disable-next-line:struct-tag
 	InitialOptions       `json:",inline"`
 	Name                 string         `json:"name,omitempty"`
 	ListenClientURLs     string         `json:"listen-client-urls,omitempty"`
@@ -105,7 +106,7 @@ func (e ETCDConfig) ToConfigFile(extraArgs []string) (string, error) {
 	}
 
 	if len(extraArgs) > 0 {
-		var s map[string]interface{}
+		var s map[string]any
 		if err := yaml2.Unmarshal(bytes, &s); err != nil {
 			return "", err
 		}

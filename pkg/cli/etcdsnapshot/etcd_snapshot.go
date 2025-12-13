@@ -150,6 +150,7 @@ func Delete(app *cli.Context) error {
 	return delete(app, &cmds.ServerConfig)
 }
 
+//revive:disable-next-line:redefines-builtin-id
 func delete(app *cli.Context, cfg *cmds.Server) error {
 	snapshots := app.Args()
 	if snapshots.Len() == 0 {

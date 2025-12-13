@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export GIT_PAGER=cat
+
 if [ -n "$SKIP_VALIDATE" ]; then
     echo Skipping validation
     exit
@@ -38,11 +40,7 @@ if [ ! -e build/data ];then
     mkdir -p build/data
 fi
 
-if ! command -v golangci-lint; then
-    echo Skipping validation: no golangci-lint available
-    exit
+if [ -z "$SKIP_LINT" ] && command -v golangci-lint; then
+    echo Running: golangci-lint
+    golangci-lint run --timeout=5m
 fi
-
-#echo Running: golangci-lint
-## https://github.com/golangci/golangci-lint/issues/2788
-#CGO_ENABLED=0 golangci-lint run -v

@@ -164,6 +164,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 }
 
+//revive:disable-next-line:redefines-builtin-id
 func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:            EtcdSnapshotCommand,

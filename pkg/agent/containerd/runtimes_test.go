@@ -1,5 +1,4 @@
 //go:build linux
-// +build linux
 
 package containerd
 
@@ -130,9 +129,5 @@ func createExec(path string) error {
 		return err
 	}
 
-	if err := os.Chmod(path, 0755); err != nil {
-		return err
-	}
-
-	return nil
+	return os.Chmod(path, 0755)
 }

@@ -32,6 +32,7 @@ func StartETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfi
 		return err
 	}
 
+	//revive:disable-next-line:use-waitgroup-go
 	wg.Add(1)
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	apisv1 "github.com/k3s-io/api/k3s.cattle.io/v1"
 	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	controllersv1 "github.com/k3s-io/api/pkg/generated/controllers/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
@@ -70,7 +69,7 @@ func registerSnapshotHandlers(ctx context.Context, etcd *ETCD) {
 	go wait.JitterUntil(func() { snapshots.Enqueue(reconcileKey) }, reconcileInterval, 0.04, false, ctx.Done())
 }
 
-func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*apisv1.ETCDSnapshotFile, error) {
+func (e *etcdSnapshotHandler) sync(key string, esf *k3s.ETCDSnapshotFile) (*k3s.ETCDSnapshotFile, error) {
 	if key == reconcileKey {
 		err := e.reconcile()
 		if err == errNotReconciled {
@@ -149,7 +148,7 @@ func (e *etcdSnapshotHandler) sync(key string, esf *apisv1.ETCDSnapshotFile) (*a
 	return nil, err
 }
 
-func (e *etcdSnapshotHandler) onRemove(key string, esf *apisv1.ETCDSnapshotFile) (*apisv1.ETCDSnapshotFile, error) {
+func (e *etcdSnapshotHandler) onRemove(key string, esf *k3s.ETCDSnapshotFile) (*k3s.ETCDSnapshotFile, error) {
 	if esf == nil {
 		return nil, nil
 	}
@@ -220,7 +219,7 @@ func (e *etcdSnapshotHandler) reconcile() error {
 	logrus.Infof("Reconciling snapshot ConfigMap data")
 
 	// Get a list of existing snapshots
-	snapshots := map[string]*apisv1.ETCDSnapshotFile{}
+	snapshots := map[string]*k3s.ETCDSnapshotFile{}
 	snapshotPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (k8sruntime.Object, error) { return e.snapshots.List(opts) }))
 	snapshotPager.PageSize = snapshotListPageSize
 

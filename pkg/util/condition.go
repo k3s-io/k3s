@@ -30,8 +30,8 @@ func SetNodeCondition(core config.CoreFactory, nodeName string, condition corev1
 		return ErrCoreNotReady
 	}
 	condition.LastHeartbeatTime = metav1.NewTime(time.Now())
-	patch, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
+	patch, err := json.Marshal(map[string]any{
+		"status": map[string]any{
 			"conditions": []corev1.NodeCondition{condition},
 		},
 	})

@@ -107,7 +107,6 @@ func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) e
 				recorder.Event(nodeRef, corev1.EventTypeNormal, "CertificateExpirationOK", message)
 			}
 		})
-
 	}, certCheckInterval, ctx.Done())
 
 	return nil

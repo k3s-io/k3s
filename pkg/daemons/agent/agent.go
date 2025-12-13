@@ -22,7 +22,6 @@ import (
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/component-base/logs"
-	logsapi "k8s.io/component-base/logs/api/v1"
 	logsv1 "k8s.io/component-base/logs/api/v1"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
@@ -34,7 +33,7 @@ import (
 )
 
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
-	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
+	logsv1.ReapplyHandling = logsv1.ReapplyHandlingIgnoreUnchanged
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
@@ -252,12 +251,12 @@ func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfig
 		return nil, pkgerrors.WithMessagef(err, "failed to create static pod manifest dir %s", defaultConfig.StaticPodPath)
 	}
 
-	if t, _, err := taints.ParseTaints(cfg.NodeTaints); err != nil {
+	t, _, err := taints.ParseTaints(cfg.NodeTaints)
+	if err != nil {
 		return nil, pkgerrors.WithMessage(err, "failed to parse node taints")
-	} else {
-		defaultConfig.RegisterWithTaints = t
 	}
 
+	defaultConfig.RegisterWithTaints = t
 	logsv1.VModuleConfigurationPflag(&defaultConfig.Logging.VModule).Set(cfg.VModule)
 
 	return defaultConfig, nil

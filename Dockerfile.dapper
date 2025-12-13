@@ -28,14 +28,14 @@ RUN case "$(go env GOARCH)" in \
     fi
 
 # Install goimports
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.16.0
+RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.20.0
 
 # Cleanup
 RUN rm -rf /go/src /go/pkg
 
 # Install golangci-lint for amd64
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
-    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2;  \
+    curl -sL https://raw.githubusercontent.com/golangci/golangci-lint/refs/tags/v2.7.2/install.sh | sh -s -- v2.7.2; \
     fi
     
 # Set SELINUX environment variable

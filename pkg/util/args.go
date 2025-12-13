@@ -25,9 +25,7 @@ func ArgValue(searchArg string, extraArgs []string) string {
 // GetArgs appends extra arguments to existing arguments with logic to override any default
 // arguments whilst also allowing to prefix and suffix default string slice arguments.
 func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
-
 	multiArgs := make(map[string][]string)
-
 	for _, unsplitArg := range extraArgs {
 		splitArg := strings.SplitN(strings.TrimPrefix(unsplitArg, hyphens), "=", 2)
 		arg := splitArg[0]
@@ -51,7 +49,6 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 				newValues = append(newValues, existingValues...)
 			}
 			newValues = append(newValues, value)
-
 		} else if strings.HasSuffix(arg, "-") { // Prepend value to initial args
 			newValues = append(newValues, value)
 			if initialValueExists {
@@ -69,7 +66,6 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 
 		delete(initialArgs, cleanedArg)
 		multiArgs[cleanedArg] = newValues
-
 	}
 
 	// Add any remaining initial args to the map
@@ -98,9 +94,9 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 }
 
 // AddFeatureGate correctly appends a feature gate key pair to the feature gates CLI switch.
-func AddFeatureGate(current, new string) string {
+func AddFeatureGate(current, toAppend string) string {
 	if current == "" {
-		return new
+		return toAppend
 	}
-	return current + "," + new
+	return current + "," + toAppend
 }

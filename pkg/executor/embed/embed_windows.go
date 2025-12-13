@@ -1,5 +1,4 @@
 //go:build windows && !no_embedded_executor
-// +build windows,!no_embedded_executor
 
 package embed
 

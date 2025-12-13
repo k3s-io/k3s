@@ -34,11 +34,7 @@ func (e *passwordError) Error() string {
 }
 
 func (e *passwordError) Is(target error) bool {
-	switch target {
-	case ErrVerifyFailed:
-		return true
-	}
-	return false
+	return target == ErrVerifyFailed
 }
 
 func (e *passwordError) Unwrap() error {

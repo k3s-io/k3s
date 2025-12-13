@@ -67,10 +67,9 @@ func GetNodeAuthValidator(ctx context.Context, control *config.Control) NodeAuth
 				// If we're running on an etcd-only node, and the request didn't use Node Identity auth,
 				// defer node password verification until an apiserver joins the cluster.
 				return verifyRemotePassword(ctx, control, &mu, deferredNodes, node)
-			} else {
-				// Otherwise, reject the request until the controller is ready.
-				return "", http.StatusServiceUnavailable, util.ErrCoreNotReady
 			}
+			// Otherwise, reject the request until the controller is ready.
+			return "", http.StatusServiceUnavailable, util.ErrCoreNotReady
 		}
 
 		// verify that the node exists, if using Node Identity auth

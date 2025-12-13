@@ -54,11 +54,7 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 		return err
 	}
 	// reuse the existing migration function to reencrypt bootstrap data with new token
-	if err := migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken); err != nil {
-		return err
-	}
-
-	return nil
+	return migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken)
 }
 
 // Save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
