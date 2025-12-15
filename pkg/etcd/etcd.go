@@ -336,13 +336,13 @@ func (e *ETCD) IsInitialized() (bool, error) {
 	}
 
 	dir := walDir(e.config)
-	if s, err := os.Stat(dir); err == nil && s.IsDir() {
+	s, err := os.Stat(dir)
+	if err == nil && s.IsDir() {
 		return true, nil
 	} else if os.IsNotExist(err) {
 		return false, nil
-	} else {
-		return false, pkgerrors.WithMessage(err, "invalid state for wal directory "+dir)
 	}
+	return false, pkgerrors.WithMessage(err, "invalid state for wal directory "+dir)
 }
 
 // Reset resets an etcd node to a single node cluster.
@@ -421,9 +421,8 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 			if err != nil {
 				if errors.Is(err, s3.ErrNoConfigSecret) {
 					return errors.New("cannot use S3 config secret when restoring snapshot; configuration must be set in CLI or config file")
-				} else {
-					return pkgerrors.WithMessage(err, "failed to initialize S3 client")
 				}
+				return pkgerrors.WithMessage(err, "failed to initialize S3 client")
 			}
 			dir, err := snapshotDir(e.config, true)
 			if err != nil {
