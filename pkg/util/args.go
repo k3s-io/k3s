@@ -95,9 +95,9 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 }
 
 // AddFeatureGate correctly appends a feature gate key pair to the feature gates CLI switch.
-func AddFeatureGate(current, new string) string {
+func AddFeatureGate(current, toAdd string) string {
 	if current == "" {
-		return new
+		return toAdd
 	}
-	return current + "," + new
+	return current + "," + toAdd
 }
