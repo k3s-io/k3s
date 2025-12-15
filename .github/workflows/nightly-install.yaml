@@ -30,7 +30,7 @@ jobs:
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Cache"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
              ~/.vagrant.d/boxes
