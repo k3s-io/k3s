@@ -70,7 +70,6 @@ func collectCertInfo(controlConfig config.Control, ServicesList []string) (*Cert
 			}
 
 			for _, cert := range certs {
-
 				expiration := cert.NotAfter
 				status := k3sutil.GetCertStatus(cert, now, warn)
 				if status == k3sutil.CertStatusNotYetValid {

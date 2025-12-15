@@ -179,7 +179,6 @@ func GetAdvertisedRoutes() ([]netip.Prefix, error) {
 	}
 
 	return tailscaleOutput.AdvertiseRoutes, nil
-
 }
 
 // processCLIArgs separates the extraArgs part from the command.

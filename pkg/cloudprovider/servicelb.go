@@ -222,7 +222,6 @@ func (k *k3s) processSingleItem(obj any) error {
 
 	k.workqueue.Forget(obj)
 	return nil
-
 }
 
 // updateServiceStatus updates the load balancer status for the matching service, if it exists and is a
