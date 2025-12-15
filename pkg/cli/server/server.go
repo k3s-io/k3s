@@ -626,11 +626,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		systemd.SdNotify(true, "READY=1\n")
 	}()
 
-	if err := server.StartServer(ctx, wg, &serverConfig, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return server.StartServer(ctx, wg, &serverConfig, cfg)
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.
