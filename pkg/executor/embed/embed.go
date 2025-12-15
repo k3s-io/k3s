@@ -1,5 +1,4 @@
 //go:build !no_embedded_executor
-// +build !no_embedded_executor
 
 package embed
 
