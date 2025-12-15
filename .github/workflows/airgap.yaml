@@ -39,9 +39,6 @@ jobs:
           sudo chgrp $(id -g) $CONTAINERD_ADDRESS $(dirname $CONTAINERD_ADDRESS)
           ./scripts/package-airgap ${{ matrix.arch }}
 
-      - name: Caculate Airgap sha256sum
-        run: sha256sum dist/artifacts/k3s-airgap-images-${{ matrix.arch }}* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${{ matrix.arch }}.sha256sum
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
