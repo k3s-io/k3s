@@ -38,7 +38,6 @@ type metadataHandler struct {
 }
 
 func (m *metadataHandler) sync(key string, node *v1.Node) (*v1.Node, error) {
-
 	if node == nil {
 		return nil, nil
 	}
