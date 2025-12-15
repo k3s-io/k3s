@@ -100,7 +100,7 @@ func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interfac
 		return errors.New("ipv4 mode requested but no ipv4 network provided")
 	}
 
-	//setup masq rules
+	// setup masq rules
 	prevNetwork := ReadCIDRFromSubnetFile(subnetFile, "FLANNEL_NETWORK")
 	prevSubnet := ReadCIDRFromSubnetFile(subnetFile, "FLANNEL_SUBNET")
 
@@ -109,14 +109,14 @@ func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interfac
 	if flannelIPv6Masq {
 		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, config.IPv6Network, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60, false)
 	} else {
-		//set empty flannel ipv6 Network to prevent masquerading
+		// set empty flannel ipv6 Network to prevent masquerading
 		err = trafficMngr.SetupAndEnsureMasqRules(ctx, config.Network, prevSubnet, prevNetwork, ip.IP6Net{}, prevIPv6Subnet, prevIPv6Network, bn.Lease(), 60, false)
 	}
 	if err != nil {
 		return pkgerrors.WithMessage(err, "failed to setup masq rules")
 	}
 
-	//setup forward rules
+	// setup forward rules
 	trafficMngr.SetupAndEnsureForwardRules(ctx, config.Network, config.IPv6Network, 50)
 
 	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, nm); err != nil {
@@ -219,7 +219,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	// rename(2) the temporary file to the desired location so that it becomes
 	// atomically visible with the contents
 	return os.Rename(tempFile, path)
-	//TODO - is this safe? What if it's not on the same FS?
+	// TODO - is this safe? What if it's not on the same FS?
 }
 
 // ReadCIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv4 network CIDRKey
