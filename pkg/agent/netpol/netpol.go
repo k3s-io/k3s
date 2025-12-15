@@ -29,7 +29,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	v1core "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
@@ -125,21 +124,21 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	informerFactory.Start(stopCh)
 	informerFactory.WaitForCacheSync(stopCh)
 
-	iptablesCmdHandlers := make(map[v1core.IPFamily]utils.IPTablesHandler, 2)
-	ipSetHandlers := make(map[v1core.IPFamily]utils.IPSetHandler, 2)
+	iptablesCmdHandlers := make(map[v1.IPFamily]utils.IPTablesHandler, 2)
+	ipSetHandlers := make(map[v1.IPFamily]utils.IPSetHandler, 2)
 
 	if nodeConfig.AgentConfig.EnableIPv4 {
 		iptHandler, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
 		if err != nil {
 			return pkgerrors.WithMessage(err, "failed to create iptables handler")
 		}
-		iptablesCmdHandlers[v1core.IPv4Protocol] = iptHandler
+		iptablesCmdHandlers[v1.IPv4Protocol] = iptHandler
 
 		ipset, err := utils.NewIPSet(false)
 		if err != nil {
 			return pkgerrors.WithMessage(err, "failed to create ipset handler")
 		}
-		ipSetHandlers[v1core.IPv4Protocol] = ipset
+		ipSetHandlers[v1.IPv4Protocol] = ipset
 	}
 
 	if nodeConfig.AgentConfig.EnableIPv6 {
@@ -147,13 +146,13 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 		if err != nil {
 			return pkgerrors.WithMessage(err, "failed to create iptables handler")
 		}
-		iptablesCmdHandlers[v1core.IPv6Protocol] = ipt6Handler
+		iptablesCmdHandlers[v1.IPv6Protocol] = ipt6Handler
 
 		ipset, err := utils.NewIPSet(true)
 		if err != nil {
 			return pkgerrors.WithMessage(err, "failed to create ipset handler")
 		}
-		ipSetHandlers[v1core.IPv6Protocol] = ipset
+		ipSetHandlers[v1.IPv6Protocol] = ipset
 	}
 
 	// Start kube-router healthcheck controller; netpol requires it
