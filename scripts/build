@@ -16,6 +16,7 @@ PKG_CNI_PLUGINS="github.com/containernetworking/plugins"
 PKG_KUBE_ROUTER="github.com/cloudnativelabs/kube-router/v2"
 PKG_CRI_DOCKERD="github.com/Mirantis/cri-dockerd"
 PKG_ETCD="go.etcd.io/etcd"
+PKG_HELM_CONTROLLER="github.com/k3s-io/helm-controller"
 
 buildDate=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -53,6 +54,8 @@ VERSIONFLAGS="
     -X ${PKG_CRI_DOCKERD}/cmd/version.BuildTime=${buildDate}
 
     -X ${PKG_ETCD}/api/v3/version.GitSHA=HEAD
+    
+    -X ${PKG_HELM_CONTROLLER}/pkg/controllers/chart.DefaultJobImage=rancher/klipper-helm:${VERSION_HELM_JOB}
 "
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"
