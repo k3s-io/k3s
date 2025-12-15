@@ -2,7 +2,6 @@
 // - modified from https://github.com/cloudnativelabs/kube-router/blob/73b1b03b32c5755b240f6c077bb097abe3888314/pkg/controllers/netpol.go
 
 //go:build !windows
-// +build !windows
 
 package netpol
 
