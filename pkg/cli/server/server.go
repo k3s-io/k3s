@@ -297,7 +297,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	// if not set, try setting advertise-ip from agent VPN
 	if cmds.AgentConfig.VPNAuth != "" {
-		vpnInfo, err := vpn.GetVPNInfo(cmds.AgentConfig.VPNAuth)
+		vpnInfo, err := vpn.GetInfo(cmds.AgentConfig.VPNAuth)
 		if err != nil {
 			return err
 		}
