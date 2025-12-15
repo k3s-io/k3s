@@ -392,9 +392,8 @@ func isValidResolvConf(resolvConfFile string) bool {
 		if len(ipMatch) == 2 {
 			if !isValidNameserver(ipMatch[1]) {
 				return false
-			} else {
-				foundNameserver = true
 			}
+			foundNameserver = true
 		}
 	}
 	if err := scanner.Err(); err != nil {
