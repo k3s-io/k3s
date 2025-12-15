@@ -7,5 +7,5 @@ func Validate() error {
 }
 
 func CheckCgroups() (kubeletRoot, runtimeRoot string, controllers map[string]bool) {
-	return
+	return kubeletRoot, runtimeRoot, controllers
 }
