@@ -41,8 +41,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var DefaultHelmJobImage = "rancher/klipper-helm:v0.9.10-build20251111"
-
 func ResolveDataDir(dataDir string) (string, error) {
 	dataDir, err := datadir.Resolve(dataDir)
 	return filepath.Join(dataDir, "server"), err
@@ -220,11 +218,11 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 	}
 
 	// Apply SystemDefaultRegistry setting to Helm before starting controllers.
-	// Additionally, set the helm job image to the immutable default image, internally helm-controller default to latest.
+	// Internally helm-controller defaults to latest tag, but we inject a immutable version at build time.
 	if config.ControlConfig.HelmJobImage != "" {
 		helmchart.DefaultJobImage = config.ControlConfig.HelmJobImage
 	} else if config.ControlConfig.SystemDefaultRegistry != "" {
-		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + DefaultHelmJobImage
+		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
 	}
 
 	if sc.Helm != nil {
