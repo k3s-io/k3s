@@ -164,7 +164,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	},
 }
 
-func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) error) *cli.Command {
+func NewEtcdSnapshotCommands(deleteFunc, listFunc, pruneFunc, saveFunc func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:            EtcdSnapshotCommand,
 		Usage:           "Manage etcd snapshots",
@@ -174,14 +174,14 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Name:            "save",
 				Usage:           "Trigger an immediate etcd snapshot",
 				SkipFlagParsing: false,
-				Action:          save,
+				Action:          saveFunc,
 				Flags:           EtcdSnapshotFlags,
 			},
 			{
 				Name:            "delete",
 				Usage:           "Delete given snapshot(s)",
 				SkipFlagParsing: false,
-				Action:          delete,
+				Action:          deleteFunc,
 				Flags:           EtcdSnapshotFlags,
 			},
 			{
@@ -189,7 +189,7 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Aliases:         []string{"list", "l"},
 				Usage:           "List snapshots",
 				SkipFlagParsing: false,
-				Action:          list,
+				Action:          listFunc,
 				Flags: append(EtcdSnapshotFlags, &cli.StringFlag{
 					Name:        "output",
 					Aliases:     []string{"o"},
@@ -201,7 +201,7 @@ func NewEtcdSnapshotCommands(delete, list, prune, save func(ctx *cli.Context) er
 				Name:            "prune",
 				Usage:           "Remove snapshots that match the name prefix that exceed the configured retention count",
 				SkipFlagParsing: false,
-				Action:          prune,
+				Action:          pruneFunc,
 				Flags:           EtcdSnapshotFlags,
 			},
 		},
