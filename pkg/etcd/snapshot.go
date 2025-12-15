@@ -169,12 +169,16 @@ func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFile string) (string, err
 		if err != nil {
 			return "", err
 		}
+
+		//revive:disable-next-line:defer
 		defer decompressed.Close()
 
 		ss, err := sf.Open()
 		if err != nil {
 			return "", err
 		}
+
+		//revive:disable-next-line:defer
 		defer ss.Close()
 
 		if _, err := io.Copy(decompressed, ss); err != nil {
