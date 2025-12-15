@@ -206,7 +206,6 @@ func GetFirstValidIPString(s []string) string {
 
 // GetFirstIP checks what is the IPFamily of the first item. Based on that, returns a set of values
 func GetDefaultAddresses(nodeIP net.IP) (string, string, string, error) {
-
 	if netutils.IsIPv4(nodeIP) {
 		ListenAddress := "0.0.0.0"
 		clusterCIDR := "10.42.0.0/16"

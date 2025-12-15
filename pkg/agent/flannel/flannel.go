@@ -252,7 +252,6 @@ func ReadCIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP4Net {
 				}
 				prevCIDRs = append(prevCIDRs, ip.FromIPNet(cidr))
 			}
-
 		}
 	}
 	return prevCIDRs
@@ -288,7 +287,6 @@ func ReadIP6CIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP6Net {
 				}
 				prevCIDRs = append(prevCIDRs, ip.FromIP6Net(cidr))
 			}
-
 		}
 	}
 	return prevCIDRs
