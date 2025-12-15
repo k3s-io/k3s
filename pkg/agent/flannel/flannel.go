@@ -231,9 +231,8 @@ func ReadCIDRFromSubnetFile(path string, CIDRKey string) ip.IP4Net {
 	} else if len(prevCIDRs) > 1 {
 		logrus.Errorf("error reading subnet: more than 1 entry found for key: %s in file %s: ", CIDRKey, path)
 		return ip.IP4Net{IP: 0, PrefixLen: 0}
-	} else {
-		return prevCIDRs[0]
 	}
+	return prevCIDRs[0]
 }
 
 func ReadCIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP4Net {
@@ -266,9 +265,8 @@ func ReadIP6CIDRFromSubnetFile(path string, CIDRKey string) ip.IP6Net {
 	} else if len(prevCIDRs) > 1 {
 		logrus.Errorf("error reading subnet: more than 1 entry found for key: %s in file %s: ", CIDRKey, path)
 		return ip.IP6Net{IP: (*ip.IP6)(big.NewInt(0)), PrefixLen: 0}
-	} else {
-		return prevCIDRs[0]
 	}
+	return prevCIDRs[0]
 }
 
 func ReadIP6CIDRsFromSubnetFile(path string, CIDRKey string) []ip.IP6Net {
