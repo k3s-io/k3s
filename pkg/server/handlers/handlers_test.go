@@ -18,6 +18,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	//revive:disable:dot-imports
+	. "github.com/onsi/gomega"
+
 	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -27,7 +30,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/mock"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
