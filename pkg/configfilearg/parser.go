@@ -237,7 +237,7 @@ func dotDFiles(basefile string) (result []string, _ error) {
 		}
 		result = append(result, filepath.Join(basefile+".d", file.Name()))
 	}
-	return
+	return result, nil
 }
 
 // readConfigFile returns a flattened arg list generated from the specified config
@@ -312,7 +312,7 @@ func readConfigFile(file string) (result []string, _ error) {
 		}
 	}
 
-	return
+	return result, nil
 }
 
 func toSlice(v any) []any {
