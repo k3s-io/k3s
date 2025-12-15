@@ -318,7 +318,7 @@ var _ = Describe("startup tests", Ordered, func() {
 				To(ContainSubstring("pod/dummy created"))
 			Eventually(func() (string, error) {
 				return testutil.K3sCmd("kubectl get event -n kube-system --field-selector involvedObject.name=dummy")
-			}, "60s", "5s").Should(ContainSubstring("Started container dummy"))
+			}, "60s", "5s").Should(ContainSubstring("Container started"))
 		})
 		It("restarts the server", func() {
 			var err error
