@@ -147,10 +147,10 @@ func Delete(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return delete(app, &cmds.ServerConfig)
+	return deleteSnapshot(app, &cmds.ServerConfig)
 }
 
-func delete(app *cli.Context, cfg *cmds.Server) error {
+func deleteSnapshot(app *cli.Context, cfg *cmds.Server) error {
 	snapshots := app.Args()
 	if snapshots.Len() == 0 {
 		return errors.New("no snapshots given for removal")
