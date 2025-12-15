@@ -105,7 +105,7 @@ func (e ETCDConfig) ToConfigFile(extraArgs []string) (string, error) {
 	}
 
 	if len(extraArgs) > 0 {
-		var s map[string]interface{}
+		var s map[string]any
 		if err := yaml2.Unmarshal(bytes, &s); err != nil {
 			return "", err
 		}
