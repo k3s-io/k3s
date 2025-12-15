@@ -75,7 +75,7 @@ func (p *Parser) stripInvalidFlags(command string, args []string) ([]string, err
 	}
 	validFlags := make(map[string]bool, len(cmdFlags))
 	for _, f := range cmdFlags {
-		//split flags with aliases into 2 entries
+		// split flags with aliases into 2 entries
 		for _, s := range f.Names() {
 			validFlags[s] = true
 		}
