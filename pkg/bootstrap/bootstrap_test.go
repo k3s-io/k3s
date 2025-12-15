@@ -8,7 +8,7 @@ import (
 
 func TestObjToMap(t *testing.T) {
 	type args struct {
-		obj interface{}
+		obj any
 	}
 	tests := []struct {
 		name    string
