@@ -1241,8 +1241,10 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			return
 		}
 
+		client := e.client
+
 		endpoints := getEndpoints(e.config)
-		if status, err := e.client.Status(ctx, endpoints[0]); err != nil {
+		if status, err := client.Status(ctx, endpoints[0]); err != nil {
 			logrus.Errorf("Failed to check local etcd status for learner management: %v", err)
 			return
 		} else if status.Header.MemberId != status.Leader {
@@ -1255,7 +1257,7 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			return
 		}
 
-		members, err := e.client.MemberList(ctx)
+		members, err := client.MemberList(ctx)
 		if err != nil {
 			logrus.Errorf("Failed to get etcd members for learner management: %v", err)
 			return
