@@ -23,11 +23,11 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-type SnapshotStatus string
+type Status string
 
 const (
-	SuccessfulStatus SnapshotStatus = "successful"
-	FailedStatus     SnapshotStatus = "failed"
+	SuccessfulStatus Status = "successful"
+	FailedStatus     Status = "failed"
 
 	CompressedExtension = ".zip"
 	MetadataDir         = ".metadata"
@@ -59,15 +59,15 @@ type File struct {
 	Name string `json:"name"`
 	// Location contains the full path of the snapshot. For
 	// local paths, the location will be prefixed with "file://".
-	Location   string         `json:"location,omitempty"`
-	Metadata   string         `json:"metadata,omitempty"`
-	Message    string         `json:"message,omitempty"`
-	NodeName   string         `json:"nodeName,omitempty"`
-	CreatedAt  *metav1.Time   `json:"createdAt,omitempty"`
-	Size       int64          `json:"size,omitempty"`
-	Status     SnapshotStatus `json:"status,omitempty"`
-	S3         *S3Config      `json:"s3Config,omitempty"`
-	Compressed bool           `json:"compressed"`
+	Location   string       `json:"location,omitempty"`
+	Metadata   string       `json:"metadata,omitempty"`
+	Message    string       `json:"message,omitempty"`
+	NodeName   string       `json:"nodeName,omitempty"`
+	CreatedAt  *metav1.Time `json:"createdAt,omitempty"`
+	Size       int64        `json:"size,omitempty"`
+	Status     Status       `json:"status,omitempty"`
+	S3         *S3Config    `json:"s3Config,omitempty"`
+	Compressed bool         `json:"compressed"`
 
 	// these fields are used for the internal representation of the snapshot
 	// to populate other fields before serialization to the legacy configmap.
