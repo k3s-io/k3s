@@ -21,7 +21,7 @@ var templateFuncs = template.FuncMap{
 		}
 		return s
 	},
-	"toJson": func(v interface{}) string {
+	"toJson": func(v any) string {
 		output, _ := json.Marshal(v)
 		return string(output)
 	},
