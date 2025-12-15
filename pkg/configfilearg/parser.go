@@ -263,7 +263,7 @@ func readConfigFile(file string) (result []string, _ error) {
 	var (
 		keySeen  = map[string]bool{}
 		keyOrder []string
-		values   = map[string]interface{}{}
+		values   = map[string]any{}
 	)
 	for _, file := range files {
 		bytes, err := readConfigFileData(file)
@@ -302,7 +302,7 @@ func readConfigFile(file string) (result []string, _ error) {
 			prefix = "-"
 		}
 
-		if slice, ok := v.([]interface{}); ok {
+		if slice, ok := v.([]any); ok {
 			for _, v := range slice {
 				result = append(result, prefix+k+"="+convert.ToString(v))
 			}
@@ -315,18 +315,18 @@ func readConfigFile(file string) (result []string, _ error) {
 	return
 }
 
-func toSlice(v interface{}) []interface{} {
+func toSlice(v any) []any {
 	switch k := v.(type) {
 	case string:
-		return []interface{}{k}
-	case []interface{}:
+		return []any{k}
+	case []any:
 		return k
 	default:
 		str := strings.TrimSpace(convert.ToString(v))
 		if str == "" {
 			return nil
 		}
-		return []interface{}{str}
+		return []any{str}
 	}
 }
 
