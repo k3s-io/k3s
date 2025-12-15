@@ -1437,7 +1437,6 @@ func (e *ETCD) setEtcdStatusCondition(node *v1.Node, memberName string, memberSt
 	}
 
 	if find, condition := util.GetNodeCondition(&node.Status, etcdStatusType); find >= 0 {
-
 		// if the condition is not changing, we only want to update the last heartbeat time
 		if condition.Status == newCondition.Status && condition.Reason == newCondition.Reason && condition.Message == newCondition.Message {
 			logrus.Debugf("Node %s is not changing etcd status condition", memberName)

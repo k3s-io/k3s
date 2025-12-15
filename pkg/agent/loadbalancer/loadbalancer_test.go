@@ -263,7 +263,6 @@ var _ = Describe("LoadBalancer", func() {
 
 			// confirm that the default is still listed as default
 			Expect(lb.servers.getDefaultAddress()).To(Equal(defaultServer.address), "default server is not default")
-
 		})
 
 		It("does not return the default server in the address list after removing it", func() {
