@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -e
+shopt -s nullglob
+
+EXPECTED_ARTIFACTS=(
+  dist/artifacts/k3s
+  dist/artifacts/k3s-airgap-images-amd64.tar
+  dist/artifacts/k3s-airgap-images-amd64.tar.gz
+  dist/artifacts/k3s-airgap-images-amd64.tar.zst
+  dist/artifacts/k3s-airgap-images-arm.tar
+  dist/artifacts/k3s-airgap-images-arm.tar.gz
+  dist/artifacts/k3s-airgap-images-arm.tar.zst
+  dist/artifacts/k3s-airgap-images-arm64.tar
+  dist/artifacts/k3s-airgap-images-arm64.tar.gz
+  dist/artifacts/k3s-airgap-images-arm64.tar.zst
+  dist/artifacts/k3s-arm64
+  dist/artifacts/k3s-armhf
+  dist/artifacts/k3s-images.txt
+  dist/artifacts/sha256sum-amd64.txt
+  dist/artifacts/sha256sum-arm.txt
+  dist/artifacts/sha256sum-arm64.txt
+)
+
+CURRENT_ARTIFACTS=(
+  dist/artifacts/k3s*
+  dist/artifacts/sha256sum*
+)
+
+UNEXPECTED=$(IFS=$'\n'; comm -13 /dev/fd/4 /dev/fd/5 4<<<"${EXPECTED_ARTIFACTS[*]}" 5<<<"${CURRENT_ARTIFACTS[*]}")
+MISSING=$(IFS=$'\n'; comm -23 /dev/fd/4 /dev/fd/5 4<<<"${EXPECTED_ARTIFACTS[*]}" 5<<<"${CURRENT_ARTIFACTS[*]}")
+
+if [[ -n "${UNEXPECTED}" ]] || [[ -n "${MISSING}" ]]; then
+  echo "Unexpected Files: " ${UNEXPECTED}
+  echo "Missing Files:    " ${MISSING}
+  exit 1
+fi
