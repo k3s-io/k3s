@@ -37,6 +37,8 @@ func SetupSignalContext() context.Context {
 		cancel()
 		s := <-signalHandler
 		logrus.Infof("Second shutdown signal received: %s, exiting...", s)
+
+		//revive:disable-next-line:deep-exit
 		os.Exit(1)
 	}()
 
