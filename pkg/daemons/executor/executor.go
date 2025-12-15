@@ -54,6 +54,7 @@ type ETCDSocketOpts struct {
 	ReusePort    bool `json:"reuse-port,omitempty"`
 }
 
+//revive:disable:struct-tag
 type ETCDConfig struct {
 	InitialOptions       `json:",inline"`
 	Name                 string         `json:"name,omitempty"`
