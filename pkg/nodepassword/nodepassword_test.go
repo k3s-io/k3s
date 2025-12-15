@@ -30,13 +30,13 @@ func Test_PasswordError(t *testing.T) {
 // --------------------------
 // utility functions
 
-func assertEqual(t *testing.T, a interface{}, b interface{}) {
+func assertEqual(t *testing.T, a any, b any) {
 	if a != b {
 		t.Fatalf("[ %v != %v ]", a, b)
 	}
 }
 
-func assertNotEqual(t *testing.T, a interface{}, b interface{}) {
+func assertNotEqual(t *testing.T, a any, b any) {
 	if a == b {
 		t.Fatalf("[ %v == %v ]", a, b)
 	}
