@@ -225,11 +225,11 @@ func getConntrackConfig(nodeConfig *daemonconfig.Node) (*kubeproxyconfig.KubePro
 		return nil, err
 	}
 	ctConfig.MaxPerCore = &maxPerCore
-	min, err := cmd.Flags().GetInt32("conntrack-min")
+	ctMin, err := cmd.Flags().GetInt32("conntrack-min")
 	if err != nil {
 		return nil, err
 	}
-	ctConfig.Min = &min
+	ctConfig.Min = &ctMin
 	establishedTimeout, err := cmd.Flags().GetDuration("conntrack-tcp-timeout-established")
 	if err != nil {
 		return nil, err

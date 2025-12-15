@@ -97,10 +97,10 @@ func Delete(app *cli.Context) error {
 	if err := cmds.InitLogging(); err != nil {
 		return err
 	}
-	return delete(app, &cmds.TokenConfig)
+	return deleteToken(app, &cmds.TokenConfig)
 }
 
-func delete(app *cli.Context, cfg *cmds.Token) error {
+func deleteToken(app *cli.Context, cfg *cmds.Token) error {
 	args := app.Args()
 	if args.Len() < 1 {
 		return errors.New("missing argument; 'token delete' is missing token")

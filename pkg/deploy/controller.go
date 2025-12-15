@@ -457,8 +457,8 @@ func toObjects(bytes []byte) ([]runtime.Object, error) {
 	if l, ok := obj.(*unstructured.UnstructuredList); ok {
 		var result []runtime.Object
 		for _, obj := range l.Items {
-			copy := obj
-			result = append(result, &copy)
+			newObj := obj
+			result = append(result, &newObj)
 		}
 		return result, nil
 	}
