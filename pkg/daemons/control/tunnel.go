@@ -297,5 +297,5 @@ func (crw *connReadWriteCloser) Write(b []byte) (n int, err error) {
 
 func (crw *connReadWriteCloser) Close() (err error) {
 	crw.once.Do(func() { err = crw.conn.Close() })
-	return
+	return err
 }
