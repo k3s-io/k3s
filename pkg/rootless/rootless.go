@@ -80,6 +80,8 @@ func Rootless(stateDir string, enableIPv6 bool) error {
 	if err := parent.Parent(*parentOpt); err != nil {
 		logrus.Fatal(err)
 	}
+
+	//revive:disable-next-line:deep-exit
 	os.Exit(0)
 
 	return nil
