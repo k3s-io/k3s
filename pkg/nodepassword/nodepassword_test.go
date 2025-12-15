@@ -15,6 +15,8 @@ import (
 const migrateNumNodes = 10
 const createNumNodes = 3
 
+//revive:disable:deep-exit
+
 func Test_UnitAsserts(t *testing.T) {
 	assertEqual(t, 1, 1)
 	assertNotEqual(t, 1, 0)
