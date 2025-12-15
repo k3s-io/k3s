@@ -77,6 +77,8 @@ func forkIfLoggingOrReaping() error {
 		systemd.SdNotify(true, "READY=1\n")
 
 		cmd.Wait()
+
+		//revive:disable-next-line:deep-exit
 		os.Exit(cmd.ProcessState.ExitCode())
 	}
 	return nil
