@@ -65,7 +65,7 @@ func GetAddressesFromSlices(slices ...discoveryv1.EndpointSlice) []string {
 			port = "443"
 		}
 		for _, endpoint := range slice.Endpoints {
-			if endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready == true {
+			if endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready {
 				for _, address := range endpoint.Addresses {
 					serverAddresses = append(serverAddresses, net.JoinHostPort(address, port))
 				}
