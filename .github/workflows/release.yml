@@ -180,6 +180,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64, build-arm, build-airgap]
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
     - name: Read Prime artifacts secrets
       uses: rancher-eio/read-vault-secrets@main
       with:
@@ -204,6 +207,7 @@ jobs:
     
     - name: "Combine and format sha256sum files"
       run: |
+        cp scripts/airgap/image-list.txt dist/artifacts/k3s-images.txt
         for ARCH in amd64 arm64 arm; do
           OUTPUT_FILE="./dist/artifacts/sha256sum-${ARCH}.txt"
           cat ./dist/artifacts/k3s-airgap-images-${ARCH}*.sha256sum >> "${OUTPUT_FILE}"
@@ -216,6 +220,10 @@ jobs:
             rm ./dist/artifacts/k3s-${ARCH}.sha256sum # Remove the original file to avoid uploading it
           fi
         done
+
+    - name: Validate Assets for Release
+      run: |
+        ./scripts/validate-artifacts
     
     - name: Upload Assets to Release
       uses: softprops/action-gh-release@v2.2.1
