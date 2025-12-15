@@ -249,16 +249,19 @@ func (sl *serverList) recordSuccess(srv *server, r reason) {
 			switch s.state {
 			case stateFailed, stateStandby, stateRecovering, stateHealthy:
 				// close connections to other non-active servers whenever we have a new active server
+				//revive:disable-next-line:defer
 				defer s.closeAll()
 			case stateActive:
 				if len(s.connections) > len(srv.connections) {
 					// if there is a currently active server that has more connections than we do,
 					// close our connections and go to preferred instead
 					new_state = statePreferred
+					//revive:disable-next-line:defer
 					defer srv.closeAll()
 				} else {
 					// otherwise, close its connections and demote it to preferred
 					s.state = statePreferred
+					//revive:disable-next-line:defer
 					defer s.closeAll()
 				}
 			}
