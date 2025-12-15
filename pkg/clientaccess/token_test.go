@@ -296,7 +296,7 @@ func newTLSServer(t *testing.T, username, password string, sendWrongCA bool) *ht
 	var server *httptest.Server
 	server = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1-k3s/server-bootstrap" {
-			if authUsername, authPassword, ok := r.BasicAuth(); ok != true || authPassword != password || authUsername != username {
+			if authUsername, authPassword, ok := r.BasicAuth(); !ok || authPassword != password || authUsername != username {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
