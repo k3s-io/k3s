@@ -102,9 +102,9 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		}
 
 		// If there is a VPN, we must overwrite NodeIP and flannel interface
-		var vpnInfo vpn.VPNInfo
+		var vpnInfo *vpn.Info
 		if cfg.VPNAuth != "" {
-			vpnInfo, err = vpn.GetVPNInfo(cfg.VPNAuth)
+			vpnInfo, err = vpn.GetInfo(cfg.VPNAuth)
 			if err != nil {
 				return err
 			}
@@ -136,9 +136,9 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 					logrus.Warn("VPN provider overrides node-external-ip parameter")
 				}
 				nodeIPs = vpnIPs
-				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.VPNInterface)
+				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.Interface)
 				if err != nil {
-					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.VPNInterface)
+					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.Interface)
 				}
 			}
 		}
