@@ -251,12 +251,12 @@ func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfig
 		return nil, pkgerrors.WithMessagef(err, "failed to create static pod manifest dir %s", defaultConfig.StaticPodPath)
 	}
 
-	if t, _, err := taints.ParseTaints(cfg.NodeTaints); err != nil {
+	t, _, err := taints.ParseTaints(cfg.NodeTaints)
+	if err != nil {
 		return nil, pkgerrors.WithMessage(err, "failed to parse node taints")
-	} else {
-		defaultConfig.RegisterWithTaints = t
 	}
 
+	defaultConfig.RegisterWithTaints = t
 	logsv1.VModuleConfigurationPflag(&defaultConfig.Logging.VModule).Set(cfg.VModule)
 
 	return defaultConfig, nil

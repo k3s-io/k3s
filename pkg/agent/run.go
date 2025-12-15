@@ -180,9 +180,8 @@ func startCRI(ctx context.Context, nodeConfig *daemonconfig.Node) error {
 			return err
 		}
 		return executor.Containerd(ctx, nodeConfig)
-	} else {
-		return executor.CRI(ctx, nodeConfig)
 	}
+	return executor.CRI(ctx, nodeConfig)
 }
 
 // startNetwork updates the network annotations on the node and starts the CNI
