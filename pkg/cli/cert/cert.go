@@ -92,8 +92,8 @@ func collectCertInfo(controlConfig config.Control, ServicesList []string) (*Cert
 	return result, nil
 }
 
-// CertFormatter defines the interface for formatting certificate information
-type CertFormatter interface {
+// Formatter defines the interface for formatting certificate information
+type Formatter interface {
 	Format(*CertificateInfo) error
 }
 
@@ -232,7 +232,7 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 	}
 	outFmt := app.String("output")
 
-	var formatter CertFormatter
+	var formatter Formatter
 	switch outFmt {
 	case "text":
 		formatter = &TextFormatter{Writer: os.Stdout}
