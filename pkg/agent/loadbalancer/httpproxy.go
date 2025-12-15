@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
-	http_dialer "github.com/mwitkow/go-http-dialer"
+	httpdialer "github.com/mwitkow/go-http-dialer"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpproxy"
@@ -60,7 +60,7 @@ func SetHTTPProxy(address string) error {
 func proxyDialer(proxyURL *url.URL, forward proxy.Dialer) (proxy.Dialer, error) {
 	if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
 		// Create a new HTTP proxy dialer
-		httpProxyDialer := http_dialer.New(proxyURL, http_dialer.WithConnectionTimeout(10*time.Second), http_dialer.WithDialer(forward.(*net.Dialer)))
+		httpProxyDialer := httpdialer.New(proxyURL, httpdialer.WithConnectionTimeout(10*time.Second), httpdialer.WithDialer(forward.(*net.Dialer)))
 		return httpProxyDialer, nil
 	} else if proxyURL.Scheme == "socks5" {
 		// For SOCKS5 proxies, use the proxy package's FromURL
