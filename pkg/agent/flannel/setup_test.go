@@ -35,7 +35,6 @@ func Test_findNetMode(t *testing.T) {
 		{"wrong input", "wrong", false, false, true},
 	}
 	for _, tt := range tests {
-
 		t.Run(tt.name, func(t *testing.T) {
 			netCidrs := stringToCIDR(tt.args)
 			got, err := findNetMode(netCidrs)

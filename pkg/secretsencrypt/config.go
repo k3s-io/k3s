@@ -70,7 +70,6 @@ func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1
 
 // GetEncryptionKeys returns a list of encryption keys from the current encryption configuration.
 func GetEncryptionKeys(runtime *config.ControlRuntime) (*EncryptionKeys, error) {
-
 	currentKeys := &EncryptionKeys{}
 	providers, err := GetEncryptionProviders(runtime)
 	if err != nil {
@@ -102,7 +101,6 @@ func GetEncryptionKeys(runtime *config.ControlRuntime) (*EncryptionKeys, error) 
 // WriteEncryptionConfig writes the encryption configuration to the file system.
 // The provider arg will be placed first, and is used to encrypt new secrets.
 func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys, provider string, enable bool) error {
-
 	var providers []apiserverconfigv1.ProviderConfiguration
 	var primary apiserverconfigv1.ProviderConfiguration
 	var secondary *apiserverconfigv1.ProviderConfiguration
@@ -220,7 +218,6 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 // GenReencryptHash generates a sha256 hash from the existing secrets keys and
 // any identity providers plus a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
-
 	// To retain compatibility with the older encryption hash format,
 	// we contruct the hash as: aescbc + secretbox + identity + newkey
 	currentKeys, err := GetEncryptionKeys(runtime)
