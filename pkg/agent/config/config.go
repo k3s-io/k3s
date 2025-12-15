@@ -343,7 +343,7 @@ func splitCertKeyPEM(bytes []byte) (certPem []byte, keyPem []byte) {
 		}
 	}
 
-	return
+	return certPem, keyPem
 }
 
 // getKubeletClientCert fills the kubelet client certificate with content returned
