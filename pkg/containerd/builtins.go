@@ -1,5 +1,4 @@
 //go:build ctrd
-// +build ctrd
 
 /*
    Copyright The containerd Authors.
