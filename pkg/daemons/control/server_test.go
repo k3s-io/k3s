@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	//revive:disable:dot-imports
 	. "github.com/onsi/gomega"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
