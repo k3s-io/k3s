@@ -327,7 +327,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
 	} else {
-
 		// if not set, try setting advertise-ip from agent node-external-ip
 		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
 			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
