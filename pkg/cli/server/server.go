@@ -38,6 +38,7 @@ import (
 	"github.com/urfave/cli/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
@@ -567,7 +568,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan []string)
-		go getAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
+		go pollAPIAddressFromEtcd(ctx, serverConfig, agentConfig)
 	}
 
 	// Until the agent is run and retrieves config from the server, we won't know
@@ -648,23 +649,20 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 	return nil
 }
 
-func getAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agentConfig cmds.Agent) {
+func pollAPIAddressFromEtcd(ctx context.Context, serverConfig server.Config, agentConfig cmds.Agent) {
 	defer close(agentConfig.APIAddressCh)
-	for {
-		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pollDuration := time.Second * 5
+	wait.PollUntilContextCancel(ctx, pollDuration, true, func(ctx context.Context) (bool, error) {
+		ctx, cancel := context.WithTimeout(ctx, pollDuration)
 		defer cancel()
-		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &serverConfig.ControlConfig)
+		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(ctx, &serverConfig.ControlConfig)
 		if err == nil && len(serverAddresses) > 0 {
 			agentConfig.APIAddressCh <- serverAddresses
-			return
+			return true, nil
 		}
 		if !errors.Is(err, etcd.ErrAddressNotSet) {
 			logrus.Warnf("Failed to get apiserver address from etcd: %v", err)
 		}
-		select {
-		case <-toCtx.Done():
-		case <-ctx.Done():
-			return
-		}
-	}
+		return false, nil
+	})
 }
