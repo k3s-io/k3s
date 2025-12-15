@@ -35,7 +35,7 @@ var (
 	}
 )
 
-func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Context) error) *cli.Command {
+func NewTokenCommands(createFunc, deleteFunc, generateFunc, listFunc, rotateFunc func(ctx *cli.Context) error) *cli.Command {
 	return &cli.Command{
 		Name:            TokenCommand,
 		Usage:           "Manage tokens",
@@ -63,21 +63,21 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 					Destination: &TokenConfig.Usages,
 				}),
 				SkipFlagParsing: false,
-				Action:          create,
+				Action:          createFunc,
 			},
 			{
 				Name:            "delete",
 				Usage:           "Delete bootstrap tokens on the server",
 				Flags:           TokenFlags,
 				SkipFlagParsing: false,
-				Action:          delete,
+				Action:          deleteFunc,
 			},
 			{
 				Name:            "generate",
 				Usage:           "Generate and print a bootstrap token, but do not create it on the server",
 				Flags:           TokenFlags,
 				SkipFlagParsing: false,
-				Action:          generate,
+				Action:          generateFunc,
 			},
 			{
 				Name:  "list",
@@ -89,7 +89,7 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 					Destination: &TokenConfig.Output,
 				}),
 				SkipFlagParsing: false,
-				Action:          list,
+				Action:          listFunc,
 			},
 			{
 				Name:  "rotate",
@@ -116,7 +116,7 @@ func NewTokenCommands(create, delete, generate, list, rotate func(ctx *cli.Conte
 						Destination: &TokenConfig.NewToken,
 					}),
 				SkipFlagParsing: false,
-				Action:          rotate,
+				Action:          rotateFunc,
 			},
 		},
 	}
