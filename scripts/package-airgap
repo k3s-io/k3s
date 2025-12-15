@@ -26,6 +26,4 @@ xargs -tn1 ctr -n moby images pull ${OPT_PLATFORM} 1> /dev/null <<< "${images}" 
 ctr -n moby images export ${OPT_PLATFORM} dist/artifacts/k3s-airgap-images-${ARCH}.tar ${images}
 zstd --no-progress -T0 -16 -f --long=25 dist/artifacts/k3s-airgap-images-${ARCH}.tar -o dist/artifacts/k3s-airgap-images-${ARCH}.tar.zst
 pigz -v -c dist/artifacts/k3s-airgap-images-${ARCH}.tar > dist/artifacts/k3s-airgap-images-${ARCH}.tar.gz
-if [ ${ARCH} = amd64 ]; then
-  cp "${airgap_image_file}" dist/artifacts/k3s-images.txt
-fi
+sha256sum dist/artifacts/k3s-airgap-images-${ARCH}.tar* | sed 's|dist/artifacts/||' > dist/artifacts/k3s-airgap-images-${ARCH}.sha256sum
