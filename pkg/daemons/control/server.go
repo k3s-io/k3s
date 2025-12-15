@@ -311,12 +311,12 @@ func prepare(ctx context.Context, wg *sync.WaitGroup, config *config.Control) er
 		return err
 	}
 
-	if dataDir, err := filepath.Abs(config.DataDir); err != nil {
+	dataDir, err := filepath.Abs(config.DataDir)
+	if err != nil {
 		return err
-	} else {
-		config.DataDir = dataDir
 	}
 
+	config.DataDir = dataDir
 	os.MkdirAll(filepath.Join(config.DataDir, "etc"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "tls"), 0700)
 	os.MkdirAll(filepath.Join(config.DataDir, "cred"), 0700)
