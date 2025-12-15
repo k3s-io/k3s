@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -419,7 +419,7 @@ func isEmptyYaml(yaml []byte) bool {
 // yamlToObjects returns an object slice yielded from documents in a chunk of YAML
 func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 	var result []runtime.Object
-	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+	reader := yaml.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 	for {
 		raw, err := reader.Read()
 		if err == io.EOF {
@@ -444,7 +444,7 @@ func yamlToObjects(in io.Reader) ([]runtime.Object, error) {
 
 // Returns one or more objects from a single YAML document
 func toObjects(bytes []byte) ([]runtime.Object, error) {
-	bytes, err := yamlDecoder.ToJSON(bytes)
+	bytes, err := yaml.ToJSON(bytes)
 	if err != nil {
 		return nil, err
 	}
