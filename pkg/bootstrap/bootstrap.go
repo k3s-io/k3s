@@ -84,7 +84,7 @@ func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRunt
 	return nil
 }
 
-func ObjToMap(obj interface{}) (map[string]string, error) {
+func ObjToMap(obj any) (map[string]string, error) {
 	bytes, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err

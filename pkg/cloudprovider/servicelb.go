@@ -201,7 +201,7 @@ func (k *k3s) processNextWorkItem() bool {
 
 // processSingleItem processes a single item from the work queue,
 // requeueing it if the handler fails.
-func (k *k3s) processSingleItem(obj interface{}) error {
+func (k *k3s) processSingleItem(obj any) error {
 	var (
 		key string
 		ok  bool
