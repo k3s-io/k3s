@@ -21,7 +21,7 @@ const (
 
 type TailscaleOutput struct {
 	TailscaleIPs []string `json:"TailscaleIPs"`
-	BackendState string `json:"BackendState"`
+	BackendState string   `json:"BackendState"`
 }
 
 type TailscalePrefsOutput struct {
