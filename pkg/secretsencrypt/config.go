@@ -14,6 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/k3s-io/api/pkg/generated/clientset/versioned/scheme"
@@ -309,7 +310,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 		}
 
 		reader := bytes.NewReader(data)
-		var parser expfmt.TextParser
+		parser := expfmt.NewTextParser(model.UTF8Validation)
 		mf, err := parser.TextToMetricFamilies(reader)
 		if err != nil {
 			return true, err
