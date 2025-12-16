@@ -8,7 +8,7 @@ import (
 )
 
 // implicit interface check
-var _ logr.LogSink = &logrusSink{}
+var _ logr.LogSink = &LogrusSink{}
 
 // mapLevel maps logr log verbosities to logrus log levels
 // logr does not have "log levels", but Info prints at verbosity 0
@@ -42,46 +42,46 @@ func mapKV(kvs []any) logrus.Fields {
 }
 
 // LogrusSink wraps logrus the Logger/Entry types for use as a logr LogSink.
-type logrusSink struct {
+type LogrusSink struct {
 	e  *logrus.Entry
 	ri logr.RuntimeInfo
 }
 
-func NewLogrusSink(l *logrus.Logger) *logrusSink {
+func NewLogrusSink(l *logrus.Logger) *LogrusSink {
 	if l == nil {
 		l = logrus.StandardLogger()
 	}
-	return &logrusSink{e: logrus.NewEntry(l)}
+	return &LogrusSink{e: logrus.NewEntry(l)}
 }
 
-func (ls *logrusSink) AsLogr() logr.Logger {
+func (ls *LogrusSink) AsLogr() logr.Logger {
 	return logr.New(ls)
 }
 
-func (ls *logrusSink) Init(ri logr.RuntimeInfo) {
+func (ls *LogrusSink) Init(ri logr.RuntimeInfo) {
 	ls.ri = ri
 }
 
-func (ls *logrusSink) Enabled(level int) bool {
+func (ls *LogrusSink) Enabled(level int) bool {
 	return ls.e.Logger.IsLevelEnabled(mapLevel(level))
 }
 
-func (ls *logrusSink) Info(level int, msg string, kvs ...any) {
+func (ls *LogrusSink) Info(level int, msg string, kvs ...any) {
 	ls.e.WithFields(mapKV(kvs)).Log(mapLevel(level), msg)
 }
 
-func (ls *logrusSink) Error(err error, msg string, kvs ...any) {
+func (ls *LogrusSink) Error(err error, msg string, kvs ...any) {
 	ls.e.WithError(err).WithFields(mapKV(kvs)).Error(msg)
 }
 
-func (ls *logrusSink) WithValues(kvs ...any) logr.LogSink {
-	return &logrusSink{
+func (ls *LogrusSink) WithValues(kvs ...any) logr.LogSink {
+	return &LogrusSink{
 		e:  ls.e.WithFields(mapKV(kvs)),
 		ri: ls.ri,
 	}
 }
 
-func (ls *logrusSink) WithName(name string) logr.LogSink {
+func (ls *LogrusSink) WithName(name string) logr.LogSink {
 	if base, ok := ls.e.Data["logger"]; ok {
 		name = fmt.Sprintf("%s/%s", base, name)
 	}

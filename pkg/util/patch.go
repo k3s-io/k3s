@@ -21,21 +21,21 @@ type clientPatcher[T runtime.Object] interface {
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (T, error)
 }
 
-// patchWrapper wraps the Patch functions provided by either wrangler or client-go
-type patchWrapper[T runtime.Object] struct {
-	patcher any
+// Patcher wraps the Patch functions provided by either wrangler or client-go
+type Patcher[T runtime.Object] struct {
+	impl any
 }
 
 // NewPatcher wraps the provided controller or client for use as a generic patcher
 // note that the patcher is not validated for use until `Patch` is called
-func NewPatcher[T runtime.Object](patcher any) *patchWrapper[T] {
-	return &patchWrapper[T]{
-		patcher: patcher,
+func NewPatcher[T runtime.Object](patcher any) *Patcher[T] {
+	return &Patcher[T]{
+		impl: patcher,
 	}
 }
 
 // Patch applies the provided PatchList to the specified resource
-func (p *patchWrapper[T]) Patch(ctx context.Context, pl *PatchList, name string, subresources ...string) (T, error) {
+func (p *Patcher[T]) Patch(ctx context.Context, pl *PatchList, name string, subresources ...string) (T, error) {
 	var t T
 	if pl == nil {
 		pl = NewPatchList()
@@ -44,13 +44,13 @@ func (p *patchWrapper[T]) Patch(ctx context.Context, pl *PatchList, name string,
 	if err != nil {
 		return t, err
 	}
-	if patch, ok := p.patcher.(clientPatcher[T]); ok {
+	if patch, ok := p.impl.(clientPatcher[T]); ok {
 		return patch.Patch(ctx, name, types.JSONPatchType, b, metav1.PatchOptions{}, subresources...)
 	}
-	if patch, ok := p.patcher.(controllerPatcher[T]); ok {
+	if patch, ok := p.impl.(controllerPatcher[T]); ok {
 		return patch.Patch(name, types.JSONPatchType, b, subresources...)
 	}
-	return t, fmt.Errorf("unable to patch %T with %T", t, p.patcher)
+	return t, fmt.Errorf("unable to patch %T with %T", t, p.impl)
 }
 
 // PatchList is a generic list of JSONPatch operations to apply to a resource
