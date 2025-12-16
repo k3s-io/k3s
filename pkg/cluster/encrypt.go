@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
-	"fmt"
+	"errors"
 	"io"
 	"strings"
 
@@ -54,7 +54,7 @@ func encrypt(passphrase string, plaintext []byte) ([]byte, error) {
 func decrypt(passphrase string, ciphertext []byte) ([]byte, error) {
 	parts := strings.SplitN(string(ciphertext), ":", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid cipher text, not : delimited")
+		return nil, errors.New("invalid cipher text, not : delimited")
 	}
 
 	clearKey := pbkdf2.Key([]byte(passphrase), []byte(parts[0]), 4096, 32, sha1.New)

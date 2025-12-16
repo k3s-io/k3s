@@ -3,7 +3,7 @@ package etcd
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 
@@ -136,7 +136,7 @@ func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots
 }
 
 func (e *ETCD) handleInvalid(rw http.ResponseWriter, req *http.Request) error {
-	util.SendErrorWithID(fmt.Errorf("invalid snapshot operation"), "etcd-snapshot", rw, req, http.StatusBadRequest)
+	util.SendErrorWithID(errors.New("invalid snapshot operation"), "etcd-snapshot", rw, req, http.StatusBadRequest)
 	return nil
 }
 

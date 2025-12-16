@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -105,7 +104,7 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 		if c.config.Runtime.Handler != nil {
 			c.config.Runtime.Handler.ServeHTTP(rw, req)
 		} else {
-			util.SendError(fmt.Errorf("starting"), rw, req, http.StatusServiceUnavailable)
+			util.SendError(errors.New("starting"), rw, req, http.StatusServiceUnavailable)
 		}
 	})
 

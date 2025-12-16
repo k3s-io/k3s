@@ -3,6 +3,7 @@ package cloudprovider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -734,11 +735,11 @@ func validateToleration(toleration *core.Toleration) error {
 	}
 
 	if toleration.Key == "" && toleration.Operator != core.TolerationOpExists {
-		return fmt.Errorf("toleration with empty key must have operator 'Exists'")
+		return errors.New("toleration with empty key must have operator 'Exists'")
 	}
 
 	if toleration.Operator == core.TolerationOpExists && toleration.Value != "" {
-		return fmt.Errorf("toleration with operator 'Exists' must have an empty value")
+		return errors.New("toleration with operator 'Exists' must have an empty value")
 	}
 
 	return nil
