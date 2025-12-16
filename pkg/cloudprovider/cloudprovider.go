@@ -2,7 +2,7 @@ package cloudprovider
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 
 	"github.com/k3s-io/k3s/pkg/util"
@@ -74,7 +74,7 @@ func init() {
 		}
 
 		if !k.LBEnabled && !k.NodeEnabled {
-			return nil, fmt.Errorf("all cloud-provider functionality disabled by config")
+			return nil, errors.New("all cloud-provider functionality disabled by config")
 		}
 
 		return &k, err

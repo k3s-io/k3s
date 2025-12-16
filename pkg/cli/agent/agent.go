@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -82,11 +82,11 @@ func Run(clx *cli.Context) (rerr error) {
 	_, err := tls.LoadX509KeyPair(clientKubeletCert, clientKubeletKey)
 
 	if err != nil && cmds.AgentConfig.Token == "" {
-		return fmt.Errorf("--token is required")
+		return errors.New("--token is required")
 	}
 
 	if cmds.AgentConfig.ServerURL == "" {
-		return fmt.Errorf("--server is required")
+		return errors.New("--server is required")
 	}
 
 	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP.Value()) == 0 {

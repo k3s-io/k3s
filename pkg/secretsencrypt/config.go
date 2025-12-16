@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -93,7 +94,7 @@ func GetEncryptionKeys(runtime *config.ControlRuntime) (*EncryptionKeys, error) 
 			currentKeys.SBKeys = append(currentKeys.SBKeys, p.Secretbox.Keys...)
 		}
 		if p.AESGCM != nil || p.KMS != nil {
-			return nil, fmt.Errorf("unsupported encryption keys found")
+			return nil, errors.New("unsupported encryption keys found")
 		}
 	}
 	return currentKeys, nil
@@ -367,7 +368,7 @@ func GetEncryptionConfigMetrics(runtime *config.ControlRuntime, initialMetrics b
 
 		unixUpdateTime = int64(tsMetric.GetMetric()[0].GetGauge().GetValue())
 		if time.Now().Unix() < unixUpdateTime {
-			return true, fmt.Errorf("encryption reload time is incorrectly ahead of current time")
+			return true, errors.New("encryption reload time is incorrectly ahead of current time")
 		}
 
 		for _, totalMetric := range totalMetrics.GetMetric() {
