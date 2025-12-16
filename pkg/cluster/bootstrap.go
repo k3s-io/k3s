@@ -29,6 +29,7 @@ import (
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
@@ -563,19 +564,15 @@ func (c *Cluster) reconcileEtcd(ctx context.Context) error {
 		return err
 	}
 
-	for {
-		if err := e.Test(reconcileCtx, true); err != nil && !errors.Is(err, etcd.ErrNotMember) {
+	if err := wait.PollUntilContextCancel(reconcileCtx, time.Second*5, true, func(ctx context.Context) (bool, error) {
+		if err := e.Test(ctx, true); err != nil && !errors.Is(err, etcd.ErrNotMember) {
 			logrus.Infof("Failed to test temporary data store connection: %v", err)
-		} else {
-			logrus.Info(e.EndpointName() + " temporary data store connection OK")
-			break
+			return false, nil
 		}
-
-		select {
-		case <-time.After(5 * time.Second):
-		case <-reconcileCtx.Done():
-			break
-		}
+		logrus.Info(e.EndpointName() + " temporary data store connection OK")
+		return true, nil
+	}); err != nil {
+		return err
 	}
 
 	data, err := c.readBootstrapFromDisk()
