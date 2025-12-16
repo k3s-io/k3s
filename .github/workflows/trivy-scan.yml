@@ -85,7 +85,7 @@ jobs:
     
     steps:       
       - name: Download Trivy Report artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         if: needs.trivy_scan.result == 'success'
         with:
           name: trivy-report
