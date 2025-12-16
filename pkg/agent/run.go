@@ -93,7 +93,7 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 
 	// dualStack or IPv6 are not supported on Windows node
 	if (goruntime.GOOS == "windows") && enableIPv6 {
-		return fmt.Errorf("dual-stack or IPv6 are not supported on Windows node")
+		return errors.New("dual-stack or IPv6 are not supported on Windows node")
 	}
 
 	conntrackConfig, err := getConntrackConfig(nodeConfig)

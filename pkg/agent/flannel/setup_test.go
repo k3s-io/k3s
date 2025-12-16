@@ -79,7 +79,7 @@ func Test_createFlannelConf(t *testing.T) {
 			}
 			data, err := os.ReadFile("test_file")
 			if err != nil {
-				t.Errorf("Something went wrong when reading the flannel config file")
+				t.Error("Something went wrong when reading the flannel config file")
 			}
 			for _, config := range tt.wantConfig {
 				isExist, _ := regexp.Match(config, data)
