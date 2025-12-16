@@ -538,15 +538,15 @@ type signedCertFactory = func(commonName string, organization []string, certFile
 
 func createServerSigningCertKey(config *config.Control) (bool, error) {
 	runtime := config.Runtime
-	TokenCA := filepath.Join(config.DataDir, "tls", "token-ca.crt")
-	TokenCAKey := filepath.Join(config.DataDir, "tls", "token-ca.key")
+	tokenCA := filepath.Join(config.DataDir, "tls", "token-ca.crt")
+	tokenCAKey := filepath.Join(config.DataDir, "tls", "token-ca.key")
 
-	if exists(TokenCA, TokenCAKey) && !exists(runtime.ServerCA) && !exists(runtime.ServerCAKey) {
+	if exists(tokenCA, tokenCAKey) && !exists(runtime.ServerCA) && !exists(runtime.ServerCAKey) {
 		logrus.Infof("Upgrading token-ca files to server-ca")
-		if err := os.Link(TokenCA, runtime.ServerCA); err != nil {
+		if err := os.Link(tokenCA, runtime.ServerCA); err != nil {
 			return false, err
 		}
-		if err := os.Link(TokenCAKey, runtime.ServerCAKey); err != nil {
+		if err := os.Link(tokenCAKey, runtime.ServerCAKey); err != nil {
 			return false, err
 		}
 		return true, nil
