@@ -1558,8 +1558,7 @@ func s3Router(t *testing.T) http.Handler {
 	// HeadBucket
 	router.Path("/{bucket}/").Methods(http.MethodHead).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
+		if vars["bucket"] == "badbucket" {
 			rw.WriteHeader(http.StatusNotFound)
 		}
 	})
