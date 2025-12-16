@@ -23,9 +23,9 @@ func Test_UnitAsserts(t *testing.T) {
 }
 
 func Test_PasswordError(t *testing.T) {
-	err := &passwordError{node: "test", err: fmt.Errorf("inner error")}
+	err := &passwordError{node: "test", err: errors.New("inner error")}
 	assertEqual(t, errors.Is(err, ErrVerifyFailed), true)
-	assertEqual(t, errors.Is(err, fmt.Errorf("different error")), false)
+	assertEqual(t, errors.Is(err, errors.New("different error")), false)
 	assertNotEqual(t, errors.Unwrap(err), nil)
 }
 
