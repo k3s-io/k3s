@@ -1105,8 +1105,8 @@ exec 2>&1
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Load kernel modules
-$SUDO modprobe br_netfilter 2>/dev/null || true
-$SUDO modprobe overlay 2>/dev/null || true
+modprobe br_netfilter 2>/dev/null || true
+modprobe overlay 2>/dev/null || true
 
 exec ${BIN_DIR}/k3s $(escape_dq "${CMD_K3S_EXEC}")
 EOF
