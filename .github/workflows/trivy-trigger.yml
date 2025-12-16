@@ -61,7 +61,7 @@ jobs:
           mv k3s.tar pr-context/k3s.tar
 
       - name: Upload PR context artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: pr-context-for-scan
           path: pr-context/

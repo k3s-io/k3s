@@ -128,7 +128,7 @@ jobs:
         mv ./build/out/data-linux.tar.zst ./dist/artifacts/data-linux${{ env.ARCH_EXT }}.tar.zst
 
     - name: "Upload K3s Artifacts"
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: k3s${{ env.ARCH_EXT }}
         path: dist/artifacts/
