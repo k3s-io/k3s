@@ -51,12 +51,12 @@ type CertificateInfo struct {
 }
 
 // collectCertInfo collects information about certificates
-func collectCertInfo(controlConfig config.Control, ServicesList []string) (*CertificateInfo, error) {
+func collectCertInfo(controlConfig config.Control, servicesList []string) (*CertificateInfo, error) {
 	result := &CertificateInfo{}
 	now := time.Now()
 	warn := now.Add(time.Hour * 24 * config.CertificateRenewDays)
 
-	fileMap, err := services.FilesForServices(controlConfig, ServicesList)
+	fileMap, err := services.FilesForServices(controlConfig, servicesList)
 	if err != nil {
 		return nil, err
 	}
