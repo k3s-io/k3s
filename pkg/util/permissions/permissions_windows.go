@@ -3,7 +3,7 @@
 package permissions
 
 import (
-	"fmt"
+	"errors"
 
 	pkgerrors "github.com/pkg/errors"
 	"golang.org/x/sys/windows"
@@ -39,7 +39,7 @@ func IsPrivileged() error {
 	}
 
 	if !member {
-		return fmt.Errorf("not running as member of BUILTIN\\Administrators group")
+		return errors.New("not running as member of BUILTIN\\Administrators group")
 	}
 
 	return nil

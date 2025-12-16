@@ -396,9 +396,9 @@ func (ml *multiListener) Accept() (net.Conn, error) {
 		if ok {
 			return res.conn, res.err
 		}
-		return nil, fmt.Errorf("connection channel closed")
+		return nil, errors.New("connection channel closed")
 	case <-ml.closing:
-		return nil, fmt.Errorf("listener closed")
+		return nil, errors.New("listener closed")
 	}
 }
 
