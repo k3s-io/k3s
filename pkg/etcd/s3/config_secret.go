@@ -24,11 +24,7 @@ func (e *secretError) Error() string {
 }
 
 func (e *secretError) Is(target error) bool {
-	switch target {
-	case ErrNoConfigSecret:
-		return true
-	}
-	return false
+	return target == ErrNoConfigSecret
 }
 
 func errNoConfigSecret() error { return &secretError{} }
