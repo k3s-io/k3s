@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/tests/mock"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
@@ -24,7 +25,6 @@ import (
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/lru"
 )
 
 var gmt = time.FixedZone("GMT", 0)
@@ -65,7 +65,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 		clusterID   string
 		tokenHash   string
 		nodeName    string
-		clientCache *lru.Cache
+		clientCache *util.Cache[*Client]
 	}
 	type args struct {
 		ctx    context.Context
@@ -88,7 +88,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -113,7 +113,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -139,7 +139,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -163,7 +163,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -190,7 +190,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -231,7 +231,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -287,7 +287,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -338,7 +338,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -364,7 +364,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -389,7 +389,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -412,7 +412,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			want: &Client{},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -465,7 +465,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			want: &Client{},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -495,7 +495,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -522,7 +522,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -550,7 +550,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
@@ -577,7 +577,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
 				coreMock := mock.NewCore(gomock.NewController(t))
@@ -603,7 +603,7 @@ func Test_UnitControllerGetClient(t *testing.T) {
 				clusterID:   "1234",
 				tokenHash:   "abcd",
 				nodeName:    "server01",
-				clientCache: lru.New(5),
+				clientCache: util.NewCache[*Client](5),
 			},
 			wantErr: true,
 			setup: func(t *testing.T, a args, f fields, c *Client) (core.Interface, error) {
