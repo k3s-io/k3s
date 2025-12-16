@@ -185,7 +185,7 @@ func encryptionEnable(ctx context.Context, control *config.Control, enable bool)
 		logrus.Infoln("Secrets encryption already enabled")
 		return nil
 	} else {
-		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
+		return errors.New("unable to enable/disable secrets encryption, unknown configuration")
 	}
 	if err := cluster.Save(ctx, control, true); err != nil {
 		return err
@@ -196,7 +196,7 @@ func encryptionEnable(ctx context.Context, control *config.Control, enable bool)
 func EncryptionConfig(ctx context.Context, control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPut {
-			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
+			util.SendError(errors.New("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -245,7 +245,7 @@ func encryptionPrepare(ctx context.Context, control *config.Control, force bool)
 		return err
 	}
 	if control.EncryptProvider == secretsencrypt.SecretBoxProvider {
-		return fmt.Errorf("prepare does not support secretbox key type, use rotate-keys instead")
+		return errors.New("prepare does not support secretbox key type, use rotate-keys instead")
 	}
 
 	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime)
@@ -273,7 +273,7 @@ func encryptionRotate(ctx context.Context, control *config.Control, force bool) 
 		return err
 	}
 	if control.EncryptProvider == secretsencrypt.SecretBoxProvider {
-		return fmt.Errorf("rotate does not support secretbox key type, use rotate-keys instead")
+		return errors.New("rotate does not support secretbox key type, use rotate-keys instead")
 	}
 
 	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime)
@@ -309,7 +309,7 @@ func encryptionReencrypt(ctx context.Context, control *config.Control, force boo
 		return err
 	}
 	if control.EncryptProvider == secretsencrypt.SecretBoxProvider {
-		return fmt.Errorf("reencrypt does not support secretbox key type, use rotate-keys instead")
+		return errors.New("reencrypt does not support secretbox key type, use rotate-keys instead")
 	}
 
 	// Set the reencrypt-active annotation so other nodes know we are in the process of reencrypting.

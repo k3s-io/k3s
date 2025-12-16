@@ -758,7 +758,7 @@ func (e *ETCD) handler(next http.Handler) http.Handler {
 func (e *ETCD) infoHandler() http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
-			util.SendError(fmt.Errorf("method not allowed"), rw, req, http.StatusMethodNotAllowed)
+			util.SendError(errors.New("method not allowed"), rw, req, http.StatusMethodNotAllowed)
 			return
 		}
 

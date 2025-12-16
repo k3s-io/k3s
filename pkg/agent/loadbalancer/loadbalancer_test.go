@@ -84,7 +84,7 @@ func (s *testServer) echo(conn net.Conn) {
 }
 
 func ping(conn net.Conn) (string, error) {
-	fmt.Fprintf(conn, "ping\n")
+	fmt.Fprint(conn, "ping\n")
 	result, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		return "", err

@@ -33,7 +33,7 @@ import (
 func CACertReplace(control *config.Control) http.HandlerFunc {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPut {
-			util.SendError(fmt.Errorf("method not allowed"), resp, req, http.StatusMethodNotAllowed)
+			util.SendError(errors.New("method not allowed"), resp, req, http.StatusMethodNotAllowed)
 			return
 		}
 		force, _ := strconv.ParseBool(req.FormValue("force"))

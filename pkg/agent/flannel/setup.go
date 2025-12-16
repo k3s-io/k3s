@@ -242,7 +242,7 @@ func createFlannelConf(nodeConfig *config.Node) error {
 			routes = append(routes, "$IPV6SUBNET")
 		}
 		if len(routes) == 0 {
-			return fmt.Errorf("incorrect netMode for flannel tailscale backend")
+			return errors.New("incorrect netMode for flannel tailscale backend")
 		}
 		advertisedRoutes, err := vpn.GetAdvertisedRoutes()
 		if err == nil && advertisedRoutes != nil {
