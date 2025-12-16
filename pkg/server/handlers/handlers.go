@@ -257,7 +257,12 @@ func signAndSend(resp http.ResponseWriter, req *http.Request, caCertFile, caKeyF
 			util.SendError(err, resp, req)
 			return
 		}
-		key = pk.(crypto.Signer)
+		k, ok := pk.(crypto.Signer)
+		if !ok {
+			util.SendError(errors.New("type assertion failed"), resp, req)
+			return
+		}
+		key = k
 	}
 
 	// create the signed cert using dynamiclistener cert utils
@@ -298,7 +303,12 @@ func getCACertAndKey(caCertFile, caKeyFile string) ([]*x509.Certificate, crypto.
 		return nil, nil, err
 	}
 
-	return caCert, caKey.(crypto.Signer), nil
+	k, ok := caKey.(crypto.Signer)
+	if !ok {
+		return nil, nil, errors.New("type assertion failed")
+	}
+
+	return caCert, k, nil
 }
 
 // getCSR decodes a x509.CertificateRequest from a POST request body.
