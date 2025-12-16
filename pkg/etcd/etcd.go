@@ -143,11 +143,7 @@ func (e *membershipError) Error() string {
 }
 
 func (e *membershipError) Is(target error) bool {
-	switch target {
-	case ErrNotMember:
-		return true
-	}
-	return false
+	return target == ErrNotMember
 }
 
 func errNotMember() error { return &membershipError{} }
@@ -161,11 +157,7 @@ func (e *memberListError) Error() string {
 }
 
 func (e *memberListError) Is(target error) bool {
-	switch target {
-	case ErrMemberListFailed:
-		return true
-	}
-	return false
+	return target == ErrMemberListFailed
 }
 
 func errMemberListFailed() error { return &memberListError{} }
