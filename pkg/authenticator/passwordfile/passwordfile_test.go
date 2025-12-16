@@ -134,13 +134,13 @@ password2,user2,uid2
 password3,user3
 password4
 `); err == nil {
-		t.Fatalf("unexpected non error")
+		t.Fatal("unexpected non error")
 	}
 }
 
 func Test_UnitInsufficientColumnsPasswordFile(t *testing.T) {
 	if _, err := newWithContents(t, "password4\n"); err == nil {
-		t.Fatalf("unexpected non error")
+		t.Fatal("unexpected non error")
 	}
 }
 

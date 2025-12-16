@@ -133,8 +133,8 @@ func (f *TableFormatter) Format(certInfo *CertificateInfo) error {
 	now := certInfo.ReferenceTime
 	defer w.Flush()
 
-	fmt.Fprintf(w, "\nFILENAME\tSUBJECT\tUSAGES\tEXPIRES\tRESIDUAL TIME\tSTATUS\n")
-	fmt.Fprintf(w, "--------\t-------\t------\t-------\t-------------\t------\n")
+	fmt.Fprint(w, "\nFILENAME\tSUBJECT\tUSAGES\tEXPIRES\tRESIDUAL TIME\tSTATUS\n")
+	fmt.Fprint(w, "--------\t-------\t------\t-------\t-------------\t------\n")
 
 	for _, cert := range certInfo.Certificates {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",

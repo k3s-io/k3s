@@ -200,7 +200,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 				return nil, pkgerrors.WithMessage(err, "failed to parse etcd-s3-proxy value as URL")
 			}
 			if u.Scheme == "" || u.Host == "" {
-				return nil, fmt.Errorf("proxy URL must include scheme and host")
+				return nil, errors.New("proxy URL must include scheme and host")
 			}
 		}
 		tr.Proxy = http.ProxyURL(u)

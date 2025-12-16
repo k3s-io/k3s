@@ -132,9 +132,9 @@ func Status(app *cli.Context) error {
 
 	var tabBuffer bytes.Buffer
 	w := tabwriter.NewWriter(&tabBuffer, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "Active\tKey Type\tName\n")
-	fmt.Fprintf(w, "------\t--------\t----\n")
+	fmt.Fprint(w, "\n")
+	fmt.Fprint(w, "Active\tKey Type\tName\n")
+	fmt.Fprint(w, "------\t--------\t----\n")
 	if status.ActiveKey != "" {
 		ak := strings.Split(status.ActiveKey, " ")
 		fmt.Fprintf(w, " *\t%s\t%s\n", ak[0], ak[1])
