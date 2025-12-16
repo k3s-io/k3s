@@ -41,7 +41,7 @@ func Test_UnitTrustedCA(t *testing.T) {
 	// as it is cached for the duration of the process lifetime.
 	// Ref: https://github.com/golang/go/issues/41888
 	path := t.TempDir() + "/ca.crt"
-	writeServerCA(server, path)
+	_ = writeServerCA(server, path)
 	os.Setenv("SSL_CERT_FILE", path)
 
 	for _, testCase := range testCases {
