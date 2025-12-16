@@ -28,7 +28,10 @@ func mapLevel(level int) logrus.Level {
 func mapKV(kvs []any) logrus.Fields {
 	fields := logrus.Fields{}
 	for i := 0; i < len(kvs); i += 2 {
-		k := kvs[i].(string)
+		k, ok := kvs[i].(string)
+		if !ok {
+			k = fmt.Sprint(kvs[i])
+		}
 		if len(kvs) > i+1 {
 			fields[k] = kvs[i+1]
 		} else {
