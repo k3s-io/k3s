@@ -163,8 +163,7 @@ func CheckCgroups() (kubeletRoot, runtimeRoot string, controllers map[string]boo
 			// For v1 or hybrid, controller can be a single value {"blkio"}, or a comounted set {"cpu","cpuacct"}
 			// For v2, controllers = {""} (only contains a single empty string)
 			for _, controller := range controllers {
-				switch {
-				case controller == "name=systemd" || cgroupsModeV2:
+				if controller == "name=systemd" || cgroupsModeV2 {
 					last := parts[len(parts)-1]
 					if last != "/" && last != "/init.scope" {
 						kubeletRoot = "/" + version.Program
