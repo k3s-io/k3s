@@ -14,22 +14,19 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-test/deep"
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/etcd/store"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
-	"github.com/k3s-io/kine/pkg/client"
-	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 // Bootstrap attempts to load a managed database driver, if one has been initialized or should be created/joined.
@@ -67,10 +64,11 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 					return nil
 				}
 			}
-			// Not a secondary server or failed to reconcile via join URL, start up a temporary etcd
-			// with the local datastore and use that to reconcile.
+			// Not a secondary server or failed to reconcile via join URL,
+			// extract bootstrap data from a copy of the etcd mvcc store and reconcile
+			// against that.
 			if err := c.reconcileEtcd(ctx); err != nil {
-				logrus.Fatalf("Failed to reconcile with temporary etcd: %v", err)
+				logrus.Fatalf("Failed to reconcile with local datastore: %v", err)
 			}
 		}
 	}
@@ -284,23 +282,23 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 			return err
 		}
 
-		var value *client.Value
+		var kv *mvccpb.KeyValue
 
-		storageClient, err := client.New(c.config.Runtime.EtcdConfig)
+		storageClient, err := store.NewTemporaryStore(filepath.Join(c.config.DataDir, "db", "etcd"))
 		if err != nil {
 			return err
 		}
 		defer storageClient.Close()
 
-		value, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		kv, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
 		if err != nil {
 			return err
 		}
-		if value == nil {
+		if kv == nil {
 			return nil
 		}
 
-		dbRawData, err = decrypt(normalizedToken, value.Data)
+		dbRawData, err = decrypt(normalizedToken, kv.Value)
 		if err != nil {
 			return err
 		}
@@ -537,48 +535,13 @@ func ipsTo16Bytes(mySlice []*net.IPNet) {
 	}
 }
 
-// reconcileEtcd starts a temporary single-member etcd cluster using a copy of the
-// etcd database, and uses it to reconcile bootstrap data. This is necessary
-// because the full etcd cluster may not have quorum during startup, but we still
-// need to extract data from the datastore.
+// reconcileEtcd compares the current bootstrap data against a temporary copy of the data from
+// the etcd datastore.
 func (c *Cluster) reconcileEtcd(ctx context.Context) error {
-	logrus.Info("Starting temporary etcd to reconcile with datastore")
-
-	tempConfig := endpoint.ETCDConfig{Endpoints: []string{"http://127.0.0.1:2399"}}
-	originalConfig := c.config.Runtime.EtcdConfig
-	c.config.Runtime.EtcdConfig = tempConfig
-	reconcileCtx, cancel := context.WithCancel(ctx)
-	wg := &sync.WaitGroup{}
-
-	defer func() {
-		cancel()
-		c.config.Runtime.EtcdConfig = originalConfig
-		wg.Wait()
-	}()
-
-	e := etcd.NewETCD()
-	if err := e.SetControlConfig(c.config); err != nil {
-		return err
-	}
-	if err := e.StartEmbeddedTemporary(reconcileCtx, wg); err != nil {
-		return err
-	}
-
-	if err := wait.PollUntilContextCancel(reconcileCtx, time.Second*5, true, func(ctx context.Context) (bool, error) {
-		if err := e.Test(ctx, true); err != nil && !errors.Is(err, etcd.ErrNotMember) {
-			logrus.Infof("Failed to test temporary data store connection: %v", err)
-			return false, nil
-		}
-		logrus.Info(e.EndpointName() + " temporary data store connection OK")
-		return true, nil
-	}); err != nil {
-		return err
-	}
-
 	data, err := c.readBootstrapFromDisk()
 	if err != nil {
 		return err
 	}
 
-	return c.ReconcileBootstrapData(reconcileCtx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false)
+	return c.ReconcileBootstrapData(ctx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false)
 }
