@@ -38,7 +38,7 @@ kubelet-arg:
   - 'event-qps=0'
   - "tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
 kube-apiserver-arg:
-  - 'admission-control-config-file=/tmp/cluster-level-pss.yaml'
+  - 'admission-control-config-file=/home/cluster-level-pss.yaml'
   - 'audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log'
   - 'audit-policy-file=/var/lib/rancher/k3s/server/audit.yaml'
   - 'audit-log-maxage=30'
@@ -54,7 +54,7 @@ kubelet-arg:
 			Expect(config.ProvisionServers(1)).To(Succeed())
 
 			for _, server := range config.Servers {
-				cmd := "docker cp ./cluster-level-pss.yaml " + server.Name + ":/tmp/cluster-level-pss.yaml"
+				cmd := "docker cp ./cluster-level-pss.yaml " + server.Name + ":/home/cluster-level-pss.yaml"
 				Expect(tests.RunCommand(cmd)).Error().NotTo(HaveOccurred())
 
 				cmd = "mkdir -p /var/lib/rancher/k3s/server/logs"
