@@ -373,8 +373,8 @@ github.com/containerd/zfs/v2 v2.0.0-rc.0 h1:0dRlgpoaepW7HuovtcvYQMF7NlpceQVdn7+3
 github.com/containerd/zfs/v2 v2.0.0-rc.0/go.mod h1:g36g/XCEGDRxUXIFdM3oWAEvmTvhfz/eKWElqg4Secw=
 github.com/containernetworking/cni v1.3.0 h1:v6EpN8RznAZj9765HhXQrtXgX+ECGebEYEmnuFjskwo=
 github.com/containernetworking/cni v1.3.0/go.mod h1:Bs8glZjjFfGPHMw6hQu82RUgEPNGEaBb9KS5KtNMnJ4=
-github.com/containernetworking/plugins v1.7.1 h1:CNAR0jviDj6FS5Vg85NTgKWLDzZPfi/lj+VJfhMDTIs=
-github.com/containernetworking/plugins v1.7.1/go.mod h1:xuMdjuio+a1oVQsHKjr/mgzuZ24leAsqUYRnzGoXHy0=
+github.com/containernetworking/plugins v1.9.0 h1:Mg3SXBdRGkdXyFC4lcwr6u2ZB2SDeL6LC3U+QrEANuQ=
+github.com/containernetworking/plugins v1.9.0/go.mod h1:JG3BxoJifxxHBhG3hFyxyhid7JgRVBu/wtooGEvWf1c=
 github.com/containers/ocicrypt v1.2.1 h1:0qIOTT9DoYwcKmxSt8QJt+VzMY18onl9jUXsxpVhSmM=
 github.com/containers/ocicrypt v1.2.1/go.mod h1:aD0AAqfMp0MtwqWgHM1bUwe1anx0VazI108CRrSKINQ=
 github.com/coreos/go-iptables v0.8.0 h1:MPc2P89IhuVpLI7ETL/2tx3XZ61VeICZjYqDEgNsPRc=
