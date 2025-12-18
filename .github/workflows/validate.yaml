@@ -20,17 +20,19 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     steps:
+      - name: Set Commit Count
+        run: |
+          echo "GITHUB_CHECKOUT_FETCH_DEPTH=$( expr 1 + ${{ github.event.pull_request.commits }} )" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: ${{ github.event.pull_request.commits }}
+          fetch-depth: ${{ env.GITHUB_CHECKOUT_FETCH_DEPTH }}
 
       - name: Set Go Version
         run: |
           source ./scripts/version.sh
-          {
-            echo "GOTOOLCHAIN=${VERSION_GOLANG/go}"
-          } >> "$GITHUB_ENV"
+          echo "GOTOOLCHAIN=${VERSION_GOLANG/go}" >> "$GITHUB_ENV"
 
       - name: Setup Go
         uses: actions/setup-go@v6
