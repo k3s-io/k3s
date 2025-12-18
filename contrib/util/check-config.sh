@@ -127,11 +127,19 @@ check_flags() {
   done
 }
 
+# check_command hide the output of where the command is found.
+# provide a second argument to print success/failure info
 check_command() {
   if command -v "$1" >/dev/null 2>&1; then
-    wrap_good "$1 command" 'available'
+    if [ -n "$2" ]; then
+      wrap_good "$1 command" "$2"
+    fi
+    return 0
   else
-    wrap_bad "$1 command" 'missing'
+    if [ -n "$2" ]; then
+      wrap_bad "$1 command" "$2"
+    fi
+    return 1
   fi
 }
 
@@ -261,6 +269,75 @@ echo
   fi
 }
 
+SUDO=
+[ $(id -u) -ne 0 ] && SUDO=sudo
+
+check_firewall_ports() {
+  fw_prog="$1"
+  tcp_ports="6443 10250 5001 2379 2380"
+  udp_ports="8472 51820 51821"
+  blocked_tcp_ports=""
+  blocked_udp_ports=""
+  open_ports=""
+
+  # returns 0 if port is blocked
+  is_blocked() {
+    local port=$1 proto=$2
+    if [ "$fw_prog" = "firewalld" ]; then
+      ! $SUDO firewall-cmd --list-ports | grep -q "$port/$proto"
+    elif [ "$fw_prog" = "ufw" ]; then
+      $SUDO ufw status | grep -q "$port/$proto\s\+DENY"
+    else
+      warning "unknown firewall program: $fw_prog"
+      return 1
+    fi
+  }
+  
+  for port in $tcp_ports; do
+    if is_blocked "$port" "tcp"; then
+      blocked_tcp_ports="$blocked_tcp_ports $port "
+    else
+      open_ports="$open_ports $port "
+    fi
+  done
+  for port in $udp_ports; do
+    if is_blocked "$port" "udp"; then
+      blocked_udp_ports="$blocked_udp_ports $port "
+    else
+      open_ports="$open_ports $port "
+    fi
+  done
+  
+  for port in $blocked_tcp_ports; do
+    wrap_bad "  - TCP Port $port is blocked"
+  done
+  for port in $blocked_udp_ports; do
+    wrap_warn "  - UDP Port $port is blocked" "Required for Flannel VXLAN/WireGuard"
+  done
+  for port in $open_ports; do
+    wrap_good "  - Port $port is open" 'ok'
+  done
+}
+
+if check_command firewall-cmd; then
+  if $SUDO firewall-cmd --state >/dev/null 2>&1; then
+    echo
+    echo 'Firewall:'
+    wrap_warn "- firewalld" "is enabled"
+    check_firewall_ports "firewalld"
+  fi
+fi
+
+# Check for ufw
+if check_command ufw; then
+  if $SUDO ufw status | grep -q "Status: active"; then
+    echo
+    echo 'Firewall:'
+    wrap_warn "- ufw" "is enabled"
+    check_firewall_ports "ufw"
+  fi
+fi
+
 echo
 
 {
@@ -282,8 +359,6 @@ echo
 
 # ---
 
-SUDO=
-[ $(id -u) -ne 0 ] && SUDO=sudo
 lsmod | grep -q configs || $SUDO modprobe configs || true
 
 if [ -z "$CONFIG" ]; then
@@ -366,16 +441,16 @@ esac
 
 if [ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" = 'Y' ]; then
   echo -n '- '
-  if command -v apparmor_parser &> /dev/null; then
+  if check_command apparmor_parser; then
     wrap_good 'apparmor' 'enabled and tools installed'
   else
     wrap_bad 'apparmor' 'enabled, but apparmor_parser missing'
     echo -n '    '
-    if command -v apt-get &> /dev/null; then
+    if check_command apt-get; then
       wrap_color '(use "apt-get install apparmor" to fix this)'
-    elif command -v yum &> /dev/null; then
+    elif check_command yum; then
       wrap_color '(your best bet is "yum install apparmor-parser")'
-    elif command -v zypper &> /dev/null; then
+    elif check_command zypper; then
       wrap_color '(your best bet is "zypper install apparmor-parser")'
     else
       wrap_color '(look for an "apparmor" package for your distribution)'
@@ -406,32 +481,6 @@ echo 'Optional Features:'
   check_flags USER_NS
   check_distro_userns
 }
-# {
-#   check_flags MEMCG_SWAP MEMCG_SWAP_ENABLED
-#   if [ -e /sys/fs/cgroup/memory/memory.memsw.limit_in_bytes ]; then
-#     echo "    $(wrap_color '(cgroup swap accounting is currently enabled)' bold black)"
-#   elif is_set MEMCG_SWAP && ! is_set MEMCG_SWAP_ENABLED; then
-#     echo "    $(wrap_color '(cgroup swap accounting is currently not enabled, you can enable it by setting boot option "swapaccount=1")' bold black)"
-#   fi
-# }
-# {
-#   if is_set LEGACY_VSYSCALL_NATIVE; then
-#     echo -n "- "; wrap_bad "CONFIG_LEGACY_VSYSCALL_NATIVE" 'enabled'
-#     echo "    $(wrap_color '(dangerous, provides an ASLR-bypassing target with usable ROP gadgets.)' bold black)"
-#   elif is_set LEGACY_VSYSCALL_EMULATE; then
-#     echo -n "- "; wrap_good "CONFIG_LEGACY_VSYSCALL_EMULATE" 'enabled'
-#   elif is_set LEGACY_VSYSCALL_NONE; then
-#     echo -n "- "; wrap_bad "CONFIG_LEGACY_VSYSCALL_NONE" 'enabled'
-#     echo "    $(wrap_color '(containers using eglibc <= 2.13 will not work. Switch to' bold black)"
-#     echo "    $(wrap_color ' "CONFIG_VSYSCALL_[NATIVE|EMULATE]" or use "vsyscall=[native|emulate]"' bold black)"
-#     echo "    $(wrap_color ' on kernel command line. Note that this will disable ASLR for the,' bold black)"
-#     echo "    $(wrap_color ' VDSO which may assist in exploiting security vulnerabilities.)' bold black)"
-#   # else Older kernels (prior to 3dc33bd30f3e, released in v4.40-rc1) do
-#   #      not have these LEGACY_VSYSCALL options and are effectively
-#   #      LEGACY_VSYSCALL_EMULATE. Even older kernels are presumably
-#   #      effectively LEGACY_VSYSCALL_NATIVE.
-#   fi
-# }
 
 if [ "$kernelMajor" -lt 4 ] || ( [ "$kernelMajor" -eq 4 ] && [ "$kernelMinor" -le 5 ] ); then
   check_flags MEMCG_KMEM
