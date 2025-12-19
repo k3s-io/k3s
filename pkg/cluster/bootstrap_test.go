@@ -78,7 +78,7 @@ func Test_isDirEmpty(t *testing.T) {
 	}
 }
 
-func TestCluster_certDirsExist(t *testing.T) {
+func TestCluster_checkCertrtDirs(t *testing.T) {
 	const testDataDir = "/tmp/k3s/"
 
 	testCredDir := filepath.Join(testDataDir, "server", "cred")
@@ -134,11 +134,11 @@ func TestCluster_certDirsExist(t *testing.T) {
 			}
 			defer tt.teardown()
 			if err := tt.setup(); err != nil {
-				t.Errorf("Setup for Cluster.certDirsExist() failed = %v", err)
+				t.Errorf("Setup for Cluster.checkCertDirs() failed = %v", err)
 				return
 			}
-			if err := c.certDirsExist(); (err != nil) != tt.wantErr {
-				t.Errorf("Cluster.certDirsExist() error = %v, wantErr %v", err, tt.wantErr)
+			if err := c.checkCertDirs(); (err != nil) != tt.wantErr {
+				t.Errorf("Cluster.checkCertDirs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
