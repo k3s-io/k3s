@@ -67,9 +67,10 @@ func (c *Cluster) Bootstrap(ctx context.Context, clusterReset bool) error {
 			// Not a secondary server or failed to reconcile via join URL,
 			// extract bootstrap data from a copy of the etcd mvcc store and reconcile
 			// against that.
-			if err := c.reconcileEtcd(ctx); err != nil {
-				logrus.Fatalf("Failed to reconcile with local datastore: %v", err)
+			if err := c.ReconcileBootstrapData(ctx, nil, &c.config.Runtime.ControlRuntimeBootstrap, false); err != nil {
+				return pkgerrors.WithMessage(err, "failed to reconcile with local datastore")
 			}
+			logrus.Info("Successfully reconciled with local datastore")
 		}
 	}
 
@@ -157,9 +158,10 @@ func isDirEmpty(name string) (bool, error) {
 	return false, err
 }
 
-// certDirsExist checks to see if the directories
-// that contain the needed certificates exist.
-func (c *Cluster) certDirsExist() error {
+// checkCertDirs checks to see if the directories
+// that contain the server certificates exist.
+// An error is returned if any dirs are missing or empty.
+func (c *Cluster) checkCertDirs() error {
 	bootstrapDirs := []string{
 		"cred",
 		"tls",
@@ -244,7 +246,7 @@ func isMigrated(buf io.ReadSeeker, files *bootstrap.PathsDataformat) bool {
 func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker, crb *config.ControlRuntimeBootstrap, isHTTP bool) error {
 	logrus.Info("Reconciling bootstrap data between datastore and disk")
 
-	if err := c.certDirsExist(); err != nil {
+	if err := c.checkCertDirs(); err != nil && buf != nil {
 		// we need to see if the data has been migrated before writing to disk. This
 		// is because the data may have been given to us via the HTTP bootstrap process
 		// from an older version of k3s. That version might not have the new data format
@@ -261,7 +263,6 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		return bootstrap.WriteToDiskFromStorage(files, crb)
 	}
 
-	var dbRawData []byte
 	if c.managedDB != nil && !isHTTP {
 		token := c.config.Token
 		if token == "" {
@@ -294,16 +295,20 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		if err != nil {
 			return err
 		}
-		if kv == nil {
-			return nil
+		if kv == nil || len(kv.Value) == 0 {
+			return errors.New("no bootstrap data found in datastore - check server token value and verify datastore integrity")
 		}
 
-		dbRawData, err = decrypt(normalizedToken, kv.Value)
+		dbRawData, err := decrypt(normalizedToken, kv.Value)
 		if err != nil {
 			return err
 		}
 
 		buf = bytes.NewReader(dbRawData)
+	}
+
+	if buf == nil {
+		return errors.New("no bootstrap data is available to reconcile against")
 	}
 
 	paths, err := bootstrap.ObjToMap(crb)
@@ -533,15 +538,4 @@ func ipsTo16Bytes(mySlice []*net.IPNet) {
 	for _, ipNet := range mySlice {
 		ipNet.IP = ipNet.IP.To16()
 	}
-}
-
-// reconcileEtcd compares the current bootstrap data against a temporary copy of the data from
-// the etcd datastore.
-func (c *Cluster) reconcileEtcd(ctx context.Context) error {
-	data, err := c.readBootstrapFromDisk()
-	if err != nil {
-		return err
-	}
-
-	return c.ReconcileBootstrapData(ctx, bytes.NewReader(data.Bytes()), &c.config.Runtime.ControlRuntimeBootstrap, false)
 }
