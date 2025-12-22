@@ -52,7 +52,7 @@ jobs:
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: "Download k3s binary"
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: k3s-amd64
           path: tests/install/${{ matrix.vm }}
