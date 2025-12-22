@@ -342,6 +342,83 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 		})
 	})
+	// test for etcd reconcile restoring the correct CAs
+	When("a server with embedded etcd", func() {
+		var serverCA string
+		It("is created", func() {
+			var err error
+			startupServerArgs = []string{"--cluster-init"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("has a server CA", func() {
+			var err error
+			serverCA, err = testutil.RunCommand("cat /var/lib/rancher/k3s/server/tls/server-ca.crt")
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("restarts the server", func() {
+			var err error
+			Expect(testutil.K3sStopServer(startupServer)).To(Succeed())
+			_, err = testutil.RunCommand("rm -rf /var/lib/rancher/k3s/server/tls")
+			Expect(err).ToNot(HaveOccurred())
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
+			}, "180s", "5s").Should(Succeed())
+		})
+		It("has the same server CA", func() {
+			newCA, err := testutil.RunCommand("cat /var/lib/rancher/k3s/server/tls/server-ca.crt")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newCA).To(Equal(serverCA))
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
+	// test for etcd reconcile with invalid token
+	When("a server with embedded etcd", func() {
+		It("is created", func() {
+			var err error
+			startupServerArgs = []string{"--cluster-init", "--token=goodtoken"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("has the default pods deployed", func() {
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(testutil.DefaultConfig)
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("fails to restart the server with invalid token", func() {
+			var err error
+			Expect(testutil.K3sStopServer(startupServer)).To(Succeed())
+			startupServerArgs = []string{"--cluster-init", "--token=badtoken"}
+			startupServer, err = testutil.K3sStartServer(startupServerArgs...)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("search for the error log", func() {
+			Eventually(func() error {
+				match, err := testutil.SearchK3sLog(startupServer, "bootstrap data already found and encrypted with different token")
+				if err != nil {
+					return err
+				}
+				if match {
+					return nil
+				}
+				return errors.New("no error found for invalid bootstrap token")
+			}, "30s", "2s").Should(Succeed())
+		})
+		It("dies cleanly", func() {
+			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+		})
+	})
 	When("a server with datastore-endpoint and disable apiserver is created", func() {
 		It("is created with datastore-endpoint and disable apiserver flags", func() {
 			var err error
