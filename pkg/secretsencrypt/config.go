@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -172,6 +173,39 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys,
 		return err
 	}
 	return util.AtomicWrite(runtime.EncryptionConfig, jsonfile, 0600)
+}
+
+// WriteIdentityConfig creates an identity-only configuration for clusters that
+// previously had no encryption config, effectively disabling encryption, but
+// preparing a node for future reencryption.
+func WriteIdentityConfig(control *config.Control) error {
+	providers := []apiserverconfigv1.ProviderConfiguration{
+		{
+			Identity: &apiserverconfigv1.IdentityConfiguration{},
+		},
+	}
+
+	encConfig := apiserverconfigv1.EncryptionConfiguration{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EncryptionConfiguration",
+			APIVersion: "apiserver.config.k8s.io/v1",
+		},
+		Resources: []apiserverconfigv1.ResourceConfiguration{
+			{
+				Resources: []string{"secrets"},
+				Providers: providers,
+			},
+		},
+	}
+	jsonfile, err := json.Marshal(encConfig)
+	if err != nil {
+		return err
+	}
+	if control.Runtime.EncryptionConfig == "" {
+		control.Runtime.EncryptionConfig = filepath.Join(control.DataDir, "cred", "encryption-config.json")
+	}
+	logrus.Info("Enabling secrets encryption with identity provider, restart with secrets-encryption")
+	return util.AtomicWrite(control.Runtime.EncryptionConfig, jsonfile, 0600)
 }
 
 func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {

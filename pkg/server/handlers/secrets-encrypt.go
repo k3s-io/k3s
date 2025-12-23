@@ -88,6 +88,8 @@ func encryptionStatus(control *config.Control) (EncryptionState, error) {
 	}
 	if providers[len(providers)-1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) {
 		state.Enable = ptr.To(true)
+	} else if control.EncryptSecrets && providers[0].Identity != nil && len(providers) == 1 {
+		state.Enable = ptr.To(false)
 	} else if !control.EncryptSecrets || providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil) {
 		state.Enable = ptr.To(false)
 	}
@@ -137,7 +139,13 @@ func encryptionStatus(control *config.Control) (EncryptionState, error) {
 
 func encryptionEnable(ctx context.Context, control *config.Control, enable bool) error {
 	providers, err := secretsencrypt.GetEncryptionProviders(control.Runtime)
-	if err != nil {
+	// Enable secrets encryption with an identity provider on a cluster that does not have any encryption config
+	if err != nil && os.IsNotExist(err) && enable {
+		if err := secretsencrypt.WriteIdentityConfig(control); err != nil {
+			return err
+		}
+		return cluster.Save(ctx, control, true)
+	} else if err != nil {
 		return err
 	}
 	if len(providers) > 3 {
@@ -390,6 +398,7 @@ func reencryptAndRemoveKey(ctx context.Context, control *config.Control, skip bo
 
 	// Remove old key. If there is only one of that key type, the cluster just
 	// migrated between key types. Check for the other key type and remove that.
+	// If that key type type doesn't exist, we are switching from the identity provider, so no key is removed.
 	curKeys, err := secretsencrypt.GetEncryptionKeys(control.Runtime)
 	if err != nil {
 		return err
@@ -400,6 +409,8 @@ func reencryptAndRemoveKey(ctx context.Context, control *config.Control, skip bo
 		if len(curKeys.AESCBCKeys) == 1 && len(curKeys.SBKeys) > 0 {
 			logrus.Infoln("Removing secretbox key: ", curKeys.SBKeys[len(curKeys.SBKeys)-1])
 			curKeys.SBKeys = curKeys.SBKeys[:len(curKeys.SBKeys)-1]
+		} else if len(curKeys.AESCBCKeys) == 1 && curKeys.Identity {
+			logrus.Infoln("No keys to remove, switched from identity provider")
 		} else {
 			logrus.Infoln("Removing aescbc key: ", curKeys.AESCBCKeys[len(curKeys.AESCBCKeys)-1])
 			curKeys.AESCBCKeys = curKeys.AESCBCKeys[:len(curKeys.AESCBCKeys)-1]
@@ -408,6 +419,8 @@ func reencryptAndRemoveKey(ctx context.Context, control *config.Control, skip bo
 		if len(curKeys.SBKeys) == 1 && len(curKeys.AESCBCKeys) > 0 {
 			logrus.Infoln("Removing aescbc key: ", curKeys.AESCBCKeys[len(curKeys.AESCBCKeys)-1])
 			curKeys.AESCBCKeys = curKeys.AESCBCKeys[:len(curKeys.AESCBCKeys)-1]
+		} else if len(curKeys.SBKeys) == 1 && curKeys.Identity {
+			logrus.Infoln("No keys to remove, switched from identity provider")
 		} else {
 			logrus.Infoln("Removing secretbox key: ", curKeys.SBKeys[len(curKeys.SBKeys)-1])
 			curKeys.SBKeys = curKeys.SBKeys[:len(curKeys.SBKeys)-1]
