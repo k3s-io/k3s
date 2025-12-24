@@ -65,16 +65,20 @@ func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
 	argsMap, defaultConfig, err := kubeletArgsAndConfig(cfg)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "prepare default configuration drop-in")
+		return pkgerrors.WithMessage(err, "prepare default kubelet configuration")
 	}
 
-	extraArgs, err := extractConfigArgs(cfg.KubeletConfigDir, cfg.ExtraKubeletArgs, defaultConfig)
+	if err := writeKubeletConfig(cfg.KubeletConfig, defaultConfig); err != nil {
+		return pkgerrors.WithMessage(err, "generate default kubelet configuration")
+	}
+
+	// Remove default kubelet configuration generated in drop-in directory
+	// TODO: Clean this up some time after k3s with version <=1.33 is EOL.
+	os.Remove(filepath.Join(cfg.KubeletConfigDir, "00-"+version.Program+"-defaults.conf"))
+
+	extraArgs, err := extractConfigArgs(cfg.KubeletConfigDir, cfg.ExtraKubeletArgs)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "prepare user configuration drop-ins")
-	}
-
-	if err := writeKubeletConfig(cfg.KubeletConfigDir, defaultConfig); err != nil {
-		return pkgerrors.WithMessage(err, "generate default kubelet configuration drop-in")
+		return pkgerrors.WithMessage(err, "prepare user kubelet configuration drop-ins")
 	}
 
 	args := util.GetArgs(argsMap, extraArgs)
@@ -100,7 +104,7 @@ func ImageCredProvAvailable(cfg *daemonconfig.Agent) bool {
 // extractConfigArgs strips out any --config or --config-dir flags from the
 // provided args list, and if set, copies the content of the file or dir into
 // the target drop-in directory.
-func extractConfigArgs(path string, extraArgs []string, config *kubeletconfig.KubeletConfiguration) ([]string, error) {
+func extractConfigArgs(path string, extraArgs []string) ([]string, error) {
 	args := make([]string, 0, len(extraArgs))
 	strippedArgs := map[string]string{}
 	var skipVal bool
@@ -159,7 +163,7 @@ func writeKubeletConfig(path string, config *kubeletconfig.KubeletConfiguration)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(path, "00-"+version.Program+"-defaults.conf"), b, 0600)
+	return os.WriteFile(path, b, 0600)
 }
 
 func defaultKubeletConfig(cfg *daemonconfig.Agent) (*kubeletconfig.KubeletConfiguration, error) {
