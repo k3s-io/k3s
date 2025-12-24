@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS base
+FROM alpine:3.23 AS base
 RUN apk add -U ca-certificates zstd tzdata
 ARG TARGETARCH
 COPY build/out/data-linux*.tar.zst /
