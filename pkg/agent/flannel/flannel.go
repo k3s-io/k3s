@@ -185,11 +185,29 @@ func LookupExtInterface(iface *net.Interface, nm netMode) (*backend.ExternalInte
 
 func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn backend.Network, nm netMode) error {
 	dir, name := filepath.Split(path)
-	os.MkdirAll(dir, 0755)
+	if dir == "" {
+		dir = "."
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
 
-	tempFile := filepath.Join(dir, "."+name)
-	f, err := os.Create(tempFile)
+	perm := os.FileMode(0644)
+	if info, err := os.Stat(path); err == nil {
+		perm = info.Mode().Perm()
+	}
+
+	f, err := os.CreateTemp(dir, "."+name+".")
 	if err != nil {
+		return err
+	}
+	tempFile := f.Name()
+	cleanup := func() {
+		f.Close()
+		_ = os.Remove(tempFile)
+	}
+	if err := f.Chmod(perm); err != nil {
+		cleanup()
 		return err
 	}
 
@@ -198,28 +216,53 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	sn := bn.Lease().Subnet
 	sn.IP++
 	if nm.IPv4Enabled() {
-		fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw)
-		fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn)
+		if _, err := fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw); err != nil {
+			cleanup()
+			return err
+		}
+		if _, err := fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn); err != nil {
+			cleanup()
+			return err
+		}
 	}
 
 	if nwv6.String() != emptyIPv6Network {
 		snv6 := bn.Lease().IPv6Subnet
 		snv6.IncrementIP()
-		fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6)
-		fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6)
+		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6); err != nil {
+			cleanup()
+			return err
+		}
+		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6); err != nil {
+			cleanup()
+			return err
+		}
 	}
 
-	fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU())
-	_, err = fmt.Fprintf(f, "FLANNEL_IPMASQ=%v\n", ipMasq)
-	f.Close()
-	if err != nil {
+	if _, err := fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU()); err != nil {
+		cleanup()
+		return err
+	}
+	if _, err := fmt.Fprintf(f, "FLANNEL_IPMASQ=%v\n", ipMasq); err != nil {
+		cleanup()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		cleanup()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tempFile)
 		return err
 	}
 
 	// rename(2) the temporary file to the desired location so that it becomes
-	// atomically visible with the contents
-	return os.Rename(tempFile, path)
-	// TODO - is this safe? What if it's not on the same FS?
+	// atomically visible with the contents (same directory keeps it on the same FS)
+	if err := os.Rename(tempFile, path); err != nil {
+		_ = os.Remove(tempFile)
+		return err
+	}
+	return nil
 }
 
 // ReadCIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv4 network key
