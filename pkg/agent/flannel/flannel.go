@@ -208,6 +208,9 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		return err
 	}
 	tempFile := f.Name()
+	cleanupNoClose := func(err error) error {
+		return merr.NewErrors(err, os.Remove(tempFile))
+	}
 	cleanup := func(err error) error {
 		return merr.NewErrors(err, f.Close(), os.Remove(tempFile))
 	}
@@ -249,7 +252,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		return cleanup(err)
 	}
 	if err := f.Close(); err != nil {
-		return cleanup(nil)
+		return cleanupNoClose(err)
 	}
 
 	// rename(2) the temporary file to the desired location so that it becomes
