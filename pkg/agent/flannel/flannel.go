@@ -30,6 +30,7 @@ import (
 	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
 	"github.com/joho/godotenv"
 	pkgerrors "github.com/pkg/errors"
+	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
@@ -207,13 +208,11 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		return err
 	}
 	tempFile := f.Name()
-	cleanup := func() {
-		f.Close()
-		_ = os.Remove(tempFile)
+	cleanup := func(err error) error {
+		return merr.NewErrors(err, f.Close(), os.Remove(tempFile))
 	}
 	if err := f.Chmod(perm); err != nil {
-		cleanup()
-		return err
+		return cleanup(err)
 	}
 
 	// Write out the first usable IP by incrementing
@@ -222,12 +221,10 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	sn.IP++
 	if nm.IPv4Enabled() {
 		if _, err := fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw); err != nil {
-			cleanup()
-			return err
+			return cleanup(err)
 		}
 		if _, err := fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn); err != nil {
-			cleanup()
-			return err
+			return cleanup(err)
 		}
 	}
 
@@ -235,30 +232,24 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		snv6 := bn.Lease().IPv6Subnet
 		snv6.IncrementIP()
 		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6); err != nil {
-			cleanup()
-			return err
+			return cleanup(err)
 		}
 		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6); err != nil {
-			cleanup()
-			return err
+			return cleanup(err)
 		}
 	}
 
 	if _, err := fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU()); err != nil {
-		cleanup()
-		return err
+		return cleanup(err)
 	}
 	if _, err := fmt.Fprintf(f, "FLANNEL_IPMASQ=%v\n", ipMasq); err != nil {
-		cleanup()
-		return err
+		return cleanup(err)
 	}
 	if err := f.Sync(); err != nil {
-		cleanup()
-		return err
+		return cleanup(err)
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(tempFile)
-		return err
+		return cleanup(nil)
 	}
 
 	// rename(2) the temporary file to the desired location so that it becomes
