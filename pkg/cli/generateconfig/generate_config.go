@@ -1,0 +1,326 @@
+package generateconfig
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"reflect"
+	"strings"
+
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
+)
+
+// Run generates an example k3s config file
+func Run(ctx *cli.Context) error {
+	configType := cmds.GenerateConfigConfig.ConfigType
+	output := cmds.GenerateConfigConfig.Output
+
+	if configType != "server" && configType != "agent" {
+		return fmt.Errorf("invalid config type %q, must be 'server' or 'agent'", configType)
+	}
+
+	var flags []cli.Flag
+	var existingConfig interface{}
+
+	if configType == "server" {
+		flags = cmds.ServerFlags
+		existingConfig = &cmds.ServerConfig
+	} else {
+		flags = cmds.AgentFlags
+		existingConfig = &cmds.AgentConfig
+	}
+
+	var currentValues map[string]interface{}
+	if configFile := cmds.GenerateConfigConfig.FromConfig; configFile != "" {
+		if data, err := os.ReadFile(configFile); err == nil {
+			currentValues = make(map[string]interface{})
+			_ = yaml.Unmarshal(data, &currentValues)
+		}
+	}
+
+	yamlContent := generateYAMLWithComments(flags, existingConfig, currentValues, configType)
+
+	var writer io.Writer = os.Stdout
+	if output != "" {
+		file, err := os.Create(output)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
+		defer file.Close()
+		writer = file
+	}
+
+	_, err := writer.Write([]byte(yamlContent))
+	return err
+}
+
+// generateYAMLWithComments creates a YAML string with comments
+func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, currentValues map[string]interface{}, configType string) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("# Example k3s %s configuration file\n", configType))
+	sb.WriteString("#\n")
+	sb.WriteString("# This file contains all available configuration options with their descriptions.\n")
+	sb.WriteString("# Uncomment and modify the options you want to use.\n")
+	sb.WriteString("#\n")
+	sb.WriteString(fmt.Sprintf("# Place this file at /etc/rancher/k3s/config.yaml or use --config to specify a different location.\n"))
+	sb.WriteString("#\n\n")
+
+	categories := groupFlagsByCategory(flags)
+
+	for _, category := range []string{"listener", "cluster", "client", "data", "networking", "agent/node", "agent/networking", "agent/runtime", "flags", "db", "secrets-encryption", "experimental", "components", "other"} {
+		categoryFlags := categories[category]
+		if len(categoryFlags) == 0 {
+			continue
+		}
+
+		categoryName := strings.Title(strings.ReplaceAll(category, "/", " - "))
+		if category == "other" {
+			categoryName = "Other Options"
+		}
+		sb.WriteString(fmt.Sprintf("# %s\n", strings.Repeat("=", 80)))
+		sb.WriteString(fmt.Sprintf("# %s\n", categoryName))
+		sb.WriteString(fmt.Sprintf("# %s\n\n", strings.Repeat("=", 80)))
+
+		for _, flag := range categoryFlags {
+			writeFlag(&sb, flag, existingConfig, currentValues)
+		}
+
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// groupFlagsByCategory organizes flags into categories based on their usage text
+func groupFlagsByCategory(flags []cli.Flag) map[string][]cli.Flag {
+	categories := make(map[string][]cli.Flag)
+
+	for _, flag := range flags {
+		if isHiddenFlag(flag) {
+			continue
+		}
+
+		name := getFlagName(flag)
+		if name == "config" || name == "debug" || name == "v" || name == "vmodule" || name == "log" || name == "alsologtostderr" {
+			continue
+		}
+
+		usage := getFlagUsage(flag)
+		category := extractCategory(usage)
+		categories[category] = append(categories[category], flag)
+	}
+
+	return categories
+}
+
+// extractCategory extracts the category from usage text
+func extractCategory(usage string) string {
+	if idx := strings.Index(usage, "("); idx != -1 {
+		if endIdx := strings.Index(usage[idx:], ")"); endIdx != -1 {
+			return usage[idx+1 : idx+endIdx]
+		}
+	}
+	return "other"
+}
+
+// writeFlag writes a single flag to the string builder with comments
+func writeFlag(sb *strings.Builder, flag cli.Flag, existingConfig interface{}, currentValues map[string]interface{}) {
+	name := getFlagName(flag)
+	usage := getFlagUsage(flag)
+
+	if idx := strings.Index(usage, ") "); idx != -1 {
+		usage = usage[idx+2:]
+	}
+
+	sb.WriteString(fmt.Sprintf("# %s\n", usage))
+
+	value := getFlagValue(flag, name, existingConfig, currentValues)
+	yamlValue := formatYAMLValue(value, flag)
+	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", name, yamlValue))
+}
+
+// getFlagName extracts the name from a flag
+func getFlagName(flag cli.Flag) string {
+	v := reflect.ValueOf(flag)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	nameField := v.FieldByName("Name")
+	if nameField.IsValid() {
+		return nameField.String()
+	}
+	return ""
+}
+
+// getFlagUsage extracts the usage text from a flag
+func getFlagUsage(flag cli.Flag) string {
+	v := reflect.ValueOf(flag)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	usageField := v.FieldByName("Usage")
+	if usageField.IsValid() {
+		return usageField.String()
+	}
+	return ""
+}
+
+// isHiddenFlag checks if a flag is hidden
+func isHiddenFlag(flag cli.Flag) bool {
+	v := reflect.ValueOf(flag)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	hiddenField := v.FieldByName("Hidden")
+	if hiddenField.IsValid() && hiddenField.Kind() == reflect.Bool {
+		return hiddenField.Bool()
+	}
+	return false
+}
+
+// getFlagValue gets the current or default value for a flag
+func getFlagValue(flag cli.Flag, name string, existingConfig interface{}, currentValues map[string]interface{}) interface{} {
+	if currentValues != nil {
+		if val, exists := currentValues[name]; exists {
+			return val
+		}
+	}
+
+	if existingConfig != nil {
+		v := reflect.ValueOf(existingConfig)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
+
+		destField := getDestinationField(flag)
+		if destField.IsValid() && !destField.IsNil() {
+			destValue := destField.Elem()
+			if !isZeroValue(destValue) {
+				return destValue.Interface()
+			}
+		}
+	}
+
+	return getDefaultValue(flag)
+}
+
+// getDestinationField gets the Destination field value from a flag
+func getDestinationField(flag cli.Flag) reflect.Value {
+	v := reflect.ValueOf(flag)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	destField := v.FieldByName("Destination")
+	if destField.IsValid() {
+		return destField
+	}
+	return reflect.Value{}
+}
+
+// isZeroValue checks if a value is the zero value for its type
+func isZeroValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice:
+		return v.Len() == 0
+	case reflect.String:
+		return v.String() == ""
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	}
+	return false
+}
+
+// getDefaultValue extracts the default value from a flag
+func getDefaultValue(flag cli.Flag) interface{} {
+	v := reflect.ValueOf(flag)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	valueField := v.FieldByName("Value")
+	if valueField.IsValid() && !isZeroValue(valueField) {
+		return valueField.Interface()
+	}
+
+	switch flag.(type) {
+	case *cli.StringSliceFlag:
+		return []string{}
+	case *cli.IntSliceFlag:
+		return []int{}
+	case *cli.BoolFlag:
+		return false
+	case *cli.IntFlag:
+		return 0
+	case *cli.Int64Flag:
+		return int64(0)
+	case *cli.DurationFlag:
+		return ""
+	case *cli.StringFlag:
+		return ""
+	default:
+		return nil
+	}
+}
+
+// formatYAMLValue formats a value for YAML output
+func formatYAMLValue(value interface{}, flag cli.Flag) string {
+	if value == nil {
+		return "\"\""
+	}
+
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return "\"\""
+		}
+		if strings.Contains(v, " ") || strings.Contains(v, ":") || strings.Contains(v, "#") {
+			return fmt.Sprintf("%q", v)
+		}
+		return v
+	case bool:
+		return fmt.Sprintf("%t", v)
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%v", v)
+	case []string:
+		if len(v) == 0 {
+			return "[]"
+		}
+		parts := make([]string, len(v))
+		for i, s := range v {
+			if strings.Contains(s, " ") || strings.Contains(s, ":") {
+				parts[i] = fmt.Sprintf("%q", s)
+			} else {
+				parts[i] = s
+			}
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	case cli.StringSlice:
+		return formatYAMLValue(v.Value(), flag)
+	case []int:
+		if len(v) == 0 {
+			return "[]"
+		}
+		parts := make([]string, len(v))
+		for i, n := range v {
+			parts[i] = fmt.Sprintf("%d", n)
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	default:
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return fmt.Sprintf("%v", value)
+		}
+		return strings.TrimSpace(string(data))
+	}
+}

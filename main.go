@@ -11,6 +11,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/cli/completion"
 	"github.com/k3s-io/k3s/pkg/cli/crictl"
 	"github.com/k3s-io/k3s/pkg/cli/etcdsnapshot"
+	"github.com/k3s-io/k3s/pkg/cli/generateconfig"
 	"github.com/k3s-io/k3s/pkg/cli/kubectl"
 	"github.com/k3s-io/k3s/pkg/cli/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/cli/server"
@@ -53,6 +54,7 @@ func main() {
 			completion.Bash,
 			completion.Zsh,
 		),
+		cmds.NewGenerateConfigCommand(generateconfig.Run),
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
