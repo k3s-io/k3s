@@ -184,9 +184,9 @@ func LookupExtInterface(iface *net.Interface, nm netMode) (*backend.ExternalInte
 }
 
 // WriteSubnetFile atomically writes the flannel subnet configuration file.
-// Uses CreateTemp to avoid issues with pre-existing files (permissions, ownership)
-// and to ensure clean atomic rename semantics. While K3s assumes single-instance
-// per node, CreateTemp provides defense-in-depth against unexpected concurrent writes.
+// Uses CreateTemp to avoid issues with pre-existing temp files (stale files
+// from crashes, unexpected permissions/ownership) and to ensure clean atomic
+// rename semantics with O_EXCL guarantees.
 func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn backend.Network, nm netMode) error {
 	dir, name := filepath.Split(path)
 	if dir == "" {
