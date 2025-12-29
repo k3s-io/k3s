@@ -73,5 +73,5 @@ go install golang.org/x/tools/cmd/goimports@latest
 then run:
 
 ```
-make format
+make validate
 ```

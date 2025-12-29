@@ -50,7 +50,7 @@ jobs:
       
       - name: Build And Save K3s Image
         run: |
-          make local-image
+          make image
           make tag-image-latest
           docker save -o k3s.tar rancher/k3s:latest
 
