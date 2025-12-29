@@ -37,7 +37,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		var latestVersion string
 		It("should determine latest branch version", func() {
 			url := fmt.Sprintf("https://update.k3s.io/v1-release/channels/%s", *channel)
-			resp, err := http.Head(url)
+			resp, err := http.Get(url)
 			// Cover the case where the branch does not exist yet,
 			// such as a new unreleased minor version
 			if err != nil || resp.StatusCode != http.StatusOK {
