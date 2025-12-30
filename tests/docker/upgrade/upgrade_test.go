@@ -226,7 +226,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 					g.Expect(docker.VerifyValidVersion(server, "kubectl")).To(Succeed())
 					g.Expect(docker.VerifyValidVersion(server, "ctr")).To(Succeed())
 					g.Expect(docker.VerifyValidVersion(server, "crictl")).To(Succeed())
-				}).Should(Succeed())
+				}, "10s", "2s").Should(Succeed())
 
 				out, err := server.RunCmdOnNode("k3s --version")
 				Expect(err).NotTo(HaveOccurred())
