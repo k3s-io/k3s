@@ -47,6 +47,16 @@ func getSecretName(nodeName string) string {
 	return strings.ToLower(nodeName + ".node-password." + version.Program)
 }
 
+func isAlreadyExists(err error) bool {
+	for err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return true
+		}
+		err = errors.Unwrap(err)
+	}
+	return false
+}
+
 func (npc *nodePasswordController) verifyHash(nodeName, pass string, cached bool) error {
 	secret, err := npc.getSecret(nodeName, cached)
 	if err != nil {
@@ -79,7 +89,7 @@ func (npc *nodePasswordController) ensure(nodeName, pass string) error {
 			Data:      map[string][]byte{"hash": []byte(hash)},
 			Type:      SecretTypeNodePassword,
 		})
-		if apierrors.IsAlreadyExists(err) {
+		if err != nil && isAlreadyExists(err) {
 			// secret already exists, try to verify again without cache
 			return npc.verifyHash(nodeName, pass, false)
 		}

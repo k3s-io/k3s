@@ -29,6 +29,13 @@ func Test_PasswordError(t *testing.T) {
 	assertNotEqual(t, errors.Unwrap(err), nil)
 }
 
+func TestIsAlreadyExists(t *testing.T) {
+	assertEqual(t, isAlreadyExists(errorAlreadyExists()), true)
+	assertEqual(t, isAlreadyExists(fmt.Errorf("wrapped: %w", errorAlreadyExists())), true)
+	assertEqual(t, isAlreadyExists(errorNotFound()), false)
+	assertEqual(t, isAlreadyExists(nil), false)
+}
+
 // --------------------------
 // utility functions
 
