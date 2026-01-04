@@ -19,6 +19,16 @@ import (
 // After this many attempts, the lock is deleted and the counter reset.
 const maxBootstrapWaitAttempts = 5
 
+var errBootstrapTokenRequired = errors.New("token is required to join an existing cluster; bootstrap data already exists in datastore")
+
+func validateBootstrapTokenRequirement(values []client.Value) error {
+	if len(values) == 0 {
+		return nil
+	}
+
+	return errBootstrapTokenRequired
+}
+
 func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
 	token, err := util.ReadTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
 	if err != nil {
@@ -183,8 +193,11 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 			// matching key, further startups will still be blocked pending cleanup of the
 			// "newer" files as per the bootstrap reconciliation code.
 
-			_, err = getBootstrapValues(ctx, storageClient)
+			bootstrapValues, err := getBootstrapValues(ctx, storageClient)
 			if err != nil {
+				return err
+			}
+			if err := validateBootstrapTokenRequirement(bootstrapValues); err != nil {
 				return err
 			}
 			logrus.Info("Datastore connection validated successfully, proceeding with bootstrap data generation")
