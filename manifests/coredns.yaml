@@ -126,7 +126,7 @@ spec:
               k8s-app: kube-dns
       containers:
       - name: coredns
-        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:1.13.1"
+        image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:1.13.2"
         imagePullPolicy: IfNotPresent
         resources:
           limits:
