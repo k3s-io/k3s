@@ -83,10 +83,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 		return err
 	}
 
-	// use the kubelet kubeconfig to add node annotations, as the k3s-controller
+	// use the kubelet kubeconfig to sync node annotations, as the k3s-controller
 	// rbac does not allow create or update of nodes.
-	if err := setAnnotations(ctx, nodeConfig, coreClient); err != nil {
-		return pkgerrors.WithMessage(err, "flannel failed to set address annotations")
+	if err := syncAnnotations(ctx, nodeConfig, coreClient); err != nil {
+		return pkgerrors.WithMessage(err, "flannel failed to sync address annotations")
 	}
 
 	resourceAttrs := authorizationv1.ResourceAttributes{Verb: "list", Resource: "nodes"}
@@ -283,19 +283,32 @@ func findNetMode(cidrs []*net.IPNet) (netMode, error) {
 	return 0, errors.New("Failed checking netMode")
 }
 
-func setAnnotations(ctx context.Context, nodeConfig *config.Node, coreClient kubernetes.Interface) error {
+func syncAnnotations(ctx context.Context, nodeConfig *config.Node, coreClient kubernetes.Interface) error {
+	nodes := coreClient.CoreV1().Nodes()
+	node, err := nodes.Get(ctx, nodeConfig.AgentConfig.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
 	patch := util.NewPatchList()
-	patcher := util.NewPatcher[*v1.Node](coreClient.CoreV1().Nodes())
-	if nodeConfig.AgentConfig.NodeExternalIP != "" && nodeConfig.Flannel.ExternalIP {
+	patcher := util.NewPatcher[*v1.Node](nodes)
+	if nodeConfig.Flannel.ExternalIP {
 		for _, ipAddress := range nodeConfig.AgentConfig.NodeExternalIPs {
-			if utilsnet.IsIPv4(ipAddress) {
+			if utilsnet.IsIPv4(ipAddress) && node.Annotations[ExternalIPv4Annotation] != ipAddress.String() {
 				patch.Add(ipAddress.String(), "metadata", "annotations", ExternalIPv4Annotation)
 			}
-			if utilsnet.IsIPv6(ipAddress) {
+			if utilsnet.IsIPv6(ipAddress) && node.Annotations[ExternalIPv6Annotation] != ipAddress.String() {
 				patch.Add(ipAddress.String(), "metadata", "annotations", ExternalIPv6Annotation)
 			}
 		}
+	} else {
+		if _, ok := node.Annotations[ExternalIPv4Annotation]; ok {
+			patch.Remove("metadata", "annotations", ExternalIPv4Annotation)
+		}
+		if _, ok := node.Annotations[ExternalIPv6Annotation]; ok {
+			patch.Remove("metadata", "annotations", ExternalIPv6Annotation)
+		}
 	}
-	_, err := patcher.Patch(ctx, patch, nodeConfig.AgentConfig.NodeName)
+	_, err = patcher.Patch(ctx, patch, nodeConfig.AgentConfig.NodeName)
 	return err
 }
