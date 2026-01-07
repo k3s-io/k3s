@@ -115,6 +115,7 @@ require (
 	github.com/klauspost/compress v1.18.2
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/minio/minio-go/v7 v7.0.91
+	github.com/moby/sys/reexec v0.1.0
 	github.com/moby/sys/userns v0.1.0
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
