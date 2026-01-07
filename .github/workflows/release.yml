@@ -53,16 +53,16 @@ jobs:
 
       - name: Read registry secrets (staging)
         uses: rancher-eio/read-vault-secrets@main
-        if: ${{ github.event.release.prerelease && github.repository_owner == 'k3s-io' }}
+        if: ${{ github.repository_owner == 'k3s-io' }}
         with:
           secrets: |
-            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | REGISTRY ;
-            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials username | REGISTRY_USERNAME ;
-            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials password | REGISTRY_PASSWORD
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | STAGING_REGISTRY ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials username | STAGING_REGISTRY_USERNAME ;
+            secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials password | STAGING_REGISTRY_PASSWORD
 
       - name: Read registry secrets (prime)
         uses: rancher-eio/read-vault-secrets@main
-        if: ${{ ! github.event.release.prerelease && github.repository_owner == 'k3s-io' }}
+        if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY ;
@@ -92,8 +92,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Login to Prime Registry
+      - name: Login to Staging Registry
         if: github.repository_owner == 'k3s-io'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.STAGING_REGISTRY }}
+          username: ${{ env.STAGING_REGISTRY_USERNAME }}
+          password: ${{ env.STAGING_REGISTRY_PASSWORD }}
+
+      - name: Login to Prime Registry
+        if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -140,12 +148,13 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
             docker.io/${{ env.DOCKERHUB_ORG }}/k3s
-            ${{ env.REGISTRY }}/rancher/k3s
+            name=${{ env.REGISTRY }}/rancher/k3s,enable=${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
+            name=${{ env.STAGING_REGISTRY }}/rancher/k3s,enable=${{ github.repository_owner == 'k3s-io' }}
           flavor: latest=false
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
       - name: "Download K3s build"
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -199,7 +208,7 @@ jobs:
         aws-region: us-east-1
 
     - name: "Download Artifacts"
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         pattern: "*"
         path: ./dist/artifacts
