@@ -1,8 +1,6 @@
 module github.com/k3s-io/k3s
 
-go 1.24.7
-
-toolchain go1.24.9
+go 1.24.11
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.13.0
@@ -19,6 +17,7 @@ replace (
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.11.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.51.0-k3s1
+	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.9
@@ -115,7 +114,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.16.17
-	github.com/k3s-io/kine v0.14.9-k3s1.32
+	github.com/k3s-io/kine v0.14.10
 	github.com/klauspost/compress v1.18.2
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/minio/minio-go/v7 v7.0.91
@@ -162,15 +161,15 @@ require (
 	golang.org/x/sys v0.39.0
 	google.golang.org/grpc v1.77.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.32.11
+	k8s.io/api v0.34.2
 	k8s.io/apiextensions-apiserver v0.32.11
 	k8s.io/apimachinery v0.34.3
-	k8s.io/apiserver v0.32.11
+	k8s.io/apiserver v0.34.2
 	k8s.io/cli-runtime v0.32.11
-	k8s.io/client-go v0.32.11
+	k8s.io/client-go v0.34.2
 	k8s.io/cloud-provider v0.32.11
 	k8s.io/cluster-bootstrap v0.32.11
-	k8s.io/component-base v0.32.11
+	k8s.io/component-base v0.34.2
 	k8s.io/component-helpers v0.32.11
 	k8s.io/cri-api v0.34.3
 	k8s.io/cri-client v0.32.11
@@ -179,7 +178,7 @@ require (
 	k8s.io/kubectl v0.32.11
 	k8s.io/kubelet v0.32.11
 	k8s.io/kubernetes v1.32.11
-	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
+	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	sigs.k8s.io/cri-tools v0.32.0
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -209,6 +208,7 @@ require (
 	github.com/Microsoft/hnslib v0.1.1 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
+	github.com/antithesishq/antithesis-sdk-go v0.5.0 // indirect
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.7.0 // indirect
@@ -297,7 +297,7 @@ require (
 	github.com/golang/snappy v0.0.5-0.20231225225746-43d5d4cd4e0e // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.22.0 // indirect
-	github.com/google/gnostic-models v0.6.9 // indirect
+	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-tpm v0.9.6 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -330,7 +330,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.6 // indirect
+	github.com/jackc/pgx/v5 v5.8.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
@@ -358,7 +358,7 @@ require (
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.32 // indirect
+	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
@@ -368,7 +368,7 @@ require (
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/crc64nvme v1.0.1 // indirect
-	github.com/minio/highwayhash v1.0.3 // indirect
+	github.com/minio/highwayhash v1.0.4-0.20251030100505-070ab1a87a76 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
@@ -402,10 +402,10 @@ require (
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/nats-io/jsm.go v0.2.4 // indirect
+	github.com/nats-io/jsm.go v0.3.0 // indirect
 	github.com/nats-io/jwt/v2 v2.8.0 // indirect
-	github.com/nats-io/nats-server/v2 v2.11.6 // indirect
-	github.com/nats-io/nats.go v1.46.1 // indirect
+	github.com/nats-io/nats-server/v2 v2.12.2 // indirect
+	github.com/nats-io/nats.go v1.48.0 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/runc v1.3.3 // indirect
@@ -514,7 +514,7 @@ require (
 	k8s.io/kms v0.0.0 // indirect
 	k8s.io/kube-aggregator v0.32.11 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
+	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
 	k8s.io/metrics v0.0.0 // indirect
 	k8s.io/mount-utils v0.32.11 // indirect
