@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/k3s-io/k3s/pkg/cli/agent"
 	"github.com/k3s-io/k3s/pkg/cli/cert"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -22,6 +21,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/containerd"
 	ctr2 "github.com/k3s-io/k3s/pkg/ctr"
 	kubectl2 "github.com/k3s-io/k3s/pkg/kubectl"
+	"github.com/moby/sys/reexec"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	crictl2 "sigs.k8s.io/cri-tools/cmd/crictl"
