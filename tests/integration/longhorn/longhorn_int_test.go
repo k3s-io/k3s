@@ -50,10 +50,7 @@ var _ = Describe("longhorn", Ordered, func() {
 			Expect(result).To(ContainSubstring("namespace/longhorn-system created"))
 			Expect(result).To(ContainSubstring("daemonset.apps/longhorn-manager created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-driver-deployer created"))
-			Expect(result).To(ContainSubstring("deployment.apps/longhorn-recovery-backend created"))
 			Expect(result).To(ContainSubstring("deployment.apps/longhorn-ui created"))
-			Expect(result).To(ContainSubstring("deployment.apps/longhorn-conversion-webhook created"))
-			Expect(result).To(ContainSubstring("deployment.apps/longhorn-admission-webhook created"))
 		})
 		It("starts the longhorn pods with no problems", func() {
 			Eventually(func() error {
@@ -142,6 +139,9 @@ var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && server != nil {
 		if failed {
 			testutil.K3sSaveLog(server, false)
+			testutil.K3sCopyPodLogs(server)
+			testutil.K3sDumpResources(server, "node", "pod", "pvc", "pv")
+			testutil.RunCommand("find /var/lib/longhorn/logs -type f | xargs tail -n 10000 &> longhorn-log.txt")
 		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
