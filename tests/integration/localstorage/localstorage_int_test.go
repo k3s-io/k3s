@@ -105,6 +105,8 @@ var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		if failed {
 			testutil.K3sSaveLog(localStorageServer, false)
+			testutil.K3sCopyPodLogs(localStorageServer)
+			testutil.K3sDumpResources(localStorageServer, "node", "pod", "pvc", "pv")
 		}
 		Expect(testutil.K3sKillServer(localStorageServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
