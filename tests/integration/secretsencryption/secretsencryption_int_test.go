@@ -154,6 +154,8 @@ var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() {
 		if failed {
 			testutil.K3sSaveLog(secretsEncryptionServer, false)
+			testutil.K3sCopyPodLogs(secretsEncryptionServer)
+			testutil.K3sDumpResources(secretsEncryptionServer, "node", "pod", "pvc", "pv")
 		}
 		Expect(testutil.K3sKillServer(secretsEncryptionServer)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, secretsEncryptionDataDir)).To(Succeed())
