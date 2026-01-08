@@ -93,6 +93,8 @@ var _ = DescribeTableSubtree("ca certificate rotation", Ordered, func(serverArgs
 		if !testutil.IsExistingServer() {
 			if failed {
 				testutil.K3sSaveLog(server, false)
+				testutil.K3sCopyPodLogs(server)
+				testutil.K3sDumpResources(server, "node", "pod", "pvc", "pv")
 			}
 			Expect(testutil.K3sKillServer(server)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())

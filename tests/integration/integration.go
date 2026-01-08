@@ -313,6 +313,30 @@ func K3sSaveLog(server *K3sServer, dump bool) error {
 	return nil
 }
 
+func K3sCopyPodLogs(server *K3sServer) error {
+	f, err := os.Create("var-log-pods-log.txt")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	results, _ := RunCommand("find /var/log/pods -type f | xargs tail -n 10000")
+	_, err = fmt.Fprint(f, results)
+	return err
+}
+
+func K3sDumpResources(server *K3sServer, resources ...string) error {
+	f, err := os.Create("resources-dump-log.txt")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	results, _ := K3sCmd("kubectl", "get", "-A", "-o", "yaml", strings.Join(resources, ","))
+	_, err = fmt.Fprint(f, results)
+	return err
+}
+
 func GetEndpointsAddresses() (string, error) {
 	client, err := tests.K8sClient(DefaultConfig)
 	if err != nil {
