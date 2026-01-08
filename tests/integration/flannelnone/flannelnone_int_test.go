@@ -71,6 +71,8 @@ var _ = AfterSuite(func() {
 	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
 		if failed {
 			testutil.K3sSaveLog(server, false)
+			testutil.K3sCopyPodLogs(server)
+			testutil.K3sDumpResources(server, "node", "pod", "pvc", "pv")
 		}
 		Expect(testutil.K3sKillServer(server)).To(Succeed())
 		Expect(testutil.K3sCleanup(testLock, "")).To(Succeed())
