@@ -20,6 +20,26 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     steps:
+      - name: Remove Unnecessary Tools
+        working-directory: /
+        run: |
+          sudo rm -rf \
+            /home/linuxbrew \
+            /home/packer \
+            /opt/az \
+            /opt/microsoft \
+            /usr/lib/firefox \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/julia* \
+            /usr/local/share/boost \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/az* \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+          df -khl
+
       - name: Set Commit Count
         run: |
           echo "GITHUB_CHECKOUT_FETCH_DEPTH=$( expr 1 + ${{ github.event.pull_request.commits }} )" >> "$GITHUB_ENV"
@@ -35,7 +55,7 @@ jobs:
           echo "GOTOOLCHAIN=${VERSION_GOLANG/go}" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: ./.github/actions/setup-go
         with:
           go-version: "${{ env.GOTOOLCHAIN }}"
 

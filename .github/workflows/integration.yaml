@@ -48,18 +48,8 @@ jobs:
         itest: [certrotation, cacertrotation, etcdrestore, localstorage, startup, custometcdargs, etcdsnapshot, kubeflags, longhorn, secretsencryption, flannelnone]
       max-parallel: 3
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 1
-    - name: Install Go
-      uses: ./.github/actions/setup-go
-    - name: "Download k3s binary"
-      uses: actions/download-artifact@v7
-      with:
-        name: k3s-amd64
-        path: ./dist/artifacts
     - name: Remove Unnecessary Tools
+      working-directory: /
       run: |
         sudo rm -rf \
           /home/linuxbrew \
@@ -77,6 +67,17 @@ jobs:
           /usr/share/miniconda \
           /usr/share/swift
         df -khl
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: "Download k3s binary"
+      uses: actions/download-artifact@v7
+      with:
+        name: k3s-amd64
+        path: ./dist/artifacts
     - name: Run Integration Tests
       run: | 
         chmod +x ./dist/artifacts/k3s
