@@ -24,19 +24,8 @@ jobs:
     env:
       INSTALL_K3S_CHANNEL: ${{ matrix.channel }}
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@v6
-        with: {fetch-depth: 1}
-      - name: Set up vagrant and libvirt
-        uses: ./.github/actions/vagrant-setup
-      - name: "Vagrant Cache"
-        uses: actions/cache@v5
-        with:
-          path: |
-             ~/.vagrant.d/boxes
-          key: vagrant-box-${{ matrix.vm }}
-        id: vagrant-cache
       - name: Remove Unnecessary Tools
+        working-directory: /
         run: |
           sudo rm -rf \
             /home/linuxbrew \
@@ -54,6 +43,18 @@ jobs:
             /usr/share/miniconda \
             /usr/share/swift
           df -khl
+      - name: "Checkout"
+        uses: actions/checkout@v6
+        with: {fetch-depth: 1}
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      - name: "Vagrant Cache"
+        uses: actions/cache@v5
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: vagrant-box-${{ matrix.vm }}
+        id: vagrant-cache
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload
       - name: "Vagrant Up ⏩ Install K3s"
