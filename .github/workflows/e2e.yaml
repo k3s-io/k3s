@@ -54,6 +54,25 @@ jobs:
         etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm, multus]
       max-parallel: 5
     steps:
+      - name: Remove Unnecessary Tools
+        working-directory: /
+        run: |
+          sudo rm -rf \
+            /home/linuxbrew \
+            /home/packer \
+            /opt/az \
+            /opt/microsoft \
+            /usr/lib/firefox \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/julia* \
+            /usr/local/share/boost \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/az* \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+          df -khl
       - name: "Checkout"
         uses: actions/checkout@v6
         with: {fetch-depth: 1}
@@ -92,24 +111,6 @@ jobs:
         with:
           name: k3s-amd64
           path: ./dist/artifacts
-      - name: Remove Unnecessary Tools
-        run: |
-          sudo rm -rf \
-            /home/linuxbrew \
-            /home/packer \
-            /opt/az \
-            /opt/microsoft \
-            /usr/lib/firefox \
-            /usr/lib/google-cloud-sdk \
-            /usr/local/julia* \
-            /usr/local/share/boost \
-            /usr/local/share/chromium \
-            /usr/local/share/powershell \
-            /usr/share/az* \
-            /usr/share/dotnet \
-            /usr/share/miniconda \
-            /usr/share/swift
-          df -khl
       - name: Run ${{ matrix.etest }} Test
         env:
           E2E_GOCOVER: "true"
@@ -202,6 +203,25 @@ jobs:
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
     steps:
+    - name: Remove Unnecessary Tools
+      working-directory: /
+      run: |
+        sudo rm -rf \
+          /home/linuxbrew \
+          /home/packer \
+          /opt/az \
+          /opt/microsoft \
+          /usr/lib/firefox \
+          /usr/lib/google-cloud-sdk \
+          /usr/local/julia* \
+          /usr/local/share/boost \
+          /usr/local/share/chromium \
+          /usr/local/share/powershell \
+          /usr/share/az* \
+          /usr/share/dotnet \
+          /usr/share/miniconda \
+          /usr/share/swift
+        df -khl
     - name: Checkout
       uses: actions/checkout@v6
     - name: "Download K3s image"
@@ -229,24 +249,6 @@ jobs:
       with:
         name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts
-    - name: Remove Unnecessary Tools
-      run: |
-        sudo rm -rf \
-          /home/linuxbrew \
-          /home/packer \
-          /opt/az \
-          /opt/microsoft \
-          /usr/lib/firefox \
-          /usr/lib/google-cloud-sdk \
-          /usr/local/julia* \
-          /usr/local/share/boost \
-          /usr/local/share/chromium \
-          /usr/local/share/powershell \
-          /usr/share/az* \
-          /usr/share/dotnet \
-          /usr/share/miniconda \
-          /usr/share/swift
-        df -khl
     - name: Run ${{ matrix.dtest }} Test
       # Put the compiled test binary back in the same place as the test source
       run: |
