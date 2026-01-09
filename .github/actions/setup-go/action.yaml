@@ -1,15 +1,30 @@
-name: 'Setup golang with main only caching'
+name: 'Setup Go with Limited Cache'
 description: 'A composite action that installs golang, but with a caching strategy that only updates the cache on main branch.'
+inputs:
+  go-version:
+    description: 'The Go version to download (if necessary) and use. Supports semver spec and ranges. Be sure to enclose this option in single quotation marks.'
+    default: ''
+
 runs:
   using: 'composite'
   steps:
-    - uses: actions/setup-go@v5
+    - name: Find Latest Release Branch
+      shell: bash
+      run: |
+        LATEST_RELEASE_BRANCH=$(gh api repos/k3s-io/k3s/branches?per_page=100 --jq '[.[].name | select(startswith("release-"))] | sort_by(ltrimstr("release-") | tonumber) | last')
+        echo "LATEST_RELEASE_REF=refs/heads/$LATEST_RELEASE_BRANCH" | tee -a "$GITHUB_ENV"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Setup Go
+      uses: actions/setup-go@v6
       with:
-        go-version-file: 'go.mod'  # Just use whatever version is in the go.mod file
-        cache: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-1.32' }}
+        go-version: ${{ env.INPUT_GO_VERSION }}
+        go-version-file: 'go.mod'  # if go-version is not set, just use whatever version is in the go.mod file
+        cache: ${{ github.ref == 'refs/heads/main' || github.ref == env.LATEST_RELEASE_REF }}  # use default cache for main and most recent minor
 
     - name: Prepare for go cache
-      if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-1.32'
+      if: github.ref != 'refs/heads/main' && github.ref != env.LATEST_RELEASE_REF  # use custom cache for older minors
       shell: bash
       run: |
         echo "GO_CACHE=$(go env GOCACHE)" | tee -a "$GITHUB_ENV"
@@ -17,8 +32,8 @@ runs:
         echo "GO_VERSION=$(go env GOVERSION | tr -d 'go')" | tee -a "$GITHUB_ENV"
 
     - name: Setup read-only cache
-      if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-1.32'
-      uses: actions/cache/restore@v4
+      if: github.ref != 'refs/heads/main' && github.ref != env.LATEST_RELEASE_REF # use custom cache for older minors
+      uses: actions/cache/restore@v5
       with:
         path: |
           ${{ env.GO_MODCACHE }}
