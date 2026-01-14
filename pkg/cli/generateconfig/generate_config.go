@@ -6,11 +6,27 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"text/template"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
+
+const yamlHeader = `{{- /* */ -}}
+# Example {{ .Program }} {{ .Command }} configuration file
+# This file contains all available configuration options with their descriptions.
+# Uncomment and modify the options you want to use.
+# Place this file at /etc/rancher/{{ .Program }}/config.yaml or use --config to specify a different location.
+#
+
+`
+
+type cmdInfo struct {
+	Program string
+	Command string
+}
 
 // Run generates an example k3s config file
 func Run(ctx *cli.Context) error {
@@ -40,7 +56,10 @@ func Run(ctx *cli.Context) error {
 		}
 	}
 
-	yamlContent := generateYAMLWithComments(flags, existingConfig, currentValues, configType)
+	yamlContent, err := generateYAMLWithComments(flags, existingConfig, currentValues, configType)
+	if err != nil {
+		return err
+	}
 
 	var writer io.Writer = os.Stdout
 	if output != "" {
@@ -52,21 +71,21 @@ func Run(ctx *cli.Context) error {
 		writer = file
 	}
 
-	_, err := writer.Write([]byte(yamlContent))
+	_, err = writer.Write([]byte(yamlContent))
 	return err
 }
 
 // generateYAMLWithComments creates a YAML string with comments
-func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, currentValues map[string]interface{}, configType string) string {
+func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, currentValues map[string]interface{}, configType string) (string, error) {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("# Example k3s %s configuration file\n", configType))
-	sb.WriteString("#\n")
-	sb.WriteString("# This file contains all available configuration options with their descriptions.\n")
-	sb.WriteString("# Uncomment and modify the options you want to use.\n")
-	sb.WriteString("#\n")
-	sb.WriteString(fmt.Sprintf("# Place this file at /etc/rancher/k3s/config.yaml or use --config to specify a different location.\n"))
-	sb.WriteString("#\n\n")
+	tmpl, err := template.New("config").Parse(yamlHeader)
+	if err != nil {
+		return "", err
+	}
+	if err = tmpl.Execute(&sb, cmdInfo{Program: version.Program, Command: configType}); err != nil {
+		return "", err
+	}
 
 	categories := groupFlagsByCategory(flags)
 
@@ -80,9 +99,9 @@ func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, curr
 		if category == "other" {
 			categoryName = "Other Options"
 		}
-		sb.WriteString(fmt.Sprintf("# %s\n", strings.Repeat("=", 80)))
-		sb.WriteString(fmt.Sprintf("# %s\n", categoryName))
-		sb.WriteString(fmt.Sprintf("# %s\n\n", strings.Repeat("=", 80)))
+		fmt.Fprintf(&sb, "# %s\n", strings.Repeat("=", 80))
+		fmt.Fprintf(&sb, "# %s\n", categoryName)
+		fmt.Fprintf(&sb, "# %s\n\n", strings.Repeat("=", 80))
 
 		for _, flag := range categoryFlags {
 			writeFlag(&sb, flag, existingConfig, currentValues)
@@ -91,7 +110,7 @@ func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, curr
 		sb.WriteString("\n")
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 // groupFlagsByCategory organizes flags into categories based on their usage text
@@ -135,48 +154,34 @@ func writeFlag(sb *strings.Builder, flag cli.Flag, existingConfig interface{}, c
 		usage = usage[idx+2:]
 	}
 
-	sb.WriteString(fmt.Sprintf("# %s\n", usage))
+	fmt.Fprintf(sb, "# %s\n", usage)
 
 	value := getFlagValue(flag, name, existingConfig, currentValues)
 	yamlValue := formatYAMLValue(value, flag)
-	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", name, yamlValue))
+	fmt.Fprintf(sb, "# %s: %s\n\n", name, yamlValue)
 }
 
 // getFlagName extracts the name from a flag
 func getFlagName(flag cli.Flag) string {
-	v := reflect.ValueOf(flag)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	nameField := v.FieldByName("Name")
-	if nameField.IsValid() {
-		return nameField.String()
+	names := flag.Names()
+	if len(names) > 0 {
+		return names[0]
 	}
 	return ""
 }
 
 // getFlagUsage extracts the usage text from a flag
 func getFlagUsage(flag cli.Flag) string {
-	v := reflect.ValueOf(flag)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	usageField := v.FieldByName("Usage")
-	if usageField.IsValid() {
-		return usageField.String()
+	if df, ok := flag.(cli.DocGenerationFlag); ok {
+		return df.GetUsage()
 	}
 	return ""
 }
 
 // isHiddenFlag checks if a flag is hidden
 func isHiddenFlag(flag cli.Flag) bool {
-	v := reflect.ValueOf(flag)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	hiddenField := v.FieldByName("Hidden")
-	if hiddenField.IsValid() && hiddenField.Kind() == reflect.Bool {
-		return hiddenField.Bool()
+	if vf, ok := flag.(cli.VisibleFlag); ok {
+		return !vf.IsVisible()
 	}
 	return false
 }
