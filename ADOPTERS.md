@@ -8,7 +8,7 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
 - [External Secrets Inc.](https://externalsecrets.com)
 - [Uffizzi](https://www.uffizzi.com/)
 - [Child Rescue Coalition](https://www.childrescuecoalition.org)
-- [Momentum Coah AI](https://momentum-coach.fr)
+- [Momentum Coach AI](https://momentum-coach.fr)
 
 **_Other Projects_** - While the above list provides a number of official adopters, k3s' compact and simple nature provides a clean base for other projects to build off of, or to embed.  Some such projects are listed below:
  - SUSE's RKE2 (or RKE Government) [RKE2](https://github.com/rancher/rke2/)
