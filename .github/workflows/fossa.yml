@@ -1,0 +1,32 @@
+name: FOSSA Scanning
+
+on:
+  push:
+    branches: ["main", "master", "*release*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  fossa-scanning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+    - name: Read FOSSA token
+      uses: rancher-eio/read-vault-secrets@main
+      with:
+        secrets: |
+          secret/data/github/org/k3s/fossa/credentials token | FOSSA_API_KEY_PUSH_ONLY
+
+    - name: FOSSA scan
+      uses: fossas/fossa-action@3ebcea1862c6ffbd5cf1b4d0bd6b3fe7bd6f2cac # v1.7.0
+      with:
+        api-key: ${{ env.FOSSA_API_KEY_PUSH_ONLY }}
+        # Only runs the scan and does not returns any results back to the
+        # pipeline.
+        run-tests: false
