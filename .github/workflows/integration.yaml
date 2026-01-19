@@ -98,7 +98,7 @@ jobs:
         ## If no one connects after 5 minutes, shut down server.
         wait-timeout-minutes: 5
     - name: Generate coverage report
-      run: go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
+      run: sudo -E env "PATH=$PATH" go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@v5
       with:
