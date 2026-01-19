@@ -15,4 +15,4 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
  - SUSE's [Rancher Desktop](https://rancherdesktop.io/)
  - [Kairos](https://kairos.io)
  - [Getdeck Beiboot](https://github.com/Getdeck/beiboot)
- - [Percona](https://www.percona.com/) (development and CI usage via k3d for the [OpenEverest](https://openeverest.io/) project)
+ - [Solanica](https://solanica.io/)|[Percona](https://www.percona.com/) (development and CI usage via k3d for the [OpenEverest](https://openeverest.io/) project)
