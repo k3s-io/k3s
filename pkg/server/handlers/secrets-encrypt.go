@@ -88,9 +88,8 @@ func encryptionStatus(control *config.Control) (EncryptionState, error) {
 	}
 	if providers[len(providers)-1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) {
 		state.Enable = ptr.To(true)
-	} else if control.EncryptSecrets && providers[0].Identity != nil && len(providers) == 1 {
-		state.Enable = ptr.To(false)
-	} else if !control.EncryptSecrets || providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil) {
+	} else if (control.EncryptSecrets && providers[0].Identity != nil && len(providers) == 1) ||
+		(!control.EncryptSecrets || providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil)) {
 		state.Enable = ptr.To(false)
 	}
 
