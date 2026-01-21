@@ -137,7 +137,7 @@ require (
 	github.com/rancher/wharfie v0.7.0
 	github.com/rancher/wrangler/v3 v3.2.3
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rootless-containers/rootlesskit v1.1.1
+	github.com/rootless-containers/rootlesskit/v2 v2.3.6
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spegel-org/spegel v0.6.0
 	github.com/spf13/pflag v1.0.10
@@ -287,7 +287,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/gofrs/flock v0.8.1 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
