@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vm: [centos-9, rocky-8, rocky-9, fedora, opensuse-leap, ubuntu-2404]
+        vm: [centos-9, alma-10, rocky-9, fedora, opensuse-leap, ubuntu-2404]
       max-parallel: 3
     defaults:
       run:
