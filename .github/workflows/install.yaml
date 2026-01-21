@@ -77,50 +77,12 @@ jobs:
           path: tests/install/${{ matrix.vm }}
       - name: "Vagrant Up"
         run: vagrant up --no-tty --no-provision
-      - name: "Upload k3s binary to VM"
+      - name: "Prepare K3s binary"
         run: |
           chmod +x k3s
           vagrant scp k3s /tmp/k3s
           vagrant ssh -c "sudo mv /tmp/k3s /usr/local/bin/k3s"
-          vagrant provision --provision-with=k3s-upload
-      - name: Add binary to PATH
-        if: matrix.vm == 'centos-9' || matrix.vm == 'rocky-8' || matrix.vm == 'rocky-9' || matrix.vm == 'opensuse-leap'
-        run: vagrant provision --provision-with=add-bin-path
-      - name: "⏩ Install K3s"
-        run: |
-          vagrant provision --provision-with=k3s-prepare
-          vagrant provision --provision-with=k3s-install
-          if [ ${{ matrix.vm }} = 'opensuse-microos' ]; then vagrant reload --no-provision; fi
-      - name: "⏳ Node"
-        run: vagrant provision --provision-with=k3s-wait-for-node
-      - name: "⏳ CoreDNS"
-        run: vagrant provision --provision-with=k3s-wait-for-coredns
-      - name: "⏳ Local Storage"
-        run: vagrant provision --provision-with=k3s-wait-for-local-storage
-        continue-on-error: true
-      - name: "⏳ Metrics Server"
-        run: vagrant provision --provision-with=k3s-wait-for-metrics-server
-        continue-on-error: true
-      - name: "⏳ Traefik"
-        run: vagrant provision --provision-with=k3s-wait-for-traefik
-        continue-on-error: true
-      - name: "k3s-status"
-        run: vagrant provision --provision-with=k3s-status
-      - name: "k3s-procps"
-        run: vagrant provision --provision-with=k3s-procps
-      - name: "k3s-mount-directory"
-        run: vagrant provision --provision-with=k3s-mount-directory
-      - name: "k3s-uninstall"
-        run: vagrant provision --provision-with=k3s-uninstall
-      - name: "k3s-check-mount"
-        run: vagrant provision --provision-with=k3s-check-mount
-      - name: "k3s-unmount-dir"
-        run: vagrant provision --provision-with=k3s-unmount-dir
+      - name: Run K3s Install Test
+        run: vagrant provision
       - name: Cleanup VM
         run: vagrant destroy -f
-      - name: On Failure, launch debug session
-        uses: lhotari/action-upterm@v1
-        if: ${{ failure() }}
-        with:
-          ## If no one connects after 5 minutes, shut down server.
-          wait-timeout-minutes: 5
