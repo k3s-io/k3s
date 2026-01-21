@@ -16,4 +16,5 @@ jobs:
         with:
           shellcheck: false
           pyflakes: false
+          cache: ${{ github.ref == 'refs/heads/main' }}
 
