@@ -9,8 +9,8 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/rootless"
 	corev1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
-	"github.com/rootless-containers/rootlesskit/pkg/api/client"
-	"github.com/rootless-containers/rootlesskit/pkg/port"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/port"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
