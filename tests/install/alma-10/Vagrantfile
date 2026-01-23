@@ -7,17 +7,19 @@ ENV['INSTALL_K3S_CHANNEL'] ||= 'latest'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s"]
-  config.vm.box = "bento/rockylinux-9"
+  config.vm.box = "almalinux/10"
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   # Load in helper functions
   load "../install_util.rb"
 
-  config.vm.define 'install-rocky-9', primary: true do |test|
+  config.vm.define 'install-alma-10', primary: true do |test|
     test.vm.hostname = 'smoke'
-    test.vm.provision "disable-firewall", type: "shell", inline: "systemctl stop firewalld"
     test.vm.provision "add-bin-path", type: "shell", inline: "echo \"export PATH=/usr/local/bin:\$PATH\" >> ~/.bashrc"
+    test.vm.provision "install-depedencies", type: "shell", inline: "dnf install -y kernel-modules-extra"
+    # This test image has an older kernel by default, so we need to reboot to load the new kernel modules
+    test.vm.provision 'k3s-reload', type: 'reload', run: 'once'
     test.vm.provision 'k3s-upload', type: 'file', run: 'always', source: ENV['TEST_INSTALL_SH'], destination: 'install.sh'
     test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
       k3s.installer_url = 'file:///home/vagrant/install.sh'
