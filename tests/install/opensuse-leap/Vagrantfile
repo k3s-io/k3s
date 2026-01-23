@@ -6,7 +6,7 @@ ENV['TEST_INSTALL_SH'] ||= '../../../install.sh'
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-k3s"]
-  config.vm.box = 'opensuse/Leap-15.6.x86_64'
+  config.vm.box = 'bento/opensuse-leap-15'
   config.vm.boot_timeout = ENV['TEST_VM_BOOT_TIMEOUT'] || 600 # seconds
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
