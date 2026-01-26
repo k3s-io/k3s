@@ -45,7 +45,7 @@ jobs:
           echo "GITHUB_CHECKOUT_FETCH_DEPTH=$( expr 1 + ${{ github.event.pull_request.commits }} )" >> "$GITHUB_ENV"
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: ${{ env.GITHUB_CHECKOUT_FETCH_DEPTH }}
 

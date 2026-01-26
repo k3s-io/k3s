@@ -34,7 +34,7 @@ jobs:
       GOOS: ${{ inputs.os }}
     steps:
     - name: Checkout K3s
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
     
     - name: Set up QEMU
       if: inputs.arch == 'arm'

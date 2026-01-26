@@ -74,7 +74,7 @@ jobs:
             /usr/share/swift
           df -khl
       - name: "Checkout"
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with: {fetch-depth: 1}
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
@@ -149,7 +149,7 @@ jobs:
       channel: ${{ steps.channel_step.outputs.channel }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Build Go Tests
@@ -223,7 +223,7 @@ jobs:
           /usr/share/swift
         df -khl
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
     - name: "Download K3s image"
       uses: actions/download-artifact@v7
       with:
