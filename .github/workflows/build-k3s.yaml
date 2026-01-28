@@ -70,7 +70,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: .
-        file: ./Dockerfile.local
+        file: ./Dockerfile
         target: result
         # Defined actions like this don't ingest GITHUB_ENV, so use outputs
         # and manual set the build arguments
@@ -92,7 +92,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: .
-        file: ./Dockerfile.local
+        file: ./Dockerfile
         target: result
         build-args: |
           GIT_TAG=${{ steps.git_vars.outputs.git_tag }}
