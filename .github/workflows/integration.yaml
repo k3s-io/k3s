@@ -68,7 +68,7 @@ jobs:
           /usr/share/swift
         df -khl
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
       with:
         fetch-depth: 1
     - name: Install Go
@@ -115,7 +115,7 @@ jobs:
       GOCOVERDIR: "D:/tmp/k3scov"
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v6.0.2
       with: {fetch-depth: 1}
     - name: Install Go
       uses: ./.github/actions/setup-go
