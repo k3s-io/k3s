@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"strings"
 	"text/template"
 
@@ -38,14 +37,10 @@ func Run(ctx *cli.Context) error {
 	}
 
 	var flags []cli.Flag
-	var existingConfig interface{}
-
 	if configType == "server" {
 		flags = cmds.ServerFlags
-		existingConfig = &cmds.ServerConfig
 	} else {
 		flags = cmds.AgentFlags
-		existingConfig = &cmds.AgentConfig
 	}
 
 	var currentValues map[string]interface{}
@@ -56,7 +51,7 @@ func Run(ctx *cli.Context) error {
 		}
 	}
 
-	yamlContent, err := generateYAMLWithComments(flags, existingConfig, currentValues, configType)
+	yamlContent, err := generateYAMLWithComments(flags, currentValues, configType)
 	if err != nil {
 		return err
 	}
@@ -76,7 +71,7 @@ func Run(ctx *cli.Context) error {
 }
 
 // generateYAMLWithComments creates a YAML string with comments
-func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, currentValues map[string]interface{}, configType string) (string, error) {
+func generateYAMLWithComments(flags []cli.Flag, currentValues map[string]interface{}, configType string) (string, error) {
 	var sb strings.Builder
 
 	tmpl, err := template.New("config").Parse(yamlHeader)
@@ -104,7 +99,7 @@ func generateYAMLWithComments(flags []cli.Flag, existingConfig interface{}, curr
 		fmt.Fprintf(&sb, "# %s\n\n", strings.Repeat("=", 80))
 
 		for _, flag := range categoryFlags {
-			writeFlag(&sb, flag, existingConfig, currentValues)
+			writeFlag(&sb, flag, currentValues)
 		}
 
 		sb.WriteString("\n")
@@ -122,8 +117,8 @@ func groupFlagsByCategory(flags []cli.Flag) map[string][]cli.Flag {
 			continue
 		}
 
-		name := getFlagName(flag)
-		if name == "config" || name == "debug" || name == "v" || name == "vmodule" || name == "log" || name == "alsologtostderr" {
+		switch getFlagName(flag) {
+		case "config", "debug", "v", "vmodule", "log", "alsologtostderr":
 			continue
 		}
 
@@ -146,7 +141,7 @@ func extractCategory(usage string) string {
 }
 
 // writeFlag writes a single flag to the string builder with comments
-func writeFlag(sb *strings.Builder, flag cli.Flag, existingConfig interface{}, currentValues map[string]interface{}) {
+func writeFlag(sb *strings.Builder, flag cli.Flag, currentValues map[string]interface{}) {
 	name := getFlagName(flag)
 	usage := getFlagUsage(flag)
 
@@ -156,7 +151,7 @@ func writeFlag(sb *strings.Builder, flag cli.Flag, existingConfig interface{}, c
 
 	fmt.Fprintf(sb, "# %s\n", usage)
 
-	value := getFlagValue(flag, name, existingConfig, currentValues)
+	value := getFlagValue(flag, name, currentValues)
 	yamlValue := formatYAMLValue(value, flag)
 	fmt.Fprintf(sb, "# %s: %s\n\n", name, yamlValue)
 }
@@ -187,92 +182,45 @@ func isHiddenFlag(flag cli.Flag) bool {
 }
 
 // getFlagValue gets the current or default value for a flag
-func getFlagValue(flag cli.Flag, name string, existingConfig interface{}, currentValues map[string]interface{}) interface{} {
+func getFlagValue(flag cli.Flag, name string, currentValues map[string]interface{}) interface{} {
 	if currentValues != nil {
 		if val, exists := currentValues[name]; exists {
 			return val
 		}
 	}
 
-	if existingConfig != nil {
-		v := reflect.ValueOf(existingConfig)
-		if v.Kind() == reflect.Ptr {
-			v = v.Elem()
-		}
-
-		destField := getDestinationField(flag)
-		if destField.IsValid() && !destField.IsNil() {
-			destValue := destField.Elem()
-			if !isZeroValue(destValue) {
-				return destValue.Interface()
-			}
-		}
-	}
-
 	return getDefaultValue(flag)
 }
 
-// getDestinationField gets the Destination field value from a flag
-func getDestinationField(flag cli.Flag) reflect.Value {
-	v := reflect.ValueOf(flag)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	destField := v.FieldByName("Destination")
-	if destField.IsValid() {
-		return destField
-	}
-	return reflect.Value{}
-}
-
-// isZeroValue checks if a value is the zero value for its type
-func isZeroValue(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice:
-		return v.Len() == 0
-	case reflect.String:
-		return v.String() == ""
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
-		return v.IsNil()
-	}
-	return false
-}
-
-// getDefaultValue extracts the default value from a flag
+// getDefaultValue extracts the default value from a flag using type assertions
 func getDefaultValue(flag cli.Flag) interface{} {
-	v := reflect.ValueOf(flag)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	valueField := v.FieldByName("Value")
-	if valueField.IsValid() && !isZeroValue(valueField) {
-		return valueField.Interface()
-	}
-
-	switch flag.(type) {
+	switch f := flag.(type) {
+	case *cli.StringFlag:
+		return f.Value
+	case *cli.BoolFlag:
+		return f.Value
+	case *cli.IntFlag:
+		return f.Value
+	case *cli.Int64Flag:
+		return f.Value
+	case *cli.UintFlag:
+		return f.Value
+	case *cli.Uint64Flag:
+		return f.Value
+	case *cli.Float64Flag:
+		return f.Value
+	case *cli.DurationFlag:
+		return f.Value.String()
 	case *cli.StringSliceFlag:
+		if f.Value != nil {
+			return f.Value.Value()
+		}
 		return []string{}
 	case *cli.IntSliceFlag:
+		if f.Value != nil {
+			return f.Value.Value()
+		}
 		return []int{}
-	case *cli.BoolFlag:
-		return false
-	case *cli.IntFlag:
-		return 0
-	case *cli.Int64Flag:
-		return int64(0)
-	case *cli.DurationFlag:
-		return ""
-	case *cli.StringFlag:
-		return ""
 	default:
 		return nil
 	}
