@@ -136,6 +136,8 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 					logrus.Warn("VPN provider overrides node-external-ip parameter")
 				}
 				nodeIPs = vpnIPs
+				nodeConfig.AgentConfig.NodeIPs = vpnIPs
+				nodeConfig.AgentConfig.NodeIP = vpnIPs[0].String()
 				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.Interface)
 				if err != nil {
 					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.Interface)
