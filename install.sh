@@ -37,12 +37,16 @@ set -o noglob
 #     If set to true will not start k3s service.
 #
 #   - INSTALL_K3S_VERSION
-#     Version of k3s to download from github. Will attempt to download from the
+#     Version of k3s to download. Will attempt to download from the
 #     stable channel if not specified.
 #
 #   - INSTALL_K3S_COMMIT
 #     Commit of k3s to download from temporary cloud storage.
 #     * (for developer & QA use)
+#
+#   - INSTALL_K3S_ARTIFACT_URL
+#     URL prefix for K3s release artifacts.
+#     Default is https://github.com/k3s-io/k3s/releases/download
 #
 #   - INSTALL_K3S_PR
 #     PR build of k3s to download from Github Artifacts.
@@ -95,7 +99,7 @@ set -o noglob
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
 
-GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
+INSTALL_K3S_ARTIFACT_URL=${INSTALL_K3S_ARTIFACT_URL:-https://github.com/k3s-io/k3s/releases/download}
 GITHUB_PR_URL=""
 STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
@@ -455,6 +459,7 @@ download() {
 
 # --- download hash from github url ---
 download_hash() {
+    VERSION_URLSAFE="$(echo ${VERSION_K3S} | sed 's/\+/%2B/g')"
     if [ -n "${INSTALL_K3S_PR}" ]; then
         info "Downloading hash ${GITHUB_PR_URL}"
         curl -s -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_PR_URL}
@@ -463,7 +468,7 @@ download_hash() {
         if [ -n "${INSTALL_K3S_COMMIT}" ]; then
             HASH_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}.sha256sum
         else
-            HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+            HASH_URL=${INSTALL_K3S_ARTIFACT_URL}/${VERSION_URLSAFE}/sha256sum-${ARCH}.txt
         fi
         info "Downloading hash ${HASH_URL}"
         download ${TMP_HASH} ${HASH_URL}
@@ -520,6 +525,7 @@ get_pr_artifact_url() {
 
 # --- download binary from github url ---
 download_binary() {
+    VERSION_URLSAFE="$(echo ${VERSION_K3S} | sed 's/\+/%2B/g')"
     if [ -n "${INSTALL_K3S_PR}" ]; then
         # Since Binary and Hash are zipped together, check if TMP_ZIP already exists
         if ! [ -f ${TMP_ZIP} ]; then
@@ -532,7 +538,7 @@ download_binary() {
     elif [ -n "${INSTALL_K3S_COMMIT}" ]; then
         BIN_URL=${STORAGE_URL}/k3s${SUFFIX}-${INSTALL_K3S_COMMIT}
     else
-        BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
+        BIN_URL=${INSTALL_K3S_ARTIFACT_URL}/${VERSION_URLSAFE}/k3s${SUFFIX}
     fi
     info "Downloading binary ${BIN_URL}"
     download ${TMP_BIN} ${BIN_URL}
