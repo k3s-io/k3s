@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/cli/generateconfig"
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/k3s-io/k3s/pkg/data"
 	"github.com/k3s-io/k3s/pkg/datadir"
@@ -91,6 +92,7 @@ func main() {
 			internalCLIAction(version.Program+"-completion", dataDir, os.Args),
 			internalCLIAction(version.Program+"-completion", dataDir, os.Args),
 		),
+		cmds.NewGenerateConfigCommand(generateconfig.Run),
 	}
 
 	if err := app.Run(os.Args); err != nil && !errors.Is(err, context.Canceled) {
