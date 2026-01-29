@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -58,6 +59,8 @@ var (
 	P2pEnableLatestEnv   = version.ProgramUpper + "_P2P_ENABLE_LATEST"
 
 	resolveLatestTag = false
+
+	wildcardRegistries = []string{"_default", "*"}
 
 	// Agents request a list of peers when joining, and then again periodically afterwards.
 	// Limit the number of concurrent peer list requests that will be served simultaneously.
@@ -123,6 +126,9 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		}
 		if _, err := url.Parse("https://" + host); err != nil || docker.IsLocalhost(host) {
 			logrus.Errorf("Distributed registry mirror skipping invalid registry: %s", host)
+		} else if slices.Contains(wildcardRegistries, host) {
+			urls = append(urls, host)
+			registries = append(registries, host)
 		} else {
 			urls = append(urls, "https://"+host)
 			registries = append(registries, host)
