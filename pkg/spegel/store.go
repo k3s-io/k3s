@@ -80,10 +80,12 @@ func (ds *deferredStore) Subscribe(ctx context.Context) (<-chan oci.OCIEvent, er
 
 // Close is not part of the Store interface, but probably should be. Containerd impliments it.
 func (ds *deferredStore) Close() error {
-	store := ds.store
-	ds.store = nil
-	if closer, ok := store.(io.Closer); ok {
-		return closer.Close()
+	if ds.store != nil {
+		store := ds.store
+		ds.store = nil
+		if closer, ok := store.(io.Closer); ok {
+			return closer.Close()
+		}
 	}
 	return nil
 }
