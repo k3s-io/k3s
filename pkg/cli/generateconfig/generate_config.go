@@ -43,10 +43,10 @@ func Run(ctx *cli.Context) error {
 		flags = cmds.AgentFlags
 	}
 
-	var currentValues map[string]interface{}
+	var currentValues map[string]any
 	if configFile := cmds.GenerateConfigConfig.FromConfig; configFile != "" {
 		if data, err := os.ReadFile(configFile); err == nil {
-			currentValues = make(map[string]interface{})
+			currentValues = make(map[string]any)
 			_ = yaml.Unmarshal(data, &currentValues)
 		}
 	}
@@ -71,7 +71,7 @@ func Run(ctx *cli.Context) error {
 }
 
 // generateYAMLWithComments creates a YAML string with comments
-func generateYAMLWithComments(flags []cli.Flag, currentValues map[string]interface{}, configType string) (string, error) {
+func generateYAMLWithComments(flags []cli.Flag, currentValues map[string]any, configType string) (string, error) {
 	var sb strings.Builder
 
 	tmpl, err := template.New("config").Parse(yamlHeader)
@@ -141,7 +141,7 @@ func extractCategory(usage string) string {
 }
 
 // writeFlag writes a single flag to the string builder with comments
-func writeFlag(sb *strings.Builder, flag cli.Flag, currentValues map[string]interface{}) {
+func writeFlag(sb *strings.Builder, flag cli.Flag, currentValues map[string]any) {
 	name := getFlagName(flag)
 	usage := getFlagUsage(flag)
 
@@ -182,7 +182,7 @@ func isHiddenFlag(flag cli.Flag) bool {
 }
 
 // getFlagValue gets the current or default value for a flag
-func getFlagValue(flag cli.Flag, name string, currentValues map[string]interface{}) interface{} {
+func getFlagValue(flag cli.Flag, name string, currentValues map[string]any) any {
 	if currentValues != nil {
 		if val, exists := currentValues[name]; exists {
 			return val
@@ -193,7 +193,7 @@ func getFlagValue(flag cli.Flag, name string, currentValues map[string]interface
 }
 
 // getDefaultValue extracts the default value from a flag using type assertions
-func getDefaultValue(flag cli.Flag) interface{} {
+func getDefaultValue(flag cli.Flag) any {
 	switch f := flag.(type) {
 	case *cli.StringFlag:
 		return f.Value
@@ -227,7 +227,7 @@ func getDefaultValue(flag cli.Flag) interface{} {
 }
 
 // formatYAMLValue formats a value for YAML output
-func formatYAMLValue(value interface{}, flag cli.Flag) string {
+func formatYAMLValue(value any, flag cli.Flag) string {
 	if value == nil {
 		return "\"\""
 	}
