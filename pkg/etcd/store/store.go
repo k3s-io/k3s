@@ -9,6 +9,7 @@ import (
 
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -59,7 +60,6 @@ func NewRemoteStore(config endpoint.ETCDConfig) (*RemoteStore, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   config.Endpoints,
 		DialTimeout: 5 * time.Second,
@@ -203,12 +203,20 @@ func NewStore(dataDir string) (*Store, error) {
 	}
 
 	cfg := config.ServerConfig{Logger: logger, DataDir: dataDir}
-	logrus.Infof("Opening etcd MVCC KV store at %s", cfg.BackendPath())
+	path := cfg.BackendPath()
+
+	// need to check for backend path ourselves, as backend.New just logs a panic
+	// via zap if it doesn't exist, which isn't fatal.
+	if _, err := os.Stat(path); err != nil {
+		return nil, pkgerrors.WithMessage(err, "failed to stat MVCC KV store backend path")
+	}
+
+	logrus.Infof("Opening etcd MVCC KV store at %s", path)
 
 	// open backend database
 	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = path
 	bcfg.Logger = logger
-	bcfg.Path = cfg.BackendPath()
 	bcfg.UnsafeNoFsync = true
 	bcfg.BatchInterval = 0
 	bcfg.BatchLimit = 0
