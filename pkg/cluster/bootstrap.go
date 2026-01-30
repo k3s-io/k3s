@@ -287,7 +287,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 		storageClient, err := store.NewTemporaryStore(filepath.Join(c.config.DataDir, "db", "etcd"))
 		if err != nil {
-			return err
+			return pkgerrors.WithMessage(err, "failed to create temporary datastore client")
 		}
 		defer storageClient.Close()
 
@@ -465,7 +465,7 @@ func (c *Cluster) bootstrap(ctx context.Context) error {
 			logrus.Debugf("Failed to get bootstrap data from etcd proxy: %v", err)
 		} else {
 			if err := c.ReconcileBootstrapData(ctx, bytes.NewReader(data), &c.config.Runtime.ControlRuntimeBootstrap, false); err != nil {
-				logrus.Debugf("Failed to reconcile bootstrap data from etcd proxy: %v", err)
+				logrus.Debugf("Failed to reconcile with local datastore: %v", err)
 			} else {
 				return nil
 			}

@@ -718,6 +718,11 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 // or if force is set to true, a new name will be generated and written to disk. The persistent
 // name is used on subsequent calls.
 func (e *ETCD) setName(force bool) error {
+	// don't create the name file if etcd is disabled
+	if e.config.DisableETCD {
+		return nil
+	}
+
 	fileName := nameFile(e.config)
 	data, err := os.ReadFile(fileName)
 	if os.IsNotExist(err) || force {
@@ -1085,6 +1090,11 @@ func addPort(address string, offset int) (string, error) {
 
 // RemovePeer removes a peer from the cluster. The peer name and IP address must both match.
 func (e *ETCD) RemovePeer(ctx context.Context, name, address string, allowSelfRemoval bool) error {
+	// do not remove self if we have never started etcd on this node
+	if name == "" {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, memberRemovalTimeout)
 	defer cancel()
 	members, err := e.client.MemberList(ctx)
@@ -1676,9 +1686,10 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 
 	// backup the data dir to avoid issues when re-enabling etcd
 	oldDataDir := dbDir(e.config) + "-old-" + strconv.Itoa(int(time.Now().Unix()))
-
-	// move the data directory to a temp path
-	return os.Rename(dbDir(e.config), oldDataDir)
+	if err := os.Rename(dbDir(e.config), oldDataDir); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // DefaultEndpointConfig returns default kine endpoint config, with k3s default
