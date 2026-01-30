@@ -66,7 +66,7 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 			return
 		}
 
-		ips := []net.IP{net.ParseIP("127.0.0.1")}
+		ips := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
 		program := mux.Vars(req)["program"]
 		if nodeIP := req.Header.Get(program + "-Node-IP"); nodeIP != "" {
 			for _, v := range strings.Split(nodeIP, ",") {
