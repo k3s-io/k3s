@@ -22,27 +22,20 @@ func Random(size int) (string, error) {
 	return hex.EncodeToString(token), err
 }
 
-// ReadTokenFromFile will attempt to get the token from <data-dir>/token if it the file not found
-// in case of fresh installation it will try to use the runtime serverToken saved in memory
-// after stripping it from any additional information like the username or cahash, if the file
-// found then it will still strip the token from any additional info
+// ReadTokenFromFile will attempt to get the token from <data-dir>/token.
+// If the file is not found or is empty (in case of fresh installation) it will
+// try to use provided serverToken value, instead.
 func ReadTokenFromFile(serverToken, certs, dataDir string) (string, error) {
 	tokenFile := filepath.Join(dataDir, "token")
 
 	b, err := os.ReadFile(tokenFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			token, err := clientaccess.FormatToken(serverToken, certs)
-			if err != nil {
-				return token, err
-			}
-			return token, nil
-		}
-		return "", err
+	b = bytes.TrimSpace(b)
+
+	if os.IsNotExist(err) || len(b) == 0 {
+		return clientaccess.FormatToken(serverToken, certs)
 	}
 
-	// strip the token from any new line if its read from file
-	return string(bytes.TrimRight(b, "\n")), nil
+	return string(b), err
 }
 
 // NormalizeToken will normalize the token read from file or passed as a cli flag
