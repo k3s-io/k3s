@@ -4,6 +4,7 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
 
 - [Rocket.Chat](https://rocket.chat)
 - [Ayedo.de](https://ayedo.de/)
+- [Cortex Platform](https://github.com/ry-ops/k3s-mcp-server) - AI-native infrastructure orchestration using K3s with serverless KEDA scaling, MCP servers for natural language cluster management, and adaptive AI workloads
 - [PITS Global Data Recovery Services](https://www.pitsdatarecovery.net/)
 - [External Secrets Inc.](https://externalsecrets.com)
 - [Uffizzi](https://www.uffizzi.com/)
