@@ -9,15 +9,24 @@ GOCOVER = (ENV['E2E_GOCOVER'] || "")
 NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
 NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 2048).to_i
 # Virtualbox >= 6.1.28 require `/etc/vbox/network.conf` for expanded private networks 
-NETWORK_PREFIX = "10.10.10"
+NETWORK4_PREFIX = "10.10.10"
+NETWORK6_PREFIX = "fd11:decf:c0ff:ee"
 install_type = ""
 
 def provision(vm, role, role_num, node_num)
   vm.box = NODE_BOXES[node_num]
   vm.hostname = role
+  node_ip4 = "#{NETWORK4_PREFIX}.#{100+node_num}"
+  node_ip6 = "#{NETWORK6_PREFIX}::#{10+node_num}"
+  node_ip6_gw = "#{NETWORK6_PREFIX}::1"
   # An expanded netmask is required to allow VM<-->VM communication, virtualbox defaults to /32
-  node_ip = "#{NETWORK_PREFIX}.#{100+node_num}"
-  vm.network "private_network", ip: node_ip, netmask: "255.255.255.0"
+  # Only works with libvirt, which allows IPv4 + IPv6 on a single network/interface
+  vm.network "private_network", 
+    :ip => node_ip4,
+    :netmask => "255.255.255.0",
+    :libvirt__guest_ipv6 => "yes",
+    :libvirt__ipv6_address => "#{NETWORK6_PREFIX}::1",
+    :libvirt__ipv6_prefix => "64"
 
   scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts"
   vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
@@ -25,12 +34,13 @@ def provision(vm, role, role_num, node_num)
 
   defaultOSConfigure(vm)
   addCoverageDir(vm, role, GOCOVER)
+  vm.provision "IPv6 Setup", type: "shell", path: scripts_location +"/ipv6.sh", args: [node_ip4, node_ip6, node_ip6_gw, vm.box.to_s]
   install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
   
  
   # The formatting on this is a little weird, but it allows inserting variables
   # and still using the heredoc formatting with escapped quotes
-  writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
+  writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK4_PREFIX}
   mkdir -p /etc/rancher/k3s/
   echo "mirrors:
     docker.io:
@@ -48,7 +58,10 @@ def provision(vm, role, role_num, node_num)
       k3s.args = "server "
       k3s.config = <<~YAML
         token: vagrant
-        node-external-ip: #{NETWORK_PREFIX}.100
+        node-external-ip: #{node_ip4},#{node_ip6}
+        node-ip: #{node_ip4},#{node_ip6}
+        cluster-cidr: 10.42.0.0/16,2001:cafe:42::/56
+        service-cidr: 10.43.0.0/16,2001:cafe:43::/112
         flannel-iface: eth1
         cluster-init: true
         embedded-registry: true
@@ -67,9 +80,12 @@ def provision(vm, role, role_num, node_num)
     vm.provision 'k3s-secondary-server', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "server"
       k3s.config = <<~YAML
-        server: "https://#{NETWORK_PREFIX}.100:6443"
         token: vagrant
-        node-external-ip: #{node_ip}
+        server: "https://#{NETWORK4_PREFIX}.100:6443"
+        node-external-ip: #{node_ip4},#{node_ip6}
+        node-ip: #{node_ip4},#{node_ip6}
+        cluster-cidr: 10.42.0.0/16,2001:cafe:42::/56
+        service-cidr: 10.43.0.0/16,2001:cafe:43::/112
         flannel-iface: eth1
         embedded-registry: true
         debug: true
@@ -85,9 +101,10 @@ def provision(vm, role, role_num, node_num)
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "agent"
       k3s.config = <<~YAML
-        server: "https://#{NETWORK_PREFIX}.100:6443"
+        server: "https://#{NETWORK4_PREFIX}.100:6443"
         token: vagrant
-        node-external-ip: #{node_ip}
+        node-external-ip: #{node_ip4},#{node_ip6}
+        node-ip: #{node_ip4},#{node_ip6}
         flannel-iface: eth1
         disable-default-registry-endpoint: true
         debug: true
