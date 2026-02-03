@@ -1,0 +1,110 @@
+name: E2E Nightly Tests
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tests:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/e2e-tests.yaml
+    with:
+      upload-results: true
+    secrets: inherit
+
+  report:
+    name: Report Results
+    needs: [e2e-tests]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download all vagrant test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ./test-results/vagrant
+          pattern: e2e-vagrant-*-results
+          merge-multiple: true
+
+      - name: Download all docker amd64 test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ./test-results/docker-amd64
+          pattern: e2e-docker-*-amd64-results
+          merge-multiple: true
+
+      - name: Download all docker arm64 test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ./test-results/docker-arm64
+          pattern: e2e-docker-*-arm64-results
+          merge-multiple: true
+
+      - name: Combine all test logs
+        id: combine
+        run: |
+          mkdir -p ./report
+
+          # Count results from each category
+          vagrant_count=$(find ./test-results/vagrant -name "test-output.log" 2>/dev/null | wc -l)
+          docker_amd64_count=$(find ./test-results/docker-amd64 -name "test-output.log" 2>/dev/null | wc -l)
+          docker_arm64_count=$(find ./test-results/docker-arm64 -name "test-output.log" 2>/dev/null | wc -l)
+
+          echo "Found test results:"
+          echo "  - Vagrant (amd64): $vagrant_count"
+          echo "  - Docker (amd64): $docker_amd64_count"
+          echo "  - Docker (arm64): $docker_arm64_count"
+
+          total=$((vagrant_count + docker_amd64_count + docker_arm64_count))
+          if [ "$total" -eq 0 ]; then
+            echo "::warning::No test results found"
+            echo "has_results=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Combine all logs into single file (no comments - must be valid JSON)
+          for f in $(find ./test-results -name "test-output.log" | sort); do
+            cat "$f"
+          done > ./report/k3s_e2e_combined.log
+
+          echo "Combined log size: $(wc -l < ./report/k3s_e2e_combined.log) lines"
+          echo "has_results=true" >> $GITHUB_OUTPUT
+
+      - name: Clone distros-test-framework
+        if: steps.combine.outputs.has_results == 'true'
+        run: |
+          git clone --depth 1 --branch e2ek3s https://github.com/fmoral2/distros-test-framework.git
+
+      - name: Setup Go
+        if: steps.combine.outputs.has_results == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build reporter
+        if: steps.combine.outputs.has_results == 'true'
+        run: |
+          cd distros-test-framework
+          go build -o ../qase-reporter ./cmd/qase/main.go
+
+      - name: Upload combined log for debugging
+        if: always() && steps.combine.outputs.has_results == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: combined-e2e-log
+          path: ./report/k3s_e2e_combined.log
+          retention-days: 7
+
+      - name: Report to Qase and Slack
+        if: steps.combine.outputs.has_results == 'true'
+        continue-on-error: true
+        env:
+          QASE_AUTOMATION_TOKEN: ${{ secrets.QASE_AUTOMATION_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          ./qase-reporter -f ./report/k3s_e2e_combined.log -p k3s -a amd64
