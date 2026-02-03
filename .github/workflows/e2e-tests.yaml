@@ -1,0 +1,273 @@
+name: E2E Tests
+on:
+  workflow_call:
+    inputs:
+      upload-results:
+        description: 'Upload test results as artifacts'
+        required: false
+        default: false
+        type: boolean
+      quick-test:
+        description: 'Run minimal tests for faster validation'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      upload-image: true
+  build-arm64:
+    uses: ./.github/workflows/build-k3s.yaml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      arch: arm64
+      upload-image: true
+
+  e2e:
+    name: "E2E Tests"
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        etest: ${{ inputs.quick-test && fromJSON('["startup"]') || fromJSON('["btrfs", "embeddedmirror", "externalip", "privateregistry", "rootless", "s3", "startup", "wasm", "multus"]') }}
+      max-parallel: 5
+    steps:
+      - name: Remove Unnecessary Tools
+        working-directory: /
+        run: |
+          sudo rm -rf \
+            /home/linuxbrew \
+            /home/packer \
+            /opt/az \
+            /opt/microsoft \
+            /usr/lib/firefox \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/julia* \
+            /usr/local/share/boost \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/az* \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+          df -khl
+      - name: "Checkout"
+        uses: actions/checkout@v6
+        with: {fetch-depth: 1}
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+        with:
+          version: type=image,tag=28
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
+          set-host: true
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      - name: Vagrant R/W Cache
+        if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/main'
+        uses: actions/cache@v5
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
+      - name: Vagrant Read Cache
+        if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/main'
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+             ~/.vagrant.d/boxes
+          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
+      - name: "Vagrant Plugin(s)"
+        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+      - name: Install Kubectl
+        run: |
+           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      - name: "Download k3s binary"
+        uses: actions/download-artifact@v7
+        with:
+          name: k3s-amd64
+          path: ./dist/artifacts
+      - name: Run ${{ matrix.etest }} Test
+        env:
+          E2E_GOCOVER: "true"
+        run: |
+          chmod +x ./dist/artifacts/k3s
+          cd tests/e2e/${{ matrix.etest }}
+          go test -timeout=45m ./${{ matrix.etest }}_test.go -test.v -ginkgo.v -ci -local -json | tee test-output.log
+          exit 0
+      - name: Upload Test Results
+        if: always() && inputs.upload-results
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-vagrant-${{ matrix.etest }}-results
+          path: tests/e2e/${{ matrix.etest }}/test-output.log
+          retention-days: 7
+      - name: On Failure, Upload Journald Logs
+        uses: actions/upload-artifact@v6
+        if: ${{ failure() }}
+        with:
+          name: e2e-${{ matrix.etest }}-logs
+          path: tests/e2e/${{ matrix.etest }}/*log.txt
+          retention-days: 30
+      - name: On Failure, Launch Debug Session
+        uses: lhotari/action-upterm@v1
+        if: ${{ failure() }}
+        with:
+          ## If no one connects after 5 minutes, shut down server.
+          wait-timeout-minutes: 5
+      - name: Upload Results To Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: tests/e2e/${{ matrix.etest }}/coverage.out
+          flags: e2etests # optional
+          verbose: true # optional (default = false)
+
+  build-go-tests:
+    name: "Build Go Tests"
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    outputs:
+      channel: ${{ steps.channel_step.outputs.channel }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Build Go Tests
+      run: |
+        mkdir -p ./dist/artifacts
+        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
+    - name: Upload Go Tests
+      uses: actions/upload-artifact@v6
+      with:
+        name: docker-go-tests-${{ matrix.arch }}
+        path: ./dist/artifacts/*.test
+        compression-level: 9
+        retention-days: 1
+    # For upgrade and skew tests, we need to know the channel this run is based off.
+    # Since this is predetermined, we can run this step before the actual test job, saving time.
+    - name: Determine channel
+      id: channel_step
+      run: |
+        . ./scripts/version.sh
+        MINOR_VER=$(echo $VERSION_TAG | cut -d'.' -f1,2)
+        echo "CHANNEL=$MINOR_VER" >> $GITHUB_OUTPUT
+    # channel name should be v1.XX or latest
+    - name: Fail if channel name does not match pattern
+      run: |
+        if [[ ! ${{ steps.channel_step.outputs.channel }} =~ ^v1\.[0-9]+$|latest$ ]]; then
+          echo "Channel name ${{ steps.channel_step.outputs.channel }} does not match pattern"
+          exit 1
+        fi
+
+  docker-go:
+    needs: [build, build-arm64, build-go-tests]
+    name: Docker
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: ${{ inputs.quick-test && fromJSON('["basics"]') || fromJSON('["autoimport", "basics", "bootstraptoken", "cacerts", "dualstack", "etcd", "hardened", "lazypull", "skew", "secretsencryption", "snapshotrestore", "svcpoliciesandfirewall", "token", "upgrade"]') }}
+        arch: ${{ inputs.quick-test && fromJSON('["amd64"]') || fromJSON('["amd64", "arm64"]') }}
+        exclude:
+          - dtest: autoimport
+            arch: arm64
+          - dtest: dualstack
+            arch: arm64
+          - dtest: secretsencryption
+            arch: arm64
+          - dtest: snapshotrestore
+            arch: arm64
+          - dtest: svcpoliciesandfirewall
+            arch: arm64
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    env:
+      CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
+    steps:
+    - name: Remove Unnecessary Tools
+      working-directory: /
+      run: |
+        sudo rm -rf \
+          /home/linuxbrew \
+          /home/packer \
+          /opt/az \
+          /opt/microsoft \
+          /usr/lib/firefox \
+          /usr/lib/google-cloud-sdk \
+          /usr/local/julia* \
+          /usr/local/share/boost \
+          /usr/local/share/chromium \
+          /usr/local/share/powershell \
+          /usr/share/az* \
+          /usr/share/dotnet \
+          /usr/share/miniconda \
+          /usr/share/swift
+        df -khl
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: "Download K3s image"
+      uses: actions/download-artifact@v7
+      with:
+        name: k3s-${{ matrix.arch }}
+        path: ./dist/artifacts
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v4
+      with:
+        version: type=image,tag=28
+        daemon-config: '{"features":{"containerd-snapshotter":true}}'
+        set-host: true
+    - name: Load and set K3s image
+      run: |
+        if [ ${{ matrix.arch }} = "arm64" ]; then
+          mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s
+        fi
+        chmod +x ./dist/artifacts/k3s
+        docker image load -i ./dist/artifacts/k3s-image.tar
+        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
+        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Download Go Tests
+      uses: actions/download-artifact@v7
+      with:
+        name: docker-go-tests-${{ matrix.arch }}
+        path: ./dist/artifacts
+    - name: Run ${{ matrix.dtest }} Test
+      # Put the compiled test binary back in the same place as the test source
+      run: |
+        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
+        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
+        cd ./tests/docker/${{ matrix.dtest }}
+
+        # These tests use rancher/systemd-node and have different flags.
+        # Use go tool test2json to convert test output to JSON format for the reporter
+        CI_TESTS="autoimport dualstack hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
+          go tool test2json -t -p ${{ matrix.dtest }} ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL 2>/dev/null > test-output.log || true
+        elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
+          go tool test2json -t -p ${{ matrix.dtest }} ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -ci 2>/dev/null > test-output.log || true
+        else
+          go tool test2json -t -p ${{ matrix.dtest }} ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE 2>/dev/null > test-output.log || true
+        fi
+    - name: Upload Test Results
+      if: always() && inputs.upload-results
+      uses: actions/upload-artifact@v6
+      with:
+        name: e2e-docker-${{ matrix.dtest }}-${{ matrix.arch }}-results
+        path: tests/docker/${{ matrix.dtest }}/test-output.log
+        retention-days: 7

@@ -1,5 +1,5 @@
 name: E2E Test Coverage
-on: 
+on:
   push:
     paths-ignore:
       - "**.md"
@@ -22,198 +22,116 @@ on:
       - ".github/**"
       - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      upload-results:
+        description: 'Upload test results for reporting'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    permissions:
-      contents: read
-      packages: write # permissions cannot be conditional, so we need to set this for all jobs
-    uses: ./.github/workflows/build-k3s.yaml
-    with:
-      upload-image: true
-      cache: ${{ github.ref == 'refs/heads/master' && 'write' || 'read' }}
-  build-arm64:
-    uses: ./.github/workflows/build-k3s.yaml
+  e2e-tests:
     permissions:
       contents: read
       packages: write
+    uses: ./.github/workflows/e2e-tests.yaml
     with:
-      arch: arm64
-      upload-image: true
-      cache: ${{ github.ref == 'refs/heads/master' && 'write' || 'read' }}
-  e2e:
-    name: "E2E Tests"
-    needs: build
+      # Upload results on main/master branch for reporting, or when manually triggered
+      upload-results: ${{ github.event_name == 'workflow_dispatch' && inputs.upload-results || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
+    secrets: inherit
+
+  report:
+    name: Report Results
+    needs: [e2e-tests]
+    if: always() && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm]
-      max-parallel: 5
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@v4
-        with: {fetch-depth: 1}
-      
-      - name: Set up vagrant and libvirt
-        uses: ./.github/actions/vagrant-setup
-      - name: Vagrant R/W Cache
-        if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/master'
-        uses: actions/cache@v4
+      - name: Download all vagrant test artifacts
+        uses: actions/download-artifact@v7
         with:
-          path: |
-             ~/.vagrant.d/boxes
-          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
-      - name: Vagrant Read Cache
-        if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/master'
-        uses: actions/cache/restore@v4
+          path: ./test-results/vagrant
+          pattern: e2e-vagrant-*-results
+          merge-multiple: true
+
+      - name: Download all docker amd64 test artifacts
+        uses: actions/download-artifact@v7
         with:
-          path: |
-             ~/.vagrant.d/boxes
-          key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
-      - name: "Vagrant Plugin(s)"
-        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
-      - name: Install Go
-        uses: ./.github/actions/setup-go
-      - name: Install Kubectl
+          path: ./test-results/docker-amd64
+          pattern: e2e-docker-*-amd64-results
+          merge-multiple: true
+
+      - name: Download all docker arm64 test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ./test-results/docker-arm64
+          pattern: e2e-docker-*-arm64-results
+          merge-multiple: true
+
+      - name: Combine all test logs
+        id: combine
         run: |
-           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-      - name: "Download k3s binary"
-        uses: actions/download-artifact@v4
+          mkdir -p ./report
+
+          # Count results from each category
+          vagrant_count=$(find ./test-results/vagrant -name "test-output.log" 2>/dev/null | wc -l)
+          docker_amd64_count=$(find ./test-results/docker-amd64 -name "test-output.log" 2>/dev/null | wc -l)
+          docker_arm64_count=$(find ./test-results/docker-arm64 -name "test-output.log" 2>/dev/null | wc -l)
+
+          echo "Found test results:"
+          echo "  - Vagrant (amd64): $vagrant_count"
+          echo "  - Docker (amd64): $docker_amd64_count"
+          echo "  - Docker (arm64): $docker_arm64_count"
+
+          total=$((vagrant_count + docker_amd64_count + docker_arm64_count))
+          if [ "$total" -eq 0 ]; then
+            echo "::warning::No test results found"
+            echo "has_results=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Combine all logs into single file
+          for f in $(find ./test-results -name "test-output.log" | sort); do
+            cat "$f"
+          done > ./report/k3s_e2e_combined.log
+
+          echo "Combined log size: $(wc -l < ./report/k3s_e2e_combined.log) lines"
+          echo "has_results=true" >> $GITHUB_OUTPUT
+
+      - name: Clone distros-test-framework
+        if: steps.combine.outputs.has_results == 'true'
+        run: |
+          git clone --depth 1 --branch e2ek3s https://github.com/fmoral2/distros-test-framework.git
+
+      - name: Setup Go
+        if: steps.combine.outputs.has_results == 'true'
+        uses: actions/setup-go@v5
         with:
-          name: k3s-amd64
-          path: ./dist/artifacts
-      
-      - name: Run ${{ matrix.etest }} Test
+          go-version: '1.24'
+
+      - name: Build reporter
+        if: steps.combine.outputs.has_results == 'true'
+        run: |
+          cd distros-test-framework
+          go build -o ../qase-reporter ./cmd/qase/main.go
+
+      - name: Upload combined log for debugging
+        if: always() && steps.combine.outputs.has_results == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: combined-e2e-log
+          path: ./report/k3s_e2e_combined.log
+          retention-days: 7
+
+      - name: Report to Qase and Slack
+        if: steps.combine.outputs.has_results == 'true'
+        continue-on-error: true
         env:
-          E2E_GOCOVER: "true"
-        run: | 
-          chmod +x ./dist/artifacts/k3s
-          cd tests/e2e/${{ matrix.etest }}
-          go test -timeout=45m ./${{ matrix.etest}}_test.go -test.v -ginkgo.v -ci -local
-      - name: On Failure, Upload Journald Logs
-        uses: actions/upload-artifact@v4
-        if: ${{ failure() }}
-        with:
-          name: ${{ matrix.etest}}-journald-logs
-          path: tests/e2e/${{ matrix.etest }}/*-jlog.txt
-          retention-days: 30
-      - name: On Failure, Launch Debug Session
-        uses: lhotari/action-upterm@v1
-        if: ${{ failure() }}
-        with:
-          ## If no one connects after 5 minutes, shut down server.
-          wait-timeout-minutes: 5
-      - name: Upload Results To Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: tests/e2e/${{ matrix.etest }}/coverage.out
-          flags: e2etests # optional
-          verbose: true # optional (default = false)
-  
-  build-go-tests:
-    name: "Build Go Tests"
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-    outputs:
-      channel: ${{ steps.channel_step.outputs.channel }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Install Go
-      uses: ./.github/actions/setup-go
-    - name: Build Go Tests
-      run: |
-        mkdir -p ./dist/artifacts
-        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
-    - name: Upload Go Tests
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-go-tests-${{ matrix.arch }}
-        path: ./dist/artifacts/*.test
-        compression-level: 9
-        retention-days: 1
-    # For upgrade and skew tests, we need to know the channel this run is based off.
-    # Since this is predetermined, we can run this step before the actual test job, saving time.
-    - name: Determine channel
-      id: channel_step
-      run: |
-        . ./scripts/version.sh
-        MINOR_VER=$(echo $VERSION_TAG | cut -d'.' -f1,2)
-        echo "CHANNEL=$MINOR_VER" >> $GITHUB_OUTPUT 
-    # channel name should be v1.XX or latest
-    - name: Fail if channel name does not match pattern
-      run: |
-        if [[ ! ${{ steps.channel_step.outputs.channel }} =~ ^v1\.[0-9]+$|latest$ ]]; then
-          echo "Channel name ${{ steps.channel_step.outputs.channel }} does not match pattern"
-          exit 1
-        fi
-  
-  docker-go:
-    needs: [build, build-arm64, build-go-tests]
-    name: Docker
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
-        arch: [amd64, arm64]
-        exclude:
-          - dtest: autoimport
-            arch: arm64
-          - dtest: secretsencryption
-            arch: arm64
-          - dtest: snapshotrestore
-            arch: arm64
-          - dtest: svcpoliciesandfirewall
-            arch: arm64
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-    env:
-      CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: "Download K3s image"
-      uses: actions/download-artifact@v4
-      with:
-        name: k3s-${{ matrix.arch }}
-        path: ./dist/artifacts
-    - name: Load and set K3s image
-      run: |
-        if [ ${{ matrix.arch }} = "arm64" ]; then
-          mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s
-        fi
-        chmod +x ./dist/artifacts/k3s
-        docker image load -i ./dist/artifacts/k3s-image.tar
-        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
-        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
-    - name: Download Go Tests
-      uses: actions/download-artifact@v4
-      with:
-        name: docker-go-tests-${{ matrix.arch }}
-        path: ./dist/artifacts
-    - name: Run ${{ matrix.dtest }} Test
-      # Put the compiled test binary back in the same place as the test source
-      run: |
-        chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
-        mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
-        cd ./tests/docker/${{ matrix.dtest }}
-        
-        # These tests use rancher/systemd-node and have different flags.
-        CI_TESTS="autoimport hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
-        if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
-          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE -channel=$CHANNEL
-        elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
-          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -ci
-        else
-          ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE
-        fi
+          QASE_AUTOMATION_TOKEN: ${{ secrets.QASE_AUTOMATION_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          ./qase-reporter -f ./report/k3s_e2e_combined.log -p k3s -a amd64
