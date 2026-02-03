@@ -65,7 +65,7 @@ airgap:
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD | sed 's/\//-/g')
 in-docker-%: ## Advanced: wraps any script in Docker environment, for example: in-docker-package-cli
 	mkdir -p ./bin/ ./dist ./build
-	docker buildx build -t k3s:$(BRANCH) --target infra -f Dockerfile .
+	docker buildx build -t k3s:$(BRANCH) --target infra - < Dockerfile
 	docker run --privileged --rm --network host \
 		-v $${PWD}:/go/src/github.com/k3s-io/k3s -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v k3s-pkg:/go/pkg -v k3s-cache:/root/.cache/go-build \
 		-e GODEBUG -e CI -e GOCOVER -e REPO -e TAG -e GITHUB_ACTION_TAG -e KUBERNETES_VERSION -e IMAGE_NAME -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID \
