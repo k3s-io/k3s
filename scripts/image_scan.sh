@@ -30,11 +30,12 @@ TRIVY_TEMPLATE='{{- $critical := 0 }}{{- $high := 0 }}
     {{- end -}}
 {{ end }}
 Vulnerabilities - Critical: {{ $critical }}, High: {{ $high }}{{ println }}'
-VEX_REPORT="rancher.openvex.json"
+VEX_REPORT="/tmp/rancher.openvex.json"
 
 # Download Rancher's VEX Hub standalone report
 curl -fsS -o ${VEX_REPORT} https://raw.githubusercontent.com/rancher/vexhub/refs/heads/main/reports/rancher.openvex.json
 
 trivy --quiet image --severity ${SEVERITIES} --vex ${VEX_REPORT} --no-progress --ignore-unfixed --format template --template "${TRIVY_TEMPLATE}" ${IMAGE}
 
+rm ${VEX_REPORT}
 exit 0
