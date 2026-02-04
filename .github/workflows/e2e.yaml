@@ -104,7 +104,8 @@ jobs:
         uses: ./.github/actions/setup-go
       - name: Install Kubectl
         run: |
-           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+           STABLE_VERSION=$(yq '.channels[] | select(.name == "stable") | .latest | sub("\+.*", "")' channel.yaml)
+           curl -LO "https://dl.k8s.io/release/${STABLE_VERSION}/bin/linux/amd64/kubectl"
            sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - name: "Download k3s binary"
         uses: actions/download-artifact@v7
