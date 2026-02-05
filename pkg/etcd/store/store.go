@@ -193,6 +193,7 @@ var _ ReadCloser = &Store{}
 // the bbolt database.
 type Store struct {
 	kv mvcc.KV
+	be backend.Backend
 }
 
 func NewStore(dataDir string) (*Store, error) {
@@ -257,12 +258,20 @@ func NewStore(dataDir string) (*Store, error) {
 		}
 	}
 
-	return &Store{kv: mvcc.NewStore(cfg.Logger, be, &lease.FakeLessor{}, mvcc.StoreConfig{})}, nil
+	// nb: closing the kv store does not implicitly close its backend; the backend must be closed separately
+	return &Store{kv: mvcc.NewStore(cfg.Logger, be, &lease.FakeLessor{}, mvcc.StoreConfig{}), be: be}, nil
 }
 
 func (s *Store) Close() error {
 	logrus.Info("Closing etcd MVCC KV store")
-	return s.kv.Close()
+	errs := []error{}
+	if s.kv != nil {
+		errs = append(errs, s.kv.Close())
+	}
+	if s.be != nil {
+		errs = append(errs, s.be.Close())
+	}
+	return merr.NewErrors(errs...)
 }
 
 func (s *Store) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error) {
