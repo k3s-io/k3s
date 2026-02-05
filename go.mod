@@ -109,8 +109,8 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.16.17
-	github.com/k3s-io/kine v0.14.10
-	github.com/klauspost/compress v1.18.2
+	github.com/k3s-io/kine v0.14.11
+	github.com/klauspost/compress v1.18.3
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/minio/minio-go/v7 v7.0.91
 	github.com/moby/sys/reexec v0.1.0
@@ -135,7 +135,7 @@ require (
 	github.com/rancher/wrangler/v3 v3.2.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spegel-org/spegel v0.6.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
