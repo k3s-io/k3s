@@ -97,7 +97,6 @@ set -o noglob
 
 GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
 GITHUB_ART_URL=""
-STORAGE_URL=https://k3s-ci-builds.s3.amazonaws.com
 DOWNLOADER=
 
 # --- helper functions for logs ---
@@ -414,7 +413,7 @@ get_k3s_selinux_version() {
         fi
         sleep 1
     done
-    if [ "${version}" == "" ]; then
+    if [ "${version}" = "" ]; then
         warn "Failed to get available versions of k3s-selinux..defaulting to ${available_version}"
         return
     fi
