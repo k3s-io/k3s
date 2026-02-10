@@ -213,6 +213,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 				testutil.CleanupDataDir(cnf)
 				return nil
 			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
