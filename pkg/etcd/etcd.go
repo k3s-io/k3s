@@ -700,7 +700,10 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 	if !e.config.DisableETCD {
 		tombstoneFile := filepath.Join(dbDir(e.config), "tombstone")
 		if _, err := os.Stat(tombstoneFile); err == nil {
-			logrus.Infof("tombstone file has been detected, removing data dir to rejoin the cluster")
+			if e.config.JoinURL == "" {
+				return nil, errors.New("tombstone file has been detected but --server is empty: backup and delete ${datadir}/server/db to create a new cluster, or set --server to rejoin the cluster")
+			}
+			logrus.Infof("tombstone file has been detected, removing ${datadir}/server/db to rejoin the cluster")
 			if _, err := backupDirWithRetention(dbDir(e.config), maxBackupRetention); err != nil {
 				return nil, err
 			}
@@ -1231,7 +1234,10 @@ func (e *ETCD) manageLearners(ctx context.Context) {
 			}
 
 			// verify if the member is healthy and set the status
-			if _, err := e.getETCDStatus(ctx, member.ClientURLs[0]); err != nil {
+			if len(member.ClientURLs) == 0 {
+				message = "etcd member ClientURLs list is empty"
+				status = StatusUnhealthy
+			} else if _, err := e.getETCDStatus(ctx, member.ClientURLs[0]); err != nil {
 				message = err.Error()
 				status = StatusUnhealthy
 			}
