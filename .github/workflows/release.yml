@@ -200,6 +200,20 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials secretAccessKey | AWS_SECRET_ACCESS_KEY ;
           secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
 
+    - name: Read registry secrets (staging)
+      uses: rancher-eio/read-vault-secrets@main
+      if: ${{ contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
+      with:
+        secrets: |
+          secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | REGISTRY
+
+    - name: Read registry secrets (prime)
+      uses: rancher-eio/read-vault-secrets@main
+      if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
+      with:
+        secrets: |
+          secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY
+
     - name: Configure AWS Credentials (s3)
       uses: aws-actions/configure-aws-credentials@v5
       with:
@@ -242,6 +256,11 @@ jobs:
           dist/artifacts/sha256sum*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update Image Registry for Prime/Staging
+      env:
+        REGISTRY: ${{ env.REGISTRY }}
+      run: sed -i "s|docker.io|${REGISTRY}|g" dist/artifacts/k3s-images.txt
 
     - name: Upload Assets to S3
       env:
