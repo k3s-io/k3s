@@ -1,5 +1,5 @@
-docker.io/rancher/klipper-helm:v0.9.12-build20251215
-docker.io/rancher/klipper-lb:v0.4.13
+docker.io/rancher/klipper-helm:v0.9.14-build20260210
+docker.io/rancher/klipper-lb:v0.4.14
 docker.io/rancher/local-path-provisioner:v0.0.34
 docker.io/rancher/mirrored-coredns-coredns:1.14.1
 docker.io/rancher/mirrored-library-busybox:1.37.0
