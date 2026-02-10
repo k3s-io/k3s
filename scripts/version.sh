@@ -64,7 +64,7 @@ fi
 
 VERSION_ROOT="v0.15.0"
 
-VERSION_HELM_JOB="v0.9.12-build20251215"
+VERSION_HELM_JOB="v0.9.14-build20260210"
 
 DEPENDENCIES_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/build/dependencies.yaml"
 VERSION_GOLANG="go"$(curl -sL "${DEPENDENCIES_URL}" | yq e '.dependencies[] | select(.name == "golang: upstream version").version' -)
