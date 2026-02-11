@@ -47,11 +47,9 @@ func kubeletArgsAndConfig(cfg *config.Agent) (map[string]string, *kubeletconfig.
 		return nil, nil, err
 	}
 	argsMap := map[string]string{
+		"config": cfg.KubeletConfig,
 		"config-dir": cfg.KubeletConfigDir,
 		"kubeconfig": cfg.KubeConfigKubelet,
-		// note: KubeletConfiguration will omit this field when marshalling if it is set to 0, so we set it via CLI
-		// https://github.com/k3s-io/k3s/issues/12164
-		"read-only-port": "0",
 	}
 	if cfg.RootDir != "" {
 		argsMap["root-dir"] = cfg.RootDir
