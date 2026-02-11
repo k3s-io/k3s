@@ -2,4 +2,4 @@
 
 cd $(dirname $0)/..
 
-rm -rf dist bin build k3s hyperkube kubectl
+rm -rf dist bin build k3s kubectl ./pkg/deploy/embed/* ./pkg/static/embed/* ./pkg/data/embed/*
