@@ -84,7 +84,7 @@ type watcher struct {
 
 // start calls listFiles at regular intervals to trigger application of manifests that have changed on disk.
 func (w *watcher) start(ctx context.Context, client kubernetes.Interface) {
-	w.recorder = pkgutil.BuildControllerEventRecorder(client, ControllerName, metav1.NamespaceSystem)
+	w.recorder = pkgutil.BuildControllerEventRecorder(ctx, client, ControllerName, metav1.NamespaceSystem)
 	force := true
 	for {
 		if err := w.listFiles(force); err == nil {

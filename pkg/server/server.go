@@ -27,6 +27,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	pkgerrors "github.com/pkg/errors"
@@ -250,7 +251,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			strconv.Itoa(config.ControlConfig.HTTPSPort),
 			k8s,
 			apply,
-			util.BuildControllerEventRecorder(k8s, helmcommon.Name, metav1.NamespaceAll),
+			util.BuildControllerEventRecorder(logger.NewContextWithName(ctx, "helm-controller"), k8s, helmcommon.Name, metav1.NamespaceAll),
 			helm.V1().HelmChart(),
 			helm.V1().HelmChart().Cache(),
 			helm.V1().HelmChartConfig(),

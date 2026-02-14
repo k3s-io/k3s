@@ -27,6 +27,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/executor/embed/etcd"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	pkgerrors "github.com/pkg/errors"
@@ -80,6 +81,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		defer cancel()
 
 		klog.InitFlags(nil)
+		klog.EnableContextualLogging(true)
 		for {
 			flag.Set("v", strconv.Itoa(cmds.LogConfig.VLevel))
 
@@ -170,7 +172,8 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 }
 
 func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
-	command := kubelet.NewKubeletCommand(context.Background())
+	ctx = logger.NewContextWithName(ctx, "kubelet")
+	command := kubelet.NewKubeletCommand(logger.NewContextWithName(context.Background(), "kubelet"))
 	command.SetArgs(args)
 
 	go func() {
@@ -191,6 +194,7 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 }
 
 func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
+	ctx = logger.NewContextWithName(ctx, "kube-proxy")
 	command := proxy.NewProxyCommand()
 	command.SetArgs(util.GetArgs(platformKubeProxyArgs(e.nodeConfig), args))
 
@@ -217,6 +221,7 @@ func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, 
 }
 
 func (e *Embedded) APIServer(ctx context.Context, args []string) error {
+	ctx = logger.NewContextWithName(ctx, "kube-apiserver")
 	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
@@ -238,6 +243,7 @@ func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 }
 
 func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, args []string) error {
+	ctx = logger.NewContextWithName(ctx, "kube-scheduler")
 	command := sapp.NewSchedulerCommand(ctx.Done())
 	command.SetArgs(args)
 
@@ -260,6 +266,7 @@ func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, arg
 }
 
 func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
+	ctx = logger.NewContextWithName(ctx, "kube-controller-manager")
 	command := cmapp.NewControllerManagerCommand()
 	command.SetArgs(args)
 
@@ -281,6 +288,7 @@ func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
 }
 
 func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan struct{}, args []string) error {
+	ctx = logger.NewContextWithName(ctx, "cloud-controller-manager")
 	ccmOptions, err := ccmopt.NewCloudControllerManagerOptions()
 	if err != nil {
 		logrus.Fatalf("unable to initialize command options: %v", err)
@@ -330,6 +338,7 @@ func (e *Embedded) CurrentETCDOptions() (executor.InitialOptions, error) {
 }
 
 func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.ETCDConfig, extraArgs []string, test executor.TestFunc) error {
+	ctx = logger.NewContextWithName(ctx, "etcd")
 	// Start a goroutine to call the provided test function until it returns true.
 	// The test function is reponsible for ensuring that the etcd server is up
 	// and ready to accept client requests.
@@ -356,10 +365,12 @@ func (e *Embedded) ETCD(ctx context.Context, wg *sync.WaitGroup, args *executor.
 }
 
 func (e *Embedded) Containerd(ctx context.Context, cfg *daemonconfig.Node) error {
+	ctx = logger.NewContextWithName(ctx, "containerd")
 	return executor.CloseIfNilErr(containerd.Run(ctx, cfg), e.criReady)
 }
 
 func (e *Embedded) Docker(ctx context.Context, cfg *daemonconfig.Node) error {
+	ctx = logger.NewContextWithName(ctx, "cri-dockerd")
 	return executor.CloseIfNilErr(cridockerd.Run(ctx, cfg), e.criReady)
 }
 
@@ -373,6 +384,7 @@ func (e *Embedded) CRI(ctx context.Context, cfg *daemonconfig.Node) error {
 
 func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfig.Node) error {
 	if cfg.Flannel.Backend != flannel.BackendNone {
+		ctx := logger.NewContextWithName(ctx, "flannel")
 		if (cfg.Flannel.ExternalIP) && (len(cfg.AgentConfig.NodeExternalIPs) == 0) {
 			logrus.Warnf("Server has flannel-external-ip flag set but this node does not set node-external-ip. Flannel will use internal address when connecting to this node.")
 		} else if (cfg.Flannel.ExternalIP) && (cfg.Flannel.Backend != flannel.BackendWireguardNative) {
@@ -388,6 +400,7 @@ func (e *Embedded) CNI(ctx context.Context, wg *sync.WaitGroup, cfg *daemonconfi
 	}
 
 	if !cfg.AgentConfig.DisableNPC {
+		ctx := logger.NewContextWithName(ctx, "kube-proxy")
 		if err := netpol.Run(ctx, wg, cfg); err != nil {
 			return err
 		}
