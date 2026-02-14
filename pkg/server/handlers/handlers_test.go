@@ -1747,7 +1747,7 @@ func getMockedControl(t *testing.T) (*config.Control, context.CancelFunc) {
 	control.Runtime.K8s = k8s
 
 	// create event recorder
-	control.Runtime.Event = util.BuildControllerEventRecorder(control.Runtime.K8s, version.Program+"-supervisor", metav1.NamespaceAll)
+	control.Runtime.Event = util.BuildControllerEventRecorder(ctx, control.Runtime.K8s, version.Program+"-supervisor", metav1.NamespaceAll)
 
 	// start the node password controller
 	err = nodepassword.Register(ctx, control.Runtime.K8s, coreFactory.Core().V1().Secret(), coreFactory.Core().V1().Node())

@@ -447,7 +447,7 @@ func updateSecrets(ctx context.Context, control *config.Control, nodeName string
 	}
 
 	// For backwards compatibility with the old controller, we use an event recorder instead of logrus
-	recorder := util.BuildControllerEventRecorder(k8s, "secrets-reencrypt", metav1.NamespaceDefault)
+	recorder := util.BuildControllerEventRecorder(ctx, k8s, "secrets-reencrypt", metav1.NamespaceDefault)
 
 	secretPager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
 		return k8s.CoreV1().Secrets(metav1.NamespaceAll).List(ctx, opts)

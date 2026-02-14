@@ -12,6 +12,7 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/https"
@@ -30,6 +31,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
@@ -40,6 +42,7 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
 	utilsnet "k8s.io/utils/net"
 )
@@ -76,7 +79,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		return err
 	}
 
-	ctx := signals.SetupSignalContext()
+	klog.EnableContextualLogging(true)
+	ctx := logr.NewContext(signals.SetupSignalContext(), logger.NewLogrusSink(nil).AsLogr())
 	wg := &sync.WaitGroup{}
 
 	// If exiting due to an error, ensure that contexts are cancelled so that the
