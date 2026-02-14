@@ -37,12 +37,16 @@ set -o noglob
 #     If set to true will not start k3s service.
 #
 #   - INSTALL_K3S_VERSION
-#     Version of k3s to download from github. Will attempt to download from the
+#     Version of k3s to download. Will attempt to download from the
 #     stable channel if not specified.
 #
 #   - INSTALL_K3S_COMMIT
 #     Commit of k3s to download from temporary cloud storage.
 #     * (for developer & QA use)
+#
+#   - INSTALL_K3S_ARTIFACT_URL
+#     URL prefix for K3s release artifacts.
+#     Default is https://github.com/k3s-io/k3s/releases/download
 #
 #   - INSTALL_K3S_PR
 #     PR build of k3s to download from Github Artifacts.
@@ -95,7 +99,7 @@ set -o noglob
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
 
-GITHUB_URL=${GITHUB_URL:-https://github.com/k3s-io/k3s/releases}
+INSTALL_K3S_ARTIFACT_URL=${INSTALL_K3S_ARTIFACT_URL:-https://github.com/k3s-io/k3s/releases/download}
 GITHUB_ART_URL=""
 DOWNLOADER=
 
@@ -378,6 +382,7 @@ get_release_version() {
                 ;;
         esac
     fi
+    VERSION_URLSAFE="$(printf '%s' "${VERSION_K3S}" | sed 's/+/%2B/g')"
     info "Using ${VERSION_K3S} as release"
 }
 
@@ -460,7 +465,7 @@ download_hash() {
         curl -s -o ${TMP_ZIP} -H "Authorization: Bearer $GITHUB_TOKEN" -L ${GITHUB_ART_URL}
         unzip -p ${TMP_ZIP} k3s.sha256sum > ${TMP_HASH}
     else
-        HASH_URL=${GITHUB_URL}/download/${VERSION_K3S}/sha256sum-${ARCH}.txt
+        HASH_URL=${INSTALL_K3S_ARTIFACT_URL}/${VERSION_URLSAFE}/sha256sum-${ARCH}.txt
         info "Downloading hash ${HASH_URL}"
         download ${TMP_HASH} ${HASH_URL}
     fi
@@ -552,7 +557,7 @@ download_binary() {
         unzip -p ${TMP_ZIP} k3s > ${TMP_BIN}
         return
     else
-        BIN_URL=${GITHUB_URL}/download/${VERSION_K3S}/k3s${SUFFIX}
+        BIN_URL=${INSTALL_K3S_ARTIFACT_URL}/${VERSION_URLSAFE}/k3s${SUFFIX}
     fi
     info "Downloading binary ${BIN_URL}"
     download ${TMP_BIN} ${BIN_URL}
@@ -758,6 +763,10 @@ download_and_verify() {
     verify_downloader curl || verify_downloader wget || fatal 'Can not find curl or wget for downloading files'
     setup_tmp
     get_release_version
+    # GITHUB_URL was replaced by INSTALL_K3S_ARTIFACT_URL
+    if [ -n "$GITHUB_URL" ]; then
+        warn "GITHUB_URL does not work anymore. Please use 'INSTALL_K3S_ARTIFACT_URL' instead."
+    fi
     download_hash
 
     if installed_hash_matches; then
