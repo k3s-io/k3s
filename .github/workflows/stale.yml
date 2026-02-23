@@ -13,7 +13,7 @@ jobs:
       contents: write
     steps:
       - name: Close Stale Issues
-        uses: actions/stale@v10.1.1
+        uses: actions/stale@v10.2.0
         with:
           # ensure PRs are exempt
           days-before-pr-stale: -1
