@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/k3s-io/kine/pkg/endpoint"
@@ -16,16 +17,14 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	etcderrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
 )
 
 // ReadCloser is a generic wrapper around a MVCC store that provides only read/close functions
@@ -62,9 +61,14 @@ func NewRemoteStore(config endpoint.ETCDConfig) (*RemoteStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	logger = logger.Named("k3s.remotestore")
+
+	logrus.Infof("Opening etcd client connection with endpoints %v", config.Endpoints)
+
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   config.Endpoints,
 		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock(), grpc.FailOnNonTempDialError(true)},
 		Logger:      logger,
 		TLS:         tlsConfig,
 	})
@@ -163,7 +167,24 @@ func NewTemporaryStore(dataDir string) (*TemporaryStore, error) {
 		return nil, err
 	}
 
-	if err := copy.Copy(dataDir, tempDir, copy.Options{PreserveOwner: true}); err != nil {
+	// only copy the bbolt backend database; we don't need the WAL, legacy v2
+	// store snapshots, config file, or anything else.
+	// ref: https://etcd.io/docs/v3.6/learning/persistent-storage-files/#long-leaving-files
+	copyOpts := copy.Options{
+		PreserveOwner: true,
+		PreserveTimes: true,
+		NumOfWorkers:  0,
+		Sync:          true,
+		Skip: func(srcinfo os.FileInfo, src, dest string) (bool, error) {
+			switch srcinfo.Name() {
+			case "member", "snap", "db":
+				return false, nil
+			default:
+				return true, nil
+			}
+		},
+	}
+	if err := copy.Copy(dataDir, tempDir, copyOpts); err != nil {
 		return nil, err
 	}
 
@@ -198,69 +219,83 @@ type Store struct {
 	be backend.Backend
 }
 
-func NewStore(dataDir string) (*Store, error) {
-	var currentIndex, latestIndex uint64
+func NewStore(dataDir string) (store *Store, rerr error) {
+	s := &Store{}
+
 	logger, err := logutil.CreateDefaultZapLogger(zapcore.InfoLevel)
 	if err != nil {
 		return nil, err
 	}
 
+	// etcd relies on panic/fatal errors to trigger process exit; we need to
+	// handle it properly by recovering and returning an error.
+	logger = logger.Named("k3s.store").WithOptions(
+		zap.WithPanicHook(zapcore.WriteThenPanic),
+		zap.WithFatalHook(zapcore.WriteThenPanic),
+	)
+
+	// recover from zap panics and ensure kv and backened are closed on error
+	defer func() {
+		if err := recover(); err != nil {
+			msg := fmt.Sprintf("panic: %v", err)
+			if logrus.IsLevelEnabled(logrus.DebugLevel) {
+				msg += " at " + string(debug.Stack())
+			}
+			rerr = errors.New(msg)
+		}
+		if rerr != nil && s != nil {
+			go s.Close()
+		}
+	}()
+
 	cfg := config.ServerConfig{Logger: logger, DataDir: dataDir}
 	path := cfg.BackendPath()
 
-	// need to check for backend path ourselves, as backend.New just logs a panic
-	// via zap if it doesn't exist, which isn't fatal.
+	// need to check for backend path ourselves, as backend.New just creates
+	// a new empty database if the file does not exist or is empty.
 	if _, err := os.Stat(path); err != nil {
 		return nil, pkgerrors.WithMessage(err, "failed to stat MVCC KV store backend path")
 	}
 
-	logrus.Infof("Opening etcd MVCC KV store at %s", path)
+	logrus.Infof("Opening etcd MVCC KV backend database at %s", path)
 
 	// open backend database
 	bcfg := backend.DefaultBackendConfig(logger)
 	bcfg.Path = path
 	bcfg.UnsafeNoFsync = true
-	bcfg.BatchInterval = 0
-	bcfg.BatchLimit = 0
-	be := backend.New(bcfg)
+	bcfg.BatchInterval = time.Hour
+	bcfg.BatchLimit = 100000
 
-	// get current index from backend
-	currentIndex, _ = schema.ReadConsistentIndex(be.ReadTx())
-
-	// list snapshots from WAL dir
-	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
-	if err != nil {
-		return nil, err
+	// try to open the bbolt database; this may unrecoverably panic from inside
+	// the bbolt freelist goroutine if the database is in an inconsistent state.
+	s.be = backend.New(bcfg)
+	if s.be == nil {
+		return nil, errors.New("failed to open database")
 	}
 
-	// find latest available snapshot index
-	ss := snap.New(logger, cfg.SnapDir())
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-		return nil, err
-	}
-	if snapshot != nil {
-		latestIndex = snapshot.Metadata.Index
+	// try to get current index from backend; this may fail if the bbolt database
+	// was opened successfully but is in an inconsistent state.
+	if currentIndex, _ := schema.ReadConsistentIndex(s.be.ReadTx()); currentIndex == 0 {
+		return nil, errors.New("failed to read consistent index")
 	}
 
-	// restore from snapshot if available
-	if latestIndex > currentIndex {
-		logrus.Warnf("MVCC database index %d is less than latest snapshot index %d", currentIndex, latestIndex)
-		path, err := ss.DBFilePath(latestIndex)
-		if err != nil {
-			logrus.Warnf("MVCC database for snapshot index %d not available; data may be stale", latestIndex)
-		} else {
-			logrus.Infof("MVCC database restoring snapshot index %d from %s", latestIndex, path)
-			be, err = storage.RecoverSnapshotBackend(cfg, be, *snapshot, true, storage.NewBackendHooks(cfg.Logger, cindex.NewConsistentIndex(nil)))
-			if err != nil {
-				be.Close()
-				return nil, err
-			}
-		}
-	}
+	// We do not bother checking the latest snapshot index from the WAL or attempting to
+	// restore from a snapshot, as v3 store snapshots are only created when replicas are
+	// lagging and the leader sends them a fresh copy of the bbolt database - and are
+	// therefore highly unlikely to exist. The .snap files in the snap dir are for the
+	// legacy v2 store, and are of no use.
+	//
+	// ref: https://etcd.io/docs/v3.6/learning/persistent-storage-files/#long-leaving-files
+	// > Note: Periodic snapshots generated on each replica are only emitted in the form of
+	// > *.snap file (not snap.db file). So there is no guarantee the most recent snapshot (in
+	// > WAL log) has the *.snap.db file. But in such a case the backend (snap/db) is expected
+	// > to be newer than the snapshot.
+
+	s.kv = mvcc.NewStore(logger, s.be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	logrus.Info("Opened etcd MVCC KV store")
 
 	// nb: closing the kv store does not implicitly close its backend; the backend must be closed separately
-	return &Store{kv: mvcc.NewStore(cfg.Logger, be, &lease.FakeLessor{}, mvcc.StoreConfig{}), be: be}, nil
+	return s, nil
 }
 
 func (s *Store) Close() error {
