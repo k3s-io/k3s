@@ -20,9 +20,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd/store"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/k3s-io/kine/pkg/endpoint"
+	"github.com/k3s-io/kine/pkg/tls"
 	"github.com/otiai10/copy"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -284,11 +287,36 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 		}
 
 		var kv *mvccpb.KeyValue
+		var storageClient store.ReadCloser
 
-		storageClient, err := store.NewTemporaryStore(filepath.Join(c.config.DataDir, "db", "etcd"))
-		if err != nil {
-			return pkgerrors.WithMessage(err, "failed to create temporary datastore client")
+		if executor.IsSelfHosted() {
+			// etcd will never be running at this point when using embedded executor,
+			// but other executors may opt to leave it running when the supervisor
+			// process is down. In this case, try to connect to local etcd first; if
+			// that fails fall back to reading direct from etcd store on disk.
+			etcdConfig := endpoint.ETCDConfig{
+				Endpoints: []string{fmt.Sprintf("https://%s:2379", c.config.Loopback(true))},
+				TLSConfig: tls.Config{
+					TrustedCAFile: c.config.Runtime.ETCDServerCA,
+					CAFile:        c.config.Runtime.ETCDServerCA,
+					CertFile:      c.config.Runtime.ClientETCDCert,
+					KeyFile:       c.config.Runtime.ClientETCDKey,
+				},
+			}
+			storageClient, err = store.NewRemoteStore(etcdConfig)
+			if err != nil {
+				logrus.Infof("Unable to connect to etcd: %v; trying direct datastore access", err)
+				storageClient = nil
+			}
 		}
+
+		if storageClient == nil {
+			storageClient, err = store.NewTemporaryStore(filepath.Join(c.config.DataDir, "db", "etcd"))
+			if err != nil {
+				return pkgerrors.WithMessage(err, "failed to create temporary datastore client")
+			}
+		}
+
 		defer storageClient.Close()
 
 		kv, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
