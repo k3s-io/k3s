@@ -179,7 +179,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-v", "/var/run/docker.sock:/var/run/docker.sock",
 				"-v", "/var/lib/docker:/var/lib/docker",
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
-				fmt.Sprintf("%s:v0.0.7-rc1", config.K3sImage),
+				fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 			if out, err := tests.RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
@@ -344,7 +344,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"-v", "/var/run/docker.sock:/var/run/docker.sock",
 					"-v", "/var/lib/docker:/var/lib/docker",
 					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
-					fmt.Sprintf("%s:v0.0.7-rc1", config.K3sImage),
+					fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 				if out, err := tests.RunCommand(dRun); err != nil {
 					return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
