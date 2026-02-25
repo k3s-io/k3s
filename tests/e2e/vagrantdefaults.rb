@@ -25,16 +25,17 @@ def getInstallType(vm, release_version, branch, release_channel='')
   elsif !release_version.empty? && release_version.start_with?("v1")
     return "INSTALL_K3S_VERSION=#{release_version}"
   elsif !release_version.empty?
-    return "INSTALL_K3S_COMMIT=#{release_version}"
+    commitDepsInstall(vm)
+    return "INSTALL_K3S_COMMIT=#{release_version} GITHUB_TOKEN=#{ENV['GITHUB_TOKEN']}"
   elsif !release_channel.empty? && release_channel != "commit"
     return "INSTALL_K3S_CHANNEL=#{release_channel}"
   else
-    jqInstall(vm)
+    commitDepsInstall(vm)
     scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts" 
     # Grabs the last 5 commit SHA's from the given branch, then purges any commits that do not have a passing CI build
     # MicroOS requires it not be in a /tmp/ or other root system folder
-    vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", env: {GH_TOKEN:ENV['GH_TOKEN']}, args: [branch, "/tmp/k3s_commits"]
-    return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits)"
+    vm.provision "Get latest commit", type: "shell", path: scripts_location +"/latest_commit.sh", env: {GITHUB_TOKEN:ENV['GITHUB_TOKEN']}, args: [branch, "/tmp/k3s_commits"]
+    return "INSTALL_K3S_COMMIT=$(head\ -n\ 1\ /tmp/k3s_commits) GITHUB_TOKEN=#{ENV['GITHUB_TOKEN']}"
   end
 end
 
@@ -86,7 +87,7 @@ def getHardenedArg(vm, hardened, scripts_location)
   end
   if vm.box.to_s.include?("ubuntu")
     vm.provision "Install kube-bench", type: "shell", inline: <<-SHELL
-    export KBV=0.12.0
+    export KBV=0.15.0
     curl -L "https://github.com/aquasecurity/kube-bench/releases/download/v${KBV}/kube-bench_${KBV}_linux_amd64.deb" -o "kube-bench_${KBV}_linux_amd64.deb"
     dpkg -i "./kube-bench_${KBV}_linux_amd64.deb"
     SHELL
@@ -94,20 +95,20 @@ def getHardenedArg(vm, hardened, scripts_location)
   return hardened_arg
 end
 
-def jqInstall(vm)
+def commitDepsInstall(vm)
   box = vm.box.to_s
   if box.include?("ubuntu")
-    vm.provision "Install jq", type: "shell", inline: "apt install -y jq"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "apt install -y jq unzip"
   elsif box.include?("Leap") || box.include?("Tumbleweed")
-    vm.provision "Install jq", type: "shell", inline: "zypper install -y jq"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "zypper install -y jq unzip"
   elsif box.include?("rocky")
-    vm.provision "Install jq", type: "shell", inline: "dnf install -y jq"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "dnf install -y jq unzip"
   elsif box.include?("centos")
-    vm.provision "Install jq", type: "shell", inline: "yum install -y jq"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "yum install -y jq unzip"
   elsif box.include?("alpine")
-    vm.provision "Install jq", type: "shell", inline: "apk add coreutils"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "apk add coreutils unzip"
   elsif box.include?("microos")
-    vm.provision "Install jq", type: "shell", inline: "transactional-update pkg install -y jq"
+    vm.provision "Install commit install dependencies", type: "shell", inline: "transactional-update pkg install -y jq unzip"
     vm.provision 'reload', run: 'once'
   end 
 end
