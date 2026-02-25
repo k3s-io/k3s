@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/rootless-containers/rootlesskit/v2/pkg/port"
-	portbuiltin "github.com/rootless-containers/rootlesskit/v2/pkg/port/builtin"
-	portslirp4netns "github.com/rootless-containers/rootlesskit/v2/pkg/port/slirp4netns"
+	"github.com/rootless-containers/rootlesskit/pkg/port"
+	portbuiltin "github.com/rootless-containers/rootlesskit/pkg/port/builtin"
+	portslirp4netns "github.com/rootless-containers/rootlesskit/pkg/port/slirp4netns"
 	"github.com/sirupsen/logrus"
 )
 
