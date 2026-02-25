@@ -11,9 +11,11 @@ import (
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/spegel"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -1540,4 +1542,76 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestWriteContainerdConfig_MergeOverlappingSection reproduces issue 13678: user template
+// that includes base and adds/overrides [plugins."io.containerd.cri.v1.images"] must
+// produce a single merged section, not duplicate tables (invalid TOML).
+func TestWriteContainerdConfig_MergeOverlappingSection(t *testing.T) {
+	tempDir := t.TempDir()
+	nodeConfig := &config.Node{
+		Containerd: config.Containerd{
+			Registry: tempDir + "/hosts.d",
+			Config:   filepath.Join(tempDir, "config.toml"),
+			Template: tempDir,
+			Address:  "/run/k3s/containerd/containerd.sock",
+			Root:     "/var/lib/rancher/k3s/agent/containerd",
+			Opt:      "/var/lib/rancher/k3s/agent/containerd",
+			State:    "/run/k3s/containerd",
+		},
+		AgentConfig: config.Agent{
+			Snapshotter: "overlayfs",
+		},
+	}
+	containerdConfig := templates.ContainerdConfig{
+		NodeConfig: nodeConfig,
+		Program:    "k3s",
+	}
+	// User template from issue 13678: base + overlapping plugins."io.containerd.cri.v1.images" + extra
+	userTemplate := `{{ template "base" . }}
+
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.kata-qemu-coco-dev]
+runtime_type = "io.containerd.kata-qemu-coco-dev.v2"
+runtime_path = "/opt/kata/bin/containerd-shim-kata-v2"
+privileged_without_host_devices = true
+pod_annotations = ["io.katacontainers.*"]
+snapshotter = "nydus"
+
+[plugins."io.containerd.cri.v1.runtime".containerd.runtimes.kata-qemu-coco-dev.options]
+ConfigPath = "/opt/kata/share/defaults/kata-containers/runtimes/qemu-coco-dev/configuration-qemu-coco-dev.toml"
+
+[plugins."io.containerd.cri.v1.images"]
+disable_snapshot_annotations = false
+
+[plugins."io.containerd.cri.v1.images".runtime_platforms.kata-qemu-coco-dev]
+snapshotter = "nydus"
+
+[debug]
+level = "debug"
+
+[proxy_plugins.nydus]
+type = "snapshot"
+address = "/run/nydus-snapshotter/containerd-nydus-grpc.sock"
+`
+	err := os.WriteFile(filepath.Join(tempDir, "config-v3.toml.tmpl"), []byte(userTemplate), 0600)
+	assert.NoError(t, err)
+
+	err = writeContainerdConfig(nodeConfig, containerdConfig)
+	assert.NoError(t, err)
+
+	configToml, err := os.ReadFile(nodeConfig.Containerd.Config)
+	assert.NoError(t, err)
+
+	// Must be valid TOML (no duplicate table headers)
+	var m map[string]interface{}
+	err = toml.Unmarshal(configToml, &m)
+	assert.NoError(t, err, "generated config must be valid TOML (issue 13678: no duplicate sections)")
+
+	// Must have exactly one plugins.io.containerd.cri.v1.images section with user override
+	plugins, _ := m["plugins"].(map[string]interface{})
+	require.NotNil(t, plugins)
+	images, _ := plugins["io.containerd.cri.v1.images"].(map[string]interface{})
+	require.NotNil(t, images)
+	assert.Equal(t, false, images["disable_snapshot_annotations"], "user override must win")
+	t.Logf("config:\n%s", configToml)
 }
