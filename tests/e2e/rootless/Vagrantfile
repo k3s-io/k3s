@@ -19,13 +19,14 @@ def provision(vm, role, role_num, node_num)
   vagrant_defaults = '../vagrantdefaults.rb'
   scripts_location = Dir.exist?("./scripts") ? "./scripts" : "../scripts"
   load vagrant_defaults if File.exist?(vagrant_defaults)
+  install_type = getInstallType(vm, RELEASE_VERSION, GITHUB_BRANCH)
 
   defaultOSConfigure(vm)
   addCoverageDir(vm, role, GOCOVER)
 
   vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
     k3s.args = "server "
-    k3s.env = %W[K3S_KUBECONFIG_MODE=0644 INSTALL_K3S_SKIP_START=true INSTALL_K3S_SKIP_ENABLE=true]
+    k3s.env = %W[K3S_KUBECONFIG_MODE=0644 INSTALL_K3S_SKIP_START=true INSTALL_K3S_SKIP_ENABLE=true #{install_type}]
     k3s.env_owner = "vagrant:vagrant"
     k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     k3s.config_owner = "vagrant:vagrant"
