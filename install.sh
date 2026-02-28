@@ -98,6 +98,10 @@ set -o noglob
 #   - INSTALL_K3S_CHANNEL
 #     Channel to use for fetching k3s download URL.
 #     Defaults to 'stable'.
+#
+#   - INSTALL_K3S_SKIP_FAPOLICY
+#     If set, the install script will skip adding fapolicy rules
+#     Default is not set.
 
 INSTALL_K3S_ARTIFACT_URL=${INSTALL_K3S_ARTIFACT_URL:-https://github.com/k3s-io/k3s/releases/download}
 GITHUB_ART_URL=""
@@ -982,6 +986,13 @@ elif type zypper >/dev/null 2>&1; then
     $SUDO \$uninstall_cmd
     rm -f /etc/zypp/repos.d/rancher-k3s-common*.repo
 fi
+if type fapolicyd >/dev/null 2>&1; then
+        if [ -f /etc/fapolicyd/rules.d/80-k3s.rules ]; then
+            rm -f /etc/fapolicyd/rules.d/80-k3s.rules
+        fi
+        fagenrules --load
+        systemctl restart fapolicyd
+fi
 EOF
     $SUDO chmod 755 ${UNINSTALL_K3S_SH}
     $SUDO chown root:root ${UNINSTALL_K3S_SH}
@@ -1170,6 +1181,40 @@ service_enable_and_start() {
     return 0
 }
 
+# verify_fapolicyd verifies existence of
+# fapolicyd executable.
+verify_fapolicyd() {
+    cmd="$(command -v "fapolicyd")"
+    if [ -z "${cmd}" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+setup_fapolicy_rules() {
+    if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ] || [ -r /etc/oracle-release ] || [ -r /etc/rocky-release ]; then
+        verify_fapolicyd || return
+        # setting k3s fapolicyd rules
+        cat <<-EOF >>"/etc/fapolicyd/rules.d/80-k3s.rules"
+allow perm=any all : dir=/var/lib/rancher/
+allow perm=any all : dir=/opt/cni/
+allow perm=any all : dir=/run/k3s/
+allow perm=any all : dir=/var/lib/kubelet/
+EOF
+        if [ -z "${INSTALL_K3S_SKIP_START}" ]; then
+            fagenrules --load || fatal "failed to load k3s fapolicyd rules"
+            systemctl restart fapolicyd
+        fi
+    fi
+}
+
+install_fapolicy() {
+    if [ -z "${INSTALL_K3S_SKIP_FAPOLICY}" ]; then
+        setup_fapolicy_rules
+    fi
+}
+
 # --- re-evaluate args to include env command ---
 eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
 
@@ -1185,5 +1230,6 @@ eval set -- $(escape "${INSTALL_K3S_EXEC}") $(quote "$@")
     systemd_disable
     create_env_file
     create_service_file
+    install_fapolicy
     service_enable_and_start
 }
