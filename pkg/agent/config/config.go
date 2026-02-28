@@ -565,6 +565,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, err
 	}
 
+	kubeletConfig := filepath.Join(envInfo.DataDir, "agent", "etc", "kubelet.conf")
 	// Ensure kubelet config dir exists
 	kubeletConfigDir := filepath.Join(envInfo.DataDir, "agent", "etc", "kubelet.conf.d")
 	if err := os.MkdirAll(kubeletConfigDir, 0700); err != nil {
@@ -600,6 +601,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.ClusterDomain = controlConfig.ClusterDomain
 	nodeConfig.AgentConfig.ResolvConf = locateOrGenerateResolvConf(envInfo)
 	nodeConfig.AgentConfig.ClientCA = clientCAFile
+	nodeConfig.AgentConfig.KubeletConfig = kubeletConfig
 	nodeConfig.AgentConfig.KubeletConfigDir = kubeletConfigDir
 	nodeConfig.AgentConfig.KubeConfigKubelet = kubeconfigKubelet
 	nodeConfig.AgentConfig.KubeConfigKubeProxy = kubeconfigKubeproxy
