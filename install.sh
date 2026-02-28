@@ -511,7 +511,7 @@ get_pr_artifact_url() {
     if [ -z "${commit_id}" ]; then
         fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
-    
+
     get_commit_artifact_url "${commit_id}"
 }
 
@@ -728,6 +728,7 @@ EOF
         fi
         # shellcheck disable=SC2086
         $SUDO ${rpm_installer} install -y "k3s-selinux"
+        UNINSTALL_K3S_SH_INCLUDE_SELINUX_RPM=true
     fi
     return
 }
@@ -967,22 +968,26 @@ clean_mounted_directory \${K3S_DATA_DIR}
 rm -rf /var/lib/kubelet
 rm -f ${BIN_DIR}/k3s
 rm -f ${KILLALL_K3S_SH}
-
-if type yum >/dev/null 2>&1; then
-    yum remove -y k3s-selinux
-    rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
-elif type rpm-ostree >/dev/null 2>&1; then
-    rpm-ostree uninstall k3s-selinux
-    rm -f /etc/yum.repos.d/rancher-k3s-common*.repo
-elif type zypper >/dev/null 2>&1; then
-    uninstall_cmd="zypper remove -y k3s-selinux"
-    if [ "\${TRANSACTIONAL_UPDATE=false}" != "true" ] && [ -x /usr/sbin/transactional-update ]; then
-        uninstall_cmd="transactional-update --no-selfupdate -d run \$uninstall_cmd"
-    fi
-    $SUDO \$uninstall_cmd
-    rm -f /etc/zypp/repos.d/rancher-k3s-common*.repo
-fi
 EOF
+
+    # append package removal to script if k3s-selinux has been installed
+    if ${UNINSTALL_K3S_SH_INCLUDE_SELINUX_RPM:-false}; then
+        case ${rpm_target:?} in
+            coreos)
+                uninstall_cmd="rpm-ostree uninstall --idempotent k3s-selinux"
+                ;;
+            *)
+                uninstall_cmd="${rpm_installer:?} remove -y k3s-selinux"
+                ;;
+        esac
+    $SUDO tee -a ${UNINSTALL_K3S_SH} >/dev/null << EOF
+
+# uninstall k3s-selinux rpm
+${uninstall_cmd}
+rm -f ${repodir:?}/rancher-k3s-common*.repo
+EOF
+    fi
+
     $SUDO chmod 755 ${UNINSTALL_K3S_SH}
     $SUDO chown root:root ${UNINSTALL_K3S_SH}
 }
