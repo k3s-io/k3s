@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/signals"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
@@ -251,9 +252,10 @@ func subjectAccessReview(authClient *authorizationv1client.AuthorizationV1Client
 	}
 }
 
-func BuildControllerEventRecorder(k8s clientset.Interface, controllerName, namespace string) record.EventRecorder {
+func BuildControllerEventRecorder(ctx context.Context, k8s clientset.Interface, controllerName, namespace string) record.EventRecorder {
+	ctx = logger.NewContextWithName(ctx, controllerName)
 	logrus.Infof("Creating %s event broadcaster", controllerName)
-	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster := record.NewBroadcaster(record.WithContext(ctx))
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: k8s.CoreV1().Events(namespace)})
 	nodeName := os.Getenv("NODE_NAME")

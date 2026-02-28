@@ -10,6 +10,7 @@ import (
 	helmcrds "github.com/k3s-io/helm-controller/pkg/crds"
 	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/wrangler/v3/pkg/crd"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/apps"
@@ -73,6 +74,7 @@ func NewContext(ctx context.Context, config *Config) (*Context, error) {
 		hf = helm.NewFactoryFromConfigOrDie(restConfig)
 	}
 
+	ctx = logger.NewContextWithName(ctx, version.Program+"-supervisor")
 	c := &Context{
 		K3s:       k3s.NewFactoryFromConfigOrDie(restConfig),
 		Auth:      rbac.NewFactoryFromConfigOrDie(restConfig),
@@ -82,7 +84,7 @@ func NewContext(ctx context.Context, config *Config) (*Context, error) {
 		Discovery: discovery.NewFactoryFromConfigOrDie(restConfig),
 		Helm:      hf,
 
-		Event: util.BuildControllerEventRecorder(k8s, version.Program+"-supervisor", metav1.NamespaceAll),
+		Event: util.BuildControllerEventRecorder(ctx, k8s, version.Program+"-supervisor", metav1.NamespaceAll),
 		K8s:   k8s,
 		Ext:   ext,
 	}

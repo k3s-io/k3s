@@ -3,6 +3,8 @@ package util
 import (
 	"context"
 	"time"
+
+	"k8s.io/klog/v2"
 )
 
 const DefaultContextDelay = 5 * time.Second
@@ -16,5 +18,5 @@ func DelayCancel(ctx context.Context, delay time.Duration) context.Context {
 		time.Sleep(delay)
 		dcancel()
 	}()
-	return dctx
+	return klog.NewContext(dctx, klog.FromContext(ctx))
 }
