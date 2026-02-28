@@ -249,7 +249,7 @@ jobs:
         ./scripts/validate-artifacts
     
     - name: Upload Assets to Release
-      uses: softprops/action-gh-release@v2.2.1
+      uses: softprops/action-gh-release@v2.5.0
       with:
         files: |
           dist/artifacts/k3s*
