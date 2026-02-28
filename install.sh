@@ -118,7 +118,7 @@ fatal()
     exit 1
 }
 
-# --- fatal if no systemd or openrc ---
+# --- fatal if no systemd, openrc, or runit ---
 verify_system() {
     if [ -x /sbin/openrc-run ]; then
         HAS_OPENRC=true
@@ -128,7 +128,11 @@ verify_system() {
         HAS_SYSTEMD=true
         return
     fi
-    fatal 'Can not find systemd or openrc to use as a process supervisor for k3s'
+    if [ -d /etc/sv ] || [ -d /etc/runit/sv ] || type sv > /dev/null 2>&1; then
+        HAS_RUNIT=true
+        return
+    fi
+    fatal 'Can not find systemd, openrc, or runit to use as a process supervisor for k3s'
 }
 
 # --- add quotes to command arguments ---
@@ -253,13 +257,23 @@ setup_env() {
     UNINSTALL_K3S_SH=${UNINSTALL_K3S_SH:-${BIN_DIR}/${SYSTEM_NAME}-uninstall.sh}
     KILLALL_K3S_SH=${KILLALL_K3S_SH:-${BIN_DIR}/k3s-killall.sh}
 
-    # --- use service or environment location depending on systemd/openrc ---
+    # --- use service or environment location depending on systemd/openrc/runit ---
     if [ "${HAS_SYSTEMD}" = true ]; then
         FILE_K3S_SERVICE=${SYSTEMD_DIR}/${SERVICE_K3S}
         FILE_K3S_ENV=${SYSTEMD_DIR}/${SERVICE_K3S}.env
     elif [ "${HAS_OPENRC}" = true ]; then
         $SUDO mkdir -p /etc/rancher/k3s
         FILE_K3S_SERVICE=/etc/init.d/${SYSTEM_NAME}
+        FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
+    elif [ "${HAS_RUNIT}" = true ]; then
+        $SUDO mkdir -p /etc/rancher/k3s
+        # Determine runit service directory
+        if [ -d /etc/runit/sv ]; then
+            RUNIT_SERVICE_DIR=/etc/runit/sv
+        else
+            RUNIT_SERVICE_DIR=/etc/sv
+        fi
+        FILE_K3S_SERVICE=${RUNIT_SERVICE_DIR}/${SYSTEM_NAME}/run
         FILE_K3S_ENV=/etc/rancher/k3s/${SYSTEM_NAME}.env
     fi
 
@@ -823,6 +837,10 @@ for service in /etc/init.d/k3s*; do
     [ -x $service ] && $service stop
 done
 
+for service in /etc/sv/k3s* /etc/runit/sv/k3s*; do
+    [ -d $service ] && sv stop $(basename $service) 2>/dev/null || true
+done
+
 pschildren() {
     ps -e -o ppid= -o pid= | \
     sed -e 's/^\s*//g; s/\s\s*/\t/g;' | \
@@ -921,6 +939,12 @@ fi
 if command -v rc-update; then
     rc-update delete ${SYSTEM_NAME} default
 fi
+if command -v sv; then
+    sv stop ${SYSTEM_NAME} 2>/dev/null || true
+    rm -rf /var/service/${SYSTEM_NAME}
+    rm -rf /etc/sv/${SYSTEM_NAME}
+    rm -rf /etc/runit/sv/${SYSTEM_NAME}
+fi
 
 rm -f ${FILE_K3S_SERVICE}
 rm -f ${FILE_K3S_ENV}
@@ -930,7 +954,7 @@ remove_uninstall() {
 }
 trap remove_uninstall EXIT
 
-if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
+if (ls ${SYSTEMD_DIR}/k3s*.service || ls /etc/init.d/k3s* || ls /etc/sv/k3s*/run || ls /etc/runit/sv/k3s*/run) >/dev/null 2>&1; then
     set +x; echo 'Additional k3s services installed, skipping uninstall of k3s'; set -x
     exit
 fi
@@ -1043,9 +1067,12 @@ EOF
 
 # --- write openrc service file ---
 create_openrc_service_file() {
-    LOG_FILE=/var/log/${SYSTEM_NAME}.log
+    LOG_DIR=/var/log/${SYSTEM_NAME}
+    LOG_FILE=${LOG_DIR}/${SYSTEM_NAME}.log
 
     info "openrc: Creating service file ${FILE_K3S_SERVICE}"
+    $SUDO mkdir -p ${LOG_DIR}
+    $SUDO chmod 0755 ${LOG_DIR}
     $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
 #!/sbin/openrc-run
 
@@ -1078,8 +1105,54 @@ set +o allexport
 EOF
     $SUDO chmod 0755 ${FILE_K3S_SERVICE}
 
+    $SUDO mkdir -p /etc/logrotate.d
     $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
 ${LOG_FILE} {
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+}
+
+# --- write runit service file ---
+create_runit_service_file() {
+    LOG_DIR=/var/log/${SYSTEM_NAME}
+    LOG_FILE=${LOG_DIR}/${SYSTEM_NAME}.log
+
+    info "runit: Creating service directory ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME}"
+    $SUDO mkdir -p ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME}/log
+
+    info "runit: Creating run script ${FILE_K3S_SERVICE}"
+    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+#!/bin/sh
+exec 2>&1
+
+[ -f /etc/environment ] && . /etc/environment
+[ -f ${FILE_K3S_ENV} ] && . ${FILE_K3S_ENV}
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Load kernel modules
+modprobe br_netfilter 2>/dev/null || true
+modprobe overlay 2>/dev/null || true
+
+exec ${BIN_DIR}/k3s $(escape_dq "${CMD_K3S_EXEC}")
+EOF
+    $SUDO chmod 0755 ${FILE_K3S_SERVICE}
+
+    info "runit: Creating log run script"
+    $SUDO tee ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME}/log/run >/dev/null << EOF
+#!/bin/sh
+exec svlogd -tt ${LOG_DIR}
+EOF
+    $SUDO chmod 0755 ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME}/log/run
+    $SUDO mkdir -p ${LOG_DIR}
+    $SUDO chmod 0755 ${LOG_DIR}
+
+    $SUDO mkdir -p /etc/logrotate.d
+    $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
+${LOG_DIR}/* {
 	missingok
 	notifempty
 	copytruncate
@@ -1087,10 +1160,11 @@ ${LOG_FILE} {
 EOF
 }
 
-# --- write systemd or openrc service file ---
+# --- write systemd, openrc, or runit service file ---
 create_service_file() {
     [ "${HAS_SYSTEMD}" = true ] && create_systemd_service_file && restore_systemd_service_file_context
     [ "${HAS_OPENRC}" = true ] && create_openrc_service_file
+    [ "${HAS_RUNIT}" = true ] && create_runit_service_file
     return 0
 }
 
@@ -1127,6 +1201,26 @@ openrc_start() {
     $SUDO ${FILE_K3S_SERVICE} restart
 }
 
+# --- enable and start runit service ---
+runit_enable() {
+    info "runit: Enabling ${SYSTEM_NAME} service"
+    # Create symlink to enable the service
+    if [ -d /var/service ]; then
+        $SUDO ln -sf ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME} /var/service/${SYSTEM_NAME}
+    elif [ -d /service ]; then
+        $SUDO ln -sf ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME} /service/${SYSTEM_NAME}
+    elif [ -d /etc/runit/runsvdir/default ]; then
+        $SUDO ln -sf ${RUNIT_SERVICE_DIR}/${SYSTEM_NAME} /etc/runit/runsvdir/default/${SYSTEM_NAME}
+    fi
+}
+
+runit_start() {
+    info "runit: Starting ${SYSTEM_NAME}"
+    # Wait for runsv to pick up the service
+    sleep 2
+    $SUDO sv restart ${SYSTEM_NAME} 2>/dev/null || $SUDO sv start ${SYSTEM_NAME}
+}
+
 has_working_xtables() {
     if $SUDO sh -c "command -v \"$1-save\"" 1> /dev/null && $SUDO sh -c "command -v \"$1-restore\"" 1> /dev/null; then
         if $SUDO $1-save 2>/dev/null | grep -q '^-A CNI-HOSTPORT-MASQ -j MASQUERADE$'; then
@@ -1150,6 +1244,7 @@ service_enable_and_start() {
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_enable
     [ "${HAS_OPENRC}" = true ] && openrc_enable
+    [ "${HAS_RUNIT}" = true ] && runit_enable
 
     [ "${INSTALL_K3S_SKIP_START}" = true ] && return
 
@@ -1167,6 +1262,7 @@ service_enable_and_start() {
 
     [ "${HAS_SYSTEMD}" = true ] && systemd_start
     [ "${HAS_OPENRC}" = true ] && openrc_start
+    [ "${HAS_RUNIT}" = true ] && runit_start
     return 0
 }
 
