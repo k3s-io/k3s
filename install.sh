@@ -511,7 +511,7 @@ get_pr_artifact_url() {
     if [ -z "${commit_id}" ]; then
         fatal "Installing PR builds requires GITHUB_TOKEN with k3s-io/k3s repo permissions"
     fi
-    
+
     get_commit_artifact_url "${commit_id}"
 }
 
@@ -610,8 +610,8 @@ setup_selinux() {
             rpm_site_infix=slemicro
             package_installer=zypper
         fi
-    elif [ "${ID_LIKE:-}" = coreos ] || [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = "iot" ] || \
-         { { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; }; then
+    # cover any atomic fedora flavors using rpm-ostree
+    elif  { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
@@ -626,10 +626,6 @@ setup_selinux() {
     else
         rpm_target=el9
         rpm_site_infix=centos/9
-        package_installer=yum
-    fi
-
-    if [ "${package_installer}" = "rpm-ostree" ] && [ -x /bin/yum ]; then
         package_installer=yum
     fi
 
@@ -652,8 +648,7 @@ setup_selinux() {
     install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
 
     policy_error=fatal
-    if [ "$INSTALL_K3S_SELINUX_WARN" = true ] || [ "${ID_LIKE:-}" = coreos ] ||
-       [ "${VARIANT_ID:-}" = coreos ] || [ "${VARIANT_ID:-}" = iot ]; then
+    if [ "$INSTALL_K3S_SELINUX_WARN" = true ]; then
         policy_error=warn
     fi
 
@@ -662,8 +657,7 @@ setup_selinux() {
             $policy_error "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s, ${policy_hint}"
         fi
     elif [ ! -f /usr/share/selinux/packages/k3s.pp ]; then
-        if [ -x /usr/sbin/transactional-update ] || [ "${ID_LIKE:-}" = coreos ] || \
-            { { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; }; then
+        if [ -x /usr/sbin/transactional-update ] || [ "${rpm_target}" = "coreos" ]; then
             warn "Please reboot your machine to activate the changes and avoid data loss."
         else
             $policy_error "Failed to find the k3s-selinux policy, ${policy_hint}"
