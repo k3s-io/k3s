@@ -3,8 +3,10 @@
 package containerd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
@@ -16,6 +18,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/moby/sys/userns"
+	"github.com/pdtpartners/nix-snapshotter/pkg/nix"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -131,4 +134,11 @@ func FuseoverlayfsSupported(root string) error {
 
 func StargzSupported(root string) error {
 	return stargz.Supported(root)
+}
+
+func NixSupported(root string) error {
+	if _, err := exec.LookPath("nix-store"); err != nil {
+		return errors.New("nix-store not found in PATH: install nix (https://nixos.org/download) to use the nix snapshotter")
+	}
+	return nix.Supported(root)
 }

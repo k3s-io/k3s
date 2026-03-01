@@ -18,3 +18,7 @@ func FuseoverlayfsSupported(root string) error {
 func StargzSupported(root string) error {
 	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "stargz is not supported")
 }
+
+func NixSupported(root string) error {
+	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "nix is not supported")
+}
