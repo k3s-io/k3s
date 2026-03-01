@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.25.7-alpine3.22
+ARG GOLANG=golang:1.25.7-alpine3.23
 FROM ${GOLANG} AS test-base
 
 RUN apk -U --no-cache add bash jq
