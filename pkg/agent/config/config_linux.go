@@ -20,7 +20,7 @@ func applyContainerdOSSpecificConfig(nodeConfig *config.Node) error {
 	nodeConfig.Containerd.Address = filepath.Join(nodeConfig.Containerd.State, "containerd.sock")
 
 	// validate that the selected snapshotter supports the filesystem at the root path.
-	// for stargz, also overrides the image service endpoint path.
+	// for stargz and nix, also overrides the image service endpoint path.
 	switch nodeConfig.AgentConfig.Snapshotter {
 	case "overlayfs":
 		if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
@@ -38,6 +38,12 @@ func applyContainerdOSSpecificConfig(nodeConfig *config.Node) error {
 				nodeConfig.Containerd.Root)
 		}
 		nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+	case "nix":
+		if err := containerd.NixSupported(nodeConfig.Containerd.Root); err != nil {
+			return pkgerrors.WithMessagef(err, "\"nix\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+				nodeConfig.Containerd.Root)
+		}
+		nodeConfig.AgentConfig.ImageServiceSocket = filepath.Join(nodeConfig.Containerd.State, "nix-snapshotter.sock")
 	}
 
 	return nil

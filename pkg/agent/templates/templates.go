@@ -82,7 +82,7 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{- if .NodeConfig.AgentConfig.Snapshotter }}
 [plugins."io.containerd.grpc.v1.cri".containerd]
   snapshotter = "{{ .NodeConfig.AgentConfig.Snapshotter }}"
-  disable_snapshot_annotations = {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}false{{else}}true{{end}}
+  disable_snapshot_annotations = {{ if or (eq .NodeConfig.AgentConfig.Snapshotter "stargz") (eq .NodeConfig.AgentConfig.Snapshotter "nix") }}false{{else}}true{{end}}
   {{ if .NodeConfig.DefaultRuntime }}default_runtime_name = "{{ .NodeConfig.DefaultRuntime }}"{{end}}
 {{ if eq .NodeConfig.AgentConfig.Snapshotter "stargz" }}
 {{ if .NodeConfig.AgentConfig.ImageServiceSocket }}
@@ -106,6 +106,27 @@ enable_keychain = true
 {{end}}
 {{end}}
 {{end}}
+{{end}}
+{{end}}
+
+{{ if eq .NodeConfig.AgentConfig.Snapshotter "nix" }}
+{{ if .NodeConfig.AgentConfig.ImageServiceSocket }}
+[plugins."io.containerd.snapshotter.v1.nix"]
+  address = "{{ .NodeConfig.AgentConfig.ImageServiceSocket }}"
+
+[plugins."io.containerd.snapshotter.v1.nix".image_service]
+  enable = true
+  containerd_address = {{ deschemify .NodeConfig.Containerd.Address | printf "%q" }}
+
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux/amd64"
+  snapshotter = "nix"
+  differ = "walking"
+
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux/arm64"
+  snapshotter = "nix"
+  differ = "walking"
 {{end}}
 {{end}}
 
@@ -190,7 +211,7 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{ with .NodeConfig.AgentConfig.Snapshotter }}
 [plugins.'io.containerd.cri.v1.images']
   snapshotter = "{{ . }}"
-  disable_snapshot_annotations = {{ if eq . "stargz" }}false{{else}}true{{end}}
+  disable_snapshot_annotations = {{ if or (eq . "stargz") (eq . "nix") }}false{{else}}true{{end}}
   use_local_image_pull = true
 {{ end }}
 
@@ -273,6 +294,32 @@ state = {{ printf "%q" .NodeConfig.Containerd.State }}
 {{ end }}
 {{ end }}
 {{ end }}
+{{ end }}
+
+{{ if eq .NodeConfig.AgentConfig.Snapshotter "nix" }}
+{{ with .NodeConfig.AgentConfig.ImageServiceSocket }}
+[plugins.'io.containerd.snapshotter.v1.nix']
+  address = {{ printf "%q" . }}
+
+[plugins.'io.containerd.snapshotter.v1.nix'.image_service]
+  enable = true
+  containerd_address = {{ deschemify $.NodeConfig.Containerd.Address | printf "%q" }}
+
+[[plugins.'io.containerd.transfer.v1.local'.unpack_config]]
+  platform = "linux/amd64"
+  snapshotter = "nix"
+  differ = "walking"
+
+[[plugins.'io.containerd.transfer.v1.local'.unpack_config]]
+  platform = "linux/arm64"
+  snapshotter = "nix"
+  differ = "walking"
+{{ end }}
+{{ end }}
+
+{{ if .IsRunningInUserNS }}
+[plugins.'io.containerd.nri.v1.nri']
+  disable = true
 {{ end }}
 `
 
