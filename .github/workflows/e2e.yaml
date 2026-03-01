@@ -187,12 +187,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, nixsnapshotter, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
             arch: arm64
           - dtest: dualstack
+            arch: arm64
+          - dtest: nixsnapshotter
             arch: arm64
           - dtest: secretsencryption
             arch: arm64
@@ -245,6 +247,14 @@ jobs:
         docker image load -i ./dist/artifacts/k3s-image.tar
         IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
         echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Install Nix
+      if: matrix.dtest == 'nixsnapshotter'
+      uses: DeterminateSystems/nix-installer-action@v17
+    - name: Build nix test image
+      if: matrix.dtest == 'nixsnapshotter'
+      run: |
+        nix build github:pdtpartners/nix-snapshotter#image-hello
+        cp result ./tests/docker/resources/nix-hello-image.tar
     - name: Download Go Tests
       uses: actions/download-artifact@v7
       with:
