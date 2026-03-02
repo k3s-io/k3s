@@ -55,9 +55,11 @@ jobs:
           docker save -o k3s.tar rancher/k3s:latest
 
       - name: Create PR context artifact
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p pr-context
-          echo "${{ github.event.pull_request.number }}" > pr-context/pr_number
+          echo "$PR_NUM" > pr-context/pr_number
           mv k3s.tar pr-context/k3s.tar
 
       - name: Upload PR context artifact
