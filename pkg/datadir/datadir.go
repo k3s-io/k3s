@@ -3,10 +3,10 @@ package datadir
 import (
 	"path/filepath"
 
+	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/home"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
-	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 )
 
 var (
@@ -29,9 +29,9 @@ func LocalHome(dataDir string, forceLocal bool) (string, error) {
 		}
 	}
 
-	dataDir, err := resolvehome.Resolve(dataDir)
+	dataDir, err := home.Resolve(dataDir)
 	if err != nil {
-		return "", pkgerrors.WithMessagef(err, "resolving %s", dataDir)
+		return "", errors.WithMessagef(err, "resolving %s", dataDir)
 	}
 
 	return filepath.Abs(dataDir)
