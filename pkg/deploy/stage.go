@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/util/bindata"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,7 +46,7 @@ staging:
 		os.MkdirAll(filepath.Dir(p), 0700)
 		logrus.Info("Writing manifest: ", p)
 		if err := os.WriteFile(p, content, 0600); err != nil {
-			return pkgerrors.WithMessagef(err, "failed to write to %s", name)
+			return errors.WithMessagef(err, "failed to write to %s", name)
 		}
 	}
 

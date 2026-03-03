@@ -8,8 +8,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/k3s-io/k3s/pkg/agent/templates"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	util3 "github.com/k3s-io/k3s/pkg/util"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/cri-client/pkg/util"
 )
@@ -67,17 +66,17 @@ func Client(address string) (*containerd.Client, error) {
 }
 
 func OverlaySupported(root string) error {
-	return pkgerrors.WithMessagef(util3.ErrUnsupportedPlatform, "overlayfs is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "overlayfs is not supported")
 }
 
 func FuseoverlayfsSupported(root string) error {
-	return pkgerrors.WithMessagef(util3.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
 }
 
 func StargzSupported(root string) error {
-	return pkgerrors.WithMessagef(util3.ErrUnsupportedPlatform, "stargz is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "stargz is not supported")
 }
 
 func NixSupported(root string) error {
-	return pkgerrors.WithMessagef(util3.ErrUnsupportedPlatform, "nix is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "nix is not supported")
 }

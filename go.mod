@@ -110,7 +110,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.16.17
-	github.com/k3s-io/kine v0.14.12
+	github.com/k3s-io/kine v0.14.14
 	github.com/klauspost/compress v1.18.4
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/minio/minio-go/v7 v7.0.91
@@ -126,15 +126,14 @@ require (
 	github.com/opencontainers/selinux v1.13.1
 	github.com/otiai10/copy v1.14.1
 	github.com/pdtpartners/nix-snapshotter v0.4.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
-	github.com/rancher/dynamiclistener v0.7.1
-	github.com/rancher/lasso v0.2.3
+	github.com/rancher/dynamiclistener v0.7.5
+	github.com/rancher/lasso v0.2.6
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d
-	github.com/rancher/wharfie v0.7.0
-	github.com/rancher/wrangler/v3 v3.2.3
+	github.com/rancher/wharfie v0.7.1
+	github.com/rancher/wrangler/v3 v3.4.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.4
@@ -150,7 +149,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.6.8
 	go.etcd.io/etcd/etcdutl/v3 v3.6.6
 	go.etcd.io/etcd/server/v3 v3.6.8
-	go.uber.org/mock v0.5.2
+	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.46.0
 	golang.org/x/mod v0.30.0
@@ -247,7 +246,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
-	github.com/docker/cli v28.3.2+incompatible // indirect
+	github.com/docker/cli v29.0.4+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
@@ -402,8 +401,8 @@ require (
 	github.com/nats-io/jsm.go v0.3.0 // indirect
 	github.com/nats-io/jwt/v2 v2.8.0 // indirect
 	github.com/nats-io/nats-server/v2 v2.12.2 // indirect
-	github.com/nats-io/nats.go v1.48.0 // indirect
-	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/nats-io/nats.go v1.49.0 // indirect
+	github.com/nats-io/nkeys v0.4.12 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
@@ -432,6 +431,7 @@ require (
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pion/turn/v4 v4.0.2 // indirect
 	github.com/pion/webrtc/v4 v4.1.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
@@ -505,7 +505,7 @@ require (
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
 	k8s.io/endpointslice v0.0.0 // indirect
 	k8s.io/externaljwt v1.32.0 // indirect
-	k8s.io/kms v0.0.0 // indirect
+	k8s.io/kms v0.35.2 // indirect
 	k8s.io/kube-aggregator v0.35.2 // indirect
 	k8s.io/kube-controller-manager v0.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect

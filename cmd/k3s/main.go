@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -20,9 +19,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/dataverify"
 	"github.com/k3s-io/k3s/pkg/flock"
 	"github.com/k3s-io/k3s/pkg/untar"
+	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/home"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
-	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/urfave/cli/v2"
@@ -212,7 +211,7 @@ func stageAndRunCLI(cli *cli.Context, cmd string, dataDir string, args []string)
 func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) error {
 	dir, err := extract(dataDir)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "extracting data")
+		return errors.WithMessage(err, "extracting data")
 	}
 	logrus.Debugf("Asset dir %s", dir)
 
@@ -386,7 +385,7 @@ func extract(dataDir string) (string, error) {
 func findCriConfig(dataDir string) string {
 	searchList := []string{filepath.Join(dataDir, "agent", criDefaultConfigPath)}
 
-	if homeDataDir, err := resolvehome.Resolve(datadir.DefaultHomeDataDir); err == nil {
+	if homeDataDir, err := home.Resolve(datadir.DefaultHomeDataDir); err == nil {
 		searchList = append(searchList, filepath.Join(homeDataDir, "agent", criDefaultConfigPath))
 	} else {
 		logrus.Warnf("Failed to resolve user home directory: %s", err)
