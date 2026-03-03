@@ -10,7 +10,6 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util/errors"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -121,7 +120,7 @@ func WaitForAPIServerReady(ctx context.Context, kubeconfigPath string, timeout t
 	})
 
 	if err != nil {
-		return merr.NewErrors(err, lastErr)
+		return errors.Join(err, lastErr)
 	}
 
 	return nil
@@ -182,7 +181,7 @@ func WaitForRBACReady(ctx context.Context, kubeconfigPath string, timeout time.D
 	})
 
 	if err != nil {
-		return merr.NewErrors(err, lastErr)
+		return errors.Join(err, lastErr)
 	}
 
 	return nil
