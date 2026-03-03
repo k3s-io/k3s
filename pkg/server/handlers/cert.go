@@ -24,7 +24,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	certutil "github.com/rancher/dynamiclistener/cert"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/util/keyutil"
 )
@@ -126,7 +125,7 @@ func defaultBootstrap(oldControl, newControl *config.Control) error {
 			}
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // validateBootstrap checks the new certs and keys to ensure that the cluster would function properly were they to be used.
@@ -167,7 +166,7 @@ func validateBootstrap(oldControl, newControl *config.Control) error {
 		}
 	}
 
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 func validateCA(oldCAPath, newCAPath string) error {
