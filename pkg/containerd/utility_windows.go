@@ -3,22 +3,21 @@
 package containerd
 
 import (
-	util2 "github.com/k3s-io/k3s/pkg/util"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 )
 
 func OverlaySupported(root string) error {
-	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "overlayfs is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "overlayfs is not supported")
 }
 
 func FuseoverlayfsSupported(root string) error {
-	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "fuse-overlayfs is not supported")
 }
 
 func StargzSupported(root string) error {
-	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "stargz is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "stargz is not supported")
 }
 
 func NixSupported(root string) error {
-	return pkgerrors.WithMessagef(util2.ErrUnsupportedPlatform, "nix is not supported")
+	return errors.WithMessagef(errors.ErrUnsupportedPlatform, "nix is not supported")
 }

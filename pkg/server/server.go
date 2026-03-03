@@ -27,13 +27,13 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/handlers"
 	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/home"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	v1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/leader"
-	"github.com/rancher/wrangler/v3/pkg/resolvehome"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,7 +72,7 @@ func PrepareServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg 
 // and writes the admin kubeconfig.
 func StartServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg *cmds.Server) error {
 	if err := control.Server(ctx, wg, &config.ControlConfig); err != nil {
-		return pkgerrors.WithMessage(err, "starting kubernetes")
+		return errors.WithMessage(err, "starting kubernetes")
 	}
 
 	shArgs := cmds.StartupHookArgs{
@@ -83,7 +83,7 @@ func StartServer(ctx context.Context, wg *sync.WaitGroup, config *Config, cfg *c
 	}
 	for _, hook := range config.StartupHooks {
 		if err := hook(ctx, config.ControlConfig.Runtime.StartupHooksWg, shArgs); err != nil {
-			return pkgerrors.WithMessage(err, "startup hook")
+			return errors.WithMessage(err, "startup hook")
 		}
 	}
 	go startOnAPIServerReady(ctx, config)
@@ -111,17 +111,17 @@ func runControllers(ctx context.Context, config *Config) error {
 
 	sc, err := NewContext(ctx, config)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to create new server context")
+		return errors.WithMessage(err, "failed to create new server context")
 	}
 
 	controlConfig.Runtime.StartupHooksWg.Wait()
 	if err := stageFiles(ctx, sc, controlConfig); err != nil {
-		return pkgerrors.WithMessage(err, "failed to stage files")
+		return errors.WithMessage(err, "failed to stage files")
 	}
 
 	// start the nodepassword controller before we set controlConfig.Runtime.Core
 	if err := nodepassword.Register(ctx, sc.K8s, sc.Core.Core().V1().Secret(), sc.Core.Core().V1().Node()); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start node-password secret controller")
+		return errors.WithMessage(err, "failed to start node-password secret controller")
 	}
 
 	controlConfig.Runtime.K8s = sc.K8s
@@ -141,12 +141,12 @@ func runControllers(ctx context.Context, config *Config) error {
 
 	for _, controller := range config.Controllers {
 		if err := controller(ctx, sc); err != nil {
-			return pkgerrors.WithMessagef(err, "failed to start %s controller", util.GetFunctionName(controller))
+			return errors.WithMessagef(err, "failed to start %s controller", util.GetFunctionName(controller))
 		}
 	}
 
 	if err := sc.Start(ctx); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start wranger controllers")
+		return errors.WithMessage(err, "failed to start wranger controllers")
 	}
 
 	if !controlConfig.DisableAPIServer {
@@ -180,14 +180,14 @@ func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 	}
 	for _, controller := range config.LeaderControllers {
 		if err := controller(ctx, sc); err != nil {
-			panic(pkgerrors.WithMessagef(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
+			panic(errors.WithMessagef(err, "failed to start %s leader controller", util.GetFunctionName(controller)))
 		}
 	}
 
 	// Re-run informer factory startup after core and leader-elected controllers have started.
 	// Additional caches may need to start for the newly added OnChange/OnRemove callbacks.
 	if err := sc.Start(ctx); err != nil {
-		panic(pkgerrors.WithMessage(err, "failed to start wranger controllers"))
+		panic(errors.WithMessage(err, "failed to start wranger controllers"))
 	}
 }
 
@@ -351,14 +351,14 @@ func HomeKubeConfig(write, rootless bool) (string, error) {
 		if permissions.IsPrivileged() == nil && !rootless {
 			return datadir.GlobalConfig, nil
 		}
-		return resolvehome.Resolve(datadir.HomeConfig)
+		return home.Resolve(datadir.HomeConfig)
 	}
 
 	if _, err := os.Stat(datadir.GlobalConfig); err == nil {
 		return datadir.GlobalConfig, nil
 	}
 
-	return resolvehome.Resolve(datadir.HomeConfig)
+	return home.Resolve(datadir.HomeConfig)
 }
 
 func printTokens(config *config.Control) error {
@@ -495,11 +495,11 @@ func setupDataDirAndChdir(config *config.Control) error {
 	dataDir := config.DataDir
 
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
-		return pkgerrors.WithMessagef(err, "can not mkdir %s", dataDir)
+		return errors.WithMessagef(err, "can not mkdir %s", dataDir)
 	}
 
 	if err := os.Chdir(dataDir); err != nil {
-		return pkgerrors.WithMessagef(err, "can not chdir %s", dataDir)
+		return errors.WithMessagef(err, "can not chdir %s", dataDir)
 	}
 
 	return nil
