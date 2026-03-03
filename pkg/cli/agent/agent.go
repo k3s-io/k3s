@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,10 +19,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -65,7 +64,7 @@ func Run(clx *cli.Context) (rerr error) {
 
 	if !cmds.AgentConfig.Rootless {
 		if err := permissions.IsPrivileged(); err != nil {
-			return pkgerrors.WithMessage(err, "agent requires additional privilege if not run with --rootless")
+			return errors.WithMessage(err, "agent requires additional privilege if not run with --rootless")
 		}
 	}
 
