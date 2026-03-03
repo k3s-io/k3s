@@ -22,7 +22,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	"github.com/rancher/wrangler/v3/pkg/kv"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -108,7 +107,7 @@ func (w *watcher) listFiles(force bool) error {
 			errs = append(errs, err)
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // listFilesIn recursively processes all files within a path, and checks them against the disable and skip lists. Files found that
@@ -184,7 +183,7 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		}
 	}
 
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // deploy loads yaml from a manifest on disk, creates an AddOn resource to track its application, and then applies

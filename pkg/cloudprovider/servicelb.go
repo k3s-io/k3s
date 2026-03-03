@@ -17,7 +17,6 @@ import (
 	"github.com/rancher/wrangler/v3/pkg/condition"
 	coreclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	discoveryclient "github.com/rancher/wrangler/v3/pkg/generated/controllers/discovery/v1"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/objectset"
 	"github.com/sirupsen/logrus"
 	apps "k8s.io/api/apps/v1"
@@ -664,7 +663,7 @@ func (k *k3s) removeServiceFinalizers(ctx context.Context) error {
 		return err
 	}
 
-	var errs merr.Errors
+	var errs []error
 	for _, svc := range services.Items {
 		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			s, err := k.removeFinalizer(ctx, &svc)
@@ -675,10 +674,7 @@ func (k *k3s) removeServiceFinalizers(ctx context.Context) error {
 		}
 	}
 
-	if len(errs) > 0 {
-		return errs
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // removeFinalizer ensures that there is not a finalizer for this controller on the Service
