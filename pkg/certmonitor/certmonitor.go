@@ -2,6 +2,7 @@ package certmonitor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/prometheus/client_golang/prometheus"
 	certutil "github.com/rancher/dynamiclistener/cert"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,7 +113,7 @@ func Setup(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) e
 }
 
 func checkCerts(fileMap map[string][]string, warningPeriod time.Duration) error {
-	errs := merr.Errors{}
+	errs := []error{}
 	now := time.Now()
 	warn := now.Add(warningPeriod)
 
@@ -139,5 +139,5 @@ func checkCerts(fileMap map[string][]string, warningPeriod time.Duration) error 
 		}
 	}
 
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/routing"
 	"golang.org/x/sync/errgroup"
@@ -263,7 +262,7 @@ func (c *chainingBootstrapper) Run(ctx context.Context, id peer.AddrInfo) error 
 }
 
 func (c *chainingBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
-	errs := merr.Errors{}
+	errs := []error{}
 	for i := range c.bootstrappers {
 		b := c.bootstrappers[i]
 		as, err := b.Get(ctx)
@@ -273,7 +272,7 @@ func (c *chainingBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error)
 			return as, nil
 		}
 	}
-	return nil, merr.NewErrors(errs...)
+	return nil, errors.Join(errs...)
 }
 
 func waitForDone(ctx context.Context) error {
