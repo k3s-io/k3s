@@ -2,7 +2,6 @@ package flannel
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -14,8 +13,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
@@ -86,7 +85,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	// use the kubelet kubeconfig to sync node annotations, as the k3s-controller
 	// rbac does not allow create or update of nodes.
 	if err := syncAnnotations(ctx, nodeConfig, coreClient); err != nil {
-		return pkgerrors.WithMessage(err, "flannel failed to sync address annotations")
+		return errors.WithMessage(err, "flannel failed to sync address annotations")
 	}
 
 	resourceAttrs := authorizationv1.ResourceAttributes{Verb: "list", Resource: "nodes"}
@@ -95,7 +94,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 	// Flannel needs to watch all nodes in the cluster, which the kubelet is not allowed to do on recent versions of Kubernetes.
 	// If the kubelet cannot list nodes, then wait for the k3s-controller RBAC to become ready, and use that kubeconfig instead.
 	if canListNodes, err := util.CheckRBAC(ctx, kubeConfig, resourceAttrs, ""); err != nil {
-		return pkgerrors.WithMessage(err, "failed to check if RBAC allows node list")
+		return errors.WithMessage(err, "failed to check if RBAC allows node list")
 	} else if !canListNodes {
 		kubeConfig = nodeConfig.AgentConfig.KubeConfigK3sController
 		coreClient, err = util.GetClientSet(kubeConfig)
@@ -103,22 +102,22 @@ func Run(ctx context.Context, wg *sync.WaitGroup, nodeConfig *config.Node) error
 			return err
 		}
 		if err := util.WaitForRBACReady(ctx, kubeConfig, util.DefaultAPIServerReadyTimeout, resourceAttrs, ""); err != nil {
-			return pkgerrors.WithMessage(err, "flannel failed to wait for RBAC")
+			return errors.WithMessage(err, "flannel failed to wait for RBAC")
 		}
 	}
 
 	if err := waitForPodCIDR(ctx, nodeConfig.AgentConfig.NodeName, coreClient); err != nil {
-		return pkgerrors.WithMessage(err, "flannel failed to wait for PodCIDR assignment")
+		return errors.WithMessage(err, "flannel failed to wait for PodCIDR assignment")
 	}
 
 	nm, err := findNetMode(nodeConfig.AgentConfig.ClusterCIDRs)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to check netMode for flannel")
+		return errors.WithMessage(err, "failed to check netMode for flannel")
 	}
 	go func() {
 		err := flannel(ctx, wg, nodeConfig.Flannel.Iface, nodeConfig.Flannel.ConfFile, kubeConfig, nodeConfig.Flannel.IPv6Masq, nm)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "flannel exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "flannel exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -137,7 +136,7 @@ func waitForPodCIDR(ctx context.Context, nodeName string, coreClient kubernetes.
 	}
 
 	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
-		return pkgerrors.WithMessage(err, "failed to wait for PodCIDR assignment")
+		return errors.WithMessage(err, "failed to wait for PodCIDR assignment")
 	}
 
 	logrus.Info("Flannel found PodCIDR assigned for node " + nodeName)

@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -19,7 +20,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	testutil "github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/mock"
-	pkgerrors "github.com/pkg/errors"
 	"go.uber.org/mock/gomock"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -198,7 +198,7 @@ func mockControl(ctx context.Context, t *testing.T, clusterInit bool) (*config.C
 
 	control.Cluster = cluster.New(control)
 	if err := prepare(ctx, nil, control); err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to prepare cluster")
+		return nil, fmt.Errorf("failed to prepare cluster: %w", err)
 	}
 
 	return control, nil

@@ -65,54 +65,62 @@ func (m *CoreMock) V1() corev1.Interface {
 var _ corev1.Interface = &V1Mock{}
 
 type V1Mock struct {
-	ConfigMapMock              *fake.MockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList]
 	ConfigMapCache             *fake.MockCacheInterface[*v1.ConfigMap]
-	EndpointsMock              *fake.MockControllerInterface[*v1.Endpoints, *v1.EndpointsList]
+	ConfigMapMock              *fake.MockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList]
 	EndpointsCache             *fake.MockCacheInterface[*v1.Endpoints]
-	EventMock                  *fake.MockControllerInterface[*v1.Event, *v1.EventList]
+	EndpointsMock              *fake.MockControllerInterface[*v1.Endpoints, *v1.EndpointsList]
 	EventCache                 *fake.MockCacheInterface[*v1.Event]
-	NamespaceMock              *fake.MockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList]
+	EventMock                  *fake.MockControllerInterface[*v1.Event, *v1.EventList]
+	LimitRangeCache            *fake.MockCacheInterface[*v1.LimitRange]
+	LimitRangeMock             *fake.MockControllerInterface[*v1.LimitRange, *v1.LimitRangeList]
 	NamespaceCache             *fake.MockNonNamespacedCacheInterface[*v1.Namespace]
-	NodeMock                   *fake.MockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList]
+	NamespaceMock              *fake.MockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList]
 	NodeCache                  *fake.MockNonNamespacedCacheInterface[*v1.Node]
-	PersistentVolumeMock       *fake.MockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList]
+	NodeMock                   *fake.MockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList]
 	PersistentVolumeCache      *fake.MockNonNamespacedCacheInterface[*v1.PersistentVolume]
-	PersistentVolumeClaimMock  *fake.MockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList]
 	PersistentVolumeClaimCache *fake.MockCacheInterface[*v1.PersistentVolumeClaim]
-	PodMock                    *fake.MockControllerInterface[*v1.Pod, *v1.PodList]
+	PersistentVolumeClaimMock  *fake.MockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList]
+	PersistentVolumeMock       *fake.MockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList]
 	PodCache                   *fake.MockCacheInterface[*v1.Pod]
-	SecretMock                 *fake.MockControllerInterface[*v1.Secret, *v1.SecretList]
+	PodMock                    *fake.MockControllerInterface[*v1.Pod, *v1.PodList]
+	ResourceQuotaCache         *fake.MockCacheInterface[*v1.ResourceQuota]
+	ResourceQuotaMock          *fake.MockControllerInterface[*v1.ResourceQuota, *v1.ResourceQuotaList]
 	SecretCache                *fake.MockCacheInterface[*v1.Secret]
-	ServiceMock                *fake.MockControllerInterface[*v1.Service, *v1.ServiceList]
-	ServiceCache               *fake.MockCacheInterface[*v1.Service]
-	ServiceAccountMock         *fake.MockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList]
+	SecretMock                 *fake.MockControllerInterface[*v1.Secret, *v1.SecretList]
 	ServiceAccountCache        *fake.MockCacheInterface[*v1.ServiceAccount]
+	ServiceAccountMock         *fake.MockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList]
+	ServiceCache               *fake.MockCacheInterface[*v1.Service]
+	ServiceMock                *fake.MockControllerInterface[*v1.Service, *v1.ServiceList]
 }
 
 func NewV1(c *gomock.Controller) *V1Mock {
 	return &V1Mock{
-		ConfigMapMock:              fake.NewMockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList](c),
 		ConfigMapCache:             fake.NewMockCacheInterface[*v1.ConfigMap](c),
-		EndpointsMock:              fake.NewMockControllerInterface[*v1.Endpoints, *v1.EndpointsList](c),
+		ConfigMapMock:              fake.NewMockControllerInterface[*v1.ConfigMap, *v1.ConfigMapList](c),
 		EndpointsCache:             fake.NewMockCacheInterface[*v1.Endpoints](c),
-		EventMock:                  fake.NewMockControllerInterface[*v1.Event, *v1.EventList](c),
+		EndpointsMock:              fake.NewMockControllerInterface[*v1.Endpoints, *v1.EndpointsList](c),
 		EventCache:                 fake.NewMockCacheInterface[*v1.Event](c),
-		NamespaceMock:              fake.NewMockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList](c),
+		EventMock:                  fake.NewMockControllerInterface[*v1.Event, *v1.EventList](c),
+		LimitRangeCache:            fake.NewMockCacheInterface[*v1.LimitRange](c),
+		LimitRangeMock:             fake.NewMockControllerInterface[*v1.LimitRange, *v1.LimitRangeList](c),
 		NamespaceCache:             fake.NewMockNonNamespacedCacheInterface[*v1.Namespace](c),
-		NodeMock:                   fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](c),
+		NamespaceMock:              fake.NewMockNonNamespacedControllerInterface[*v1.Namespace, *v1.NamespaceList](c),
 		NodeCache:                  fake.NewMockNonNamespacedCacheInterface[*v1.Node](c),
-		PersistentVolumeMock:       fake.NewMockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList](c),
+		NodeMock:                   fake.NewMockNonNamespacedControllerInterface[*v1.Node, *v1.NodeList](c),
 		PersistentVolumeCache:      fake.NewMockNonNamespacedCacheInterface[*v1.PersistentVolume](c),
-		PersistentVolumeClaimMock:  fake.NewMockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList](c),
 		PersistentVolumeClaimCache: fake.NewMockCacheInterface[*v1.PersistentVolumeClaim](c),
-		PodMock:                    fake.NewMockControllerInterface[*v1.Pod, *v1.PodList](c),
+		PersistentVolumeClaimMock:  fake.NewMockControllerInterface[*v1.PersistentVolumeClaim, *v1.PersistentVolumeClaimList](c),
+		PersistentVolumeMock:       fake.NewMockNonNamespacedControllerInterface[*v1.PersistentVolume, *v1.PersistentVolumeList](c),
 		PodCache:                   fake.NewMockCacheInterface[*v1.Pod](c),
-		SecretMock:                 fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](c),
+		PodMock:                    fake.NewMockControllerInterface[*v1.Pod, *v1.PodList](c),
+		ResourceQuotaCache:         fake.NewMockCacheInterface[*v1.ResourceQuota](c),
+		ResourceQuotaMock:          fake.NewMockControllerInterface[*v1.ResourceQuota, *v1.ResourceQuotaList](c),
 		SecretCache:                fake.NewMockCacheInterface[*v1.Secret](c),
-		ServiceMock:                fake.NewMockControllerInterface[*v1.Service, *v1.ServiceList](c),
-		ServiceCache:               fake.NewMockCacheInterface[*v1.Service](c),
-		ServiceAccountMock:         fake.NewMockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList](c),
+		SecretMock:                 fake.NewMockControllerInterface[*v1.Secret, *v1.SecretList](c),
 		ServiceAccountCache:        fake.NewMockCacheInterface[*v1.ServiceAccount](c),
+		ServiceAccountMock:         fake.NewMockControllerInterface[*v1.ServiceAccount, *v1.ServiceAccountList](c),
+		ServiceCache:               fake.NewMockCacheInterface[*v1.Service](c),
+		ServiceMock:                fake.NewMockControllerInterface[*v1.Service, *v1.ServiceList](c),
 	}
 }
 
@@ -126,6 +134,10 @@ func (m *V1Mock) Endpoints() corev1.EndpointsController {
 
 func (m *V1Mock) Event() corev1.EventController {
 	return m.EventMock
+}
+
+func (m *V1Mock) LimitRange() corev1.LimitRangeController {
+	return m.LimitRangeMock
 }
 
 func (m *V1Mock) Namespace() corev1.NamespaceController {
@@ -146,6 +158,10 @@ func (m *V1Mock) PersistentVolumeClaim() corev1.PersistentVolumeClaimController 
 
 func (m *V1Mock) Pod() corev1.PodController {
 	return m.PodMock
+}
+
+func (m *V1Mock) ResourceQuota() corev1.ResourceQuotaController {
+	return m.ResourceQuotaMock
 }
 
 func (m *V1Mock) Secret() corev1.SecretController {
