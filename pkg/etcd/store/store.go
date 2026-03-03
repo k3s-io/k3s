@@ -10,7 +10,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -204,7 +203,7 @@ func (t *TemporaryStore) Get(ctx context.Context, key string) (mvccpb.KeyValue, 
 }
 
 func (t *TemporaryStore) Close() error {
-	return merr.NewErrors(t.store.Close(), os.RemoveAll(t.dataDir))
+	return errors.Join(t.store.Close(), os.RemoveAll(t.dataDir))
 }
 
 // explicit interface check
@@ -306,7 +305,7 @@ func (s *Store) Close() error {
 	if s.be != nil {
 		errs = append(errs, s.be.Close())
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 func (s *Store) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error) {
