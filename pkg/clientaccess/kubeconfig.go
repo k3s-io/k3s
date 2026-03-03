@@ -3,7 +3,8 @@ package clientaccess
 import (
 	"os"
 
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
+
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -12,17 +13,17 @@ import (
 func WriteClientKubeConfig(destFile, url, serverCAFile, clientCertFile, clientKeyFile string) error {
 	serverCA, err := os.ReadFile(serverCAFile)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "failed to read %s", serverCAFile)
+		return errors.WithMessagef(err, "failed to read %s", serverCAFile)
 	}
 
 	clientCert, err := os.ReadFile(clientCertFile)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "failed to read %s", clientCertFile)
+		return errors.WithMessagef(err, "failed to read %s", clientCertFile)
 	}
 
 	clientKey, err := os.ReadFile(clientKeyFile)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "failed to read %s", clientKeyFile)
+		return errors.WithMessagef(err, "failed to read %s", clientKeyFile)
 	}
 
 	config := clientcmdapi.NewConfig()

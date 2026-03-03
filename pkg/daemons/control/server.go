@@ -2,7 +2,6 @@ package control
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,8 +16,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	v1 "k8s.io/api/core/v1"
@@ -42,12 +41,12 @@ import (
 func Prepare(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
 	logsapi.ReapplyHandling = logsapi.ReapplyHandlingIgnoreUnchanged
 	if err := prepare(ctx, wg, cfg); err != nil {
-		return pkgerrors.WithMessage(err, "preparing server")
+		return errors.WithMessage(err, "preparing server")
 	}
 
 	tunnel, err := setupTunnel(ctx, cfg)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "setup tunnel server")
+		return errors.WithMessage(err, "setup tunnel server")
 	}
 	cfg.Runtime.Tunnel = tunnel
 
@@ -70,7 +69,7 @@ func Prepare(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error
 // not disabled on this node.
 func Server(ctx context.Context, wg *sync.WaitGroup, cfg *config.Control) error {
 	if err := cfg.Cluster.Start(ctx, wg); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start cluster")
+		return errors.WithMessage(err, "failed to start cluster")
 	}
 
 	// Create a new context to use for control-plane components that is
@@ -194,7 +193,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 			logrus.Infof("Waiting for untainted node")
 			// this waits forever for an untainted node; if it returns ErrWaitTimeout the context has been cancelled, and it is not a fatal error
 			if err := waitForUntaintedNode(ctx, runtime.KubeConfigScheduler); err != nil && !errors.Is(err, wait.ErrWaitTimeout) {
-				signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to wait for untained node"))
+				signals.RequestShutdown(errors.WithMessage(err, "failed to wait for untained node"))
 			}
 		}
 	}()
@@ -325,15 +324,15 @@ func prepare(ctx context.Context, wg *sync.WaitGroup, config *config.Control) er
 
 	config.Cluster = cluster.New(config)
 	if err := config.Cluster.Bootstrap(ctx, config.ClusterReset); err != nil {
-		return pkgerrors.WithMessage(err, "failed to bootstrap cluster data")
+		return errors.WithMessage(err, "failed to bootstrap cluster data")
 	}
 
 	if err := deps.GenServerDeps(config); err != nil {
-		return pkgerrors.WithMessage(err, "failed to generate server dependencies")
+		return errors.WithMessage(err, "failed to generate server dependencies")
 	}
 
 	if err := config.Cluster.ListenAndServe(ctx); err != nil {
-		return pkgerrors.WithMessage(err, "failed to start supervisor listener")
+		return errors.WithMessage(err, "failed to start supervisor listener")
 	}
 
 	return nil
@@ -470,7 +469,7 @@ func waitForUntaintedNode(ctx context.Context, kubeConfig string) error {
 	}
 
 	if _, err := toolswatch.UntilWithSync(ctx, lw, &v1.Node{}, nil, condition); err != nil {
-		return pkgerrors.WithMessage(err, "failed to wait for untainted node")
+		return errors.WithMessage(err, "failed to wait for untainted node")
 	}
 	return nil
 }

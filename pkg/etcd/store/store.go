@@ -2,15 +2,14 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
 	"time"
 
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/otiai10/copy"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -254,7 +253,7 @@ func NewStore(dataDir string) (store *Store, rerr error) {
 	// need to check for backend path ourselves, as backend.New just creates
 	// a new empty database if the file does not exist or is empty.
 	if _, err := os.Stat(path); err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to stat MVCC KV store backend path")
+		return nil, errors.WithMessage(err, "failed to stat MVCC KV store backend path")
 	}
 
 	logrus.Infof("Opening etcd MVCC KV backend database at %s", path)

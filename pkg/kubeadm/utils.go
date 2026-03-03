@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
@@ -117,7 +118,7 @@ func BootstrapTokenFromSecret(secret *v1.Secret) (*BootstrapToken, error) {
 	// Create the BootstrapTokenString object based on the ID and Secret
 	bts, err := NewBootstrapTokenStringFromIDAndSecret(tokenID, tokenSecret)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "bootstrap Token Secret is invalid and couldn't be parsed")
+		return nil, errors.WithMessage(err, "bootstrap Token Secret is invalid and couldn't be parsed")
 	}
 
 	// Get the description (if any) from the Secret
@@ -130,7 +131,7 @@ func BootstrapTokenFromSecret(secret *v1.Secret) (*BootstrapToken, error) {
 	if len(secretExpiration) > 0 {
 		expTime, err := time.Parse(time.RFC3339, secretExpiration)
 		if err != nil {
-			return nil, pkgerrors.WithMessagef(err, "can't parse expiration time of bootstrap token %q", secret.Name)
+			return nil, errors.WithMessagef(err, "can't parse expiration time of bootstrap token %q", secret.Name)
 		}
 		expires = &metav1.Time{Time: expTime}
 	}

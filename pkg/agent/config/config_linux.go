@@ -3,14 +3,13 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,23 +23,23 @@ func applyContainerdOSSpecificConfig(nodeConfig *config.Node) error {
 	switch nodeConfig.AgentConfig.Snapshotter {
 	case "overlayfs":
 		if err := containerd.OverlaySupported(nodeConfig.Containerd.Root); err != nil {
-			return pkgerrors.WithMessagef(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
+			return errors.WithMessagef(err, "\"overlayfs\" snapshotter cannot be enabled for %q, try using \"fuse-overlayfs\" or \"native\"",
 				nodeConfig.Containerd.Root)
 		}
 	case "fuse-overlayfs":
 		if err := containerd.FuseoverlayfsSupported(nodeConfig.Containerd.Root); err != nil {
-			return pkgerrors.WithMessagef(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
+			return errors.WithMessagef(err, "\"fuse-overlayfs\" snapshotter cannot be enabled for %q, try using \"native\"",
 				nodeConfig.Containerd.Root)
 		}
 	case "stargz":
 		if err := containerd.StargzSupported(nodeConfig.Containerd.Root); err != nil {
-			return pkgerrors.WithMessagef(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+			return errors.WithMessagef(err, "\"stargz\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
 				nodeConfig.Containerd.Root)
 		}
 		nodeConfig.AgentConfig.ImageServiceSocket = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 	case "nix":
 		if err := containerd.NixSupported(nodeConfig.Containerd.Root); err != nil {
-			return pkgerrors.WithMessagef(err, "\"nix\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
+			return errors.WithMessagef(err, "\"nix\" snapshotter cannot be enabled for %q, try using \"overlayfs\" or \"native\"",
 				nodeConfig.Containerd.Root)
 		}
 		nodeConfig.AgentConfig.ImageServiceSocket = filepath.Join(nodeConfig.Containerd.State, "nix-snapshotter.sock")

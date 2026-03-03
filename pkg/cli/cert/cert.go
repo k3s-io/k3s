@@ -3,7 +3,6 @@ package cert
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,10 +22,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
 	k3sutil "github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/services"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/otiai10/copy"
-	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -401,7 +400,7 @@ func rotateCA(app *cli.Context, cfg *cmds.Server, sync *cmds.CertRotateCA) error
 
 	url := fmt.Sprintf("/v1-%s/cert/cacerts?force=%t", version.Program, sync.Force)
 	if err = info.Put(url, buf.Bytes()); err != nil {
-		return pkgerrors.WithMessage(err, "see server log for details")
+		return errors.WithMessage(err, "see server log for details")
 	}
 
 	fmt.Println("certificates saved to datastore")

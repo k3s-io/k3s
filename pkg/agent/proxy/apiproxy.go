@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 )
 
 type Proxy interface {
@@ -57,7 +57,7 @@ func NewSupervisorProxy(ctx context.Context, lbEnabled bool, dataDir, supervisor
 
 	u, err := url.Parse(p.initialSupervisorURL)
 	if err != nil {
-		return nil, pkgerrors.WithMessagef(err, "failed to parse %s", p.initialSupervisorURL)
+		return nil, errors.WithMessagef(err, "failed to parse %s", p.initialSupervisorURL)
 	}
 	p.fallbackSupervisorAddress = u.Host
 	p.supervisorPort = u.Port()
@@ -139,7 +139,7 @@ func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 
 	u, err := url.Parse(p.initialSupervisorURL)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "failed to parse server URL %s", p.initialSupervisorURL)
+		return errors.WithMessagef(err, "failed to parse server URL %s", p.initialSupervisorURL)
 	}
 	p.apiServerPort = strconv.Itoa(port)
 	u.Host = net.JoinHostPort(u.Hostname(), p.apiServerPort)

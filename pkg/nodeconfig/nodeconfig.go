@@ -11,8 +11,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -46,7 +46,7 @@ func getNodeArgs() (string, error) {
 	}
 	nodeArgs, err := json.Marshal(nodeArgsList)
 	if err != nil {
-		return "", pkgerrors.WithMessage(err, "Failed to retrieve argument list for node")
+		return "", errors.WithMessage(err, "Failed to retrieve argument list for node")
 	}
 	return string(nodeArgs), nil
 }
@@ -66,7 +66,7 @@ func getNodeEnv() (string, error) {
 	}
 	k3sEnvJSON, err := json.Marshal(k3sEnv)
 	if err != nil {
-		return "", pkgerrors.WithMessage(err, "Failed to retrieve environment map for node")
+		return "", errors.WithMessage(err, "Failed to retrieve environment map for node")
 	}
 	return string(k3sEnvJSON), nil
 }
