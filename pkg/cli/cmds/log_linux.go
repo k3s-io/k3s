@@ -12,9 +12,9 @@ import (
 	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/signals"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/natefinch/lumberjack"
-	pkgerrors "github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -46,7 +46,7 @@ func forkIfLoggingOrReaping() error {
 
 		pwd, err := os.Getwd()
 		if err != nil {
-			return pkgerrors.WithMessage(err, "failed to get working directory")
+			return errors.WithMessage(err, "failed to get working directory")
 		}
 
 		if enableReaping {

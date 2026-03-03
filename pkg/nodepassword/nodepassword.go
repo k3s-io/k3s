@@ -2,14 +2,13 @@ package nodepassword
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/authenticator/hash"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,7 +91,7 @@ func (npc *nodePasswordController) ensure(nodeName, pass string) error {
 func (npc *nodePasswordController) verifyNode(ctx context.Context, node *nodeInfo) error {
 	if nodeName, isNodeAuth := identifier.NodeIdentity(node.User); isNodeAuth {
 		if _, err := npc.nodes.Cache().Get(nodeName); err != nil {
-			return pkgerrors.WithMessage(err, "unable to verify node identity")
+			return errors.WithMessage(err, "unable to verify node identity")
 		}
 	}
 	return nil

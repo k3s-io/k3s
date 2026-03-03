@@ -13,7 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/k3s-io/k3s/pkg/agent/cri"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/rancher/wharfie/pkg/tarfile"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,18 +137,18 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 		defer w.syncCache()
 		return nil
 	} else if err != nil {
-		return pkgerrors.Wrapf(err, "failed to get fileinfo for image event %s", key)
+		return errors.WithMessagef(err, "failed to get fileinfo for image event %s", key)
 	}
 
 	if file.IsDir() {
 		// Add to watch and list+enqueue directory contents, as notify is not recursive
 		if err := w.watcher.Add(key); err != nil {
-			return pkgerrors.Wrapf(err, "failed to add watch of %s", key)
+			return errors.WithMessagef(err, "failed to add watch of %s", key)
 		}
 
 		fileInfos, err := os.ReadDir(key)
 		if err != nil {
-			return pkgerrors.Wrapf(err, "unable to list contents of %s", key)
+			return errors.WithMessagef(err, "unable to list contents of %s", key)
 		}
 
 		for _, fileInfo := range fileInfos {
@@ -164,7 +164,7 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 	if lastFileState := w.filesCache[key]; lastFileState == nil || (file.Size() != lastFileState.Size && file.ModTime().After(lastFileState.ModTime.Time)) {
 		start := time.Now()
 		if err := preloadFile(ctx, w.cfg, client, imageClient, key); err != nil {
-			return pkgerrors.Wrapf(err, "failed to import %s", key)
+			return errors.WithMessagef(err, "failed to import %s", key)
 		}
 		logrus.Infof("Imported images from %s in %s", key, time.Since(start))
 		w.filesCache[key] = &fileInfo{Size: file.Size(), ModTime: metav1.NewTime(file.ModTime()), seen: true}
@@ -274,7 +274,7 @@ func watchImages(ctx context.Context, cfg *config.Node) (*watchqueue, error) {
 	// watch the directory above the images dir, as it may not exist yet when the watch is started.
 	watcher, err := createWatcher(filepath.Dir(cfg.Images))
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "failed to create image import watcher for %s", filepath.Dir(cfg.Images))
+		return nil, errors.WithMessagef(err, "failed to create image import watcher for %s", filepath.Dir(cfg.Images))
 	}
 
 	w := &watchqueue{

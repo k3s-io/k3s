@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,10 +29,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,7 +93,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	if !cfg.DisableAgent && !cfg.Rootless {
 		if err := permissions.IsPrivileged(); err != nil {
-			return pkgerrors.WithMessage(err, "server requires additional privilege when not run with --rootless and/or --disable-agent")
+			return errors.WithMessage(err, "server requires additional privilege when not run with --rootless and/or --disable-agent")
 		}
 	}
 
@@ -353,7 +352,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ClusterCIDR.Value()) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
-			return pkgerrors.WithMessagef(err, "invalid cluster-cidr %s", cidr)
+			return errors.WithMessagef(err, "invalid cluster-cidr %s", cidr)
 		}
 		serverConfig.ControlConfig.ClusterIPRanges = append(serverConfig.ControlConfig.ClusterIPRanges, parsed)
 	}
@@ -368,7 +367,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	for _, cidr := range util.SplitStringSlice(cmds.ServerConfig.ServiceCIDR.Value()) {
 		_, parsed, err := net.ParseCIDR(cidr)
 		if err != nil {
-			return pkgerrors.WithMessagef(err, "invalid service-cidr %s", cidr)
+			return errors.WithMessagef(err, "invalid service-cidr %s", cidr)
 		}
 		serverConfig.ControlConfig.ServiceIPRanges = append(serverConfig.ControlConfig.ServiceIPRanges, parsed)
 	}
@@ -378,7 +377,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(cfg.ServiceNodePortRange)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "invalid port range %s", cfg.ServiceNodePortRange)
+		return errors.WithMessagef(err, "invalid port range %s", cfg.ServiceNodePortRange)
 	}
 
 	// the apiserver service does not yet support dual-stack operation
@@ -396,7 +395,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		for _, svcCIDR := range serverConfig.ControlConfig.ServiceIPRanges {
 			clusterDNS, err := utilsnet.GetIndexedIP(svcCIDR, 10)
 			if err != nil {
-				return pkgerrors.WithMessage(err, "cannot configure default cluster-dns address")
+				return errors.WithMessage(err, "cannot configure default cluster-dns address")
 			}
 			serverConfig.ControlConfig.ClusterDNSs = append(serverConfig.ControlConfig.ClusterDNSs, clusterDNS)
 		}
@@ -446,7 +445,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.MinTLSVersion = tlsMinVersionArg
 	serverConfig.ControlConfig.TLSMinVersion, err = kubeapiserverflag.TLSVersion(tlsMinVersionArg)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "invalid tls-min-version")
+		return errors.WithMessage(err, "invalid tls-min-version")
 	}
 
 	serverConfig.StartupHooks = append(serverConfig.StartupHooks, cfg.StartupHooks...)
@@ -476,7 +475,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.CipherSuites = tlsCipherSuites
 	serverConfig.ControlConfig.TLSCipherSuites, err = kubeapiserverflag.TLSCipherSuites(tlsCipherSuites)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "invalid tls-cipher-suites")
+		return errors.WithMessage(err, "invalid tls-cipher-suites")
 	}
 
 	// If performing a cluster reset, make sure control-plane components are

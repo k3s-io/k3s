@@ -3,7 +3,6 @@ package tunnel
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -19,8 +18,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 	"github.com/yl2chen/cidranger"
@@ -115,7 +114,7 @@ func (a *agentTunnel) startWatches(ctx context.Context, config *daemonconfig.Nod
 			Verb:      "list",
 			Resource:  "endpoints",
 		}, ""); err != nil {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "tunnel watches failed to wait for RBAC"))
+			signals.RequestShutdown(errors.WithMessage(err, "tunnel watches failed to wait for RBAC"))
 			return
 		}
 

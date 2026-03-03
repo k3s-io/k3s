@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -25,9 +24,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshotmetrics"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/metrics"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	snapshotv3 "go.etcd.io/etcd/client/v3/snapshot"
@@ -232,7 +231,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 	endpoints := getEndpoints(e.config)
 	status, err := e.client.Status(ctx, endpoints[0])
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to check etcd status for snapshot")
+		return nil, errors.WithMessage(err, "failed to check etcd status for snapshot")
 	}
 
 	if status.IsLearner {
@@ -242,17 +241,17 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get etcd-snapshot-dir")
+		return nil, errors.WithMessage(err, "failed to get etcd-snapshot-dir")
 	}
 
 	cfg, err := getClientConfig(ctx, e.config)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get config for etcd snapshot")
+		return nil, errors.WithMessage(err, "failed to get config for etcd snapshot")
 	}
 
 	tokenHash, err := util.GetTokenHash(e.config)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get server token hash for etcd snapshot")
+		return nil, errors.WithMessage(err, "failed to get server token hash for etcd snapshot")
 	}
 
 	nodeName := os.Getenv("NODE_NAME")
@@ -282,7 +281,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 		}
 		logrus.Errorf("Failed to take etcd snapshot: %v", err)
 		if err := e.addSnapshotData(*sf); err != nil {
-			return nil, pkgerrors.WithMessage(err, "failed to sync ETCDSnapshotFile")
+			return nil, errors.WithMessage(err, "failed to sync ETCDSnapshotFile")
 		}
 	}
 
@@ -298,7 +297,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 			}
 
 			if err != nil {
-				return nil, pkgerrors.WithMessage(err, "failed to compress snapshot")
+				return nil, errors.WithMessage(err, "failed to compress snapshot")
 			}
 			snapshotPath = zipPath
 			logrus.Info("Compressed snapshot: " + snapshotPath)
@@ -306,7 +305,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 
 		f, err := os.Stat(snapshotPath)
 		if err != nil {
-			return nil, pkgerrors.WithMessage(err, "unable to retrieve snapshot information from local snapshot")
+			return nil, errors.WithMessage(err, "unable to retrieve snapshot information from local snapshot")
 		}
 
 		sf = &snapshot.File{
@@ -348,7 +347,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 				logrus.Warnf("Unable to initialize S3 client: %v", err)
 				if !errors.Is(err, s3.ErrNoConfigSecret) {
 					metrics.ObserveWithStatus(snapshotmetrics.SaveS3Count, s3Start, err)
-					err = pkgerrors.WithMessage(err, "failed to initialize S3 client")
+					err = errors.WithMessage(err, "failed to initialize S3 client")
 					sf = &snapshot.File{
 						Name:     f.Name(),
 						NodeName: "s3",
@@ -403,7 +402,7 @@ func (e *ETCD) listLocalSnapshots() (map[string]snapshot.File, error) {
 	snapshots := make(map[string]snapshot.File)
 	snapshotDir, err := snapshotDir(e.config, true)
 	if err != nil {
-		return snapshots, pkgerrors.WithMessage(err, "failed to get etcd-snapshot-dir")
+		return snapshots, errors.WithMessage(err, "failed to get etcd-snapshot-dir")
 	}
 
 	if err := filepath.Walk(snapshotDir, func(path string, file os.FileInfo, err error) error {
@@ -471,7 +470,7 @@ func (e *ETCD) getS3Client(ctx context.Context) (*s3.Client, error) {
 func (e *ETCD) PruneSnapshots(ctx context.Context) (*managed.SnapshotResult, error) {
 	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get etcd-snapshot-dir")
+		return nil, errors.WithMessage(err, "failed to get etcd-snapshot-dir")
 	}
 
 	res := &managed.SnapshotResult{}
@@ -509,7 +508,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) (*k3s.ETCDSnapshotFileList, er
 		if s3client, err := e.getS3Client(ctx); err != nil {
 			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			if !errors.Is(err, s3.ErrNoConfigSecret) {
-				return nil, pkgerrors.WithMessage(err, "failed to initialize S3 client")
+				return nil, errors.WithMessage(err, "failed to initialize S3 client")
 			}
 		} else {
 			sfs, err := s3client.ListSnapshots(ctx)
@@ -543,7 +542,7 @@ func (e *ETCD) ListSnapshots(ctx context.Context) (*k3s.ETCDSnapshotFileList, er
 func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) (*managed.SnapshotResult, error) {
 	snapshotDir, err := snapshotDir(e.config, false)
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get etcd-snapshot-dir")
+		return nil, errors.WithMessage(err, "failed to get etcd-snapshot-dir")
 	}
 
 	var s3client *s3.Client
@@ -552,7 +551,7 @@ func (e *ETCD) DeleteSnapshots(ctx context.Context, snapshots []string) (*manage
 		if err != nil {
 			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			if !errors.Is(err, s3.ErrNoConfigSecret) {
-				return nil, pkgerrors.WithMessage(err, "failed to initialize S3 client")
+				return nil, errors.WithMessage(err, "failed to initialize S3 client")
 			}
 		}
 	}
@@ -716,7 +715,7 @@ func (e *ETCD) reconcileSnapshotData(ctx context.Context, res *managed.SnapshotR
 			logrus.Warnf("Unable to initialize S3 client: %v", err)
 			if !errors.Is(err, s3.ErrNoConfigSecret) {
 				metrics.ObserveWithStatus(snapshotmetrics.ReconcileS3Count, s3Start, err)
-				return pkgerrors.WithMessage(err, "failed to initialize S3 client")
+				return errors.WithMessage(err, "failed to initialize S3 client")
 			}
 		} else {
 			s3Snapshots, err := s3client.ListSnapshots(ctx)
