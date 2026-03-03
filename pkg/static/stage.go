@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/util/bindata"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,7 +27,7 @@ func Stage(dataDir string) error {
 		logrus.Info("Writing static file: ", p)
 		os.MkdirAll(filepath.Dir(p), 0700)
 		if err := os.WriteFile(p, content, 0600); err != nil {
-			return pkgerrors.WithMessagef(err, "failed to write to %s", name)
+			return errors.WithMessagef(err, "failed to write to %s", name)
 		}
 	}
 

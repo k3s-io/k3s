@@ -4,7 +4,6 @@ package embed
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -27,9 +26,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/executor/embed/etcd"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	cloudprovider "k8s.io/cloud-provider"
@@ -97,7 +96,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		if len(cfg.FlannelIface) > 0 {
 			nodeConfig.Flannel.Iface, err = net.InterfaceByName(cfg.FlannelIface)
 			if err != nil {
-				return pkgerrors.WithMessagef(err, "unable to find interface %s", cfg.FlannelIface)
+				return errors.WithMessagef(err, "unable to find interface %s", cfg.FlannelIface)
 			}
 		}
 
@@ -140,7 +139,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 				nodeConfig.AgentConfig.NodeIP = vpnIPs[0].String()
 				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.Interface)
 				if err != nil {
-					return pkgerrors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.Interface)
+					return errors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.Interface)
 				}
 			}
 		}
@@ -148,7 +147,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		// set paths for embedded flannel if enabled
 		hostLocal, err := exec.LookPath("host-local")
 		if err != nil {
-			return pkgerrors.WithMessagef(err, "failed to find host-local")
+			return errors.WithMessagef(err, "failed to find host-local")
 		}
 
 		if cfg.FlannelConf == "" {
@@ -182,7 +181,7 @@ func (e *Embedded) Kubelet(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "kubelet exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "kubelet exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -203,7 +202,7 @@ func (e *Embedded) KubeProxy(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "kube-proxy exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "kube-proxy exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -229,7 +228,7 @@ func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "apiserver exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "apiserver exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -251,7 +250,7 @@ func (e *Embedded) Scheduler(ctx context.Context, nodeReady <-chan struct{}, arg
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "scheduler exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "scheduler exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -272,7 +271,7 @@ func (e *Embedded) ControllerManager(ctx context.Context, args []string) error {
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "controller-manager exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "controller-manager exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()
@@ -317,7 +316,7 @@ func (*Embedded) CloudControllerManager(ctx context.Context, ccmRBACReady <-chan
 		}()
 		err := command.ExecuteContext(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "cloud-controller-manager exited"))
+			signals.RequestShutdown(errors.WithMessage(err, "cloud-controller-manager exited"))
 		}
 		signals.RequestShutdown(nil)
 	}()

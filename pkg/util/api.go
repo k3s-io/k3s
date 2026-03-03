@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/signals"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/rancher/wrangler/v3/pkg/schemes"
 	"github.com/sirupsen/logrus"
@@ -136,7 +135,7 @@ func APIServerReadyChan(ctx context.Context, kubeConfig string, timeout time.Dur
 
 	go func() {
 		if err := WaitForAPIServerReady(ctx, kubeConfig, timeout); err != nil {
-			signals.RequestShutdown(pkgerrors.WithMessage(err, "failed to wait for API server to become ready"))
+			signals.RequestShutdown(errors.WithMessage(err, "failed to wait for API server to become ready"))
 			return
 		}
 		close(ready)

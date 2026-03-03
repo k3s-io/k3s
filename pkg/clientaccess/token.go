@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +16,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/kubeadm"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -365,7 +364,7 @@ func (i *Info) Post(path string, body []byte, options ...any) ([]byte, error) {
 func (i *Info) setServer(server string) error {
 	url, err := url.Parse(server)
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "Invalid server url, failed to parse: %s", server)
+		return errors.WithMessagef(err, "Invalid server url, failed to parse: %s", server)
 	}
 
 	if url.Scheme != "https" {
@@ -425,7 +424,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// Download the CA bundle using a client that does not validate certs.
 	cacerts, err := get(url, insecureClient, "", "", "")
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get CA certs")
+		return nil, errors.WithMessage(err, "failed to get CA certs")
 	}
 
 	// Request the CA bundle again, validating that the CA bundle can be loaded
@@ -433,7 +432,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// get an empty CA bundle. or if the dynamiclistener cert is incorrectly signed.
 	_, err = get(url, GetHTTPClient(cacerts, "", ""), "", "", "")
 	if err != nil {
-		return nil, pkgerrors.WithMessage(err, "CA cert validation failed")
+		return nil, errors.WithMessage(err, "CA cert validation failed")
 	}
 
 	return cacerts, nil

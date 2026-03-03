@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	pkgerrors "github.com/pkg/errors"
+	"github.com/k3s-io/k3s/pkg/util/errors"
+
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -40,7 +41,7 @@ func setupMounts(stateDir string) error {
 
 	for _, v := range mountMap {
 		if err := setupMount(v[0], v[1]); err != nil {
-			return pkgerrors.WithMessagef(err, "failed to setup mount %s => %s", v[0], v[1])
+			return errors.WithMessagef(err, "failed to setup mount %s => %s", v[0], v[1])
 		}
 	}
 
@@ -74,16 +75,16 @@ func setupMount(target, dir string) error {
 	}
 
 	if err := os.MkdirAll(toCreate, 0700); err != nil {
-		return pkgerrors.WithMessagef(err, "failed to create directory %s", toCreate)
+		return errors.WithMessagef(err, "failed to create directory %s", toCreate)
 	}
 
 	logrus.Debug("Mounting none ", toCreate, " tmpfs")
 	if err := unix.Mount("none", toCreate, "tmpfs", 0, ""); err != nil {
-		return pkgerrors.WithMessagef(err, "failed to mount tmpfs to %s", toCreate)
+		return errors.WithMessagef(err, "failed to mount tmpfs to %s", toCreate)
 	}
 
 	if err := os.MkdirAll(target, 0700); err != nil {
-		return pkgerrors.WithMessagef(err, "failed to create directory %s", target)
+		return errors.WithMessagef(err, "failed to create directory %s", target)
 	}
 
 	if dir == "" {
@@ -91,7 +92,7 @@ func setupMount(target, dir string) error {
 	}
 
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return pkgerrors.WithMessagef(err, "failed to create directory %s", dir)
+		return errors.WithMessagef(err, "failed to create directory %s", dir)
 	}
 
 	logrus.Debug("Mounting ", dir, target, " none bind")

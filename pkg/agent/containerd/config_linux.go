@@ -19,7 +19,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/moby/sys/userns"
 	"github.com/pdtpartners/nix-snapshotter/pkg/nix"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"k8s.io/cri-client/pkg/util"
@@ -99,7 +98,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 
 	selEnabled, selConfigured, err := selinuxStatus()
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to detect selinux")
+		return fmt.Errorf("failed to detect selinux: %w", err)
 	}
 	switch {
 	case !cfg.SELinux && selEnabled:
