@@ -29,7 +29,6 @@ import (
 	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
 	"github.com/joho/godotenv"
 	"github.com/k3s-io/k3s/pkg/util/errors"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
@@ -208,10 +207,10 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 	}
 	tempFile := f.Name()
 	cleanupNoClose := func(err error) error {
-		return merr.NewErrors(err, os.Remove(tempFile))
+		return errors.Join(err, os.Remove(tempFile))
 	}
 	cleanup := func(err error) error {
-		return merr.NewErrors(err, f.Close(), os.Remove(tempFile))
+		return errors.Join(err, f.Close(), os.Remove(tempFile))
 	}
 	if err := f.Chmod(perm); err != nil {
 		return cleanup(err)
