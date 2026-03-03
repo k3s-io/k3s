@@ -29,7 +29,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/rancher/wharfie/pkg/tarfile"
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
@@ -240,7 +239,7 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 			errs = append(errs, errors.WithMessage(err, "failed to delete labels from image "+image.Name))
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // labelImages adds labels to the listed images, indicating that they
@@ -267,7 +266,7 @@ func labelImages(ctx context.Context, client *containerd.Client, images []images
 			images[i] = updatedImage
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // retagImages retags all listed images as having been pulled from the given remote registries.
@@ -301,7 +300,7 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 			}
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // forceCreateTag retags an image with the provided reference.
@@ -359,7 +358,7 @@ func labelContent(ctx context.Context, client *containerd.Client, images []image
 			}
 		}
 	}
-	return merr.NewErrors(errs...)
+	return errors.Join(errs...)
 }
 
 // getDigests returns layer and config digests for the provided descriptor
@@ -466,5 +465,5 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 			}
 		}
 	}
-	return images, merr.NewErrors(errs...)
+	return images, errors.Join(errs...)
 }

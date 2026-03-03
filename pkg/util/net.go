@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	apinet "k8s.io/apimachinery/pkg/util/net"
 	netutils "k8s.io/utils/net"
@@ -379,14 +378,14 @@ func (ml *multiListener) Addr() net.Addr {
 // Close closes all the listeners
 func (ml *multiListener) Close() error {
 	close(ml.closing)
-	var errs merr.Errors
+	var errs []error
 	for i := range ml.listeners {
 		err := ml.listeners[i].Close()
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	return merr.NewErrors(errs)
+	return errors.Join(errs...)
 }
 
 // Accept returns a Conn/err pair from one of the waiting listeners
