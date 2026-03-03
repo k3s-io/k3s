@@ -12,6 +12,7 @@ import (
 // wrap stdlib errors functions to make it easier to import this package as a replacement
 var As = errors.As
 var Is = errors.Is
+var Join = errors.Join
 var New = errors.New
 
 var ErrCommandNoArgs = New("this command does not take any arguments")
