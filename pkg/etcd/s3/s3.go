@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -24,10 +23,10 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -100,13 +99,13 @@ func Start(ctx context.Context, config *config.Control) (*Controller, error) {
 				// cluster id hack: see https://groups.google.com/forum/#!msg/kubernetes-sig-architecture/mVGobfD4TpY/nkdbkX1iBwAJ
 				ns, err := c.core.V1().Namespace().Get(metav1.NamespaceSystem, metav1.GetOptions{})
 				if err != nil {
-					return false, pkgerrors.WithMessage(err, "failed to set S3 snapshot cluster ID")
+					return false, errors.WithMessage(err, "failed to set S3 snapshot cluster ID")
 				}
 				c.clusterID = string(ns.UID)
 
 				tokenHash, err := util.GetTokenHash(config)
 				if err != nil {
-					return false, pkgerrors.WithMessage(err, "failed to set S3 snapshot server token hash")
+					return false, errors.WithMessage(err, "failed to set S3 snapshot server token hash")
 				}
 				c.tokenHash = tokenHash
 
@@ -138,7 +137,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 		if isDefault {
 			e, err := c.getConfigFromSecret(etcdS3.ConfigSecret)
 			if err != nil {
-				return nil, pkgerrors.WithMessagef(err, "failed to get config from etcd-s3-config-secret %q", etcdS3.ConfigSecret)
+				return nil, errors.WithMessagef(err, "failed to get config from etcd-s3-config-secret %q", etcdS3.ConfigSecret)
 			}
 			logrus.Infof("Using etcd s3 configuration from etcd-s3-config-secret %q", etcdS3.ConfigSecret)
 			etcdS3 = e
@@ -197,7 +196,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 		if etcdS3.Proxy != "none" {
 			u, err = url.Parse(etcdS3.Proxy)
 			if err != nil {
-				return nil, pkgerrors.WithMessage(err, "failed to parse etcd-s3-proxy value as URL")
+				return nil, errors.WithMessage(err, "failed to parse etcd-s3-proxy value as URL")
 			}
 			if u.Scheme == "" || u.Host == "" {
 				return nil, errors.New("proxy URL must include scheme and host")
@@ -220,7 +219,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 	})
 
 	if _, err := creds.Get(); err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to get credentials")
+		return nil, errors.WithMessage(err, "failed to get credentials")
 	}
 
 	opt := minio.Options{
@@ -242,7 +241,7 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 
 	exists, err := mc.BucketExists(ctx, etcdS3.Bucket)
 	if err != nil {
-		return nil, pkgerrors.WithMessagef(err, "failed to test for existence of bucket %s", etcdS3.Bucket)
+		return nil, errors.WithMessagef(err, "failed to test for existence of bucket %s", etcdS3.Bucket)
 	}
 	if !exists {
 		return nil, fmt.Errorf("bucket %s does not exist", etcdS3.Bucket)

@@ -1,6 +1,7 @@
 package kubeflags
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -8,7 +9,6 @@ import (
 	testutil "github.com/k3s-io/k3s/tests/integration"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 )
 
 var server *testutil.K3sServer

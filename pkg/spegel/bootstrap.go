@@ -3,7 +3,6 @@ package spegel
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,9 +12,9 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rancher/wrangler/v3/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/routing"
@@ -107,14 +106,14 @@ func (c *agentBootstrapper) Run(ctx context.Context, id peer.AddrInfo) error {
 		withCert := clientaccess.WithClientCertificate(c.clientCert, c.clientKey)
 		info, err := clientaccess.ParseAndValidateToken(c.server, c.token, withCert)
 		if err != nil {
-			return pkgerrors.WithMessage(err, "failed to validate join token")
+			return errors.WithMessage(err, "failed to validate join token")
 		}
 		c.info = info
 	}
 
 	client, err := util.GetClientSet(c.kubeConfig)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to create kubernetes client")
+		return errors.WithMessage(err, "failed to create kubernetes client")
 	}
 
 	go wait.PollUntilContextCancel(ctx, 1*time.Second, true, func(ctx context.Context) (bool, error) {

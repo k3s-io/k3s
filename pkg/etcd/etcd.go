@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -31,11 +30,11 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
 	kine "github.com/k3s-io/kine/pkg/app"
 	"github.com/k3s-io/kine/pkg/client"
 	"github.com/k3s-io/kine/pkg/endpoint"
-	pkgerrors "github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	controllerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/start"
@@ -206,7 +205,7 @@ func (e *ETCD) Test(ctx context.Context, enableMaintenance bool) error {
 
 	status, err := e.status(ctx)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to get etcd status")
+		return errors.WithMessage(err, "failed to get etcd status")
 	} else if status.IsLearner {
 		return errors.New("this server has not yet been promoted from learner to voting member")
 	} else if status.Leader == 0 {
@@ -225,19 +224,19 @@ func (e *ETCD) Test(ctx context.Context, enableMaintenance bool) error {
 
 	// defrag this node to reclaim freed space from compacted revisions
 	if err := e.defragment(ctx); err != nil {
-		return pkgerrors.WithMessage(err, "failed to defragment etcd database")
+		return errors.WithMessage(err, "failed to defragment etcd database")
 	}
 
 	// clear alarms on this node
 	if err := e.clearAlarms(ctx, status.Header.MemberId); err != nil {
-		return pkgerrors.WithMessage(err, "failed to disarm etcd alarms")
+		return errors.WithMessage(err, "failed to disarm etcd alarms")
 	}
 
 	// refresh status - note that errors may remain on other nodes, but this
 	// should not prevent us from continuing with startup.
 	status, err = e.status(ctx)
 	if err != nil {
-		return pkgerrors.WithMessage(err, "failed to get etcd status")
+		return errors.WithMessage(err, "failed to get etcd status")
 	}
 
 	logrus.Infof("Datastore using %d of %d bytes after defragment", status.DbSizeInUse, status.DbSize)
@@ -331,7 +330,7 @@ func (e *ETCD) IsInitialized() (bool, error) {
 	} else if os.IsNotExist(err) {
 		return false, nil
 	}
-	return false, pkgerrors.WithMessage(err, "invalid state for wal directory "+dir)
+	return false, errors.WithMessage(err, "invalid state for wal directory "+dir)
 }
 
 // Reset resets an etcd node to a single node cluster.
@@ -411,15 +410,15 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 				if errors.Is(err, s3.ErrNoConfigSecret) {
 					return errors.New("cannot use S3 config secret when restoring snapshot; configuration must be set in CLI or config file")
 				}
-				return pkgerrors.WithMessage(err, "failed to initialize S3 client")
+				return errors.WithMessage(err, "failed to initialize S3 client")
 			}
 			dir, err := snapshotDir(e.config, true)
 			if err != nil {
-				return pkgerrors.WithMessage(err, "failed to get the snapshot dir")
+				return errors.WithMessage(err, "failed to get the snapshot dir")
 			}
 			path, err := s3client.Download(ctx, e.config.ClusterResetRestorePath, dir)
 			if err != nil {
-				return pkgerrors.WithMessage(err, "failed to download snapshot from S3")
+				return errors.WithMessage(err, "failed to download snapshot from S3")
 			}
 			e.config.ClusterResetRestorePath = path
 			logrus.Infof("S3 download complete for %s", e.config.ClusterResetRestorePath)
@@ -452,7 +451,7 @@ func (e *ETCD) Reset(ctx context.Context, wg *sync.WaitGroup, rebootstrap func()
 func (e *ETCD) Start(ctx context.Context, wg *sync.WaitGroup, clientAccessInfo *clientaccess.Info) error {
 	isInitialized, err := e.IsInitialized()
 	if err != nil {
-		return pkgerrors.WithMessagef(err, "failed to check for initialized etcd datastore")
+		return errors.WithMessagef(err, "failed to check for initialized etcd datastore")
 	}
 
 	if err := e.startClient(ctx); err != nil {
@@ -532,7 +531,7 @@ func (e *ETCD) pollJoin(ctx context.Context, wg *sync.WaitGroup, clientAccessInf
 		}
 		return true, nil
 	}); err != nil {
-		signals.RequestShutdown(pkgerrors.WithMessage(err, "etcd cluster join failed"))
+		signals.RequestShutdown(errors.WithMessage(err, "etcd cluster join failed"))
 	}
 }
 
@@ -679,7 +678,7 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 			// ensure client is started, as etcd startup may not have handled this if this is a control-plane-only node
 			if e.client == nil {
 				if err := e.startClient(ctx); err != nil {
-					panic(pkgerrors.WithMessage(err, "failed to start etcd client"))
+					panic(errors.WithMessage(err, "failed to start etcd client"))
 				}
 			}
 
@@ -690,7 +689,7 @@ func (e *ETCD) Register(handler http.Handler) (http.Handler, error) {
 			// Re-run informer factory startup after core and leader-elected controllers have started.
 			// Additional caches may need to start for the newly added OnChange/OnRemove callbacks.
 			if err := start.All(ctx, 5, e.config.Runtime.K3s, e.config.Runtime.Core); err != nil {
-				panic(pkgerrors.WithMessage(err, "failed to start wrangler controllers"))
+				panic(errors.WithMessage(err, "failed to start wrangler controllers"))
 			}
 		}
 	}
@@ -777,7 +776,7 @@ func (e *ETCD) infoHandler() http.Handler {
 
 		members, err := e.client.MemberList(ctx)
 		if err != nil {
-			util.SendError(pkgerrors.WithMessage(err, "failed to get etcd MemberList"), rw, req, http.StatusInternalServerError)
+			util.SendError(errors.WithMessage(err, "failed to get etcd MemberList"), rw, req, http.StatusInternalServerError)
 			return
 		}
 
@@ -1322,7 +1321,7 @@ func (e *ETCD) trackLearnerProgress(ctx context.Context, progress *learnerProgre
 func (e *ETCD) getETCDStatus(ctx context.Context, url string) (*clientv3.StatusResponse, error) {
 	resp, err := e.client.Status(ctx, url)
 	if err != nil {
-		return resp, pkgerrors.WithMessage(err, "failed to check etcd member status")
+		return resp, errors.WithMessage(err, "failed to check etcd member status")
 	}
 	if len(resp.Errors) != 0 {
 		return resp, errors.New("etcd member has status errors: " + strings.Join(resp.Errors, ","))
@@ -1551,7 +1550,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	if strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
 		dir, err := snapshotDir(e.config, true)
 		if err != nil {
-			return pkgerrors.WithMessage(err, "failed to get the snapshot dir")
+			return errors.WithMessage(err, "failed to get the snapshot dir")
 		}
 
 		decompressSnapshot, err := e.decompressSnapshot(dir, e.config.ClusterResetRestorePath)
