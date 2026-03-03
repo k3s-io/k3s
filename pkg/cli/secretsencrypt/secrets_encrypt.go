@@ -16,8 +16,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/secretsencrypt"
 	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/k3s-io/k3s/pkg/server/handlers"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/version"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"k8s.io/utils/ptr"
 )
@@ -44,7 +44,7 @@ func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 }
 
 func wrapServerError(err error) error {
-	return pkgerrors.WithMessage(err, "see server log for details")
+	return errors.WithMessage(err, "see server log for details")
 }
 
 func Enable(app *cli.Context) error {
