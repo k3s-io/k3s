@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -105,13 +105,12 @@ func getNodeInfo(req *http.Request) (*nodeInfo, error) {
 		return nil, errors.New("auth user not set")
 	}
 
-	program := mux.Vars(req)["program"]
-	nodeName := req.Header.Get(program + "-Node-Name")
+	nodeName := req.Header.Get(version.Program + "-Node-Name")
 	if nodeName == "" {
 		return nil, errors.New("node name not set")
 	}
 
-	nodePassword := req.Header.Get(program + "-Node-Password")
+	nodePassword := req.Header.Get(version.Program + "-Node-Password")
 	if nodePassword == "" {
 		return nil, errors.New("node password not set")
 	}
