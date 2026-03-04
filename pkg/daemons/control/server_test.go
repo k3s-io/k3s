@@ -15,7 +15,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	testutil "github.com/k3s-io/k3s/tests"
@@ -198,12 +197,8 @@ func mockControl(ctx context.Context, t *testing.T, clusterInit bool) (*config.C
 	testutil.GenerateRuntime(control)
 
 	control.Cluster = cluster.New(control)
-	if err := control.Cluster.Bootstrap(ctx, control.ClusterReset); err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to bootstrap cluster data")
-	}
-
-	if err := deps.GenServerDeps(control); err != nil {
-		return nil, pkgerrors.WithMessage(err, "failed to generate server dependencies")
+	if err := prepare(ctx, nil, control); err != nil {
+		return nil, pkgerrors.WithMessage(err, "failed to prepare cluster")
 	}
 
 	return control, nil
