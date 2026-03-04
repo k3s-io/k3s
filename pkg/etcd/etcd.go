@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -31,6 +30,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/pkg/version"
 	kine "github.com/k3s-io/kine/pkg/app"
 	"github.com/k3s-io/kine/pkg/client"
@@ -744,16 +744,16 @@ func (e *ETCD) setName(force bool) error {
 
 // handler wraps the handler with routes for database info
 func (e *ETCD) handler(next http.Handler) http.Handler {
-	r := mux.NewRouter().SkipClean(true)
+	r := mux.NewRouter()
 	r.NotFoundHandler = next
 
-	ir := r.Path("/db/info").Subrouter()
+	ir := r.SubRouter("/db/info")
 	ir.Use(auth.IsLocalOrHasRole(e.config, version.Program+":server"))
-	ir.Handle("", e.infoHandler())
+	ir.Handle("/", e.infoHandler())
 
-	sr := r.Path("/db/snapshot").Subrouter()
+	sr := r.SubRouter("/db/snapshot")
 	sr.Use(auth.HasRole(e.config, version.Program+":server"))
-	sr.Handle("", e.snapshotHandler())
+	sr.Handle("/", e.snapshotHandler())
 
 	return r
 }
