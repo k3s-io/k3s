@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http/pprof"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 )
 
 // DefaultProfiler the default instance of a performance profiling server
@@ -33,6 +33,6 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node) error {
 	mRouter.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mRouter.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mRouter.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	mRouter.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
+	mRouter.HandleFunc("/debug/pprof/", pprof.Index)
 	return nil
 }
