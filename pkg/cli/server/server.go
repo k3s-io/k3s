@@ -11,7 +11,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
@@ -30,6 +29,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"

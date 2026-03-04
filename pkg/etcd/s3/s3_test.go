@@ -14,10 +14,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/snapshot"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/tests/mock"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
@@ -1554,65 +1554,72 @@ func s3Router(t *testing.T) http.Handler {
 	// badbucket returns 404 for all requests
 	// authbucket returns 200 for HeadBucket, 403 for all others
 	// others return 200 for objects with name prefix snapshot, 404 for all others
-	router := mux.NewRouter().SkipClean(true)
+	router := mux.NewRouter()
 	// HeadBucket
-	router.Path("/{bucket}/").Methods(http.MethodHead).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		if vars["bucket"] == "badbucket" {
-			rw.WriteHeader(http.StatusNotFound)
-		}
-	})
 	// ListObjectsV2
-	router.Path("/{bucket}/").Methods(http.MethodGet).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
-			rw.WriteHeader(http.StatusNotFound)
-		case "authbucket":
-			rw.WriteHeader(http.StatusForbidden)
-		default:
-			prefix := r.URL.Query().Get("prefix")
-			filtered := []object{}
-			for _, object := range objects {
-				if strings.HasPrefix(object.Key, prefix) {
-					filtered = append(filtered, object)
+	router.HandleFunc("GET /{bucket}/{$}", func(rw http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodHead:
+			if r.PathValue("bucket") == "badbucket" {
+				rw.WriteHeader(http.StatusNotFound)
+			}
+		case http.MethodGet:
+			switch r.PathValue("bucket") {
+			case "badbucket":
+				rw.WriteHeader(http.StatusNotFound)
+			case "authbucket":
+				rw.WriteHeader(http.StatusForbidden)
+			default:
+				prefix := r.URL.Query().Get("prefix")
+				filtered := []object{}
+				for _, object := range objects {
+					if strings.HasPrefix(object.Key, prefix) {
+						filtered = append(filtered, object)
+					}
+				}
+				if err := listResponse.Execute(rw, bucket{Name: r.PathValue("bucket"), Prefix: prefix, Objects: filtered}); err != nil {
+					t.Errorf("Failed to generate ListObjectsV2 response, error = %v", err)
+					rw.WriteHeader(http.StatusInternalServerError)
 				}
 			}
-			if err := listResponse.Execute(rw, bucket{Name: vars["bucket"], Prefix: prefix, Objects: filtered}); err != nil {
-				t.Errorf("Failed to generate ListObjectsV2 response, error = %v", err)
-				rw.WriteHeader(http.StatusInternalServerError)
+		}
+	})
+	// HeadObject
+	// GetObject
+	router.HandleFunc("GET /{bucket}/{object...}", func(rw http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodHead:
+			switch r.PathValue("bucket") {
+			case "badbucket":
+				rw.WriteHeader(http.StatusNotFound)
+			case "authbucket":
+				rw.WriteHeader(http.StatusForbidden)
+			default:
+				if strings.Contains(r.PathValue("object"), "bad") {
+					rw.WriteHeader(http.StatusNotFound)
+				} else {
+					rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
+				}
+			}
+		case http.MethodGet:
+			switch r.PathValue("bucket") {
+			case "badbucket":
+				rw.WriteHeader(http.StatusNotFound)
+			case "authbucket":
+				rw.WriteHeader(http.StatusForbidden)
+			default:
+				if strings.Contains(r.PathValue("object"), "bad") {
+					rw.WriteHeader(http.StatusNotFound)
+				} else {
+					rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
+					rw.Write([]byte("test snapshot file\n"))
+				}
 			}
 		}
 	})
-	// HeadObject - snapshot
-	router.Path("/{bucket}/{prefix:.*}snapshot-{snapshot}").Methods(http.MethodHead).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
-			rw.WriteHeader(http.StatusNotFound)
-		case "authbucket":
-			rw.WriteHeader(http.StatusForbidden)
-		default:
-			rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
-		}
-	})
-	// GetObject - snapshot
-	router.Path("/{bucket}/{prefix:.*}snapshot-{snapshot}").Methods(http.MethodGet).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
-			rw.WriteHeader(http.StatusNotFound)
-		case "authbucket":
-			rw.WriteHeader(http.StatusForbidden)
-		default:
-			rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
-			rw.Write([]byte("test snapshot file\n"))
-		}
-	})
-	// PutObject/DeleteObject - snapshot
-	router.Path("/{bucket}/{prefix:.*}snapshot-{snapshot}").Methods(http.MethodPut, http.MethodDelete).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
+	// PutObject
+	router.HandleFunc("PUT /{bucket}/{object...}", func(rw http.ResponseWriter, r *http.Request) {
+		switch r.PathValue("bucket") {
 		case "badbucket":
 			rw.WriteHeader(http.StatusNotFound)
 		case "authbucket":
@@ -1623,44 +1630,26 @@ func s3Router(t *testing.T) http.Handler {
 			}
 		}
 	})
-	// HeadObject - snapshot metadata
-	router.Path("/{bucket}/{prefix:.*}.metadata/snapshot-{snapshot}").Methods(http.MethodHead).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
-			rw.WriteHeader(http.StatusNotFound)
-		case "authbucket":
-			rw.WriteHeader(http.StatusForbidden)
-		default:
-			rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
-		}
-	})
-	// GetObject - snapshot metadata
-	router.Path("/{bucket}/{prefix:.*}.metadata/snapshot-{snapshot}").Methods(http.MethodGet).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
-		case "badbucket":
-			rw.WriteHeader(http.StatusNotFound)
-		case "authbucket":
-			rw.WriteHeader(http.StatusForbidden)
-		default:
-			rw.Header().Add("last-modified", time.Now().In(gmt).Format(time.RFC1123))
-			rw.Write([]byte("test snapshot metadata\n"))
-		}
-	})
-	// PutObject/DeleteObject - snapshot metadata
-	router.Path("/{bucket}/{prefix:.*}.metadata/snapshot-{snapshot}").Methods(http.MethodPut, http.MethodDelete).HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		switch vars["bucket"] {
+	// DeleteObject
+	router.HandleFunc("DELETE /{bucket}/{object...}", func(rw http.ResponseWriter, r *http.Request) {
+		switch r.PathValue("bucket") {
 		case "badbucket":
 			rw.WriteHeader(http.StatusNotFound)
 		case "authbucket":
 			rw.WriteHeader(http.StatusForbidden)
 		default:
 			if r.Method == http.MethodDelete {
-				rw.WriteHeader(http.StatusNoContent)
+				if strings.Contains(r.PathValue("object"), "bad") {
+					rw.WriteHeader(http.StatusNotFound)
+				} else {
+					rw.WriteHeader(http.StatusNoContent)
+				}
 			}
 		}
+	})
+	router.NotFoundHandler = http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		logrus.Errorf("Failed to match %q", r.URL)
+		rw.WriteHeader(http.StatusInternalServerError)
 	})
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		scheme := "http"
