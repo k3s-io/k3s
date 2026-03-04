@@ -1006,7 +1006,7 @@ elif type zypper >/dev/null 2>&1; then
 elif type yum >/dev/null 2>&1; then
     dnf_remove_selinux_rpm
 elif [ -d /usr/share/selinux ]; then
-    warn "Automatic removal of 'k3s-selinux' package not possible, please remove it manually."
+    echo '[WARN] Automatic removal of "k3s-selinux" package not possible, please remove it manually.' >&2
 fi
 
 if [ -d /etc/zypp/repos.d ]; then
