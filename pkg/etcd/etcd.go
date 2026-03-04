@@ -188,8 +188,7 @@ func (e *ETCD) SetControlConfig(config *config.Control) error {
 		return err
 	}
 	e.address = address
-
-	return e.setName(false)
+	return nil
 }
 
 // Test ensures that the local node is a voting member of the target cluster,
