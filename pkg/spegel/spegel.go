@@ -18,7 +18,6 @@ import (
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/go-logr/logr"
-	"github.com/gorilla/mux"
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	ipfslog "github.com/ipfs/go-log/v2"
 	"github.com/k3s-io/k3s/pkg/agent/https"
@@ -26,6 +25,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/logger"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -294,10 +294,10 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	if err != nil {
 		return err
 	}
-	mRouter.PathPrefix("/v2").Handler(regSvr.Handler)
-	sRouter := mRouter.PathPrefix("/v1-{program}/p2p").Subrouter()
+	mRouter.Handle("/v2/", regSvr.Handler)
+	sRouter := mRouter.SubRouter("/v1-" + version.Program + "/p2p")
 	sRouter.Use(auth.MaxInFlight(maxNonMutatingPeerInfoRequests, maxMutatingPeerInfoRequests))
-	sRouter.Handle("", c.peerInfo())
+	sRouter.Handle("/", c.peerInfo())
 
 	// Wait up to 5 seconds for the p2p network to find peers.
 	if err := wait.PollUntilContextTimeout(ctx, time.Second, resolveTimeout, true, func(ctx context.Context) (bool, error) {

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/server/auth"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/util/mux"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/options"
 )
@@ -25,7 +25,7 @@ var err error
 // Subsequent calls will return the same router.
 func Start(ctx context.Context, nodeConfig *config.Node, runtime *config.ControlRuntime) (*mux.Router, error) {
 	once.Do(func() {
-		router = mux.NewRouter().SkipClean(true)
+		router = mux.NewRouter()
 		config := &server.Config{}
 
 		if runtime == nil {
