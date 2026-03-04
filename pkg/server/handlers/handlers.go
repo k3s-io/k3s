@@ -13,16 +13,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/version"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/user"
@@ -64,8 +66,7 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 		}
 
 		ips := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
-		program := mux.Vars(req)["program"]
-		if nodeIP := req.Header.Get(program + "-Node-IP"); nodeIP != "" {
+		if nodeIP := req.Header.Get(version.Program + "-Node-IP"); nodeIP != "" {
 			for _, v := range strings.Split(nodeIP, ",") {
 				ip := net.ParseIP(v)
 				if ip == nil {
@@ -113,9 +114,8 @@ func ClientKubeProxyCert(control *config.Control) http.Handler {
 
 func ClientControllerCert(control *config.Control) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		program := mux.Vars(req)["program"]
 		signAndSend(resp, req, control.Runtime.ClientCA, control.Runtime.ClientCAKey, control.Runtime.ClientK3sControllerKey, certutil.Config{
-			CommonName: "system:" + program + "-controller",
+			CommonName: "system:" + version.Program + "-controller",
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		})
 	})
@@ -312,7 +312,7 @@ func getCACertAndKey(caCertFile, caKeyFile string) ([]*x509.Certificate, crypto.
 // If the request is not a POST, or cannot be parsed as a request, an error is returned.
 func getCSR(req *http.Request) (*x509.CertificateRequest, error) {
 	if req.Method != http.MethodPost {
-		return nil, mux.ErrMethodMismatch
+		return nil, apierrors.NewMethodNotSupported(schema.GroupResource{}, req.Method)
 	}
 	csrBytes, err := io.ReadAll(req.Body)
 	if err != nil {
