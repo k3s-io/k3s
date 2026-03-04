@@ -12,6 +12,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type SnapshotOperation string
@@ -178,7 +179,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 // getSnapshotRequest unmarshalls the snapshot operation request from a client.
 func getSnapshotRequest(req *http.Request) (*SnapshotRequest, error) {
 	if req.Method != http.MethodPost {
-		return nil, http.ErrNotSupported
+		return nil, apierrors.NewMethodNotSupported(k3s.Resource("snapshot"), req.Method)
 	}
 	sr := &SnapshotRequest{}
 	b, err := io.ReadAll(req.Body)
