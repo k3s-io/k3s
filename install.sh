@@ -1000,7 +1000,7 @@ elif [ "\${ID:-}" = fedora ] || [ "\$(expr "\${ID_LIKE}" : ".*fedora.*\|.*rhel.*
     fi
 # if we did not match yet just check for package managers commonly found on selinux-enabled distributions
 elif type rpm-ostree >/dev/null 2>&1; then
-    rpm_ostree_uninstall_cmd
+    \$rpm_ostree_uninstall_cmd
 elif type zypper >/dev/null 2>&1; then
     zypper_remove_selinux_rpm
 elif type yum >/dev/null 2>&1; then
