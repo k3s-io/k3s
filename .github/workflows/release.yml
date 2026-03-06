@@ -154,7 +154,7 @@ jobs:
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
       - name: "Download K3s build"
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -222,7 +222,7 @@ jobs:
         aws-region: us-east-1
 
     - name: "Download Artifacts"
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         pattern: "*"
         path: ./dist/artifacts
