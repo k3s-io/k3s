@@ -108,7 +108,7 @@ jobs:
            curl -LO "https://dl.k8s.io/release/${STABLE_VERSION}/bin/linux/amd64/kubectl"
            sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - name: "Download k3s binary"
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: k3s-amd64
           path: ./dist/artifacts
@@ -228,7 +228,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
     - name: "Download K3s image"
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
@@ -256,7 +256,7 @@ jobs:
         nix build github:pdtpartners/nix-snapshotter#image-hello
         cp result ./tests/docker/resources/nix-hello-image.tar
     - name: Download Go Tests
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: docker-go-tests-${{ matrix.arch }}
         path: ./dist/artifacts
