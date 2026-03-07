@@ -88,7 +88,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 
 	if k.LBEnabled {
 		// Wrangler controller and caches are only needed if the load balancer controller is enabled.
-		k.recorder = util.BuildControllerEventRecorder(k.client, controllerName, meta.NamespaceAll)
+		k.recorder = util.BuildControllerEventRecorder(ctx, k.client, controllerName, meta.NamespaceAll)
 		coreFactory := core.NewFactoryFromConfigOrDie(config)
 		k.nodeCache = coreFactory.Core().V1().Node().Cache()
 

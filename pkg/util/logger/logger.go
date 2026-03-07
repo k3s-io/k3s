@@ -1,10 +1,12 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 )
 
 // implicit interface check
@@ -86,4 +88,8 @@ func (ls *LogrusSink) WithName(name string) logr.LogSink {
 		name = fmt.Sprintf("%s/%s", base, name)
 	}
 	return ls.WithValues("logger", name)
+}
+
+func NewContextWithName(ctx context.Context, name string) context.Context {
+	return klog.NewContext(ctx, klog.FromContext(ctx).WithName(name))
 }
