@@ -213,6 +213,11 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 			if cfg.EtcdS3Timeout <= 0 {
 				return errors.New("etcd-s3-timeout must be greater than 0s")
 			}
+			// set default s3 retention from local snapshot retention
+			// preserves legacy behavior of local snapshot retention also affecting s3
+			if !app.IsSet("etcd-s3-retention") && app.IsSet("etcd-snapshot-retention") {
+				cfg.EtcdS3Retention = cfg.EtcdSnapshotRetention
+			}
 			serverConfig.ControlConfig.EtcdS3 = &config.EtcdS3{
 				AccessKey:     cfg.EtcdS3AccessKey,
 				Bucket:        cfg.EtcdS3BucketName,
