@@ -249,7 +249,7 @@ jobs:
         echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
     - name: Install Nix
       if: matrix.dtest == 'nixsnapshotter'
-      uses: DeterminateSystems/nix-installer-action@v17
+      uses: DeterminateSystems/nix-installer-action@v21
     - name: Build nix test image
       if: matrix.dtest == 'nixsnapshotter'
       run: |
