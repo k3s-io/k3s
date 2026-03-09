@@ -166,7 +166,7 @@ jobs:
           cp ./dist/artifacts/data-* ./build/out
 
       - name: Build and push K3s runtime image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./package/Dockerfile
