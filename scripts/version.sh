@@ -65,7 +65,7 @@ fi
 
 VERSION_ROOT="v0.15.0"
 
-VERSION_HELM_JOB="v0.9.14-build20260210"
+VERSION_HELM_JOB="v0.9.14-build20260309"
 
 VERSION_GOLANG="go"$(curl -sL "https://raw.githubusercontent.com${PKG_KUBERNETES_K3S/github.com/}/refs/tags/${VERSION_K8S_K3S}/.go-version")
 
