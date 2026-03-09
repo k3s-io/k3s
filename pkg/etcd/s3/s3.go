@@ -129,6 +129,8 @@ func (c *Controller) GetClient(ctx context.Context, etcdS3 *config.EtcdS3) (*Cli
 	// update ConfigSecret in defaults so that comparisons between current and default config
 	// ignore ConfigSecret when deciding if CLI configuration is present.
 	defaultEtcdS3.ConfigSecret = etcdS3.ConfigSecret
+	// also ignore retention, as it may have been defaulted from the etcd-snapshot-retention flag.
+	defaultEtcdS3.Retention = etcdS3.Retention
 
 	// If config is default, try to load config from secret, and fail if it cannot be retrieved or if the secret name is not set.
 	// If config is not default, and secret name is set, warn that the secret is being ignored
