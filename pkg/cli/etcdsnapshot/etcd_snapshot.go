@@ -48,8 +48,12 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 	if app.IsSet("etcd-snapshot-retention") {
 		sr.Retention = &cfg.EtcdSnapshotRetention
 	}
-
 	if cfg.EtcdS3 {
+		// set default s3 retention from local snapshot retention
+		// preserves legacy behavior of local snapshot retention also affecting s3
+		if !app.IsSet("etcd-s3-retention") && app.IsSet("etcd-snapshot-retention") {
+			cfg.EtcdS3Retention = cfg.EtcdSnapshotRetention
+		}
 		sr.S3 = &config.EtcdS3{
 			AccessKey:     cfg.EtcdS3AccessKey,
 			Bucket:        cfg.EtcdS3BucketName,
