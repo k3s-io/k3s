@@ -379,6 +379,12 @@ func encryptionRotateKeys(ctx context.Context, control *config.Control) error {
 		return err
 	}
 
+	// Save the cluster files after the new key was added, so if something breaks during reencryption,
+	// the cluster can still be restarted with the old and new keys together.
+	if err := cluster.Save(ctx, control, true); err != nil {
+		return err
+	}
+
 	if err := secretsencrypt.WaitForEncryptionConfigReload(control.Runtime, reloadSuccesses, reloadTime); err != nil {
 		return err
 	}
