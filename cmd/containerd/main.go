@@ -7,5 +7,6 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
+	klog.EnableContextualLogging(true)
 	containerd.Main()
 }
