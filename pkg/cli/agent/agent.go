@@ -19,12 +19,14 @@ import (
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"k8s.io/klog/v2"
 )
 
 func Run(clx *cli.Context) (rerr error) {
@@ -46,7 +48,8 @@ func Run(clx *cli.Context) (rerr error) {
 		return err
 	}
 
-	ctx := signals.SetupSignalContext()
+	klog.EnableContextualLogging(true)
+	ctx := klog.NewContext(signals.SetupSignalContext(), logger.NewLogrusSink(nil).AsLogr())
 	wg := &sync.WaitGroup{}
 
 	// If exiting due to an error, ensure that contexts are cancelled so that the
