@@ -36,7 +36,7 @@ sources:
       token: "{{ requiredEnv .github.token }}"
       versionfilter:
         kind: "regex"
-        pattern: "^v\\d+\\.\\d+$" # Matches "vMajor.Minor" only, skip patch
+        pattern: "^v\\d+\\.\\d+\\.\\d+$" # Matches "vMajor.Minor.Patch"
     transformers:
       - trimprefix: "v"
 
@@ -48,7 +48,15 @@ conditions:
     disablesourceinput: true
     spec:
       file: "Dockerfile.dapper"
-      matchpattern: 'TRIVY_VERSION="\d+\.\d+.\d+"'
+      matchpattern: 'TRIVY_VERSION="\d+\.\d+\.\d+"'
+  trivy-minor-changed:
+    name: "Only update when Trivy major.minor changed"
+    kind: "shell"
+    sourceid: "trivy-release"
+    transformers:
+      - find: '\d+\.\d+'
+    spec:
+      command: 'current=$(sed -n -E ''s/^ENV TRIVY_VERSION="([0-9]+\.[0-9]+)\.[0-9]+"$/\1/p'' Dockerfile.dapper); test "$current" !='
 
 targets:
   trivy-version:
@@ -58,6 +66,6 @@ targets:
     disablesourceinput: true
     spec:
       file: "Dockerfile.dapper"
-      matchpattern: 'TRIVY_VERSION="\d+\.\d+.\d+"'
+      matchpattern: 'TRIVY_VERSION="\d+\.\d+\.\d+"'
       replacepattern: 'TRIVY_VERSION="{{ source `trivy-release` }}"'
 
