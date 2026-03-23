@@ -140,7 +140,7 @@ func (e *ETCD) handleInvalid(rw http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-// withRequest returns a modified ETCD struct that is overriden
+// withRequest returns a modified ETCD struct that is overridden
 // with etcd snapshot config from the snapshot request.
 func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 	re := &ETCD{
