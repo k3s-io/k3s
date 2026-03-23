@@ -136,7 +136,7 @@ type membershipError struct {
 }
 
 func (e *membershipError) Error() string {
-	return fmt.Sprintf("this server is a not a member of the etcd cluster. Found %v, expect: %s", e.members, e.self)
+	return fmt.Sprintf("this server is not a member of the etcd cluster. Found %v, expect: %s", e.members, e.self)
 }
 
 func (e *membershipError) Is(target error) bool {
