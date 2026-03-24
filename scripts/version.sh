@@ -65,7 +65,7 @@ fi
 
 VERSION_ROOT="v0.15.0"
 
-VERSION_HELM_JOB="v0.9.14-build20260309"
+VERSION_HELM_JOB="v0.9.15-build20260324"
 
 GO_VERSION_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/.go-version"
 VERSION_GOLANG="go"$(curl -sL "${GO_VERSION_URL}" | tr -d '[:space:]')
