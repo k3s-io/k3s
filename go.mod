@@ -111,7 +111,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
-	github.com/k3s-io/helm-controller v0.16.17
+	github.com/k3s-io/helm-controller v0.17.0
 	github.com/k3s-io/kine v0.14.14
 	github.com/klauspost/compress v1.18.4
 	github.com/libp2p/go-libp2p v0.46.0
@@ -120,8 +120,8 @@ require (
 	github.com/moby/sys/userns v0.1.0
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.25.1
-	github.com/onsi/gomega v1.38.1
+	github.com/onsi/ginkgo/v2 v2.27.2
+	github.com/onsi/gomega v1.38.2
 	github.com/opencontainers/cgroups v0.0.6
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
@@ -131,7 +131,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
 	github.com/rancher/dynamiclistener v0.7.5
-	github.com/rancher/lasso v0.2.5
+	github.com/rancher/lasso v0.2.6
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d
 	github.com/rancher/wharfie v0.7.1
@@ -160,12 +160,12 @@ require (
 	golang.org/x/sys v0.41.0
 	google.golang.org/grpc v1.79.3
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.34.5
-	k8s.io/apiextensions-apiserver v0.34.5
-	k8s.io/apimachinery v0.34.5
+	k8s.io/api v0.35.1
+	k8s.io/apiextensions-apiserver v0.35.1
+	k8s.io/apimachinery v0.35.1
 	k8s.io/apiserver v0.34.5
 	k8s.io/cli-runtime v0.33.10
-	k8s.io/client-go v0.34.5
+	k8s.io/client-go v0.35.1
 	k8s.io/cloud-provider v0.34.5
 	k8s.io/cluster-bootstrap v0.33.10
 	k8s.io/component-base v0.34.5
@@ -491,7 +491,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
