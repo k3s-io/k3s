@@ -21,12 +21,12 @@ RUN rm -rf /go/src /go/pkg
 RUN if [ "$(go env GOARCH)" = "amd64" ]; then \
     GOLANGCI_VERSION=v2.7.2 && \
     GOLANGCI_SHA256="ce46a1f1d890e7b667259f70bb236297f5cf8791a9b6b98b41b283d93b5b6e88" && \
-    cd /tmp
-    curl -sL https://github.com/golangci/golangci-lint/releases/download/${GOLANGCI_VERSION}/golangci-lint-${GOLANGCI_VERSION}-linux-amd64.tar.gz -o golangci-lint.tar.gz
-    echo "${GOLANGCI_SHA256}  golangci-lint.tar.gz" | sha256sum -c -
-    tar -xzf golangci-lint.tar.gz
-    mv golangci-lint-*/golangci-lint /usr/local/bin/golangci-lint
-    golangci-lint --version
+    cd /tmp && \
+    curl -sL https://github.com/golangci/golangci-lint/releases/download/${GOLANGCI_VERSION}/golangci-lint-${GOLANGCI_VERSION}-linux-amd64.tar.gz -o golangci-lint.tar.gz && \
+    echo "${GOLANGCI_SHA256}  golangci-lint.tar.gz" | sha256sum -c - && \
+    tar -xzf golangci-lint.tar.gz && \
+    mv golangci-lint-*/golangci-lint /usr/local/bin/golangci-lint && \
+    golangci-lint --version; \
     fi
 
 ARG SELINUX=true
