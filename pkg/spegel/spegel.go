@@ -154,7 +154,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		c.ExternalAddress, c.RegistryPort, registries)
 
 	// set up the various logging logging frameworks
-	ctx = logr.NewContext(ctx, logger.NewLogrusSink(nil).AsLogr().WithName("spegel"))
+	ctx = logger.NewContext(ctx, "spegel")
 	level := ipfslog.LevelInfo
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		level = ipfslog.LevelDebug

@@ -250,7 +250,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			strconv.Itoa(config.ControlConfig.HTTPSPort),
 			k8s,
 			apply,
-			util.BuildControllerEventRecorder(k8s, helmcommon.Name, metav1.NamespaceAll),
+			util.BuildControllerEventRecorder(ctx, k8s, helmcommon.Name, metav1.NamespaceAll),
 			helm.V1().HelmChart(),
 			helm.V1().HelmChart().Cache(),
 			helm.V1().HelmChartConfig(),

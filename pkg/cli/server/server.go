@@ -11,7 +11,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
-	"github.com/go-logr/logr"
 	"github.com/k3s-io/k3s/pkg/agent"
 	"github.com/k3s-io/k3s/pkg/agent/https"
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
@@ -79,7 +78,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	klog.EnableContextualLogging(true)
-	ctx := logr.NewContext(signals.SetupSignalContext(), logger.NewLogrusSink(nil).AsLogr())
+	ctx := logger.NewContext(signals.SetupSignalContext(), version.Program)
 	wg := &sync.WaitGroup{}
 
 	// If exiting due to an error, ensure that contexts are cancelled so that the
