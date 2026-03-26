@@ -17,7 +17,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
 
     - name: Setup Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
       with:
         go-version: ${{ env.INPUT_GO_VERSION }}
         go-version-file: 'go.mod'  # if go-version is not set, just use whatever version is in the go.mod file
@@ -33,7 +33,7 @@ runs:
 
     - name: Setup read-only cache
       if: github.ref != 'refs/heads/main' && github.ref != env.LATEST_RELEASE_REF # use custom cache for older minors
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: |
           ${{ env.GO_MODCACHE }}

@@ -68,13 +68,13 @@ jobs:
           /usr/share/swift
         df -khl
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
         fetch-depth: 1
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         name: k3s-amd64
         path: ./dist/artifacts
@@ -85,14 +85,14 @@ jobs:
         cd tests/integration/${{ matrix.itest }}
         sudo -E env "PATH=$PATH" go test -timeout=45m ./... -run Integration -ginkgo.v -test.v
     - name: On Failure, Upload Logs
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       if: ${{ failure() }}
       with:
         name: integration-${{ matrix.itest }}-logs
         path: tests/integration/${{ matrix.itest }}/*log.txt
         retention-days: 30
     - name: On Failure, Launch Debug Session
-      uses: lhotari/action-upterm@v1
+      uses: lhotari/action-upterm@b0357f23233f5ea6d58947c0c402e0631bab7334 # v1
       if: ${{ failure() }}
       with:
         ## If no one connects after 5 minutes, shut down server.
@@ -100,7 +100,7 @@ jobs:
     - name: Generate coverage report
       run: sudo -E env "PATH=$PATH" go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./${{ matrix.itest }}.out
@@ -115,12 +115,12 @@ jobs:
       GOCOVERDIR: "D:/tmp/k3scov"
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with: {fetch-depth: 1}
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Download k3s binary
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         name: k3s-windows
         path: dist/artifacts/
@@ -147,7 +147,7 @@ jobs:
     - name: Generate coverage report
       run: go tool covdata textfmt -i $Env:GOCOVERDIR -o windows.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./windows.out
