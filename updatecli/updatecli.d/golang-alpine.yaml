@@ -44,12 +44,12 @@ sources:
   # Dockerfile.dapper is considered the base for the Golang version that we
   # must use.
   dockerfile-dapper:
-    name: "Retrieve golang image version used in Dockerfile.dapper"
+    name: "Retrieve golang image version used in Dockerfile.local"
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true
     spec:
-      file: "Dockerfile.dapper"
+      file: "Dockerfile.local"
       matchpattern: 'golang:\S+-alpine(\S+)?'
     # Example: if the version found is golang:1.19.3-alpine3.16, then
     # we extract only 1.19.3-alpine .
@@ -73,7 +73,6 @@ targets:
     disablesourceinput: true
     spec:
       files:
-        - "Dockerfile.dapper"
         - "Dockerfile.test"
         - "Dockerfile.manifest"
       matchpattern: 'golang:\S+-alpine(\S+)?'
