@@ -34,23 +34,23 @@ jobs:
       GOOS: ${{ inputs.os }}
     steps:
     - name: Checkout K3s
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     
     - name: Set up QEMU
       if: inputs.arch == 'arm'
-      uses: docker/setup-qemu-action@v4
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
       with:
         cache-image: false
 
     - name: Set up Docker
-      uses: docker/setup-docker-action@v5
+      uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
       with:
         version: type=image,tag=28
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
         set-host: true
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
     - name: Determine Git Version Info
       id: git_vars
@@ -67,7 +67,7 @@ jobs:
       if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
           DOCKER_BUILD_SUMMARY: false
-      uses: docker/build-push-action@v7
+      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
       with:
         context: .
         file: ./Dockerfile.local
@@ -89,7 +89,7 @@ jobs:
       env:
         PLATFORM: ${{ inputs.arch == 'arm' && 'linux/arm/v7' || format('linux/{0}', inputs.arch) }}
         DOCKER_BUILD_SUMMARY: false
-      uses: docker/build-push-action@v7
+      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
       with:
         context: .
         file: ./Dockerfile.local
@@ -128,7 +128,7 @@ jobs:
         mv ./build/out/data-linux.tar.zst ./dist/artifacts/data-linux${{ env.ARCH_EXT }}.tar.zst
 
     - name: "Upload K3s Artifacts"
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       with:
         name: k3s${{ env.ARCH_EXT }}
         path: dist/artifacts/
