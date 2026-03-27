@@ -81,6 +81,8 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		klog.InitFlags(nil)
 		for {
 			flag.Set("v", strconv.Itoa(cmds.LogConfig.VLevel))
+			flag.Set("legacy_stderr_threshold_behavior", "false")
+			flag.Set("stderrthreshold", "INFO")
 
 			select {
 			case <-time.After(time.Second):
