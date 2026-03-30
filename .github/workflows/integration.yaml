@@ -85,7 +85,7 @@ jobs:
         cd tests/integration/${{ matrix.itest }}
         sudo -E env "PATH=$PATH" go test -timeout=45m ./... -run Integration -ginkgo.v -test.v
     - name: On Failure, Upload Logs
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       if: ${{ failure() }}
       with:
         name: integration-${{ matrix.itest }}-logs
