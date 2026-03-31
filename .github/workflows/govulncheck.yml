@@ -19,6 +19,6 @@ jobs:
       - name: Install Go
         uses: ./.github/actions/setup-go
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Run govulncheck
         run: govulncheck -format=text ./...
