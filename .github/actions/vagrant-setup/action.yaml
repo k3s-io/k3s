@@ -6,8 +6,17 @@ runs:
     - name: Add vagrant to apt-get sources
       shell: bash
       run: |
-        curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        curl -fsSL https://apt.releases.hashicorp.com/gpg -o /tmp/hashicorp.asc
+        FINGERPRINT="798AEC654E5C15428C8E42EEAA16FCBCA621E701"
+        # Verify the GPG key fingerprint before adding it to the keyring
+        DOWNLOADED_FPR=$(gpg --show-keys --with-colons /tmp/hashicorp.asc | awk -F: '$1=="fpr"{print $10; exit}')
+        if [ "$DOWNLOADED_FPR" != "$FINGERPRINT" ]; then
+          echo "SECURITY ERROR: HashiCorp GPG key fingerprint mismatch!"
+          exit 1
+        fi
+        cat /tmp/hashicorp.asc | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        rm /tmp/hashicorp.asc
     - name: Install vagrant and libvirt
       shell: bash
       run: |
