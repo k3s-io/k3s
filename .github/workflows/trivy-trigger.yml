@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify actor is a member of k3s-io organization and has write permissions
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const org = 'k3s-io';
@@ -46,7 +46,7 @@ jobs:
             }
       
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       
       - name: Build And Save K3s Image
         run: |
@@ -63,7 +63,7 @@ jobs:
           mv k3s.tar pr-context/k3s.tar
 
       - name: Upload PR context artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: pr-context-for-scan
           path: pr-context/

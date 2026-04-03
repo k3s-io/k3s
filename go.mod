@@ -87,12 +87,12 @@ require (
 	github.com/containerd/stargz-snapshotter v0.18.2
 	github.com/containerd/zfs/v2 v2.0.0
 	github.com/coreos/go-iptables v0.8.0
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/distribution/reference v0.6.0
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.28.0
+	github.com/flannel-io/flannel v0.28.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-test/deep v1.0.7
@@ -106,7 +106,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
-	github.com/k3s-io/helm-controller v0.16.17
+	github.com/k3s-io/helm-controller v0.17.0
 	github.com/k3s-io/kine v0.14.14
 	github.com/klauspost/compress v1.18.4
 	github.com/libp2p/go-libp2p v0.46.0
@@ -152,8 +152,8 @@ require (
 	golang.org/x/mod v0.30.0
 	golang.org/x/net v0.48.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0
-	google.golang.org/grpc v1.79.1
+	golang.org/x/sys v0.41.0
+	google.golang.org/grpc v1.79.3
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.2
 	k8s.io/apiextensions-apiserver v0.35.2

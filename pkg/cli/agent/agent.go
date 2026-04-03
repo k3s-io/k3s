@@ -49,7 +49,7 @@ func Run(clx *cli.Context) (rerr error) {
 	}
 
 	klog.EnableContextualLogging(true)
-	ctx := klog.NewContext(signals.SetupSignalContext(), logger.NewLogrusSink(nil).AsLogr())
+	ctx := logger.NewContext(signals.SetupSignalContext(), version.Program)
 	wg := &sync.WaitGroup{}
 
 	// If exiting due to an error, ensure that contexts are cancelled so that the
