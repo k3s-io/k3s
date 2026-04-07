@@ -1,8 +1,9 @@
 name: K3s Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+    - "v*"
 
 permissions:
   contents: read
@@ -194,6 +195,7 @@ jobs:
 
     - name: Read Prime artifacts secrets
       uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
+      if: ${{ github.repository_owner == 'k3s-io' }}
       with:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
@@ -216,6 +218,7 @@ jobs:
 
     - name: Configure AWS Credentials (s3)
       uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6
+      if: ${{ github.repository_owner == 'k3s-io' }}
       with:
         aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
@@ -251,6 +254,7 @@ jobs:
     - name: Upload Assets to Release
       uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
       with:
+        draft: true
         files: |
           dist/artifacts/k3s*
           dist/artifacts/sha256sum*
@@ -258,11 +262,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Update Image Registry for Prime/Staging
+      if: ${{ github.repository_owner == 'k3s-io' }}
       env:
         REGISTRY: ${{ env.REGISTRY }}
       run: sed -i "s|docker.io|${REGISTRY}|g" dist/artifacts/k3s-images.txt
 
     - name: Upload Assets to S3
+      if: ${{ github.repository_owner == 'k3s-io' }}
       env:
         S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
       run: |
