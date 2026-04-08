@@ -44,12 +44,12 @@ jobs:
             /usr/share/swift
           df -khl
       - name: "Checkout"
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with: {fetch-depth: 1}
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Cache"
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: |
              ~/.vagrant.d/boxes

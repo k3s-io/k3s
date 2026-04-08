@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: actionlint
-        uses: raven-actions/actionlint@v2
+        uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2
         with:
           shellcheck: false
           pyflakes: false
