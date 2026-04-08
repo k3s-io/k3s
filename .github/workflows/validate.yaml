@@ -45,7 +45,7 @@ jobs:
           echo "GITHUB_CHECKOUT_FETCH_DEPTH=$( expr 1 + ${{ github.event.pull_request.commits }} )" >> "$GITHUB_ENV"
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: ${{ env.GITHUB_CHECKOUT_FETCH_DEPTH }}
 
@@ -60,14 +60,14 @@ jobs:
           go-version: "${{ env.GOTOOLCHAIN }}"
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
         with:
           version: v2.7
           args: "--new-from-merge-base ${{ github.event.pull_request.base.sha }}"
           skip-save-cache: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Lint (windows)
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
         with:
           version: v2.7
           args: "--new-from-merge-base ${{ github.event.pull_request.base.sha }} ./pkg/... ./cmd/..."
