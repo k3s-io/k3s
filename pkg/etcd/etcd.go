@@ -47,7 +47,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/credentials"
 	snapshotv3 "go.etcd.io/etcd/etcdutl/v3/snapshot"
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	errorsv3 "go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -209,7 +209,7 @@ func (e *ETCD) Test(ctx context.Context, enableMaintenance bool) error {
 	} else if status.IsLearner {
 		return errors.New("this server has not yet been promoted from learner to voting member")
 	} else if status.Leader == 0 {
-		return etcdserver.ErrNoLeader
+		return errorsv3.ErrNoLeader
 	}
 
 	logrus.Infof("Connected to etcd v%s - datastore using %d of %d bytes", status.Version, status.DbSizeInUse, status.DbSize)
@@ -817,7 +817,7 @@ func getClient(ctx context.Context, control *config.Control, endpoints ...string
 	}
 
 	if cfg.TLS != nil {
-		creds := credentials.NewBundle(credentials.Config{TLSConfig: cfg.TLS}).TransportCredentials()
+		creds := credentials.NewTransportCredential(cfg.TLS)
 		cfg.DialOptions = append(cfg.DialOptions, grpc.WithTransportCredentials(creds))
 	} else {
 		cfg.DialOptions = append(cfg.DialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))

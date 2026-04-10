@@ -15,11 +15,11 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	etcderrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -97,7 +97,7 @@ func (r *RemoteStore) Get(ctx context.Context, key string) (mvccpb.KeyValue, err
 	if len(resp.Kvs) == 1 {
 		return *resp.Kvs[0], nil
 	}
-	return mvccpb.KeyValue{}, etcdserver.ErrKeyNotFound
+	return mvccpb.KeyValue{}, etcderrors.ErrKeyNotFound
 }
 
 func (r *RemoteStore) Close() error {
@@ -258,8 +258,7 @@ func NewStore(dataDir string) (store *Store, rerr error) {
 	logrus.Infof("Opening etcd MVCC KV backend database at %s", path)
 
 	// open backend database
-	bcfg := backend.DefaultBackendConfig()
-	bcfg.Logger = logger
+	bcfg := backend.DefaultBackendConfig(logger)
 	bcfg.Path = path
 	bcfg.UnsafeNoFsync = true
 	bcfg.BatchInterval = time.Hour
@@ -274,7 +273,7 @@ func NewStore(dataDir string) (store *Store, rerr error) {
 
 	// try to get current index from backend; this may fail if the bbolt database
 	// was opened successfully but is in an inconsistent state.
-	if currentIndex, _ := cindex.ReadConsistentIndex(s.be.ReadTx()); currentIndex == 0 {
+	if currentIndex, _ := schema.ReadConsistentIndex(s.be.ReadTx()); currentIndex == 0 {
 		return nil, errors.New("failed to read consistent index")
 	}
 
@@ -327,5 +326,5 @@ func (s *Store) Get(ctx context.Context, key string) (mvccpb.KeyValue, error) {
 		return resp.KVs[0], nil
 	}
 
-	return mvccpb.KeyValue{}, etcdserver.ErrKeyNotFound
+	return mvccpb.KeyValue{}, etcderrors.ErrKeyNotFound
 }

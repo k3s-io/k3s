@@ -16,7 +16,7 @@ type SimpleResolver struct {
 	endpoint string
 }
 
-// Cribbed from https://github.com/etcd-io/etcd/blob/v3.5.25/client/v3/internal/resolver/resolver.go
+// Cribbed from https://github.com/etcd-io/etcd/blob/v3.6.4/client/v3/internal/resolver/resolver.go
 // but only supports a single fixed endpoint. We use this instead of the internal etcd client resolver
 // because the agent loadbalancer handles failover and we don't want etcd or grpc's special behavior.
 func NewSimpleResolver(endpoint string) *SimpleResolver {
