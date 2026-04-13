@@ -28,6 +28,7 @@ var (
 // The enableMaintenance flag enables attempts to perform corrective maintenance during the test process.
 type TestFunc func(ctx context.Context, enableMaintenance bool) error
 
+// Executor is a set of functions for bootstrapping a node and starting the CRI, CNI, and Kubernetes components
 type Executor interface {
 	Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
 	Kubelet(ctx context.Context, args []string) error
@@ -47,6 +48,12 @@ type Executor interface {
 	ETCDReadyChan() <-chan struct{}
 	CRIReadyChan() <-chan struct{}
 	IsSelfHosted() bool
+}
+
+// PreparingExecutor is an optional interface that Executors may implement to modify node configuration
+// and CLI flags before config is retrieved from the server.
+type PreparingExecutor interface {
+	Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
 }
 
 type ETCDSocketOpts struct {
@@ -153,6 +160,10 @@ func (e ETCDConfig) ToConfigFile(extraArgs []string) (string, error) {
 
 func Set(driver Executor) {
 	executor = driver
+}
+
+func Get() Executor {
+	return executor
 }
 
 func Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
@@ -276,6 +287,13 @@ func IsSelfHosted() bool {
 		return false
 	}
 	return executor.IsSelfHosted()
+}
+
+func Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	if ex, ok := executor.(PreparingExecutor); ok {
+		return ex.Prepare(ctx, nodeConfig, cfg)
+	}
+	return nil
 }
 
 func CloseIfNilErr(err error, ch chan struct{}) error {

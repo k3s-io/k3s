@@ -57,12 +57,76 @@ func init() {
 
 // explicit type check
 var _ executor.Executor = &Embedded{}
+var _ executor.PreparingExecutor = &Embedded{}
+var _ vpn.InfoProvider = &Embedded{}
 
 type Embedded struct {
 	apiServerReady <-chan struct{}
 	etcdReady      chan struct{}
 	criReady       chan struct{}
 	nodeConfig     *daemonconfig.Node
+	vpnInfo        *vpn.Info
+}
+
+// Prepare modifies the node config prior to downloading client and server certificates from the server.
+// If node IPs or names need to be modified, it should be done here so that the kubelet client and serving certs are valid.
+func (e *Embedded) Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+	// If there is a VPN, we must start it early to overwrite NodeIP and flannel interface
+	var err error
+	if cfg.VPNAuthFile != "" {
+		cfg.VPNAuth, err = util.ReadFile(ctx, cfg.VPNAuthFile)
+		if err != nil {
+			return errors.WithMessage(err, "failed to read vpn-auth-file")
+		}
+	}
+
+	if cfg.VPNAuth != "" {
+		err = vpn.StartVPN(cfg.VPNAuth)
+		if err != nil {
+			return err
+		}
+
+		e.vpnInfo, err = vpn.GetInfo(cfg.VPNAuth)
+		if err != nil {
+			return err
+		}
+
+		// Pass ipv4, ipv6 or both depending on nodeIPs mode
+		nodeIPs := nodeConfig.AgentConfig.NodeIPs
+		var vpnIPs []net.IP
+		if utilsnet.IsIPv4(nodeIPs[0]) && e.vpnInfo.IPv4Address != nil {
+			vpnIPs = append(vpnIPs, e.vpnInfo.IPv4Address)
+			if e.vpnInfo.IPv6Address != nil {
+				vpnIPs = append(vpnIPs, e.vpnInfo.IPv6Address)
+			}
+		} else if utilsnet.IsIPv6(nodeIPs[0]) && e.vpnInfo.IPv6Address != nil {
+			vpnIPs = append(vpnIPs, e.vpnInfo.IPv6Address)
+			if e.vpnInfo.IPv4Address != nil {
+				vpnIPs = append(vpnIPs, e.vpnInfo.IPv4Address)
+			}
+		} else {
+			return fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, e.vpnInfo.IPv4Address, e.vpnInfo.IPv6Address)
+		}
+
+		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
+		if len(vpnIPs) != 0 {
+			logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
+			if len(cfg.NodeIP.Value()) != 0 {
+				logrus.Warn("VPN provider overrides configured node-ip parameter")
+			}
+			if len(cfg.NodeExternalIP.Value()) != 0 {
+				logrus.Warn("VPN provider overrides node-external-ip parameter")
+			}
+			nodeIPs = vpnIPs
+			nodeConfig.AgentConfig.NodeIPs = vpnIPs
+			nodeConfig.AgentConfig.NodeIP = vpnIPs[0].String()
+			nodeConfig.Flannel.Iface, err = net.InterfaceByName(e.vpnInfo.Interface)
+			if err != nil {
+				return errors.WithMessagef(err, "unable to find vpn interface: %s", e.vpnInfo.Interface)
+			}
+		}
+	}
+	return err
 }
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
@@ -100,50 +164,6 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 			}
 		}
 
-		// If there is a VPN, we must overwrite NodeIP and flannel interface
-		var vpnInfo *vpn.Info
-		if cfg.VPNAuth != "" {
-			vpnInfo, err = vpn.GetInfo(cfg.VPNAuth)
-			if err != nil {
-				return err
-			}
-
-			// Pass ipv4, ipv6 or both depending on nodeIPs mode
-			nodeIPs := nodeConfig.AgentConfig.NodeIPs
-			var vpnIPs []net.IP
-			if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-				if vpnInfo.IPv6Address != nil {
-					vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-				}
-			} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
-				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
-				if vpnInfo.IPv4Address != nil {
-					vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
-				}
-			} else {
-				return fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
-			}
-
-			// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
-			if len(vpnIPs) != 0 {
-				logrus.Infof("Node-ip changed to %v due to VPN", vpnIPs)
-				if len(cfg.NodeIP.Value()) != 0 {
-					logrus.Warn("VPN provider overrides configured node-ip parameter")
-				}
-				if len(cfg.NodeExternalIP.Value()) != 0 {
-					logrus.Warn("VPN provider overrides node-external-ip parameter")
-				}
-				nodeIPs = vpnIPs
-				nodeConfig.AgentConfig.NodeIPs = vpnIPs
-				nodeConfig.AgentConfig.NodeIP = vpnIPs[0].String()
-				nodeConfig.Flannel.Iface, err = net.InterfaceByName(vpnInfo.Interface)
-				if err != nil {
-					return errors.WithMessagef(err, "unable to find vpn interface: %s", vpnInfo.Interface)
-				}
-			}
-		}
-
 		// set paths for embedded flannel if enabled
 		hostLocal, err := exec.LookPath("host-local")
 		if err != nil {
@@ -160,8 +180,8 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		nodeConfig.AgentConfig.CNIConfDir = filepath.Join(cfg.DataDir, "agent", "etc", "cni", "net.d")
 
 		// It does not make sense to use VPN without its flannel backend
-		if cfg.VPNAuth != "" {
-			nodeConfig.Flannel.Backend = vpnInfo.ProviderName
+		if e.vpnInfo != nil {
+			nodeConfig.Flannel.Backend = e.vpnInfo.ProviderName
 		}
 	}
 
@@ -418,4 +438,11 @@ func (e *Embedded) CRIReadyChan() <-chan struct{} {
 
 func (e Embedded) IsSelfHosted() bool {
 	return false
+}
+
+func (e Embedded) GetVPNInfo() (*vpn.Info, error) {
+	if e.vpnInfo != nil {
+		return e.vpnInfo, nil
+	}
+	return nil, errors.New("VPN info not set")
 }

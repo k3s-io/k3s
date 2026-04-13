@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 
@@ -17,6 +18,10 @@ import (
 const (
 	tailscaleIf = "tailscale0"
 )
+
+type InfoProvider interface {
+	GetVPNInfo() (*Info, error)
+}
 
 type TailscaleOutput struct {
 	TailscaleIPs []string `json:"TailscaleIPs"`
@@ -72,7 +77,10 @@ func StartVPN(vpnAuthConfigFile string) error {
 		logrus.Debugf("Flags passed to tailscale up: %v", args)
 		output, err := util.ExecCommand("tailscale", args)
 		if err != nil {
-			return errors.WithMessage(err, "tailscale up failed: "+output)
+			if output != "" {
+				return errors.WithMessagef(err, "tailscale up failed (%q)", output)
+			}
+			return errors.WithMessage(err, "tailscale up failed")
 		}
 		logrus.Debugf("Output from tailscale up: %v", output)
 		return nil
@@ -92,6 +100,14 @@ func GetInfo(vpnAuth string) (*Info, error) {
 		return getTailscaleInfo()
 	}
 	return nil, nil
+}
+
+func GetInfoFromExecutor() (*Info, error) {
+	ex := executor.Get()
+	if provider, ok := ex.(InfoProvider); ok {
+		return provider.GetVPNInfo()
+	}
+	return nil, errors.New("executor does not provide VPN info")
 }
 
 // getVPNAuthInfo returns the required authInfo object
