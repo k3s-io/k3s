@@ -228,7 +228,7 @@ func SaveRootlessJournalLogs(nodes []e2e.VagrantNode) error {
 			return err
 		}
 		defer lf.Close()
-		cmd := "vagrant ssh --no-tty " + node.Name + " -c \"journalctl -u --user k3s-rootless --no-pager\""
+		cmd := "vagrant ssh --no-tty " + node.Name + " -c \"journalctl --user -u k3s-rootless --no-pager\""
 		logs, err := tests.RunCommand(cmd)
 		if err != nil {
 			return err
