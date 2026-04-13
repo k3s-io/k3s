@@ -1,7 +1,7 @@
 package util
 
 import (
-	"errors"
+	"context"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func SetFileModeForPath(name string, mode os.FileMode) error {
@@ -41,25 +42,23 @@ func SetFileModeForFile(file *os.File, mode os.FileMode) error {
 	return file.Chmod(mode)
 }
 
-// ReadFile reads from a file
-func ReadFile(path string) (string, error) {
+// ReadFile waits for a file to exist, then returns its trimmed contents as a string
+func ReadFile(ctx context.Context, path string) (string, error) {
 	if path == "" {
 		return "", nil
 	}
-
-	for start := time.Now(); time.Since(start) < 4*time.Minute; {
-		vpnBytes, err := os.ReadFile(path)
+	var trimmed string
+	return trimmed, wait.PollUntilContextTimeout(ctx, 2*time.Second, 4*time.Minute, true, func(ctx context.Context) (bool, error) {
+		b, err := os.ReadFile(path)
 		if err == nil {
-			return strings.TrimSpace(string(vpnBytes)), nil
+			trimmed = strings.TrimSpace(string(b))
+			return true, nil
 		} else if os.IsNotExist(err) {
-			logrus.Infof("Waiting for %s to be available\n", path)
-			time.Sleep(2 * time.Second)
-		} else {
-			return "", err
+			logrus.Infof("Waiting for file %q to be created\n", path)
+			return false, nil
 		}
-	}
-
-	return "", errors.New("Timeout while trying to read the file")
+		return false, err
+	})
 }
 
 // AtomicWrite firsts writes data to a temp file, then renames to the destination file.

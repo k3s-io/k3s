@@ -117,21 +117,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
-	if cmds.AgentConfig.VPNAuthFile != "" {
-		cmds.AgentConfig.VPNAuth, err = util.ReadFile(cmds.AgentConfig.VPNAuthFile)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Starts the VPN in the server if config was set up
-	if cmds.AgentConfig.VPNAuth != "" {
-		err := vpn.StartVPN(cmds.AgentConfig.VPNAuth)
-		if err != nil {
-			return err
-		}
-	}
-
 	serverConfig := server.Config{}
 	serverConfig.DisableAgent = cfg.DisableAgent
 	serverConfig.ControlConfig.Runtime = config.NewRuntime()
@@ -139,13 +124,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AgentToken = cfg.AgentToken
 	serverConfig.ControlConfig.JoinURL = cfg.ServerURL
 	if cfg.AgentTokenFile != "" {
-		serverConfig.ControlConfig.AgentToken, err = util.ReadFile(cfg.AgentTokenFile)
+		serverConfig.ControlConfig.AgentToken, err = util.ReadFile(ctx, cfg.AgentTokenFile)
 		if err != nil {
 			return err
 		}
 	}
 	if cfg.TokenFile != "" {
-		serverConfig.ControlConfig.Token, err = util.ReadFile(cfg.TokenFile)
+		serverConfig.ControlConfig.Token, err = util.ReadFile(ctx, cfg.TokenFile)
 		if err != nil {
 			return err
 		}
@@ -298,58 +283,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 	serverConfig.ControlConfig.ServerNodeName = nodeName
 	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, cmds.AgentConfig.NodeExternalIP.Value()...)
+	if shortName := strings.SplitN(nodeName, ".", 2)[0]; shortName != nodeName {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, shortName)
+	}
 	for _, ip := range nodeIPs {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, ip.String())
-	}
-
-	// if not set, try setting advertise-ip from agent VPN
-	if cmds.AgentConfig.VPNAuth != "" {
-		vpnInfo, err := vpn.GetInfo(cmds.AgentConfig.VPNAuth)
-		if err != nil {
-			return err
-		}
-
-		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
-		if utilsnet.IsIPv6(nodeIPs[0]) {
-			if vpnInfo.IPv6Address != nil {
-				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
-				if serverConfig.ControlConfig.AdvertiseIP != "" {
-					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
-				}
-				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv6Address.String()
-			} else {
-				return errors.New("tailscale does not provide an ipv6 address")
-			}
-		} else {
-			// We are in dual-stack or ipv4-only mode
-			if vpnInfo.IPv4Address != nil {
-				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv4Address)
-				if serverConfig.ControlConfig.AdvertiseIP != "" {
-					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
-				}
-				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv4Address.String()
-			} else {
-				return errors.New("tailscale does not provide an ipv4 address")
-			}
-		}
-		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
-	} else {
-		// if not set, try setting advertise-ip from agent node-external-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
-		}
-
-		// if not set, try setting advertise-ip from agent node-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP.Value())
-		}
-	}
-
-	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
-	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
-	// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
-	if serverConfig.ControlConfig.AdvertiseIP != "" {
-		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
 	// configure ClusterIPRanges. Use default 10.42.0.0/16 or fd00:42::/56 if user did not set it
@@ -611,6 +550,51 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
 		}
+	}
+
+	// try setting advertise-ip from agent VPN
+	if vpnInfo, _ := vpn.GetInfoFromExecutor(); vpnInfo != nil {
+		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
+		if utilsnet.IsIPv6(nodeIPs[0]) {
+			if vpnInfo.IPv6Address != nil {
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv6Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv6 address")
+			}
+		} else {
+			// We are in dual-stack or ipv4-only mode
+			if vpnInfo.IPv4Address != nil {
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv4Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv4Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv4 address")
+			}
+		}
+		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
+	} else {
+		// if not set, try setting advertise-ip from agent node-external-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
+		}
+
+		// if not set, try setting advertise-ip from agent node-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP.Value())
+		}
+	}
+
+	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
+	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
+	// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
+	if serverConfig.ControlConfig.AdvertiseIP != "" {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
 	go cmds.WriteCoverage(ctx)
