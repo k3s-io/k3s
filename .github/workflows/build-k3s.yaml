@@ -67,7 +67,7 @@ jobs:
       if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
           DOCKER_BUILD_SUMMARY: false
-      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
       with:
         context: .
         file: ./Dockerfile.local
@@ -89,7 +89,7 @@ jobs:
       env:
         PLATFORM: ${{ inputs.arch == 'arm' && 'linux/arm/v7' || format('linux/{0}', inputs.arch) }}
         DOCKER_BUILD_SUMMARY: false
-      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
       with:
         context: .
         file: ./Dockerfile.local
