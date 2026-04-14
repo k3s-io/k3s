@@ -33,6 +33,10 @@ VERSION_K8S=${VERSION_K8S_K3S%-k3s*}
 if [ -z "$VERSION_K8S" ]; then
     VERSION_K8S="v0.0.0"
 fi
+BRANCH_K8S="release-$(echo $VERSION_K8S | grep -Eo '1\.[0-9]+')"
+if [ "$BRANCH_K8S" == "release-0.0" ]; then
+    BRANCH_K8S=master
+fi
 
 VERSION_RUNC=$(get-module-version github.com/opencontainers/runc)
 if [ -z "$VERSION_RUNC" ]; then
@@ -66,7 +70,7 @@ VERSION_ROOT="v0.15.0"
 
 VERSION_HELM_JOB="v0.9.14-build20260309"
 
-GO_VERSION_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/.go-version"
+GO_VERSION_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${BRANCH_K8S}/.go-version"
 VERSION_GOLANG="go"$(curl -sL "${GO_VERSION_URL}" | tr -d '[:space:]')
 
 if [[ -n "$GIT_TAG" ]]; then
