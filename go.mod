@@ -8,11 +8,11 @@ replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.3-k3s1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.10.0
-	github.com/containerd/containerd/v2 => github.com/brandond/containerd/v2 v2.2.2-bd1.34
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.2.3-k3s1
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker => github.com/docker/docker v25.0.8+incompatible
-	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.11.0
+	github.com/docker/docker => github.com/docker/docker v25.0.15-0.20260325154711-d2dbc0547253+incompatible
+	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.12.2
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.52.1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
@@ -74,8 +74,8 @@ replace (
 )
 
 require (
-	github.com/Microsoft/hcsshim v0.14.0-rc.1
-	github.com/Mirantis/cri-dockerd v0.0.0-00010101000000-000000000000
+	github.com/Microsoft/hcsshim v0.14.1
+	github.com/Mirantis/cri-dockerd v0.3.19
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cloudnativelabs/kube-router/v2 v2.0.0-00010101000000-000000000000
 	github.com/containerd/cgroups/v3 v3.1.2
@@ -83,7 +83,7 @@ require (
 	github.com/containerd/containerd/v2 v2.2.0
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fuse-overlayfs-snapshotter/v2 v2.1.7
-	github.com/containerd/stargz-snapshotter v0.18.1
+	github.com/containerd/stargz-snapshotter v0.18.2
 	github.com/containerd/zfs/v2 v2.0.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/coreos/go-systemd/v22 v22.7.0
@@ -164,7 +164,7 @@ require (
 	k8s.io/cluster-bootstrap v0.34.6
 	k8s.io/component-base v0.34.6
 	k8s.io/component-helpers v0.34.6
-	k8s.io/cri-api v0.34.6
+	k8s.io/cri-api v0.35.0
 	k8s.io/cri-client v0.34.6
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-proxy v0.34.6
@@ -230,7 +230,7 @@ require (
 	github.com/containerd/otelttrpc v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.2 // indirect
 	github.com/containerd/plugin v1.0.0 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.18.1 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.18.2 // indirect
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/containernetworking/cni v1.3.0 // indirect
@@ -374,7 +374,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/moby/ipvs v1.1.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
