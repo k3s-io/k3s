@@ -1,8 +1,9 @@
 name: K3s Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+    - "v*"
 
 permissions:
   contents: read
@@ -39,20 +40,20 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@v5
+        uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
           set-host: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Read registry secrets (staging)
-        uses: rancher-eio/read-vault-secrets@main
+        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         if: ${{ github.repository_owner == 'k3s-io' }}
         with:
           secrets: |
@@ -61,7 +62,7 @@ jobs:
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials password | STAGING_REGISTRY_PASSWORD
 
       - name: Read registry secrets (prime)
-        uses: rancher-eio/read-vault-secrets@main
+        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
         with:
           secrets: |
@@ -71,7 +72,7 @@ jobs:
 
       - name: "Read Vault secrets"
         if: github.repository_owner == 'k3s-io'
-        uses: rancher-eio/read-vault-secrets@main
+        uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials username | DOCKER_USERNAME ;
@@ -79,7 +80,7 @@ jobs:
     
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_TOKEN }}
@@ -87,14 +88,14 @@ jobs:
       # For forks, setup DockerHub login with GHA secrets
       - name: Login to DockerHub with GHA Secrets
         if: github.repository_owner != 'k3s-io'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to Staging Registry
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.STAGING_REGISTRY }}
           username: ${{ env.STAGING_REGISTRY_USERNAME }}
@@ -102,14 +103,14 @@ jobs:
 
       - name: Login to Prime Registry
         if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -143,7 +144,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
@@ -154,7 +155,7 @@ jobs:
           tags: ${{ steps.tag_config.outputs.tag_spec }}
       
       - name: "Download K3s build"
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -166,7 +167,7 @@ jobs:
           cp ./dist/artifacts/data-* ./build/out
 
       - name: Build and push K3s runtime image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
           file: ./package/Dockerfile
@@ -190,10 +191,11 @@ jobs:
     needs: [build-amd64, build-arm64, build-arm, build-airgap]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Read Prime artifacts secrets
-      uses: rancher-eio/read-vault-secrets@main
+      uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
+      if: ${{ github.repository_owner == 'k3s-io' }}
       with:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
@@ -201,28 +203,29 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials primeArtifactsBucketName | PRIME_ARTIFACTS_BUCKET_NAME
 
     - name: Read registry secrets (staging)
-      uses: rancher-eio/read-vault-secrets@main
+      uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
       if: ${{ contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
       with:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | REGISTRY
 
     - name: Read registry secrets (prime)
-      uses: rancher-eio/read-vault-secrets@main
+      uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
       if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
       with:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY
 
     - name: Configure AWS Credentials (s3)
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6
+      if: ${{ github.repository_owner == 'k3s-io' }}
       with:
         aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
     - name: "Download Artifacts"
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: "*"
         path: ./dist/artifacts
@@ -248,21 +251,20 @@ jobs:
       run: |
         ./scripts/validate-artifacts
     
-    - name: Upload Assets to Release
-      uses: softprops/action-gh-release@v2.5.0
-      with:
-        files: |
-          dist/artifacts/k3s*
-          dist/artifacts/sha256sum*
+    - name: Create Draft Release with Assets
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release create -R "${GITHUB_REPOSITORY}" --draft --generate-notes "${GITHUB_REF_NAME}" "${GITHUB_WORKSPACE}"/dist/artifacts/k3s* "${GITHUB_WORKSPACE}"/dist/artifacts/sha256sum*
+ 
 
     - name: Update Image Registry for Prime/Staging
+      if: ${{ github.repository_owner == 'k3s-io' }}
       env:
         REGISTRY: ${{ env.REGISTRY }}
       run: sed -i "s|docker.io|${REGISTRY}|g" dist/artifacts/k3s-images.txt
 
     - name: Upload Assets to S3
+      if: ${{ github.repository_owner == 'k3s-io' }}
       env:
         S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
       run: |
