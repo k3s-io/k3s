@@ -25,7 +25,11 @@ mkdir -p ${DATA_DIR}
 case ${OS} in
   linux)
     git clone --single-branch --branch=${VERSION_RUNC} --depth=1 https://github.com/opencontainers/runc ${RUNC_DIR}
-    curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/k3s-root-${ARCH}.tar | tar xf -
+    K3S_ROOT_TAR="k3s-root-${ARCH}.tar"
+    curl --compressed -sfL https://github.com/k3s-io/k3s-root/releases/download/${VERSION_ROOT}/${K3S_ROOT_TAR} -o ${K3S_ROOT_TAR}
+    echo "${K3S_ROOT_SHA256}  ${K3S_ROOT_TAR}" | sha256sum -c
+    tar xf "${K3S_ROOT_TAR}"
+    rm -f "${K3S_ROOT_TAR}" sha256sum-${ARCH}.txt
     ;;
   windows)
     git clone --single-branch --branch=${VERSION_HCSSHIM} --depth=1 https://github.com/microsoft/hcsshim ${HCSSHIM_DIR}
