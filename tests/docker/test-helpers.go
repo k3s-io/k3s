@@ -103,7 +103,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 	for i := 0; i < numOfServers; i++ {
 
 		// If a server i already exists, skip. This is useful for scenarios where
-		// the first server is started seperate from the rest of the servers
+		// the first server is started separate from the rest of the servers
 		if config.Servers != nil && i < len(config.Servers) {
 			continue
 		}
