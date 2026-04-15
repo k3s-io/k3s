@@ -92,7 +92,7 @@ require (
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
-	github.com/flannel-io/flannel v0.28.2
+	github.com/flannel-io/flannel v0.28.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-test/deep v1.0.7
@@ -141,18 +141,18 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/vishvananda/netlink v1.3.1
 	github.com/yl2chen/cidranger v1.0.2
-	go.etcd.io/etcd/api/v3 v3.6.8
-	go.etcd.io/etcd/client/pkg/v3 v3.6.8
-	go.etcd.io/etcd/client/v3 v3.6.8
+	go.etcd.io/etcd/api/v3 v3.6.10
+	go.etcd.io/etcd/client/pkg/v3 v3.6.10
+	go.etcd.io/etcd/client/v3 v3.6.10
 	go.etcd.io/etcd/etcdutl/v3 v3.6.6
-	go.etcd.io/etcd/server/v3 v3.6.8
+	go.etcd.io/etcd/server/v3 v3.6.10
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.49.0
-	golang.org/x/mod v0.31.0
-	golang.org/x/net v0.49.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.42.0
+	golang.org/x/mod v0.33.0
+	golang.org/x/net v0.51.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/sys v0.43.0
 	google.golang.org/grpc v1.80.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.2
@@ -167,7 +167,7 @@ require (
 	k8s.io/component-helpers v0.35.2
 	k8s.io/cri-api v0.35.2
 	k8s.io/cri-client v0.35.2
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.35.2
 	k8s.io/kubectl v0.35.2
 	k8s.io/kubelet v0.35.2
@@ -235,7 +235,7 @@ require (
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/containernetworking/cni v1.3.0 // indirect
-	github.com/containernetworking/plugins v1.9.0 // indirect
+	github.com/containernetworking/plugins v1.9.1 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
 	github.com/coreos/go-oidc v2.3.0+incompatible // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
@@ -452,7 +452,7 @@ require (
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/cobra v1.10.0 // indirect
+	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
@@ -468,19 +468,19 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.6.8 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.6.10 // indirect
 	go.etcd.io/raft/v3 v3.6.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.44.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0 // indirect
-	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
-	go.opentelemetry.io/otel/trace v1.40.0 // indirect
+	go.opentelemetry.io/otel/metric v1.43.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
+	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
@@ -489,11 +489,11 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
-	golang.org/x/term v0.39.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260209163413-e7419c687ee4 // indirect
+	golang.org/x/term v0.40.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.40.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
