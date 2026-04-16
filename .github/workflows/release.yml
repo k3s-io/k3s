@@ -251,10 +251,10 @@ jobs:
       run: |
         ./scripts/validate-artifacts
     
-    - name: Create Draft Release with Assets
+    - name: Create Pre-Release with Assets
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release create -R "${GITHUB_REPOSITORY}" --draft --generate-notes "${GITHUB_REF_NAME}" "${GITHUB_WORKSPACE}"/dist/artifacts/k3s* "${GITHUB_WORKSPACE}"/dist/artifacts/sha256sum*
+      run: gh release create -R "${GITHUB_REPOSITORY}" --prerelease --generate-notes "${GITHUB_REF_NAME}" "${GITHUB_WORKSPACE}"/dist/artifacts/k3s* "${GITHUB_WORKSPACE}"/dist/artifacts/sha256sum*
  
 
     - name: Update Image Registry for Prime/Staging
