@@ -283,7 +283,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 	serverConfig.ControlConfig.ServerNodeName = nodeName
 	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
-	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, cmds.AgentConfig.NodeExternalIP.Value()...)
+	serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, util.SplitStringSlice(cmds.AgentConfig.NodeExternalIP.Value())...)
 	if shortName := strings.SplitN(nodeName, ".", 2)[0]; shortName != nodeName {
 		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, shortName)
 	}
