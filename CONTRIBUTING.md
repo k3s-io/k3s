@@ -45,6 +45,55 @@ Once a PR has the necessary approvals, it can be merged. Here’s how the merge 
   - The merger can use the “Squash and merge” option. If they do this, the merger is responsible for cleaning up the commit message according to the previously stated commit message guidance.
   - The pull request author, after getting the requisite approvals, can reorganize the commits as they see fit (using, for example, git rebase -i) and re-push.
 
+## Development Workflow
+To get started with the code, you'll want to follow the standard GitHub fork-and-pull-request workflow.
+
+1. Fork the repository
+Start by forking the K3s repository to your own GitHub account. Once forked, clone it locally:
+
+```bash
+git clone https://github.com/<your-username>/k3s.git
+cd k3s
+```
+It is also a good idea to add the upstream repository as a remote so you can stay up to date:
+```bash
+git remote add upstream https://github.com/k3s-io/k3s.git
+```
+
+2. Create a branch
+Always create a new branch for your work. This keeps your master branch clean and makes it much easier to manage multiple contributions. Pick a descriptive name that relates to the issue you are solving:
+
+```bash
+git checkout -b feat/my-new-feature
+# OR
+git checkout -b fix/issue-number-description
+```
+
+3. Make your changes and commit
+As you work, remember the golden rule mentioned later: one logical unit per commit. When you are ready to commit, don't forget the -s flag to sign off on the DCO as explained in the ([Developer Certificate Of Origin](#developer-certificate-of-origin)) section:
+
+```bash
+git add .
+git commit -s -m "Your descriptive title here"
+```
+
+4. Push and open a PR
+Once your changes are ready and you've verified them (and perhaps run make format), push your branch to your fork:
+
+```bash
+git push origin feat/my-new-feature
+```
+
+After pushing, head over to the K3s Pull Requests page. GitHub should proactively show a prompt to "Compare & pull request" for your recently pushed branch. Follow the PR template to provide the necessary details.
+
+If you would like to test your changes locally, you should first build. Check our [BUILDING.md](BUILDING.md) file for instructions about how to build K3s. Once built, you can find the K3s binary in dist/artifacts.
+
+To leverage the built binary to set up a cluster, copy the K3s binary to "/usr/local/bin/k3s" and use the K3s script command with INSTALL_K3S_SKIP_DOWNLOAD:
+```
+curl -sfL https://get.k3s.io | INSTALL_K3S_SKIP_DOWNLOAD=true sh -
+```
+
+
 ## Developer Certificate Of Origin ##
 
 To contribute to this project, you must agree to the Developer Certificate of Origin (DCO) for each commit you make. The DCO is a simple statement that you, as a contributor, have the legal right to make the contribution.
@@ -60,7 +109,6 @@ Signed-off-by: Jane Smith <jane.smith@example.com>
 
 In most cases, you can add this signoff to your commit automatically with the
 `-s` flag to `git commit`. Please use your real name and a reachable email address.
-
 
 ## Golangci-lint ##
 
