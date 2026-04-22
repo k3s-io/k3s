@@ -30,6 +30,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/k3s-io/k3s/pkg/vpn"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	cloudprovider "k8s.io/cloud-provider"
 	ccmapp "k8s.io/cloud-provider/app"
@@ -51,13 +52,8 @@ import (
 
 var once sync.Once
 
-func init() {
-	executor.Set(&Embedded{})
-}
-
 // explicit type check
 var _ executor.Executor = &Embedded{}
-var _ executor.PreparingExecutor = &Embedded{}
 var _ vpn.InfoProvider = &Embedded{}
 
 type Embedded struct {
@@ -68,44 +64,50 @@ type Embedded struct {
 	vpnInfo        *vpn.Info
 }
 
-// Prepare modifies the node config prior to downloading client and server certificates from the server.
-// If node IPs or names need to be modified, it should be done here so that the kubelet client and serving certs are valid.
-func (e *Embedded) Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+// New creates a new embeded executor from the provided agent CLI config.
+// Optional components like VPN may modify settings provided by the CLI.
+func New(ctx context.Context, cfg *cmds.Agent) (*Embedded, error) {
 	// If there is a VPN, we must start it early to overwrite NodeIP and flannel interface
+	var vpnInfo *vpn.Info
 	var err error
+
 	if cfg.VPNAuthFile != "" {
 		cfg.VPNAuth, err = util.ReadFile(ctx, cfg.VPNAuthFile)
 		if err != nil {
-			return errors.WithMessage(err, "failed to read vpn-auth-file")
+			return nil, errors.WithMessage(err, "failed to read vpn-auth-file")
 		}
 	}
 
 	if cfg.VPNAuth != "" {
 		err = vpn.StartVPN(cfg.VPNAuth)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		e.vpnInfo, err = vpn.GetInfo(cfg.VPNAuth)
+		vpnInfo, err = vpn.GetInfo(cfg.VPNAuth)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Pass ipv4, ipv6 or both depending on nodeIPs mode
-		nodeIPs := nodeConfig.AgentConfig.NodeIPs
+		_, nodeIPs, err := util.GetHostnameAndIPs(cfg.NodeName, util.SplitStringSlice(cfg.NodeIP.Value()))
+		if err != nil {
+			return nil, err
+		}
+
 		var vpnIPs []net.IP
-		if utilsnet.IsIPv4(nodeIPs[0]) && e.vpnInfo.IPv4Address != nil {
-			vpnIPs = append(vpnIPs, e.vpnInfo.IPv4Address)
-			if e.vpnInfo.IPv6Address != nil {
-				vpnIPs = append(vpnIPs, e.vpnInfo.IPv6Address)
+		if utilsnet.IsIPv4(nodeIPs[0]) && vpnInfo.IPv4Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
+			if vpnInfo.IPv6Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
 			}
-		} else if utilsnet.IsIPv6(nodeIPs[0]) && e.vpnInfo.IPv6Address != nil {
-			vpnIPs = append(vpnIPs, e.vpnInfo.IPv6Address)
-			if e.vpnInfo.IPv4Address != nil {
-				vpnIPs = append(vpnIPs, e.vpnInfo.IPv4Address)
+		} else if utilsnet.IsIPv6(nodeIPs[0]) && vpnInfo.IPv6Address != nil {
+			vpnIPs = append(vpnIPs, vpnInfo.IPv6Address)
+			if vpnInfo.IPv4Address != nil {
+				vpnIPs = append(vpnIPs, vpnInfo.IPv4Address)
 			}
 		} else {
-			return fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, e.vpnInfo.IPv4Address, e.vpnInfo.IPv6Address)
+			return nil, fmt.Errorf("address family mismatch when assigning VPN addresses to node: node=%v, VPN ipv4=%v ipv6=%v", nodeIPs, vpnInfo.IPv4Address, vpnInfo.IPv6Address)
 		}
 
 		// Overwrite nodeip and flannel interface and throw a warning if user explicitly set those parameters
@@ -117,16 +119,18 @@ func (e *Embedded) Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, c
 			if len(cfg.NodeExternalIP.Value()) != 0 {
 				logrus.Warn("VPN provider overrides node-external-ip parameter")
 			}
-			nodeIPs = vpnIPs
-			nodeConfig.AgentConfig.NodeIPs = vpnIPs
-			nodeConfig.AgentConfig.NodeIP = vpnIPs[0].String()
-			nodeConfig.Flannel.Iface, err = net.InterfaceByName(e.vpnInfo.Interface)
-			if err != nil {
-				return errors.WithMessagef(err, "unable to find vpn interface: %s", e.vpnInfo.Interface)
+
+			// There is no way to clear the backing slice for the StringSlice
+			// so we have to recreate it and rebind it to the flag.
+			cfg.NodeIP = cli.StringSlice{}
+			cmds.NodeIPFlag.Destination = &cfg.NodeIP
+			for _, ip := range vpnIPs {
+				cfg.NodeIP.Set(ip.String())
 			}
+			cfg.FlannelIface = vpnInfo.Interface
 		}
 	}
-	return err
+	return &Embedded{vpnInfo: vpnInfo}, nil
 }
 
 func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
