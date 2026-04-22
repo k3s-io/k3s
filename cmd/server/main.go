@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -20,13 +19,14 @@ import (
 	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/k3s-io/k3s/pkg/containerd"
 	ctr2 "github.com/k3s-io/k3s/pkg/ctr"
+	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/executor/embed"
 	kubectl2 "github.com/k3s-io/k3s/pkg/kubectl"
+	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/moby/sys/reexec"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	crictl2 "sigs.k8s.io/cri-tools/cmd/crictl"
-
-	_ "github.com/k3s-io/k3s/pkg/executor/embed"
 )
 
 func init() {
@@ -34,6 +34,17 @@ func init() {
 	reexec.Register("kubectl", kubectl2.Main)
 	reexec.Register("crictl", crictl2.Main)
 	reexec.Register("ctr", ctr2.Main)
+}
+
+func initExecutor(af cli.ActionFunc) cli.ActionFunc {
+	return func(app *cli.Context) error {
+		ex, err := embed.New(app.Context, &cmds.AgentConfig)
+		if err != nil {
+			return errors.WithMessage(err, "failed to initialize executor")
+		}
+		executor.Set(ex)
+		return af(app)
+	}
 }
 
 func main() {
@@ -47,8 +58,8 @@ func main() {
 	app := cmds.NewApp()
 	app.DisableSliceFlagSeparator = true
 	app.Commands = []*cli.Command{
-		cmds.NewServerCommand(server.Run),
-		cmds.NewAgentCommand(agent.Run),
+		cmds.NewServerCommand(initExecutor(server.Run)),
+		cmds.NewAgentCommand(initExecutor(agent.Run)),
 		cmds.NewKubectlCommand(kubectl.Run),
 		cmds.NewCRICTL(crictl.Run),
 		cmds.NewCtrCommand(ctr.Run),
