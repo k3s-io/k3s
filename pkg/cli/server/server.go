@@ -476,6 +476,44 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
+	// try setting advertise-ip from agent VPN
+	if vpnInfo, _ := vpn.GetInfoFromExecutor(); vpnInfo != nil {
+		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
+		if utilsnet.IsIPv6(nodeIPs[0]) {
+			if vpnInfo.IPv6Address != nil {
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv6Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv6 address")
+			}
+		} else {
+			// We are in dual-stack or ipv4-only mode
+			if vpnInfo.IPv4Address != nil {
+				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv4Address)
+				if serverConfig.ControlConfig.AdvertiseIP != "" {
+					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
+				}
+				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv4Address.String()
+			} else {
+				return errors.New("tailscale does not provide an ipv4 address")
+			}
+		}
+		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
+	} else {
+		// if not set, try setting advertise-ip from agent node-external-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
+		}
+
+		// if not set, try setting advertise-ip from agent node-ip
+		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP.Value())
+		}
+	}
+
 	if err := server.PrepareServer(ctx, wg, &serverConfig, cfg); err != nil {
 		return err
 	}
@@ -549,44 +587,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	} else {
 		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
-		}
-	}
-
-	// try setting advertise-ip from agent VPN
-	if vpnInfo, _ := vpn.GetInfoFromExecutor(); vpnInfo != nil {
-		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
-		if utilsnet.IsIPv6(nodeIPs[0]) {
-			if vpnInfo.IPv6Address != nil {
-				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv6Address)
-				if serverConfig.ControlConfig.AdvertiseIP != "" {
-					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
-				}
-				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv6Address.String()
-			} else {
-				return errors.New("tailscale does not provide an ipv6 address")
-			}
-		} else {
-			// We are in dual-stack or ipv4-only mode
-			if vpnInfo.IPv4Address != nil {
-				logrus.Infof("Changed advertise-address to %v due to VPN", vpnInfo.IPv4Address)
-				if serverConfig.ControlConfig.AdvertiseIP != "" {
-					logrus.Warn("Conflict in the config detected. VPN integration overwrites advertise-address but the config is setting the advertise-address parameter")
-				}
-				serverConfig.ControlConfig.AdvertiseIP = vpnInfo.IPv4Address.String()
-			} else {
-				return errors.New("tailscale does not provide an ipv4 address")
-			}
-		}
-		logrus.Warn("Etcd IP (PrivateIP) remains the local IP. Running etcd traffic over VPN is not recommended due to performance issues")
-	} else {
-		// if not set, try setting advertise-ip from agent node-external-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP.Value())
-		}
-
-		// if not set, try setting advertise-ip from agent node-ip
-		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP.Value())
 		}
 	}
 
