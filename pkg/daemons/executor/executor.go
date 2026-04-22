@@ -50,12 +50,6 @@ type Executor interface {
 	IsSelfHosted() bool
 }
 
-// PreparingExecutor is an optional interface that Executors may implement to modify node configuration
-// and CLI flags before config is retrieved from the server.
-type PreparingExecutor interface {
-	Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error
-}
-
 type ETCDSocketOpts struct {
 	ReuseAddress bool `json:"reuse-address,omitempty"`
 	ReusePort    bool `json:"reuse-port,omitempty"`
@@ -287,13 +281,6 @@ func IsSelfHosted() bool {
 		return false
 	}
 	return executor.IsSelfHosted()
-}
-
-func Prepare(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
-	if ex, ok := executor.(PreparingExecutor); ok {
-		return ex.Prepare(ctx, nodeConfig, cfg)
-	}
-	return nil
 }
 
 func CloseIfNilErr(err error, ch chan struct{}) error {
