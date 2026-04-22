@@ -27,8 +27,6 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
-	"github.com/k3s-io/k3s/pkg/daemons/executor"
-	"github.com/k3s-io/k3s/pkg/signals"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
@@ -727,13 +725,6 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	}
 
 	if err := validateNetworkConfig(nodeConfig); err != nil {
-		return nil, err
-	}
-
-	// allow executor to do additional configuration; this is the last chance to modify nodeConfig before certs are signed
-	if err := executor.Prepare(ctx, nodeConfig, *envInfo); err != nil {
-		err = errors.WithMessage(err, "failed to prepare configuration")
-		signals.RequestShutdown(err)
 		return nil, err
 	}
 
