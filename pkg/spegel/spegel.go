@@ -30,6 +30,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/metrics"
@@ -184,6 +185,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	}
 
 	storeOpts := []oci.ContainerdOption{
+		oci.WithContentEvents(false),
 		oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content")),
 	}
 	ociStore, err := NewDeferredContainerd(ctx, nodeConfig.Containerd.Address, registryNamespace, storeOpts...)
@@ -239,11 +241,12 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 
 	logrus.Infof("Starting distributed registry P2P node at %s", routerAddr)
 	opts := []routing.P2PRouterOption{
-		routing.WithLogConnectivityErrors(false),
+		routing.WithLogBootstrapErr(false),
 		routing.WithLibP2POptions(
 			libp2p.Identity(p2pKey),
 			libp2p.Peerstore(ps),
 			libp2p.PrivateNetwork(c.PSK),
+			libp2p.ChainOptions(libp2p.NoTransports, libp2p.Transport(tcp.NewTCPTransport)),
 		),
 	}
 	c.router, err = routing.NewP2PRouter(ctx, routerAddr, NewNotSelfBootstrapper(c.Bootstrapper), c.RegistryPort, opts...)
