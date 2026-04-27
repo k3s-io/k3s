@@ -80,7 +80,7 @@ jobs:
     
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_TOKEN }}
@@ -88,14 +88,14 @@ jobs:
       # For forks, setup DockerHub login with GHA secrets
       - name: Login to DockerHub with GHA Secrets
         if: github.repository_owner != 'k3s-io'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to Staging Registry
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ${{ env.STAGING_REGISTRY }}
           username: ${{ env.STAGING_REGISTRY_USERNAME }}
@@ -103,14 +103,14 @@ jobs:
 
       - name: Login to Prime Registry
         if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -144,7 +144,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
@@ -250,12 +250,11 @@ jobs:
     - name: Validate Assets for Release
       run: |
         ./scripts/validate-artifacts
-    
+
     - name: Create Pre-Release with Assets
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: gh release create -R "${GITHUB_REPOSITORY}" --prerelease --generate-notes "${GITHUB_REF_NAME}" "${GITHUB_WORKSPACE}"/dist/artifacts/k3s* "${GITHUB_WORKSPACE}"/dist/artifacts/sha256sum*
- 
 
     - name: Update Image Registry for Prime/Staging
       if: ${{ github.repository_owner == 'k3s-io' }}
@@ -266,7 +265,7 @@ jobs:
     - name: Upload Assets to S3
       if: ${{ github.repository_owner == 'k3s-io' }}
       env:
-        S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
+        S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/$GITHUB_REF_NAME
       run: |
         aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s*" --include "sha256sum*"
 
