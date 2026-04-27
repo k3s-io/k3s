@@ -265,7 +265,7 @@ jobs:
     - name: Upload Assets to S3
       if: ${{ github.repository_owner == 'k3s-io' }}
       env:
-        S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/${{ github.event.release.tag_name }}
+        S3_PATH: s3://${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}/k3s/$GITHUB_REF_NAME
       run: |
         aws s3 sync dist/artifacts/ "$S3_PATH" --quiet --no-progress --exclude "*" --include "k3s*" --include "sha256sum*"
 
