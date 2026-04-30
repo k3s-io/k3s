@@ -399,6 +399,13 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 			}, "300s", "10s").Should(Succeed())
 			e2e.DumpPods(tc.KubeconfigFile)
 		})
+
+		It("Exec a command in a pod", func() {
+			cmd := "kubectl exec -n kube-system deploy/traefik -- pwd"
+			_, err := tests.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("Kills the cluster", func() {
 			err := e2e.KillK3sCluster(tc.AllNodes())
 			Expect(err).NotTo(HaveOccurred())
