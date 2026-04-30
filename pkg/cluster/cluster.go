@@ -126,7 +126,7 @@ func (c *Cluster) startEtcdProxy(ctx context.Context) error {
 	}
 	_, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP.Value())
 	if err != nil {
-		errors.WithMessage(err, "failed to get node name and addresses")
+		return errors.WithMessage(err, "failed to get node name and addresses")
 	}
 
 	defaultURL.Host = net.JoinHostPort(defaultURL.Hostname(), "2379")
