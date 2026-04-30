@@ -4,7 +4,7 @@ go 1.26.2
 
 replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.14.0-rc.1
-	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.19-k3s4
+	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.19-k3s5
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.3-k3s1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.10.0
@@ -71,7 +71,7 @@ replace (
 	k8s.io/sample-cli-plugin => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.36.0-k3s1
 	k8s.io/sample-controller => github.com/k3s-io/kubernetes/staging/src/k8s.io/sample-controller v1.36.0-k3s1
 	k8s.io/streaming => github.com/k3s-io/kubernetes/staging/src/k8s.io/streaming v1.36.0-k3s1
-	sigs.k8s.io/cri-tools => github.com/k3s-io/cri-tools v1.35.0-k3s2.0.20260423152423-c3b669e03fd9
+	sigs.k8s.io/cri-tools => github.com/k3s-io/cri-tools v1.36.0-k3s1
 	sourcegraph.com/sourcegraph/go-diff => github.com/sourcegraph/go-diff v0.6.0
 )
 
@@ -160,7 +160,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.35.2
 	k8s.io/apimachinery v0.36.0
 	k8s.io/apiserver v0.36.0
-	k8s.io/cli-runtime v0.36.0-rc.0
+	k8s.io/cli-runtime v0.36.0
 	k8s.io/client-go v0.36.0
 	k8s.io/cloud-provider v0.35.2
 	k8s.io/cluster-bootstrap v0.35.2
@@ -170,7 +170,7 @@ require (
 	k8s.io/cri-client v0.36.0
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.35.2
-	k8s.io/kubectl v0.36.0-rc.0
+	k8s.io/kubectl v0.36.0
 	k8s.io/kubelet v0.36.0
 	k8s.io/kubernetes v1.36.0
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
