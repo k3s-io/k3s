@@ -8,6 +8,14 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # On self-hosted runners, the env.ImageOS variable may not be set correctly, which can cause issues with the cache key.
+    # We need to handle this case to ensure the cache key is consistent.
+    - name: Set ImageOS
+      if: ${{ runner.os == 'Linux' && env.ImageOS == '' }}
+      shell: bash
+      # Key is ubuntu<MAJOR>, as there is not other linux os in GHA other than Ubuntu
+      run: echo "ImageOS=ubuntu$(lsb_release -rs | cut -d. -f1)" >> $GITHUB_ENV
+
     - name: Find Latest Release Branch
       shell: bash
       run: |
@@ -31,6 +39,16 @@ runs:
         echo "GO_MODCACHE=$(go env GOMODCACHE)" | tee -a "$GITHUB_ENV"
         echo "GO_VERSION=$(go env GOVERSION | tr -d 'go')" | tee -a "$GITHUB_ENV"
 
+    - name: Create arch key (Linux)
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      run: echo "ARCH_OPT=$(echo ${{ runner.arch }} | tr '[:upper:]' '[:lower:]')-${{ env.ImageOS }}" >> $GITHUB_ENV
+
+    - name: Create arch key (non-Linux)
+      if: ${{ runner.os != 'Linux' }}
+      shell: pwsh
+      run: echo "ARCH_OPT=$('${{ runner.arch }}'.ToLower())" | Out-File -FilePath $env:GITHUB_ENV -Append
+
     - name: Setup read-only cache
       if: github.ref != 'refs/heads/main' && github.ref != env.LATEST_RELEASE_REF # use custom cache for older minors
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
@@ -39,6 +57,6 @@ runs:
           ${{ env.GO_MODCACHE }}
           ${{ env.GO_CACHE }}
         # Match the cache key to the setup-go action https://github.com/actions/setup-go/blob/main/src/cache-restore.ts#L34
-        key: setup-go-${{ runner.os }}-${{ env.ImageOS }}-go-${{ env.GO_VERSION }}-${{ hashFiles('go.sum') }}
+        key: setup-go-${{ runner.os }}-${{ env.ARCH_OPT }}-go-${{ env.GO_VERSION }}-${{ hashFiles('go.sum') }}
         restore-keys: |
-          setup-go-${{ runner.os }}-
+          setup-go-${{ runner.os }}-${{ env.ARCH_OPT }}-go-${{ env.GO_VERSION }}-
