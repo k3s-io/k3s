@@ -83,7 +83,7 @@ case ${ARCH} in
     ;;
 esac
 
-VERSION_HELM_JOB="v0.9.17-build20260422"
+VERSION_HELM_JOB="v0.10.0-build20260513"
 
 GO_VERSION_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${VERSION_K8S}/.go-version"
 VERSION_GOLANG="go"$(curl -sL "${GO_VERSION_URL}" | tr -d '[:space:]')
