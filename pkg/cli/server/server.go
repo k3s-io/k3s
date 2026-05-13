@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/daemons/health"
+	"github.com/k3s-io/k3s/pkg/daemons/watchdog"
 	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	k3smetrics "github.com/k3s-io/k3s/pkg/metrics"
@@ -615,9 +618,46 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		logrus.Info(version.Program + " is up and running")
 		os.Setenv("NOTIFY_SOCKET", notifySocket)
 		systemd.SdNotify(true, "READY=1\n")
+		go watchdog.Run(ctx, notifySocket, serverHealthGroup(&serverConfig.ControlConfig, cfg.DisableAgent))
 	}()
 
 	return server.StartServer(ctx, wg, &serverConfig, cfg)
+}
+
+// serverHealthGroup returns the set of liveness checks that must all pass for
+// the k3s server process to be considered healthy by the systemd watchdog.
+// Components that are disabled via --disable-* flags are skipped. When the
+// embedded agent is running on this node, kubelet and kube-proxy checks are
+// included as well, because the same k3s process is responsible for their
+// liveness too. All probes target loopback because every component lives in
+// the same process.
+func serverHealthGroup(cc *config.Control, agentDisabled bool) *health.Group {
+	g := health.NewGroup()
+	host := cc.Loopback(false)
+
+	if !cc.DisableAPIServer && cc.HTTPSPort > 0 {
+		url := fmt.Sprintf("https://%s/livez", net.JoinHostPort(host, strconv.Itoa(cc.HTTPSPort)))
+		g.Add(health.HTTPGet("kube-apiserver", url))
+	}
+	if !cc.DisableETCD {
+		g.Add(health.TCP("etcd", net.JoinHostPort(host, "2379")))
+	}
+	if !cc.DisableControllerManager {
+		g.Add(health.TCP("kube-controller-manager", net.JoinHostPort(host, "10257")))
+	}
+	if !cc.DisableScheduler {
+		g.Add(health.TCP("kube-scheduler", net.JoinHostPort(host, "10259")))
+	}
+	if cc.SupervisorPort > 0 {
+		g.Add(health.TCP("supervisor", net.JoinHostPort(host, strconv.Itoa(cc.SupervisorPort))))
+	}
+	if !agentDisabled {
+		g.Add(health.HTTPGet("kubelet", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10248"))))
+		if !cc.DisableKubeProxy {
+			g.Add(health.HTTPGet("kube-proxy", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10256"))))
+		}
+	}
+	return g
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.

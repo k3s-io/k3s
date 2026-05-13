@@ -26,6 +26,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/agent"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
+	"github.com/k3s-io/k3s/pkg/daemons/health"
+	"github.com/k3s-io/k3s/pkg/daemons/watchdog"
 	"github.com/k3s-io/k3s/pkg/metrics"
 	"github.com/k3s-io/k3s/pkg/nodeconfig"
 	"github.com/k3s-io/k3s/pkg/profile"
@@ -164,10 +166,42 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			logrus.Info(version.Program + " agent is up and running")
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")
+			go watchdog.Run(ctx, notifySocket, agentHealthGroup(nodeConfig))
 		}
 	}()
 
 	return nil
+}
+
+// agentHealthGroup returns the set of liveness checks that must all pass for
+// the k3s agent process to be considered healthy by the systemd watchdog. It
+// is only used on agent-only nodes; on server nodes the server's checker set
+// also covers kubelet and kube-proxy. kube-proxy is not included here because
+// its disabled state is not stored on nodeConfig — adding it unconditionally
+// would silence the watchdog whenever kube-proxy is disabled.
+func agentHealthGroup(nodeConfig *daemonconfig.Node) *health.Group {
+	g := health.NewGroup()
+
+	g.Add(health.HTTPGet("kubelet", "http://127.0.0.1:10248/healthz"))
+	if socket := criSocketPath(nodeConfig); socket != "" {
+		g.Add(health.UnixSocket("cri", socket))
+	}
+	return g
+}
+
+// criSocketPath returns a filesystem path suitable for net.DialUnix, stripping
+// the "unix://" scheme that some configurations use. It returns "" when the
+// runtime socket is unknown or not a unix socket.
+func criSocketPath(nodeConfig *daemonconfig.Node) string {
+	addr := nodeConfig.AgentConfig.RuntimeSocket
+	if addr == "" {
+		return ""
+	}
+	addr = strings.TrimPrefix(addr, "unix://")
+	if strings.Contains(addr, "://") {
+		return ""
+	}
+	return addr
 }
 
 // startCRI starts the configured CRI, or waits for an external CRI to be ready.

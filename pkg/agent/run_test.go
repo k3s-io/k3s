@@ -97,3 +97,25 @@ func Test_UnitGetConntrackConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_UnitCRISocketPath(t *testing.T) {
+	tests := []struct {
+		name   string
+		socket string
+		want   string
+	}{
+		{name: "empty", socket: "", want: ""},
+		{name: "plain path", socket: "/run/k3s/containerd/containerd.sock", want: "/run/k3s/containerd/containerd.sock"},
+		{name: "unix scheme", socket: "unix:///run/k3s/containerd/containerd.sock", want: "/run/k3s/containerd/containerd.sock"},
+		{name: "non-unix scheme", socket: "tcp://127.0.0.1:1234", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeConfig := &daemonconfig.Node{}
+			nodeConfig.AgentConfig.RuntimeSocket = tt.socket
+			if got := criSocketPath(nodeConfig); got != tt.want {
+				t.Errorf("criSocketPath(%q) = %q, want %q", tt.socket, got, tt.want)
+			}
+		})
+	}
+}

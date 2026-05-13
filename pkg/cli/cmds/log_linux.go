@@ -57,7 +57,11 @@ func forkIfLoggingOrReaping() error {
 		}
 
 		args := append([]string{version.Program}, os.Args[1:]...)
-		env := append(os.Environ(), "_K3S_LOG_REEXEC_=true", "NOTIFY_SOCKET=")
+		// NOTIFY_SOCKET is intentionally passed through to the child so that
+		// pkg/daemons/watchdog can drive systemd's WATCHDOG=1 pings. The child
+		// strips NOTIFY_SOCKET from its env early (server.go / agent run.go)
+		// before any embedded component can read it.
+		env := append(os.Environ(), "_K3S_LOG_REEXEC_=true")
 		ctx := signals.SetupSignalContext()
 		cmd := exec.CommandContext(ctx, "/proc/self/exe")
 		cmd.Args = args
