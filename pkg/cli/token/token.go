@@ -113,15 +113,15 @@ func deleteToken(app *cli.Context, cfg *cmds.Token) error {
 
 	for _, token := range args.Slice() {
 		if !bootstraputil.IsValidBootstrapTokenID(token) {
-			bts, err := kubeadm.NewBootstrapTokenString(cfg.Token)
+			bts, err := kubeadm.NewBootstrapTokenString(token)
 			if err != nil {
-				return fmt.Errorf("given token didn't match pattern %q or %q", bootstrapapi.BootstrapTokenIDPattern, bootstrapapi.BootstrapTokenIDPattern)
+				return fmt.Errorf("given token didn't match pattern %q or %q", bootstrapapi.BootstrapTokenIDPattern, bootstrapapi.BootstrapTokenPattern)
 			}
 			token = bts.ID
 		}
 		secretName := bootstraputil.BootstrapTokenSecretName(token)
-		if err := client.CoreV1().Secrets(metav1.NamespaceSystem).Delete(context.TODO(), secretName, metav1.DeleteOptions{}); err != nil {
-			return errors.WithMessagef(err, "failed to delete bootstrap token %q", err)
+		if err := client.CoreV1().Secrets(metav1.NamespaceSystem).Delete(app.Context, secretName, metav1.DeleteOptions{}); err != nil {
+			return errors.WithMessagef(err, "failed to delete bootstrap token %q", token)
 		}
 
 		fmt.Printf("bootstrap token %q deleted\n", token)
