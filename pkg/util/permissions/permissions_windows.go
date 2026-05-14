@@ -7,7 +7,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// IsPrivileged returns an error if the the process is not running as a member of the BUILTIN\Administrators group.
+// IsPrivileged returns an error if the process is not running as a member of the BUILTIN\Administrators group.
 // Ref: https://github.com/kubernetes/kubernetes/pull/96616
 func IsPrivileged() error {
 	var sid *windows.SID

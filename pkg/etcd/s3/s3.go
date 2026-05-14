@@ -75,7 +75,7 @@ type Client struct {
 }
 
 // Start initializes the cache and sets the cluster id and token hash,
-// returning a reference to the the initialized controller. Initialization is
+// returning a reference to the initialized controller. Initialization is
 // locked by a sync.Once to prevent races, and multiple calls to start will
 // return the same controller or error.
 func Start(ctx context.Context, config *config.Control) (*Controller, error) {
