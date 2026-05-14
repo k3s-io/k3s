@@ -3,6 +3,8 @@ Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=notify
