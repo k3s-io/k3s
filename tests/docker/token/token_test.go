@@ -70,6 +70,21 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 			}, "60s", "5s").Should(Succeed())
 		})
 	})
+	Context("Delete bootstrap token by full token:", func() {
+		It("Deletes a token using the full token value", func() {
+			token := "deltok.0123456789abcdef"
+			_, err := tc.Servers[0].RunCmdOnNode("k3s token create --ttl=0 " + token)
+			Expect(err).NotTo(HaveOccurred())
+
+			res, err := tc.Servers[0].RunCmdOnNode("k3s token delete " + token)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(ContainSubstring(`bootstrap token "deltok" deleted`))
+
+			res, err = tc.Servers[0].RunCmdOnNode("k3s token list")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(ContainSubstring("deltok"))
+		})
+	})
 	Context("Agent joins with temporary token:", func() {
 		It("Creates a 20s agent token", func() {
 			_, err := tc.Servers[0].RunCmdOnNode("k3s token create --ttl=20s 20sect.jxnpve6vg8dqm895")
