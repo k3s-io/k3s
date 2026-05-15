@@ -182,11 +182,16 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 	}()
 	c.storageRunning = true
 
-	if !bootstrap {
-		// only register metrics when not bootstrapping, to prevent
-		// multiple datastore metrics from being registered.
+	if !c.config.KineTLS {
+		// if TLS is not enabled for kine, storage will only be started once,
+		// so go ahead and register metrics now
 		c.config.Datastore.MetricsRegisterer = metrics.DefaultRegisterer
-		// set the tls config for the kine storage
+	}
+	if !bootstrap {
+		// only register metrics after boostrapping is done, to prevent
+		// multiple datastore metrics from being registered
+		c.config.Datastore.MetricsRegisterer = metrics.DefaultRegisterer
+		// set the tls config for the kine storage, once bootstrapped
 		c.config.Datastore.ServerTLSConfig.CAFile = c.config.Runtime.ETCDServerCA
 		c.config.Datastore.ServerTLSConfig.CertFile = c.config.Runtime.ServerETCDCert
 		c.config.Datastore.ServerTLSConfig.KeyFile = c.config.Runtime.ServerETCDKey

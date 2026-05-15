@@ -19,6 +19,7 @@ replace (
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.52.1
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
+	github.com/k3s-io/kine => github.com/brandond/kine v0.15.1-bd.10
 	github.com/opencontainers/cgroups => github.com/opencontainers/cgroups v0.0.5
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.2
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.13.0
