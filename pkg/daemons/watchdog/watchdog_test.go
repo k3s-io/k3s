@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/daemons/health"
+	"k8s.io/apiserver/pkg/server/healthz"
 )
 
 // startNotifyListener opens a unix datagram socket at a temporary path and
@@ -44,28 +45,31 @@ func startNotifyListener(t *testing.T) (string, <-chan string) {
 	return path, out
 }
 
-// withWatchdogEnv sets WATCHDOG_USEC for the duration of the test so the
-// notify loop actually ticks.
-func withWatchdogEnv(t *testing.T, usec string) {
-	t.Helper()
-	prev, had := os.LookupEnv("WATCHDOG_USEC")
-	if err := os.Setenv("WATCHDOG_USEC", usec); err != nil {
-		t.Fatalf("setenv: %v", err)
-	}
-	t.Cleanup(func() {
-		if had {
-			os.Setenv("WATCHDOG_USEC", prev)
-		} else {
-			os.Unsetenv("WATCHDOG_USEC")
-		}
-	})
+// fakeChecker returns a healthz.HealthChecker that calls fn and exposes a
+// counter of invocations.
+type fakeChecker struct {
+	name  string
+	fn    func() error
+	calls atomic.Int32
+}
+
+func (f *fakeChecker) Name() string                   { return f.name }
+func (f *fakeChecker) Check(_ *http.Request) error    { f.calls.Add(1); return f.fn() }
+
+func ok(name string) *fakeChecker {
+	return &fakeChecker{name: name, fn: func() error { return nil }}
+}
+
+func bad(name string, err error) *fakeChecker {
+	return &fakeChecker{name: name, fn: func() error { return err }}
 }
 
 func Test_UnitWatchdogNoSocketReturnsImmediately(t *testing.T) {
-	g := health.NewGroup()
-	g.Add(health.Func{ComponentName: "x", Probe: func(_ context.Context) error { return nil }})
 	done := make(chan struct{})
-	go func() { Run(context.Background(), "", g); close(done) }()
+	go func() {
+		Run(context.Background(), "", time.Second, []healthz.HealthChecker{ok("x")})
+		close(done)
+	}()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -73,51 +77,40 @@ func Test_UnitWatchdogNoSocketReturnsImmediately(t *testing.T) {
 	}
 }
 
-func Test_UnitWatchdogEmptyGroupReturnsImmediately(t *testing.T) {
+func Test_UnitWatchdogZeroIntervalReturnsImmediately(t *testing.T) {
 	socket, _ := startNotifyListener(t)
-	withWatchdogEnv(t, "200000") // 200ms
-
 	done := make(chan struct{})
-	go func() { Run(context.Background(), socket, health.NewGroup()); close(done) }()
+	go func() {
+		Run(context.Background(), socket, 0, []healthz.HealthChecker{ok("x")})
+		close(done)
+	}()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		t.Fatal("Run did not return when group was empty")
+		t.Fatal("Run did not return when interval was zero")
 	}
 }
 
-func Test_UnitWatchdogNoEnvReturnsImmediately(t *testing.T) {
+func Test_UnitWatchdogEmptyCheckersReturnsImmediately(t *testing.T) {
 	socket, _ := startNotifyListener(t)
-	// Make sure WATCHDOG_USEC is unset.
-	prev, had := os.LookupEnv("WATCHDOG_USEC")
-	os.Unsetenv("WATCHDOG_USEC")
-	t.Cleanup(func() {
-		if had {
-			os.Setenv("WATCHDOG_USEC", prev)
-		}
-	})
-
-	g := health.NewGroup()
-	g.Add(health.Func{ComponentName: "x", Probe: func(_ context.Context) error { return nil }})
 	done := make(chan struct{})
-	go func() { Run(context.Background(), socket, g); close(done) }()
+	go func() {
+		Run(context.Background(), socket, time.Second, nil)
+		close(done)
+	}()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		t.Fatal("Run did not return when WATCHDOG_USEC was unset")
+		t.Fatal("Run did not return when checkers was empty")
 	}
 }
 
 func Test_UnitWatchdogPingsWhenHealthy(t *testing.T) {
 	socket, msgs := startNotifyListener(t)
-	withWatchdogEnv(t, "100000")
-
-	g := health.NewGroup()
-	g.Add(health.Func{ComponentName: "ok", Probe: func(_ context.Context) error { return nil }})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go Run(ctx, socket, g)
+
+	go Run(ctx, socket, 100*time.Millisecond, []healthz.HealthChecker{ok("ok")})
 
 	select {
 	case got := <-msgs:
@@ -131,39 +124,30 @@ func Test_UnitWatchdogPingsWhenHealthy(t *testing.T) {
 
 func Test_UnitWatchdogWithholdsPingWhenUnhealthy(t *testing.T) {
 	socket, msgs := startNotifyListener(t)
-	withWatchdogEnv(t, "100000")
-
-	var calls atomic.Int32
-	g := health.NewGroup()
-	g.Add(health.Func{ComponentName: "bad", Probe: func(_ context.Context) error {
-		calls.Add(1)
-		return errors.New("unhealthy")
-	}})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go Run(ctx, socket, g)
+
+	checker := bad("bad", errors.New("unhealthy"))
+	go Run(ctx, socket, 100*time.Millisecond, []healthz.HealthChecker{checker})
 
 	select {
 	case got := <-msgs:
 		t.Fatalf("did not expect any WATCHDOG=1 ping, got %q", got)
 	case <-time.After(500 * time.Millisecond):
 	}
-	if calls.Load() == 0 {
+	if checker.calls.Load() == 0 {
 		t.Fatal("expected checker to have been invoked at least once")
 	}
 }
 
 func Test_UnitWatchdogStopsOnContextCancel(t *testing.T) {
 	socket, _ := startNotifyListener(t)
-	withWatchdogEnv(t, "100000")
-
-	g := health.NewGroup()
-	g.Add(health.Func{ComponentName: "ok", Probe: func(_ context.Context) error { return nil }})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
-	go func() { Run(ctx, socket, g); close(done) }()
+	go func() {
+		Run(ctx, socket, 100*time.Millisecond, []healthz.HealthChecker{ok("ok")})
+		close(done)
+	}()
 
 	cancel()
 	select {

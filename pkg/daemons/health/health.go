@@ -1,7 +1,3 @@
-// Package health provides a small framework for registering per-component
-// liveness probes used by the systemd watchdog notifier. Each registered
-// Checker is invoked on every watchdog tick; if any check fails the notifier
-// stays silent and systemd will eventually restart k3s.
 package health
 
 import (
@@ -10,95 +6,28 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"k8s.io/apiserver/pkg/server/healthz"
 )
 
 const dialTimeout = 5 * time.Second
 
-type Checker interface {
-	Name() string
-	Check(ctx context.Context) error
-}
-
-type Func struct {
-	ComponentName string
-	Probe         func(ctx context.Context) error
-}
-
-func (f Func) Name() string                    { return f.ComponentName }
-func (f Func) Check(ctx context.Context) error { return f.Probe(ctx) }
-
-type Group struct {
-	checkers []Checker
-}
-
-func NewGroup() *Group { return &Group{} }
-
-func (g *Group) Add(c ...Checker) {
-	for _, ck := range c {
-		if ck == nil {
-			continue
-		}
-		g.checkers = append(g.checkers, ck)
-	}
-}
-
-func (g *Group) Len() int { return len(g.checkers) }
-
-func (g *Group) Names() []string {
-	names := make([]string, len(g.checkers))
-	for i, c := range g.checkers {
-		names[i] = c.Name()
-	}
-	return names
-}
-
-func (g *Group) CheckAll(ctx context.Context) (string, error) {
-	for _, c := range g.checkers {
-		if err := c.Check(ctx); err != nil {
-			return c.Name(), err
-		}
-	}
-	return "", nil
-}
-
-func TCP(name, addr string) Checker {
-	return Func{ComponentName: name, Probe: func(ctx context.Context) error {
-		probeCtx, cancel := context.WithTimeout(ctx, dialTimeout)
-		defer cancel()
-		var d net.Dialer
-		conn, err := d.DialContext(probeCtx, "tcp", addr)
-		if err != nil {
-			return fmt.Errorf("dial tcp %s: %w", addr, err)
-		}
-		return conn.Close()
-	}}
-}
-
-func UnixSocket(name, path string) Checker {
-	return Func{ComponentName: name, Probe: func(ctx context.Context) error {
-		probeCtx, cancel := context.WithTimeout(ctx, dialTimeout)
-		defer cancel()
-		var d net.Dialer
-		conn, err := d.DialContext(probeCtx, "unix", path)
-		if err != nil {
-			return fmt.Errorf("dial unix %s: %w", path, err)
-		}
-		return conn.Close()
-	}}
-}
-
-func HTTPGet(name, url string) Checker {
+func HTTPGet(name, url string) healthz.HealthChecker {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
 		},
 	}
-	return Func{ComponentName: name, Probe: func(ctx context.Context) error {
-		probeCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+	return healthz.NamedCheck(name, func(_ *http.Request) error {
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 		defer cancel()
-		req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return err
 		}
@@ -111,5 +40,41 @@ func HTTPGet(name, url string) Checker {
 			return fmt.Errorf("get %s: status %d", url, resp.StatusCode)
 		}
 		return nil
-	}}
+	})
+}
+
+func TCP(name, addr string) healthz.HealthChecker {
+	return healthz.NamedCheck(name, func(_ *http.Request) error {
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+		defer cancel()
+		var d net.Dialer
+		conn, err := d.DialContext(ctx, "tcp", addr)
+		if err != nil {
+			return fmt.Errorf("dial tcp %s: %w", addr, err)
+		}
+		return conn.Close()
+	})
+}
+
+func GRPC(name, target string) healthz.HealthChecker {
+	target = strings.TrimPrefix(target, "unix://")
+	dialTarget := "unix:" + target
+	return healthz.NamedCheck(name, func(_ *http.Request) error {
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+		defer cancel()
+		conn, err := grpc.NewClient(dialTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return fmt.Errorf("dial grpc %s: %w", dialTarget, err)
+		}
+		defer conn.Close()
+		client := healthpb.NewHealthClient(conn)
+		resp, err := client.Check(ctx, &healthpb.HealthCheckRequest{})
+		if err != nil {
+			return fmt.Errorf("grpc health check %s: %w", dialTarget, err)
+		}
+		if resp.Status != healthpb.HealthCheckResponse_SERVING {
+			return fmt.Errorf("grpc health check %s: status %s", dialTarget, resp.Status)
+		}
+		return nil
+	})
 }

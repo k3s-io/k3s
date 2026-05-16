@@ -42,6 +42,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/server/healthz"
 	kubeapiserverflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/controlplane/apiserver/options"
@@ -479,6 +480,14 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
+	// Capture the watchdog interval before stripping WATCHDOG_USEC so the
+	// kubelet's own NewHealthChecker short-circuits and doesn't spawn a
+	// goroutine that logs "Failed to notify watchdog" every tick.
+	watchdogInterval, err := systemd.SdWatchdogEnabled(true)
+	if err != nil {
+		logrus.Warnf("systemd watchdog: failed to read WATCHDOG_USEC, watchdog disabled: %v", err)
+	}
+
 	// try setting advertise-ip from agent VPN
 	if vpnInfo, _ := vpn.GetInfoFromExecutor(); vpnInfo != nil {
 		// If we are in ipv6-only mode, we should pass the ipv6 address. Otherwise, ipv4
@@ -618,46 +627,49 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		logrus.Info(version.Program + " is up and running")
 		os.Setenv("NOTIFY_SOCKET", notifySocket)
 		systemd.SdNotify(true, "READY=1\n")
-		go watchdog.Run(ctx, notifySocket, serverHealthGroup(&serverConfig.ControlConfig, cfg.DisableAgent))
+		go watchdog.Run(ctx, notifySocket, watchdogInterval, serverHealthCheckers(&serverConfig.ControlConfig, cfg.DisableAgent))
 	}()
 
 	return server.StartServer(ctx, wg, &serverConfig, cfg)
 }
 
-// serverHealthGroup returns the set of liveness checks that must all pass for
-// the k3s server process to be considered healthy by the systemd watchdog.
-// Components that are disabled via --disable-* flags are skipped. When the
-// embedded agent is running on this node, kubelet and kube-proxy checks are
-// included as well, because the same k3s process is responsible for their
-// liveness too. All probes target loopback because every component lives in
-// the same process.
-func serverHealthGroup(cc *config.Control, agentDisabled bool) *health.Group {
-	g := health.NewGroup()
+// serverHealthCheckers returns the liveness checks that must all pass for the
+// k3s server process to be considered healthy by the systemd watchdog.
+// Components disabled via --disable-* are skipped. When the embedded agent is
+// running on this node, kubelet and kube-proxy are included too, since the
+// same process owns their liveness. Endpoints mirror the RKE2 static-pod
+// readiness/liveness probes:
+//
+//	https://github.com/rancher/rke2/blob/v1.36.0+rke2r1/pkg/podtemplate/spec.go
+func serverHealthCheckers(cc *config.Control, agentDisabled bool) []healthz.HealthChecker {
+	var checkers []healthz.HealthChecker
 	host := cc.Loopback(false)
 
 	if !cc.DisableAPIServer && cc.HTTPSPort > 0 {
 		url := fmt.Sprintf("https://%s/livez", net.JoinHostPort(host, strconv.Itoa(cc.HTTPSPort)))
-		g.Add(health.HTTPGet("kube-apiserver", url))
+		checkers = append(checkers, health.HTTPGet("kube-apiserver", url))
 	}
 	if !cc.DisableETCD {
-		g.Add(health.TCP("etcd", net.JoinHostPort(host, "2379")))
+		checkers = append(checkers, health.HTTPGet("etcd", fmt.Sprintf("http://%s/health?serializable=true", net.JoinHostPort(host, "2381"))))
 	}
 	if !cc.DisableControllerManager {
-		g.Add(health.TCP("kube-controller-manager", net.JoinHostPort(host, "10257")))
+		checkers = append(checkers, health.HTTPGet("kube-controller-manager", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10257"))))
 	}
 	if !cc.DisableScheduler {
-		g.Add(health.TCP("kube-scheduler", net.JoinHostPort(host, "10259")))
+		checkers = append(checkers, health.HTTPGet("kube-scheduler", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10259"))))
 	}
 	if cc.SupervisorPort > 0 {
-		g.Add(health.TCP("supervisor", net.JoinHostPort(host, strconv.Itoa(cc.SupervisorPort))))
+		// The supervisor has no HTTP /healthz; a TCP probe verifies the
+		// listener is still bound.
+		checkers = append(checkers, health.TCP("supervisor", net.JoinHostPort(host, strconv.Itoa(cc.SupervisorPort))))
 	}
 	if !agentDisabled {
-		g.Add(health.HTTPGet("kubelet", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10248"))))
+		checkers = append(checkers, health.HTTPGet("kubelet", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10248"))))
 		if !cc.DisableKubeProxy {
-			g.Add(health.HTTPGet("kube-proxy", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10256"))))
+			checkers = append(checkers, health.HTTPGet("kube-proxy", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10256"))))
 		}
 	}
-	return g
+	return checkers
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.

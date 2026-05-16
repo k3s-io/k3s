@@ -2,53 +2,15 @@ package health
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
+
+	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
-
-func Test_UnitGroupCheckAll(t *testing.T) {
-	boom := errors.New("boom")
-	g := NewGroup()
-	g.Add(
-		Func{ComponentName: "first", Probe: func(_ context.Context) error { return nil }},
-		Func{ComponentName: "second", Probe: func(_ context.Context) error { return boom }},
-		Func{ComponentName: "third", Probe: func(_ context.Context) error { t.Fatal("third should not run after second failed"); return nil }},
-	)
-	name, err := g.CheckAll(context.Background())
-	if name != "second" {
-		t.Errorf("expected first failure to be %q, got %q", "second", name)
-	}
-	if !errors.Is(err, boom) {
-		t.Errorf("expected wrapped boom error, got %v", err)
-	}
-}
-
-func Test_UnitGroupCheckAllPasses(t *testing.T) {
-	g := NewGroup()
-	g.Add(
-		Func{ComponentName: "a", Probe: func(_ context.Context) error { return nil }},
-		Func{ComponentName: "b", Probe: func(_ context.Context) error { return nil }},
-	)
-	if name, err := g.CheckAll(context.Background()); name != "" || err != nil {
-		t.Errorf("expected ('', nil), got (%q, %v)", name, err)
-	}
-}
-
-func Test_UnitGroupAddSkipsNil(t *testing.T) {
-	g := NewGroup()
-	g.Add(nil, Func{ComponentName: "x", Probe: func(_ context.Context) error { return nil }}, nil)
-	if g.Len() != 1 {
-		t.Errorf("expected nil checkers to be skipped; got Len=%d", g.Len())
-	}
-	if names := g.Names(); len(names) != 1 || names[0] != "x" {
-		t.Errorf("unexpected names: %v", names)
-	}
-}
 
 func Test_UnitTCPChecker(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -57,33 +19,16 @@ func Test_UnitTCPChecker(t *testing.T) {
 	}
 	t.Cleanup(func() { ln.Close() })
 
-	if err := TCP("ok", ln.Addr().String()).Check(context.Background()); err != nil {
+	c := TCP("ok", ln.Addr().String())
+	if c.Name() != "ok" {
+		t.Errorf("Name() = %q, want %q", c.Name(), "ok")
+	}
+	if err := c.Check(nil); err != nil {
 		t.Errorf("expected open port to pass, got %v", err)
 	}
 	ln.Close()
-	if err := TCP("closed", ln.Addr().String()).Check(context.Background()); err == nil {
+	if err := TCP("closed", ln.Addr().String()).Check(nil); err == nil {
 		t.Errorf("expected closed port to fail")
-	}
-}
-
-func Test_UnitUnixSocketChecker(t *testing.T) {
-	dir := t.TempDir()
-	socket := filepath.Join(dir, "test.sock")
-
-	ln, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatalf("listen unix: %v", err)
-	}
-	t.Cleanup(func() { ln.Close() })
-
-	if err := UnixSocket("ok", socket).Check(context.Background()); err != nil {
-		t.Errorf("expected open socket to pass, got %v", err)
-	}
-
-	ln.Close()
-	_ = os.Remove(socket)
-	if err := UnixSocket("missing", socket).Check(context.Background()); err == nil {
-		t.Errorf("expected missing socket to fail")
 	}
 }
 
@@ -92,19 +37,19 @@ func Test_UnitHTTPGetChecker(t *testing.T) {
 		switch r.URL.Path {
 		case "/ok":
 			w.WriteHeader(http.StatusOK)
-		case "/fail":
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 	t.Cleanup(srv.Close)
 
-	if err := HTTPGet("ok", srv.URL+"/ok").Check(context.Background()); err != nil {
-		t.Errorf("expected 200 response to pass, got %v", err)
+	if err := HTTPGet("ok", srv.URL+"/ok").Check(nil); err != nil {
+		t.Errorf("expected 200 to pass, got %v", err)
 	}
-	if err := HTTPGet("fail", srv.URL+"/fail").Check(context.Background()); err == nil {
-		t.Errorf("expected 500 response to fail")
+	if err := HTTPGet("fail", srv.URL+"/fail").Check(nil); err == nil {
+		t.Errorf("expected 500 to fail")
 	}
-	if err := HTTPGet("dial", "http://127.0.0.1:1/never").Check(context.Background()); err == nil {
+	if err := HTTPGet("dial", "http://127.0.0.1:1/never").Check(nil); err == nil {
 		t.Errorf("expected unreachable URL to fail")
 	}
 }
@@ -115,7 +60,67 @@ func Test_UnitHTTPGetCheckerSkipsTLSVerify(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(srv.Close)
-	if err := HTTPGet("tls", srv.URL+"/livez").Check(context.Background()); err != nil {
+	if err := HTTPGet("tls", srv.URL+"/livez").Check(nil); err != nil {
 		t.Errorf("expected TLS-skip-verify probe to pass against self-signed cert, got %v", err)
+	}
+}
+
+// healthServer is a minimal implementation of grpc.health.v1.Health that
+// returns a configurable status — used to test the gRPC health checker
+// against both SERVING and NOT_SERVING responses.
+type healthServer struct {
+	healthpb.UnimplementedHealthServer
+	status healthpb.HealthCheckResponse_ServingStatus
+}
+
+func (h *healthServer) Check(_ context.Context, _ *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+	return &healthpb.HealthCheckResponse{Status: h.status}, nil
+}
+
+func startHealthServer(t *testing.T, status healthpb.HealthCheckResponse_ServingStatus) string {
+	t.Helper()
+	dir := t.TempDir()
+	socket := filepath.Join(dir, "grpc.sock")
+
+	ln, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatalf("listen unix: %v", err)
+	}
+	srv := grpc.NewServer()
+	healthpb.RegisterHealthServer(srv, &healthServer{status: status})
+	go srv.Serve(ln)
+	t.Cleanup(func() {
+		srv.Stop()
+		ln.Close()
+	})
+	return socket
+}
+
+func Test_UnitGRPCCheckerServing(t *testing.T) {
+	socket := startHealthServer(t, healthpb.HealthCheckResponse_SERVING)
+	if err := GRPC("cri", socket).Check(nil); err != nil {
+		t.Errorf("expected SERVING status to pass, got %v", err)
+	}
+}
+
+func Test_UnitGRPCCheckerNotServing(t *testing.T) {
+	socket := startHealthServer(t, healthpb.HealthCheckResponse_NOT_SERVING)
+	if err := GRPC("cri", socket).Check(nil); err == nil {
+		t.Errorf("expected NOT_SERVING status to fail")
+	}
+}
+
+func Test_UnitGRPCCheckerStripsUnixScheme(t *testing.T) {
+	socket := startHealthServer(t, healthpb.HealthCheckResponse_SERVING)
+	if err := GRPC("cri", "unix://"+socket).Check(nil); err != nil {
+		t.Errorf("expected unix:// scheme to be stripped, got %v", err)
+	}
+}
+
+func Test_UnitGRPCCheckerMissingSocket(t *testing.T) {
+	dir := t.TempDir()
+	socket := filepath.Join(dir, "absent.sock")
+	if err := GRPC("cri", socket).Check(nil); err == nil {
+		t.Errorf("expected missing socket to fail")
 	}
 }

@@ -43,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/kubernetes"
 	toolscache "k8s.io/client-go/tools/cache"
 	toolswatch "k8s.io/client-go/tools/watch"
@@ -143,6 +144,14 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	notifySocket := os.Getenv("NOTIFY_SOCKET")
 	os.Unsetenv("NOTIFY_SOCKET")
 
+	// Capture the watchdog interval before stripping WATCHDOG_USEC so the
+	// kubelet's own NewHealthChecker short-circuits and doesn't spawn a
+	// goroutine that logs "Failed to notify watchdog" every tick.
+	watchdogInterval, werr := systemd.SdWatchdogEnabled(true)
+	if werr != nil {
+		logrus.Warnf("systemd watchdog: failed to read WATCHDOG_USEC, watchdog disabled: %v", werr)
+	}
+
 	go func() {
 		if err := startCRI(ctx, nodeConfig); err != nil {
 			signals.RequestShutdown(errors.WithMessage(err, "failed to start container runtime"))
@@ -166,42 +175,25 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 			logrus.Info(version.Program + " agent is up and running")
 			os.Setenv("NOTIFY_SOCKET", notifySocket)
 			systemd.SdNotify(true, "READY=1\n")
-			go watchdog.Run(ctx, notifySocket, agentHealthGroup(nodeConfig))
+			go watchdog.Run(ctx, notifySocket, watchdogInterval, agentHealthCheckers(nodeConfig))
 		}
 	}()
 
 	return nil
 }
 
-// agentHealthGroup returns the set of liveness checks that must all pass for
-// the k3s agent process to be considered healthy by the systemd watchdog. It
-// is only used on agent-only nodes; on server nodes the server's checker set
-// also covers kubelet and kube-proxy. kube-proxy is not included here because
-// its disabled state is not stored on nodeConfig — adding it unconditionally
-// would silence the watchdog whenever kube-proxy is disabled.
-func agentHealthGroup(nodeConfig *daemonconfig.Node) *health.Group {
-	g := health.NewGroup()
-
-	g.Add(health.HTTPGet("kubelet", "http://127.0.0.1:10248/healthz"))
-	if socket := criSocketPath(nodeConfig); socket != "" {
-		g.Add(health.UnixSocket("cri", socket))
+// agentHealthCheckers returns the set of liveness checks that must all pass
+// for the k3s agent process to be considered healthy by the systemd
+// watchdog. Only used on agent-only nodes; on server nodes the server's
+// checker set covers kubelet (and kube-proxy when gated by DisableKubeProxy
+// on Control). kube-proxy is not included here because its disabled state is
+// not stored on nodeConfig — adding it unconditionally would silence the
+// watchdog whenever kube-proxy is disabled.
+func agentHealthCheckers(nodeConfig *daemonconfig.Node) []healthz.HealthChecker {
+	return []healthz.HealthChecker{
+		health.HTTPGet("kubelet", "http://127.0.0.1:10248/healthz"),
+		health.GRPC("cri", nodeConfig.AgentConfig.RuntimeSocket),
 	}
-	return g
-}
-
-// criSocketPath returns a filesystem path suitable for net.DialUnix, stripping
-// the "unix://" scheme that some configurations use. It returns "" when the
-// runtime socket is unknown or not a unix socket.
-func criSocketPath(nodeConfig *daemonconfig.Node) string {
-	addr := nodeConfig.AgentConfig.RuntimeSocket
-	if addr == "" {
-		return ""
-	}
-	addr = strings.TrimPrefix(addr, "unix://")
-	if strings.Contains(addr, "://") {
-		return ""
-	}
-	return addr
 }
 
 // startCRI starts the configured CRI, or waits for an external CRI to be ready.
