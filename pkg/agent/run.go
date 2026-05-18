@@ -191,8 +191,8 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 // watchdog whenever kube-proxy is disabled.
 func agentHealthCheckers(nodeConfig *daemonconfig.Node) []healthz.HealthChecker {
 	return []healthz.HealthChecker{
-		health.HTTPGet("kubelet", "http://127.0.0.1:10248/healthz"),
-		health.GRPC("cri", nodeConfig.AgentConfig.RuntimeSocket),
+		health.NewHTTPGetHealthz("kubelet", "http://127.0.0.1:10248/healthz"),
+		health.NewGRPCHealthz("cri", nodeConfig.AgentConfig.RuntimeSocket),
 	}
 }
 

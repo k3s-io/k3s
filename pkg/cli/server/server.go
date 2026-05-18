@@ -646,27 +646,29 @@ func serverHealthCheckers(cc *config.Control, agentDisabled bool) []healthz.Heal
 	host := cc.Loopback(false)
 
 	if !cc.DisableAPIServer && cc.HTTPSPort > 0 {
+		// k3s starts kube-apiserver with --anonymous-auth=false, so /livez
+		// requires a client cert; the admin client cert is the simplest
+		// in-process identity that satisfies authn + authorization.
 		url := fmt.Sprintf("https://%s/livez", net.JoinHostPort(host, strconv.Itoa(cc.HTTPSPort)))
-		checkers = append(checkers, health.HTTPGet("kube-apiserver", url))
+		checkers = append(checkers, health.NewHTTPGetWithClientCertHealthz("kube-apiserver", url,
+			cc.Runtime.ClientAdminCert, cc.Runtime.ClientAdminKey))
 	}
 	if !cc.DisableETCD {
-		checkers = append(checkers, health.HTTPGet("etcd", fmt.Sprintf("http://%s/health?serializable=true", net.JoinHostPort(host, "2381"))))
+		checkers = append(checkers, health.NewHTTPGetHealthz("etcd", fmt.Sprintf("http://%s/health?serializable=true", net.JoinHostPort(host, "2381"))))
 	}
 	if !cc.DisableControllerManager {
-		checkers = append(checkers, health.HTTPGet("kube-controller-manager", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10257"))))
+		checkers = append(checkers, health.NewHTTPGetHealthz("kube-controller-manager", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10257"))))
 	}
 	if !cc.DisableScheduler {
-		checkers = append(checkers, health.HTTPGet("kube-scheduler", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10259"))))
+		checkers = append(checkers, health.NewHTTPGetHealthz("kube-scheduler", fmt.Sprintf("https://%s/healthz", net.JoinHostPort(host, "10259"))))
 	}
 	if cc.SupervisorPort > 0 {
-		// The supervisor has no HTTP /healthz; a TCP probe verifies the
-		// listener is still bound.
-		checkers = append(checkers, health.TCP("supervisor", net.JoinHostPort(host, strconv.Itoa(cc.SupervisorPort))))
+		checkers = append(checkers, health.NewHTTPGetHealthz("supervisor", fmt.Sprintf("https://%s/ping", net.JoinHostPort(host, strconv.Itoa(cc.SupervisorPort)))))
 	}
 	if !agentDisabled {
-		checkers = append(checkers, health.HTTPGet("kubelet", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10248"))))
+		checkers = append(checkers, health.NewHTTPGetHealthz("kubelet", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10248"))))
 		if !cc.DisableKubeProxy {
-			checkers = append(checkers, health.HTTPGet("kube-proxy", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10256"))))
+			checkers = append(checkers, health.NewHTTPGetHealthz("kube-proxy", fmt.Sprintf("http://%s/healthz", net.JoinHostPort(host, "10256"))))
 		}
 	}
 	return checkers

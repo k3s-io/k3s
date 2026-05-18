@@ -17,7 +17,7 @@ import (
 
 const dialTimeout = 5 * time.Second
 
-func HTTPGet(name, url string) healthz.HealthChecker {
+func NewHTTPGetHealthz(name, url string) healthz.HealthChecker {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
@@ -43,7 +43,42 @@ func HTTPGet(name, url string) healthz.HealthChecker {
 	})
 }
 
-func TCP(name, addr string) healthz.HealthChecker {
+func NewHTTPGetWithClientCertHealthz(name, url, certFile, keyFile string) healthz.HealthChecker {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return healthz.NamedCheck(name, func(_ *http.Request) error {
+			return fmt.Errorf("load client cert %s/%s: %w", certFile, keyFile, err)
+		})
+	}
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				Certificates:       []tls.Certificate{cert},
+			},
+			DisableKeepAlives: true,
+		},
+	}
+	return healthz.NamedCheck(name, func(_ *http.Request) error {
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+		defer cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("get %s: %w", url, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("get %s: status %d", url, resp.StatusCode)
+		}
+		return nil
+	})
+}
+
+func NewTCPConnectHealthz(name, addr string) healthz.HealthChecker {
 	return healthz.NamedCheck(name, func(_ *http.Request) error {
 		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 		defer cancel()
@@ -56,7 +91,7 @@ func TCP(name, addr string) healthz.HealthChecker {
 	})
 }
 
-func GRPC(name, target string) healthz.HealthChecker {
+func NewGRPCHealthz(name, target string) healthz.HealthChecker {
 	target = strings.TrimPrefix(target, "unix://")
 	dialTarget := "unix:" + target
 	return healthz.NamedCheck(name, func(_ *http.Request) error {
