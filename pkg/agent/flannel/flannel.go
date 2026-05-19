@@ -175,6 +175,7 @@ func LookupExtInterface(iface *net.Interface, nm netMode) (*backend.ExternalInte
 
 	return &backend.ExternalInterface{
 		Iface:       iface,
+		IfaceName:   iface.Name,
 		IfaceAddr:   ifaceAddr[0],
 		IfaceV6Addr: ifacev6Addr[0],
 		ExtAddr:     ifaceAddr[0],
