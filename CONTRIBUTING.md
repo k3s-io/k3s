@@ -14,6 +14,24 @@ If you're interested in contributing documentation, please note the following:
 
 If you're interested in contributing new tests, please see the [TESTING.md](./tests/TESTING.md).
 
+## AI Guidance
+
+Using AI tools to help write your PR is acceptable, but as the author, you are responsible for
+understanding every change. If you used AI tools in preparing your PR, you must disclose this in the
+description of your PR. Listing AI tooling as a co-author, co-signing commits using an AI tool, or using
+the `assisted-by`, `co-developed` or similar commit trailer is not allowed.
+
+Large AI generated PRs and AI generated commit messages are not allowed. PRs with excessively large or
+unnecessarily scaffolded unit tests that could be replaced with a succinct E2E test will be closed.
+
+Do not leave the first review of AI generated changes to the reviewers. Verify the changes (code review,
+testing, etc.) before submitting your PR. Reviewers may ask questions about your AI-assisted code, and if
+you cannot explain why a change was made, the PR will be closed.
+
+When responding to review comments, you must do so without relying on AI tools. Reviewers want to engage
+directly with you, not with generated responses. If you do not engage directly with reviewers, the PR will
+be closed.
+
 ## Code Convention
 
 See the [code conventions documentation](./docs/contrib/code_conventions.md) for more information on how to write code for K3s.
