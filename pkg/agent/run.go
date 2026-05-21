@@ -99,7 +99,13 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if err != nil {
 		return errors.WithMessage(err, "failed to validate kube-proxy conntrack configuration")
 	}
-	syssetup.Configure(enableIPv6, conntrackConfig)
+	// The net/bridge/bridge-nf-call-iptables sysctls are only required by kube-proxy and
+	// flannel. When both are disabled the node is using an alternative CNI, so leave these
+	// sysctls untouched for the administrator to manage. See https://github.com/k3s-io/k3s/issues/14022.
+	// The flannel backend is compared against the "none" literal rather than flannel.BackendNone
+	// to avoid importing the flannel package, which registers all flannel backends via init().
+	setBridgeFilter := !nodeConfig.AgentConfig.DisableKubeProxy || nodeConfig.Flannel.Backend != "none"
+	syssetup.Configure(enableIPv6, setBridgeFilter, conntrackConfig)
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
 
