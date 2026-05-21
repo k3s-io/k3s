@@ -64,7 +64,7 @@ else
 fi
 
 STATIC=""
-TAGS="ctrd netcgo osusergo providerless urfave_cli_no_docs sqlite_omit_load_extension"
+TAGS="nats ctrd netcgo osusergo providerless urfave_cli_no_docs sqlite_omit_load_extension"
 RUNC_STATIC=""
 RUNC_TAGS=""
 
