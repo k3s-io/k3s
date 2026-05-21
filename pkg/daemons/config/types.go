@@ -153,6 +153,7 @@ type Agent struct {
 	AirgapExtraRegistry     []string
 	DisableCCM              bool
 	DisableNPC              bool
+	DisableKubeProxy        bool
 	MinTLSVersion           string
 	CipherSuites            []string
 	Rootless                bool

@@ -27,8 +27,9 @@ func loadKernelModule(moduleName string) {
 }
 
 // Configure loads required kernel modules and sets sysctls required for other components to
-// function properly.
-func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfiguration) {
+// function properly. The bridge netfilter sysctls are only managed when setBridgeFilter is
+// true; see kernelSysctls for details.
+func Configure(enableIPv6, setBridgeFilter bool, config *kubeproxyconfig.KubeProxyConntrackConfiguration) {
 	loadKernelModule("overlay")
 	loadKernelModule("nf_conntrack")
 	loadKernelModule("br_netfilter")
@@ -42,20 +43,42 @@ func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfig
 		loadKernelModule("ip6table_filter")
 	}
 
+	sys := sysctl.New()
+	for entry, value := range kernelSysctls(enableIPv6, setBridgeFilter, config) {
+		if val, _ := sys.GetSysctl(entry); val != value {
+			logrus.Infof("Set sysctl '%v' to %v", entry, value)
+			if err := sys.SetSysctl(entry, value); err != nil {
+				logrus.Errorf("Failed to set sysctl: %v", err)
+			}
+		}
+	}
+}
+
+// kernelSysctls returns the kernel sysctls that Configure should ensure are set.
+// The net/bridge/bridge-nf-call-{ip,ip6}tables sysctls are only included when
+// setBridgeFilter is true. These are required by kube-proxy and flannel, but on
+// nodes that run neither (for example when using an alternative CNI) k3s should
+// leave them untouched so that they can be managed by the administrator.
+func kernelSysctls(enableIPv6, setBridgeFilter bool, config *kubeproxyconfig.KubeProxyConntrackConfiguration) map[string]int {
 	// Kernel is inconsistent about how devconf is configured for
 	// new network namespaces between ipv4 and ipv6. Make sure to
 	// enable forwarding on all and default for both ipv4 and ipv6.
 	sysctls := map[string]int{
-		"net/ipv4/conf/all/forwarding":       1,
-		"net/ipv4/conf/default/forwarding":   1,
-		"net/bridge/bridge-nf-call-iptables": 1,
+		"net/ipv4/conf/all/forwarding":     1,
+		"net/ipv4/conf/default/forwarding": 1,
+	}
+
+	if setBridgeFilter {
+		sysctls["net/bridge/bridge-nf-call-iptables"] = 1
 	}
 
 	if enableIPv6 {
 		sysctls["net/ipv6/conf/all/forwarding"] = 1
 		sysctls["net/ipv6/conf/default/forwarding"] = 1
-		sysctls["net/bridge/bridge-nf-call-ip6tables"] = 1
 		sysctls["net/core/devconf_inherit_init_net"] = 1
+		if setBridgeFilter {
+			sysctls["net/bridge/bridge-nf-call-ip6tables"] = 1
+		}
 	}
 
 	if conntrackMax := getConntrackMax(config); conntrackMax > 0 {
@@ -68,15 +91,7 @@ func Configure(enableIPv6 bool, config *kubeproxyconfig.KubeProxyConntrackConfig
 		sysctls["net/netfilter/nf_conntrack_tcp_timeout_close_wait"] = int(config.TCPCloseWaitTimeout.Duration / time.Second)
 	}
 
-	sys := sysctl.New()
-	for entry, value := range sysctls {
-		if val, _ := sys.GetSysctl(entry); val != value {
-			logrus.Infof("Set sysctl '%v' to %v", entry, value)
-			if err := sys.SetSysctl(entry, value); err != nil {
-				logrus.Errorf("Failed to set sysctl: %v", err)
-			}
-		}
-	}
+	return sysctls
 }
 
 // getConntrackMax is cribbed from kube-proxy, as recent kernels no longer allow non-init namespaces
