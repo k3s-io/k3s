@@ -684,6 +684,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.ImageCredProvConfig = envInfo.ImageCredProvConfig
 	nodeConfig.AgentConfig.DisableCCM = controlConfig.DisableCCM
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
+	nodeConfig.AgentConfig.DisableKubeProxy = controlConfig.DisableKubeProxy
 	nodeConfig.AgentConfig.MinTLSVersion = controlConfig.MinTLSVersion
 	nodeConfig.AgentConfig.CipherSuites = controlConfig.CipherSuites
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
