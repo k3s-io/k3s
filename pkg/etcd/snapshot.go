@@ -124,7 +124,7 @@ func (e *ETCD) compressSnapshot(snapshotDir, snapshotFilename string, mtime time
 		return "", err
 	}
 
-	of, err := os.Create(zipPath)
+	of, err := os.OpenFile(zipPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", err
 	}
