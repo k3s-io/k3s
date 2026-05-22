@@ -216,7 +216,7 @@ var _ = AfterSuite(func() {
 	}
 })
 
-func Test_IntegrationEtcdSnapshot(t *testing.T) {
+func Test_IntegrationKubeflags(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcd Snapshot Suite")
+	RunSpecs(t, "Kube Flags Suite")
 }
