@@ -107,7 +107,7 @@ var _ = DescribeTableSubtree("ca certificate rotation", Ordered, func(serverArgs
 	Entry("with etcd", []string{"--cluster-init", "-t", "test", "-d"}),
 )
 
-func Test_IntegrationCertRotation(t *testing.T) {
+func Test_IntegrationCACertRotation(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CA Cert rotation Suite")
 }
