@@ -659,6 +659,7 @@ func Test_UnitETCD_Test(t *testing.T) {
 				t.Errorf("Setup for ETCD.Test() %q failed = %v", tt.name, err)
 				return
 			}
+			e.config.ExtraEtcdArgs = append(e.config.ExtraEtcdArgs, "quota-backend-bytes=1024")
 			start := time.Now()
 			err := e.Test(tt.fields.context.ctx, true)
 			duration := time.Now().Sub(start)
@@ -912,4 +913,60 @@ func (m *mockEtcd) MemberPromote(context.Context, *etcdserverpb.MemberPromoteReq
 
 func unsupported(field string) error {
 	return status.New(codes.Unimplemented, field+" is not implemented").Err()
+}
+
+func Test_UnitQuotaBackendBytes(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want int64
+	}{
+		{
+			name: "empty",
+			args: nil,
+			want: 0,
+		},
+		{
+			name: "unrelated args",
+			args: []string{"foo=bar", "heartbeat-interval=500"},
+			want: 0,
+		},
+		{
+			name: "bare key",
+			args: []string{"quota-backend-bytes=8589934592"},
+			want: 8589934592,
+		},
+		{
+			name: "with leading dashes",
+			args: []string{"--quota-backend-bytes=8589934592"},
+			want: 8589934592,
+		},
+		{
+			name: "last wins on duplicate",
+			args: []string{"quota-backend-bytes=100", "quota-backend-bytes=200"},
+			want: 200,
+		},
+		{
+			name: "unparseable value falls through",
+			args: []string{"quota-backend-bytes=notanumber"},
+			want: 0,
+		},
+		{
+			name: "no value",
+			args: []string{"quota-backend-bytes"},
+			want: 0,
+		},
+		{
+			name: "prefix match is rejected",
+			args: []string{"quota-backend-bytes-extra=1"},
+			want: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := quotaBackendBytes(tt.args); got != tt.want {
+				t.Errorf("quotaBackendBytes(%v) = %d, want %d", tt.args, got, tt.want)
+			}
+		})
+	}
 }

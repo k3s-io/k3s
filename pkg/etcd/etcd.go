@@ -65,6 +65,15 @@ const (
 	learnerMaxStallTime  = time.Minute * 5
 	memberRemovalTimeout = time.Minute * 1
 
+	// defaultEtcdDBQuotaBytes matches etcd's own default of 2GiB.
+	defaultEtcdDBQuotaBytes = int64(2 * 1024 * 1024 * 1024)
+
+	// noSpaceAlarmHeadroomNumerator / noSpaceAlarmHeadroomDenominator define
+	// the DbSize / quota ratio at which we treat a NOSPACE alarm as real.
+	// Below 95%, etcd would not have raised NOSPACE, so any alarm is safe to skip.
+	noSpaceAlarmHeadroomNumerator   = int64(95)
+	noSpaceAlarmHeadroomDenominator = int64(100)
+
 	// snapshotJitterMax defines the maximum time skew on cron-triggered snapshots. The actual jitter
 	// will be a random Duration somewhere between 0 and snapshotJitterMax.
 	snapshotJitterMax = time.Second * 5
@@ -227,8 +236,16 @@ func (e *ETCD) Test(ctx context.Context, enableMaintenance bool) error {
 		return errors.WithMessage(err, "failed to defragment etcd database")
 	}
 
-	// clear alarms on this node
-	if err := e.clearAlarms(ctx, status.Header.MemberId); err != nil {
+	// Only check alarms when DbSize is near the quota.
+	quota := quotaBackendBytes(e.config.ExtraEtcdArgs)
+	if quota <= 0 {
+		quota = defaultEtcdDBQuotaBytes
+	}
+	threshold := quota * noSpaceAlarmHeadroomNumerator / noSpaceAlarmHeadroomDenominator
+	if status.DbSize < threshold {
+		logrus.Infof("Skipping etcd alarm maintenance (DbSize=%d / quota=%d, %.1f%% used)",
+			status.DbSize, quota, float64(status.DbSize)*100/float64(quota))
+	} else if err := e.clearAlarms(ctx, status.Header.MemberId); err != nil {
 		return errors.WithMessage(err, "failed to disarm etcd alarms")
 	}
 
@@ -1425,6 +1442,25 @@ func (e *ETCD) setLearnerProgress(ctx context.Context, status *learnerProgress) 
 
 	_, err := e.client.Put(ctx, learnerProgressKey, w.String())
 	return err
+}
+
+// quotaBackendBytes returns the quota-backend-bytes value parsed from
+// extraEtcdArgs, or 0 if not set or unparseable.
+func quotaBackendBytes(extraEtcdArgs []string) int64 {
+	var quota int64
+	for _, arg := range extraEtcdArgs {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if strings.TrimLeft(parts[0], "-") != "quota-backend-bytes" {
+			continue
+		}
+		if v, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
+			quota = v
+		}
+	}
+	return quota
 }
 
 // clearAlarms checks for any NOSPACE alarms on the local etcd member.
