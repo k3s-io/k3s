@@ -43,6 +43,14 @@ jobs:
     with:
       arch: arm64
       upload-image: true
+  build-riscv64:
+    uses: ./.github/workflows/build-k3s.yaml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      arch: riscv64
+      upload-image: true
   e2e:
     name: "E2E Tests"
     needs: build
@@ -148,8 +156,8 @@ jobs:
     name: "Build Go Tests"
     strategy:
       matrix:
-        arch: [amd64, arm64]
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+        arch: [amd64, arm64, riscv64]
+    runs-on: ${{ (matrix.arch == 'riscv64' && 'ubuntu-24.04-riscv') || (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-latest' }}
     outputs:
       channel: ${{ steps.channel_step.outputs.channel }}
     steps:
@@ -185,14 +193,14 @@ jobs:
         fi
   
   docker-go:
-    needs: [build, build-arm64, build-go-tests]
+    needs: [build, build-arm64, build-riscv64, build-go-tests]
     name: Docker
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, hardened, lazypull, nixsnapshotter, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
-        arch: [amd64, arm64]
+        arch: [amd64, arm64, riscv64]
         exclude:
           - dtest: autoimport
             arch: arm64
@@ -206,7 +214,9 @@ jobs:
             arch: arm64
           - dtest: svcpoliciesandfirewall
             arch: arm64
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+          - dtest: nixsnapshotter
+            arch: riscv64
+    runs-on: ${{ (matrix.arch == 'riscv64' && 'ubuntu-24.04-riscv') || (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-latest' }}
     env:
       CHANNEL: ${{ needs.build-go-tests.outputs.channel }}
     steps:
@@ -238,6 +248,7 @@ jobs:
         path: ./dist/artifacts
     - name: Set up Docker
       uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
+      if: matrix.arch != 'riscv64'
       with:
         version: type=image,tag=28
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -246,6 +257,8 @@ jobs:
       run: |
         if [ ${{ matrix.arch }} = "arm64" ]; then
           mv ./dist/artifacts/k3s-arm64 ./dist/artifacts/k3s
+        elif [ ${{ matrix.arch }} = "riscv64" ]; then
+          mv ./dist/artifacts/k3s-riscv64 ./dist/artifacts/k3s
         fi
         chmod +x ./dist/artifacts/k3s
         docker image load -i ./dist/artifacts/k3s-image.tar

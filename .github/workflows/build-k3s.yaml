@@ -3,7 +3,7 @@ on:
     inputs:
       arch:
         type: string
-        description: 'Architecture to build (amd64, arm64, or arm)'
+        description: 'Architecture to build (amd64, arm64, arm, or riscv64)'
         default: 'amd64'
       os:
         type: string
@@ -26,8 +26,8 @@ permissions:
 jobs:
   build:
     name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
-    runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 20
+    runs-on: ${{ (contains(inputs.arch, 'riscv') && 'ubuntu-24.04-riscv') || (contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    timeout-minutes: ${{ (contains(inputs.arch, 'riscv') && 180) || 20 }}
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
       ARCH_EXT: ${{ inputs.os == 'windows' && '-windows' || format('-{0}', inputs.arch) }}
@@ -43,6 +43,7 @@ jobs:
         cache-image: false
 
     - name: Set up Docker
+      if: inputs.arch != 'riscv64'
       uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
       with:
         version: type=image,tag=28
@@ -64,7 +65,7 @@ jobs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Build K3s Binary Native
-      if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
+      if: inputs.arch == 'arm64' || inputs.arch == 'amd64' || inputs.arch == 'riscv64'
       env:
           DOCKER_BUILD_SUMMARY: false
       uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
@@ -83,9 +84,13 @@ jobs:
         push: false
         provenance: mode=min
         outputs: type=local,dest=.
+        cache-from: |
+          ${{ format('type=gha,scope=k3s-binary-{0}-{1}', inputs.os, inputs.arch) }}
+        cache-to: |
+          ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,scope=k3s-binary-{0}-{1},mode=max', inputs.os, inputs.arch) || '' }}
 
     - name: Build K3s Binary Emulated
-      if: inputs.arch != 'arm64' && inputs.arch != 'amd64'
+      if: inputs.arch != 'arm64' && inputs.arch != 'amd64' && inputs.arch != 'riscv64'
       env:
         PLATFORM: ${{ inputs.arch == 'arm' && 'linux/arm/v7' || format('linux/{0}', inputs.arch) }}
         DOCKER_BUILD_SUMMARY: false
@@ -103,6 +108,10 @@ jobs:
         provenance: mode=min
         platforms: ${{ env.PLATFORM }}
         outputs: type=local,dest=.
+        cache-from: |
+          ${{ format('type=gha,scope=k3s-binary-{0}-{1}', inputs.os, inputs.arch) }}
+        cache-to: |
+          ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,scope=k3s-binary-{0}-{1},mode=max', inputs.os, inputs.arch) || '' }}
 
     - name: Caculate binary checksum
       run: |
@@ -115,7 +124,7 @@ jobs:
         fi
     
     - name: Build K3s image
-      if: inputs.upload-image == true && inputs.os == 'linux' && (inputs.arch == 'amd64' || inputs.arch == 'arm64')
+      if: inputs.upload-image == true && inputs.os == 'linux' && (inputs.arch == 'amd64' || inputs.arch == 'arm64' || inputs.arch == 'riscv64')
       run: ./scripts/package-image
       
     - name: "Save K3s image"

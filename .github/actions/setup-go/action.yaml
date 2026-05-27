@@ -24,6 +24,20 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
 
+    - name: Setup Go cache key
+      id: gocache-key
+      shell: bash
+      run: |
+        echo "key=${{ github.workflow }}-$(uname -m)-gocache-${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "restore-keys=${{ github.workflow }}-$(uname -m)-gocache" >> $GITHUB_OUTPUT
+
+    - name: Setup Go cache # must be done before Setup Go so it picks up the cache
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        key: ${{ steps.gocache-key.outputs.key }}
+        restore-keys: ${{ steps.gocache-key.outputs.restore-keys }}
+        path: /home/runner/.cache/go-build
+
     - name: Setup Go
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
       with:
