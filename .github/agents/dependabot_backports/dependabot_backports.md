@@ -1,12 +1,23 @@
-# Monthly GitHub Action SHA Backports
+---
+name: Dependabot Action SHA Backports
+description: Use when: backporting GitHub Action SHA pin updates from main into release branches. Creates at most one PR per target release branch with minimal workflow pin updates only.
+type: workflow
+tools: [gh, git, yamllint, bash, python]
+output: pull-request
+user-invocable: true
+---
+
+# Dependabot Action SHA Backports
+
+## Overview
 
 Backport GitHub Actions SHA pin updates from `main` into the three newest `release-1.XX` branches.
 
-## Required outcome
+## Required Outcome
 
 Create at most one pull request per target release branch. Each PR must include all relevant backports for that branch.
 
-## Avaliable tools
+## Available Tools
 - `gh` GitHub CLI for branch, commit, and PR operations.
 - `git` for local repository operations.
 - `yamllint` for validating yaml files after applying changes.
@@ -15,7 +26,7 @@ Create at most one pull request per target release branch. Each PR must include 
 - Use any bash and python scripts already created in this folder for assistance.
 - Update and reuse any existing scripts in this folder as needed to meet the requirements and constraints of this task.
 
-## Known issues
+## Known Issues
 - Don't lose track of this folder, as it may not exist in older release branches. If it doesn't exist, create it as needed to store any scripts or other files required for the backport process.
 - Some commit merges may mess up the spacing of the yaml files. Double check that the yaml is still valid after applying all the commits. 
 
@@ -49,3 +60,10 @@ Create at most one pull request per target release branch. Each PR must include 
 - Do not change workflow logic beyond what is required for those SHA pin backports.
 - Only ever push and track to `origin` when creating or updating PR branches. Do not push directly to any `release-1.XX` branches.
 - Keep PRs focused and minimal.
+
+## Success Criteria
+
+- Each of the three newest release branches has either one backport PR or an explicit skip because it already matches `main`.
+- Any opened PR contains all relevant action SHA pin updates for that target release branch.
+- Workflow YAML remains valid after changes.
+- No workflow logic changes are introduced beyond required SHA pin updates.
