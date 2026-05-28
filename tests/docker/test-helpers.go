@@ -2,6 +2,7 @@ package docker
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -54,6 +55,10 @@ func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
 // k3s version and tag information should be extracted from the version.sh script
 // and supplied as an argument to the function/test
 func NewTestConfig(k3sImage string) (*TestConfig, error) {
+	if k3sImage == "" {
+		return nil, errors.New("k3s image must be set")
+	}
+
 	config := &TestConfig{
 		K3sImage: k3sImage,
 	}
@@ -273,7 +278,6 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 // setupDatabase will start the configured database if startDB is true,
 // and return the correct flag to join the configured database
 func (config *TestConfig) setupDatabase(startDB bool) (string, error) {
-
 	joinFlag := ""
 	startCmd := ""
 	switch config.DBType {
@@ -283,6 +287,9 @@ func (config *TestConfig) setupDatabase(startDB bool) (string, error) {
 	case "postgres":
 		startCmd = "docker run -d --name postgres -e POSTGRES_USER=root -e POSTGRES_PASSWORD=docker -p 5432:5432 postgres:16-alpine"
 		joinFlag = "--datastore-endpoint='postgres://root:docker@172.17.0.1:5432/k3s'"
+	case "t4":
+		startCmd = "docker run -d --name t4 -e COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS=test-bucket -e debug=true -p 9090:9090 -p 9191:9191 -t mirror.gcr.io/adobe/s3mock:5.0.0"
+		joinFlag = "--datastore-endpoint=t4:// --etcd-s3-endpoint=http://172.17.0.1:9090 --etcd-s3-bucket=test-bucket --etcd-s3-access-key=access-key --etcd-s3-secret-key=secret-key"
 	case "etcd":
 		if startDB {
 			joinFlag = "--cluster-init"
@@ -477,7 +484,8 @@ func (config *TestConfig) Cleanup() error {
 		errs = append(errs, fmt.Errorf("failed to remove volumes: %v", err))
 	}
 	// Stop DB if it was started
-	if config.DBType == "mysql" || config.DBType == "postgres" {
+	switch config.DBType {
+	case "mysql", "postgres", "t4":
 		cmd := fmt.Sprintf("docker stop %s", config.DBType)
 		if _, err := tests.RunCommand(cmd); err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop %s: %v", config.DBType, err))
