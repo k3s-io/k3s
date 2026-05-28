@@ -7,6 +7,8 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control/deps"
+	"github.com/k3s-io/k3s/pkg/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // GenerateDataDir creates a temporary directory at "/tmp/k3s/<RANDOM_STRING>/".
@@ -43,6 +45,8 @@ func CleanupDataDir(cnf *config.Control) {
 // GenerateRuntime creates a temporary data dir and configures
 // config.ControlRuntime with all the appropriate certificate keys.
 func GenerateRuntime(cnf *config.Control) error {
+	// reset metrics registerer to avoid panicing if test cover metrics registration
+	metrics.DefaultRegisterer = prometheus.NewRegistry()
 	// reuse ready channel from existing runtime if set
 	cnf.Runtime = config.NewRuntime()
 	if err := GenerateDataDir(cnf); err != nil {
