@@ -84,6 +84,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	// If exiting due to an error, ensure that contexts are cancelled so that the
 	// WaitGroup exits.  Otherwise, wait for something else to initiate shutdown.
 	defer func() {
+		if r := recover(); r != nil {
+			rerr = fmt.Errorf("server panicked: %v", r)
+		}
 		if rerr != nil {
 			// do not need to pass the error in here, it will be reported by the CLI error handler
 			signals.RequestShutdown(nil)
