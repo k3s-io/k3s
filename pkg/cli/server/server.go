@@ -143,6 +143,14 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.CertFile = cfg.DatastoreCertFile
 	serverConfig.ControlConfig.Datastore.BackendTLSConfig.KeyFile = cfg.DatastoreKeyFile
 	serverConfig.ControlConfig.Datastore.Endpoint = cfg.DatastoreEndpoint
+	serverConfig.ControlConfig.Datastore.S3Config.AccessKey = cfg.EtcdS3AccessKey
+	serverConfig.ControlConfig.Datastore.S3Config.Bucket = cfg.EtcdS3BucketName
+	serverConfig.ControlConfig.Datastore.S3Config.CABundle = cfg.EtcdS3EndpointCA
+	serverConfig.ControlConfig.Datastore.S3Config.Endpoint = cfg.EtcdS3Endpoint
+	serverConfig.ControlConfig.Datastore.S3Config.Folder = cfg.EtcdS3Folder
+	serverConfig.ControlConfig.Datastore.S3Config.Region = cfg.EtcdS3Region
+	serverConfig.ControlConfig.Datastore.S3Config.SecretKey = cfg.EtcdS3SecretKey
+	serverConfig.ControlConfig.Datastore.S3Config.SessionToken = cfg.EtcdS3SessionToken
 	serverConfig.ControlConfig.Datastore.WaitGroup = wg
 	serverConfig.ControlConfig.DataDir = cfg.DataDir
 	serverConfig.ControlConfig.KubeConfigOutput = cfg.KubeConfigOutput
