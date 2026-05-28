@@ -100,7 +100,7 @@ jobs:
     - name: Generate coverage report
       run: sudo -E env "PATH=$PATH" go tool covdata textfmt -i $GOCOVERDIR -o ${{ matrix.itest }}.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./${{ matrix.itest }}.out
@@ -147,7 +147,7 @@ jobs:
     - name: Generate coverage report
       run: go tool covdata textfmt -i $Env:GOCOVERDIR -o windows.out
     - name: Upload Results To Codecov
-      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./windows.out
