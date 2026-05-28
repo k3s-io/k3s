@@ -186,6 +186,8 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 		// if TLS is not enabled for kine, storage will only be started once,
 		// so go ahead and register metrics now
 		c.config.Datastore.MetricsRegisterer = metrics.DefaultRegisterer
+		// also set up kine peering (if enabled) without certs
+		c.setupKinePeering()
 	}
 
 	if !bootstrap {
@@ -196,6 +198,8 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 		c.config.Datastore.ServerTLSConfig.CAFile = c.config.Runtime.ETCDServerCA
 		c.config.Datastore.ServerTLSConfig.CertFile = c.config.Runtime.ServerETCDCert
 		c.config.Datastore.ServerTLSConfig.KeyFile = c.config.Runtime.ServerETCDKey
+		// also set up kine peering, now that we have certs to use.
+		c.setupKinePeering()
 	}
 
 	// start listening on the kine socket as an etcd endpoint, or return the external etcd endpoints
@@ -218,6 +222,19 @@ func (c *Cluster) startStorage(ctx context.Context, bootstrap bool) error {
 	}
 
 	return nil
+}
+
+func (c *Cluster) setupKinePeering() {
+	if strings.HasPrefix(c.config.Datastore.Endpoint, "t4://") {
+		address := c.config.BindAddressOrLoopback(true, true) + ":3380"
+		c.config.Datastore.PeerConfig.AdvertiseAddress = address
+		c.config.Datastore.PeerConfig.BindAddress = address
+		if c.config.KineTLS {
+			c.config.Datastore.BackendTLSConfig.CAFile = c.config.Runtime.ETCDPeerCA
+			c.config.Datastore.BackendTLSConfig.CertFile = c.config.Runtime.PeerServerClientETCDCert
+			c.config.Datastore.BackendTLSConfig.KeyFile = c.config.Runtime.PeerServerClientETCDKey
+		}
+	}
 }
 
 // New creates an initial cluster using the provided configuration.
