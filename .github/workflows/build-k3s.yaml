@@ -26,7 +26,7 @@ permissions:
 jobs:
   build:
     name: Build # DO NOT CHANGE THIS NAME, we rely on it for INSTALL_K3S_PR functionality
-    runs-on: ${{ contains(inputs.arch, 'arm') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ contains(inputs.arch, 'arm') && (github.repository_owner == 'k3s-io' && 'cncf-ubuntu-16-64-arm' || 'ubuntu-24.04-arm') || (github.repository_owner == 'k3s-io' && inputs.arch == 'amd64' && 'cncf-ubuntu-16-64-x86' || 'ubuntu-24.04') }}
     timeout-minutes: 20
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
