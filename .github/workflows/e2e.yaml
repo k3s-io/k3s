@@ -278,3 +278,39 @@ jobs:
         else
           ./${{ matrix.dtest }}.test -test.timeout=0 -test.v -ginkgo.v -k3sImage=$K3S_IMAGE
         fi
+
+  docker-large:
+    needs: [build, build-go-tests]
+    name: Docker Large
+    timeout-minutes: 45
+    runs-on: cncf-ubuntu-32-128-x86
+    steps:
+    - name: Checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+    - name: Set up Docker
+      uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
+      with:
+        version: type=image,tag=28
+        set-host: true
+    - name: "Download K3s image"
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      with:
+        name: k3s-amd64
+        path: ./dist/artifacts
+    - name: Load and set K3s image
+      run: |
+        chmod +x ./dist/artifacts/k3s
+        docker image load -i ./dist/artifacts/k3s-image.tar
+        IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'rancher/k3s')
+        echo "K3S_IMAGE=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Download Go Tests
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      with:
+        name: docker-go-tests-amd64
+        path: ./dist/artifacts
+    - name: Run scale test
+      run: |
+        chmod +x ./dist/artifacts/scale.test
+        mv ./dist/artifacts/scale.test ./tests/docker/scale/
+        cd ./tests/docker/scale
+        ./scale.test -test.timeout=40m -test.v -ginkgo.v -ci -k3sImage=$K3S_IMAGE
