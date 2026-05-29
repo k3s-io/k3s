@@ -11,6 +11,7 @@ on:
       - ".github/**"
       - "!.github/actions/**"
       - "!.github/workflows/e2e.yaml"
+      - "!.github/workflows/build-k3s.yaml"
   pull_request:
     paths-ignore:
       - "**.md"
