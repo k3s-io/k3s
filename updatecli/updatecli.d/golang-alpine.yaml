@@ -41,9 +41,9 @@ sources:
     # 3.17 to then check for golang:X.Y-alpine3.17 .
     transformers:
       - find: '\d+\.\d+'
-  # Dockerfile.dapper is considered the base for the Golang version that we
+  # Dockerfile.local is considered the base for the Golang version that we
   # must use.
-  dockerfile-dapper:
+  dockerfile-local:
     name: "Retrieve golang image version used in Dockerfile.local"
     kind: "file"
     scmid: "k3s"
@@ -63,7 +63,7 @@ conditions:
     disablesourceinput: true
     spec:
       image: "golang"
-      tag: '{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'
+      tag: '{{ source "dockerfile-local" }}{{ source "alpine-docker-image" }}'
 
 targets:
   dockerfiles:
@@ -76,4 +76,4 @@ targets:
         - "Dockerfile.test"
         - "Dockerfile.manifest"
       matchpattern: 'golang:\S+-alpine(\S+)?'
-      replacepattern: 'golang:{{ source "dockerfile-dapper" }}{{ source "alpine-docker-image" }}'
+      replacepattern: 'golang:{{ source "dockerfile-local" }}{{ source "alpine-docker-image" }}'
