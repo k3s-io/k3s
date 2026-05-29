@@ -102,16 +102,15 @@ jobs:
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       - name: Install Go
         uses: ./.github/actions/setup-go
-      - name: Install Kubectl
-        run: |
-           STABLE_VERSION=$(yq '.channels[] | select(.name == "stable") | .latest | sub("\+.*", "")' channel.yaml)
-           curl -LO "https://dl.k8s.io/release/${STABLE_VERSION}/bin/linux/amd64/kubectl"
-           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - name: "Download k3s binary"
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: k3s-amd64
           path: ./dist/artifacts
+      - name: Install kubectl from K3s artifacts
+        run: |
+          sudo install -o root -g root -m 0755 ./dist/artifacts/bin-k3s /usr/local/bin/k3s
+          sudo ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
       - name: Run ${{ matrix.etest }} Test
         env:
           E2E_GOCOVER: "true"
