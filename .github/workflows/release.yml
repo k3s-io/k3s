@@ -217,7 +217,7 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY
 
     - name: Configure AWS Credentials (s3)
-      uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6
+      uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
       if: ${{ github.repository_owner == 'k3s-io' }}
       with:
         aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
