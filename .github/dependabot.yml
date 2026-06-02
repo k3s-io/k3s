@@ -9,6 +9,10 @@ updates:
       - "k3s-io/k3s-dev"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
   
   - package-ecosystem: "docker"
     directory: "/"
