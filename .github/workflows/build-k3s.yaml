@@ -38,7 +38,7 @@ jobs:
     
     - name: Set up QEMU
       if: inputs.arch == 'arm'
-      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+      uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
       with:
         cache-image: false
 
