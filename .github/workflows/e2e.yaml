@@ -86,22 +86,43 @@ jobs:
           set-host: true
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
-      - name: Vagrant R/W Cache
+      - name: Vagrant Box R/W Cache
         if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/main'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
              ~/.vagrant.d/boxes
           key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
-      - name: Vagrant Read Cache
+      - name: Vagrant Box Read Cache
         if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/main'
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
              ~/.vagrant.d/boxes
           key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
+      - name: Vagrant Plugins R/W Cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: |
+             ~/.vagrant.d/gems
+             ~/.vagrant.d/plugins.json
+          key: vagrant-plugins
+      - name: Vagrant Plugins Read Cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        if: github.ref != 'refs/heads/main'
+        with:
+          path: |
+             ~/.vagrant.d/gems
+             ~/.vagrant.d/plugins.json
+          key: vagrant-plugins
       - name: "Vagrant Plugin(s)"
-        run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
+        run: |
+          for plugin in vagrant-k3s vagrant-reload vagrant-scp; do
+            if ! vagrant plugin list | grep -q "^${plugin} "; then
+              vagrant plugin install "${plugin}"
+            fi
+          done
       - name: Install Go
         uses: ./.github/actions/setup-go
       - name: "Download k3s binary"
