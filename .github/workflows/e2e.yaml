@@ -285,6 +285,7 @@ jobs:
     name: Docker Large
     timeout-minutes: 45
     runs-on: cncf-ubuntu-32-128-x86
+    if: github.repository_owner == 'k3s-io'
     steps:
     - name: Checkout
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
