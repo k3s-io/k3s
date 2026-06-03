@@ -52,7 +52,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        etest: [btrfs, embeddedmirror, externalip, privateregistry, rootless, s3, startup, wasm, multus]
+        # Ordered longest-first from CI timings to reduce matrix tail latency.
+        etest: [startup, s3, embeddedmirror, privateregistry, wasm, externalip, rootless, multus, btrfs]
       max-parallel: 5
     steps:
       - name: Remove Unnecessary Tools
