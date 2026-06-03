@@ -1155,6 +1155,8 @@ github.com/k3s-io/etcd/server/v3 v3.6.7-k3s1 h1:ZBV6n9XhjGex9MIOaEAefbhNriH5Gxo4
 github.com/k3s-io/etcd/server/v3 v3.6.7-k3s1/go.mod h1:LEM328bPA2uVMhN0+Ht/vAsADW127QS1oM7EuHrOTy0=
 github.com/k3s-io/helm-controller v0.17.1 h1:LjZelVfddI5CWFAI5zlkRVhxobpSLRnNA/R9qU706k0=
 github.com/k3s-io/helm-controller v0.17.1/go.mod h1:5cuEedP5BgBkWpUO1C3BY05hnaBLycsm/2PsW3DY6WE=
+github.com/k3s-io/helm-controller v0.17.2 h1:kYeWxPysnTZArEK7dZ2kjo5uKrzJemCPQQy4CNmfZow=
+github.com/k3s-io/helm-controller v0.17.2/go.mod h1:5cuEedP5BgBkWpUO1C3BY05hnaBLycsm/2PsW3DY6WE=
 github.com/k3s-io/kine v0.16.1 h1:V2OUCm4Aq3l7F6a01Q1dlYXpWYD7cTf1wzN6iGX9ZSY=
 github.com/k3s-io/kine v0.16.1/go.mod h1:gAV0w6F+bR8cKABHszgvqR2zg9g39coOcGCBMt3T748=
 github.com/k3s-io/klog/v2 v2.140.0-k3s1 h1:Z6S9oqaxcKtLaTcQNgWsaZNE5a+qJmCrTI+Lahor4X8=
@@ -1297,6 +1299,8 @@ github.com/lyft/protoc-gen-star/v2 v2.0.4-0.20230330145011-496ad1ac90a4/go.mod h
 github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPKd5NZ3oSwXrF60=
 github.com/mailru/easyjson v0.9.1 h1:LbtsOm5WAswyWbvTEOqhypdPeZzHavpZx96/n553mR8=
 github.com/mailru/easyjson v0.9.1/go.mod h1:1+xMtQp2MRNVL/V1bOzuP3aP8VNwRW55fQUto+XFtTU=
+github.com/manuelbuil/helm-controller v0.11.1-0.20260529110720-cbecdc9f5d67 h1:kOm1YBAAlC0/SQeWhnWi3Sdwuw0YI/CtwqXGYOcL45Y=
+github.com/manuelbuil/helm-controller v0.11.1-0.20260529110720-cbecdc9f5d67/go.mod h1:5cuEedP5BgBkWpUO1C3BY05hnaBLycsm/2PsW3DY6WE=
 github.com/marcopolo/simnet v0.0.4 h1:50Kx4hS9kFGSRIbrt9xUS3NJX33EyPqHVmpXvaKLqrY=
 github.com/marcopolo/simnet v0.0.4/go.mod h1:tfQF1u2DmaB6WHODMtQaLtClEf3a296CKQLq5gAsIS0=
 github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd h1:br0buuQ854V8u83wA0rVZ8ttrq5CpaPZdvrK0LP2lOk=

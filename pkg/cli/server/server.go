@@ -157,6 +157,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.KubeConfigMode = cfg.KubeConfigMode
 	serverConfig.ControlConfig.KubeConfigGroup = cfg.KubeConfigGroup
 	serverConfig.ControlConfig.HelmJobImage = cfg.HelmJobImage
+	serverConfig.ControlConfig.HelmJobTolerations = cfg.HelmJobTolerations
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
 	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan.Value())

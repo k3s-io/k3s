@@ -208,6 +208,7 @@ type Control struct {
 	KubeConfigMode           string
 	KubeConfigGroup          string
 	HelmJobImage             string
+	HelmJobTolerations       string
 	DataDir                  string
 	KineTLS                  bool
 	Datastore                endpoint.Config `json:"-"`
