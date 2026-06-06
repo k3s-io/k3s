@@ -1025,7 +1025,7 @@ create_env_file() {
     info "env: Creating environment file ${FILE_K3S_ENV}"
     $SUDO touch ${FILE_K3S_ENV}
     $SUDO chmod 0600 ${FILE_K3S_ENV}
-    sh -c export | while read x v; do echo $v; done | grep -E '^(K3S|CONTAINERD)_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
+    sh -c export | while read x v; do echo $v; done | grep -E '^(K3S|CONTAINERD|KINE)_' | $SUDO tee ${FILE_K3S_ENV} >/dev/null
     sh -c export | while read x v; do echo $v; done | grep -Ei '^(NO|HTTP|HTTPS)_PROXY' | $SUDO tee -a ${FILE_K3S_ENV} >/dev/null
 }
 
