@@ -114,6 +114,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 		When("server is setup without kube-proxy or cloud-controller-manager ", func() {
 			It("kills previous server and clean logs", func() {
 				Expect(testutil.K3sKillServer(server)).To(Succeed())
+				Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 			})
 			It("start up with disabled kube-proxy and cloud controller", func() {
 				var err error
@@ -167,6 +168,7 @@ var _ = Describe("create a new cluster with kube-* flags", Ordered, func() {
 			})
 			It("kills previous server and clean logs", func() {
 				Expect(testutil.K3sKillServer(server)).To(Succeed())
+				Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
 			})
 			It("start up with no problems and fully disabled cloud controller", func() {
 				var err error
