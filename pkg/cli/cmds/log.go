@@ -2,11 +2,13 @@ package cmds
 
 import (
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/grpc/grpclog"
 )
 
 type Log struct {
@@ -72,6 +74,7 @@ func checkUnixTimestamp() error {
 }
 
 func setupLogging() {
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
 	if Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
