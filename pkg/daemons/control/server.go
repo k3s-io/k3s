@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/k3s-io/k3s/pkg/authenticator"
 	"github.com/k3s-io/k3s/pkg/cluster"
@@ -401,36 +400,40 @@ func cloudControllerManager(ctx context.Context, cfg *config.Control) error {
 
 		<-executor.APIServerReadyChan()
 
-		logrus.Infof("Waiting for cloud-controller-manager privileges to become available")
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case err := <-promise(func() error { return checkForCloudControllerPrivileges(ctx, cfg.Runtime, 5*time.Second) }):
-				if err != nil {
-					logrus.Infof("Waiting for cloud-controller-manager privileges to become available: %v", err)
-					continue
-				}
-				return
-			}
+		if err := checkForCloudControllerPrivileges(ctx, cfg.Runtime); err != nil {
+			signals.RequestShutdown(errors.WithMessage(err, "failed to wait for cloud-controller-manager RBAC"))
 		}
 	}()
-
 	return executor.CloudControllerManager(ctx, ccmRBACReady, args)
 }
 
 // checkForCloudControllerPrivileges makes a SubjectAccessReview request to the apiserver
 // to validate that the embedded cloud controller manager has the required privileges,
-// and does not return until the requested access is granted.
+// and does not return until the requested access is granted. Both the K3s RBAC, and the
+// core extension-apiserver-authentication-reader RBAC, are checked.
 // If the CCM RBAC changes, the ResourceAttributes checked for by this function should
 // be modified to check for the most recently added privilege.
-func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime, timeout time.Duration) error {
-	return util.WaitForRBACReady(ctx, runtime.KubeConfigSupervisor, timeout, authorizationv1.ResourceAttributes{
-		Namespace: metav1.NamespaceSystem,
-		Verb:      "watch",
-		Resource:  "endpointslices",
-		Group:     "discovery.k8s.io",
-	}, version.Program+"-cloud-controller-manager")
+func checkForCloudControllerPrivileges(ctx context.Context, runtime *config.ControlRuntime) error {
+	ras := []authorizationv1.ResourceAttributes{
+		{
+			Namespace: metav1.NamespaceSystem,
+			Verb:      "get",
+			Resource:  "configmaps",
+			Name:      "extension-apiserver-authentication",
+		},
+		{
+			Namespace: metav1.NamespaceSystem,
+			Verb:      "watch",
+			Resource:  "endpointslices",
+			Group:     "discovery.k8s.io",
+		},
+	}
+	for _, ra := range ras {
+		if err := util.WaitForRBACReady(ctx, runtime.KubeConfigSupervisor, util.DefaultAPIServerReadyTimeout, ra, version.Program+"-cloud-controller-manager"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntime) {
@@ -440,15 +443,6 @@ func waitForAPIServerHandlers(ctx context.Context, runtime *config.ControlRuntim
 	}
 	runtime.Authenticator = authenticator.Combine(runtime.Authenticator, auth)
 	runtime.APIServer = handler
-}
-
-func promise(f func() error) <-chan error {
-	c := make(chan error, 1)
-	go func() {
-		c <- f()
-		close(c)
-	}()
-	return c
 }
 
 // waitForUntaintedNode watches nodes, waiting to find one not tainted as
