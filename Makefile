@@ -29,7 +29,8 @@ format:
 	gofmt -s -l -w $(GO_FILES)
 	goimports -w $(GO_FILES)
 
-.PHONY tag-image-latest
+.PHONY: tag-image-latest
+tag-image-latest:
 	scripts/tag-image-latest
 
 .PHONY: validate
