@@ -1,6 +1,8 @@
 package docker
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +18,9 @@ import (
 	"github.com/k3s-io/k3s/tests"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type TestConfig struct {
@@ -200,9 +205,11 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 				return fmt.Errorf("failed to create empty config.yaml: %s: %v", out, err)
 			}
+
 			// Write the raw YAML directly to the config.yaml on the systemd-node container
 			if config.ServerYaml != "" {
-				cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.ServerYaml)
+				serverYAMLBase64 := base64.StdEncoding.EncodeToString([]byte(config.ServerYaml))
+				cmd = fmt.Sprintf("echo %s | base64 -d > /etc/rancher/k3s/config.yaml", serverYAMLBase64)
 				if out, err := newServer.RunCmdOnNode(cmd); err != nil {
 					return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
 				}
@@ -365,7 +372,8 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 				}
 				// Write the raw YAML directly to the config.yaml on the systemd-node container
 				if config.AgentYaml != "" {
-					cmd = fmt.Sprintf("echo '%s' > /etc/rancher/k3s/config.yaml", config.AgentYaml)
+					agentYAMLBase64 := base64.StdEncoding.EncodeToString([]byte(config.AgentYaml))
+					cmd = fmt.Sprintf("echo %s | base64 -d > /etc/rancher/k3s/config.yaml", agentYAMLBase64)
 					if out, err := newAgent.RunCmdOnNode(cmd); err != nil {
 						return fmt.Errorf("failed to write server yaml: %s: %v", out, err)
 					}
@@ -761,4 +769,23 @@ func TailJournalLogs(lines int, nodes []DockerNode) string {
 		}
 	}
 	return logs.String()
+}
+
+// GetJob fetches a Kubernetes Job by namespace and name using the provided kubeconfig.
+func GetJob(kubeconfigFile, namespace, name string) (*batchv1.Job, error) {
+	client, err := tests.K8sClient(kubeconfigFile)
+	if err != nil {
+		return nil, err
+	}
+	return client.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+}
+
+// HasExpectedToleration returns true when a toleration with key, operator, and effect is present.
+func HasExpectedToleration(tolerations []corev1.Toleration, key string, operator corev1.TolerationOperator, effect corev1.TaintEffect) bool {
+	for _, t := range tolerations {
+		if t.Key == key && t.Operator == operator && t.Effect == effect {
+			return true
+		}
+	}
+	return false
 }

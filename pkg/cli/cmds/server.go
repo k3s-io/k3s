@@ -47,6 +47,7 @@ type Server struct {
 	KubeConfigMode           string
 	KubeConfigGroup          string
 	HelmJobImage             string
+	HelmJobTolerations       string
 	TLSSan                   cli.StringSlice
 	TLSSanSecurity           bool
 	ExtraAPIArgs             cli.StringSlice
@@ -294,6 +295,12 @@ var ServerFlags = []cli.Flag{
 		Name:        "helm-job-image",
 		Usage:       "(helm) Default image to use for helm jobs",
 		Destination: &ServerConfig.HelmJobImage,
+	},
+	&cli.StringFlag{
+		Name:        "helm-job-tolerations",
+		Usage:       "(helm) JSON array of tolerations to apply to all jobs managing helm charts",
+		EnvVars:     []string{version.ProgramUpper + "_HELM_JOB_TOLERATIONS"},
+		Destination: &ServerConfig.HelmJobTolerations,
 	},
 	ServerToken,
 	&cli.StringFlag{

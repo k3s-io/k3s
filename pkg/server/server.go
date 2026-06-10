@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -224,6 +225,15 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		helmchart.DefaultJobImage = config.ControlConfig.HelmJobImage
 	} else if config.ControlConfig.SystemDefaultRegistry != "" {
 		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
+	}
+
+	// Parse and apply job tolerations if provided
+	if config.ControlConfig.HelmJobTolerations != "" {
+		var tolerations []corev1.Toleration
+		if err := json.Unmarshal([]byte(config.ControlConfig.HelmJobTolerations), &tolerations); err != nil {
+			return fmt.Errorf("failed to parse helm-job-tolerations: %w", err)
+		}
+		helmchart.JobTolerations = tolerations
 	}
 
 	if sc.Helm != nil {
