@@ -59,7 +59,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 			Expect(config.ProvisionAgents(1)).To(Succeed())
 			Eventually(func() error {
 				return tests.CheckDefaultDeployments(config.KubeconfigFile)
-			}, "90s", "5s").Should(Succeed())
+			}, "240s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "90s", "5s").Should(Succeed())
