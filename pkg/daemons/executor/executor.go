@@ -77,6 +77,8 @@ type ETCDConfig struct {
 
 	ExperimentalInitialCorruptCheck         bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
+
+	BootstrapDefragThresholdMegabytes uint `json:"bootstrap-defrag-threshold-megabytes,omitempty"`
 }
 
 type ServerTrust struct {
