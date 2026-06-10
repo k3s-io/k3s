@@ -36,10 +36,12 @@ linters:
         - {name: line-length-limit, disabled: true}
         - {name: max-control-nesting, disabled: true}
         - {name: max-public-structs, disabled: true}
+        - {name: package-naming, disabled: true}
         - {name: redundant-import-alias, disabled: true}
         - {name: unsecure-url-scheme, disabled: true}
         - {name: unused-parameter, disabled: true}
         - {name: unused-receiver, disabled: true}
+        - {name: use-slices-sort, disabled: true}
         - {name: use-waitgroup-go, disabled: true}
         - {name: var-naming, disabled: true}
   exclusions:
