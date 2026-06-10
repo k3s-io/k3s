@@ -55,8 +55,6 @@ func RunWithControllers(app *cli.Context, leaderControllers server.CustomControl
 
 func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomControllers, controllers server.CustomControllers) (rerr error) {
 	var err error
-	// Validate build env
-	cmds.MustValidateGolang()
 
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
