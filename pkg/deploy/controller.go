@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -158,7 +158,7 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 		keys[keyIndex] = path
 		keyIndex++
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	var errs []error
 	for _, path := range keys {
