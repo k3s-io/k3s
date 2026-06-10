@@ -48,7 +48,7 @@ jobs:
       matrix:
         # Ordered longest-first from CI timings to reduce matrix tail latency.
         itest: [startup, etcdsnapshot, kubeflags, cacertrotation, longhorn, secretsencryption, certrotation, etcdrestore, localstorage, flannelnone, custometcdargs]
-      max-parallel: 3
+      max-parallel: 5
     steps:
     - name: Remove Unnecessary Tools
       working-directory: /
