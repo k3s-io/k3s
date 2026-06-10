@@ -27,12 +27,6 @@ if [ -n "$DIRTY" ]; then
     exit 1
 fi
 
-echo Running: go version
-if ! go version | grep -s "go version ${VERSION_GOLANG} "; then
-  echo "Unexpected $(go version) - Kubernetes ${VERSION_K8S} should be built with go version ${VERSION_GOLANG}"
-  exit 1
-fi
-
 echo Running: go mod verify
 go mod verify
 

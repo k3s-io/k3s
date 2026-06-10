@@ -88,9 +88,6 @@ esac
 
 VERSION_HELM_JOB="v0.11.0-build20260602"
 
-GO_VERSION_URL="https://raw.githubusercontent.com/kubernetes/kubernetes/${BRANCH_K8S}/.go-version"
-VERSION_GOLANG="go"$(curl -sL "${GO_VERSION_URL}" | tr -d '[:space:]')
-
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
         echo "Tagged version '$GIT_TAG' does not match expected version '$VERSION_K8S[+-]*'" >&2
