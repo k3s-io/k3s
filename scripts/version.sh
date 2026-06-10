@@ -66,7 +66,25 @@ if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.15.0"
+VERSION_ROOT="v0.15.2"
+case ${ARCH} in
+    amd64)
+      K3S_ROOT_SHA256=9e56393cf828583b50b6b0e66cc47cb6a5e1d0489eab1436421bc20c56c0cf65
+    ;;
+    arm)
+      K3S_ROOT_SHA256=af8614e5b9e2f87d30bd4387c512703c6bf2bc53a3764e5181ef2f2eaccab8d2
+    ;;
+    arm64)
+      K3S_ROOT_SHA256=7a754f4aeb1771b2b147ac8ff48fbc0a152f4ab1c6b4f16f94b1121e5eaaba50
+    ;;
+    riscv64)
+      K3S_ROOT_SHA256=3b76a4a5bfc5c8623702a3b99e3015cd36b0336dd73c7ba4a765d018dc5a9685
+    ;;
+    *)
+      echo "[ERROR] unsupported architecture: ${ARCH}"
+      exit 1
+    ;;
+esac
 
 VERSION_HELM_JOB="v0.11.0-build20260602"
 
