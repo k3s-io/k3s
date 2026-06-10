@@ -4,7 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"path"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -30,6 +30,6 @@ func (b Bindata) AssetNames() []string {
 		}
 		return nil
 	})
-	sort.Strings(assets)
+	slices.Sort(assets)
 	return assets
 }
