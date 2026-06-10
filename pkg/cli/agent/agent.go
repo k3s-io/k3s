@@ -29,9 +29,6 @@ import (
 )
 
 func Run(clx *cli.Context) (rerr error) {
-	// Validate build env
-	cmds.MustValidateGolang()
-
 	// hide process arguments from ps output, since they may contain
 	// database credentials or other secrets.
 	proctitle.SetProcTitle(os.Args[0] + " agent")
