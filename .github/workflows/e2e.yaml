@@ -36,6 +36,7 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+      test-coverage: true
   build-arm64:
     uses: ./.github/workflows/build-k3s.yaml
     permissions:
