@@ -3,7 +3,7 @@ package loadbalancer
 import (
 	"errors"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -47,6 +47,6 @@ func sortServers(input []string, search string) ([]string, bool) {
 		result = append(result, entry)
 	}
 
-	sort.Strings(result)
+	slices.Sort(result)
 	return result, found
 }

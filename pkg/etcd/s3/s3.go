@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -543,7 +543,7 @@ func (c *Client) ListSnapshots(ctx context.Context) (map[string]snapshot.File, e
 					logrus.Warnf("Failed to get snapshot metadata for %s: %v", filename, err)
 				}
 			} else {
-				if m, err := ioutil.ReadAll(obj); err != nil {
+				if m, err := io.ReadAll(obj); err != nil {
 					if snapshot.IsNotExist(err) {
 						logrus.Debugf("Failed to read snapshot metadata: %v", err)
 					} else {

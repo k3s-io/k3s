@@ -2,7 +2,7 @@ package kubeadm
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,7 +151,7 @@ func BootstrapTokenFromSecret(secret *v1.Secret) (*BootstrapToken, error) {
 	}
 	// Only sort the slice if defined
 	if usages != nil {
-		sort.Strings(usages)
+		slices.Sort(usages)
 	}
 
 	// Get the extra groups information from the Secret

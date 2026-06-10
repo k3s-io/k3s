@@ -2,7 +2,7 @@ package util
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -80,7 +80,7 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 	for arg := range multiArgs {
 		keys = append(keys, arg)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 
 	var args []string
 	for _, arg := range keys {
