@@ -111,10 +111,25 @@ func (w *watcher) listFiles(force bool) error {
 	return errors.Join(errs...)
 }
 
-// listFilesIn recursively processes all files within a path, and checks them against the disable and skip lists. Files found that
-// are not on either list are loaded as Addons and applied to the cluster.
-func (w *watcher) listFilesIn(base string, force bool) error {
-	files := map[string]os.FileInfo{}
+// fileEntry holds the information needed to process a manifest discovered by
+// scanManifests. The entry's map key is the file's logical path under the
+// watched manifests directory; realPath is the actual on-disk path, which
+// differs from the key only when the file was found by descending into a
+// top-level symlinked directory.
+type fileEntry struct {
+	info     os.FileInfo
+	realPath string
+}
+
+// scanManifests walks base and returns a map of logical path -> fileEntry for
+// every file found. Top-level symlinked directories are descended into, but
+// the files within are recorded under their logical path
+// (base/<symlinkName>/<relative-to-target>) rather than the resolved target
+// path. This ensures that --disable=<symlinkName> matches files under that
+// directory, and that subsequent file operations stay scoped to the watched
+// base instead of mutating files in the symlink target.
+func scanManifests(base string) (map[string]fileEntry, error) {
+	files := map[string]fileEntry{}
 	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -130,18 +145,36 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 				if err != nil {
 					return err
 				}
-				filepath.Walk(evalPath, func(path string, info os.FileInfo, err error) error {
+				filepath.Walk(evalPath, func(walkPath string, walkInfo os.FileInfo, err error) error {
 					if err != nil {
 						return err
 					}
-					files[path] = info
+					rel, err := filepath.Rel(evalPath, walkPath)
+					if err != nil {
+						return err
+					}
+					logical := filepath.Join(path, rel)
+					files[logical] = fileEntry{info: walkInfo, realPath: walkPath}
 					return nil
 				})
 			}
 		}
-		files[path] = info
+		// Record the entry under its own path. For a symlinked directory this
+		// intentionally overwrites the rel="." entry written by the inner Walk,
+		// so the symlink itself is still managed as a normal local file.
+		files[path] = fileEntry{info: info, realPath: path}
 		return nil
 	}); err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+// listFilesIn recursively processes all files within a path, and checks them against the disable and skip lists. Files found that
+// are not on either list are loaded as Addons and applied to the cluster.
+func (w *watcher) listFilesIn(base string, force bool) error {
+	files, err := scanManifests(base)
+	if err != nil {
 		return err
 	}
 
@@ -149,35 +182,34 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 	// For example, 'addon.yaml.skip' will cause 'addon.yaml' to be ignored completely - unless it is also
 	// disabled, since disable processing happens first.
 	skips := map[string]bool{}
-	keys := make([]string, len(files))
-	keyIndex := 0
-	for path, file := range files {
-		if strings.HasSuffix(file.Name(), ".skip") {
-			skips[strings.TrimSuffix(file.Name(), ".skip")] = true
+	keys := make([]string, 0, len(files))
+	for path, entry := range files {
+		if strings.HasSuffix(entry.info.Name(), ".skip") {
+			skips[strings.TrimSuffix(entry.info.Name(), ".skip")] = true
 		}
-		keys[keyIndex] = path
-		keyIndex++
+		keys = append(keys, path)
 	}
 	sort.Strings(keys)
 
 	var errs []error
 	for _, path := range keys {
+		entry := files[path]
 		// Disabled files are not just skipped, but actively deleted from the filesystem
 		if shouldDisableFile(base, path, w.disables) {
-			if err := w.delete(path); err != nil {
+			if err := w.delete(path, entry.realPath); err != nil {
 				errs = append(errs, errors.WithMessagef(err, "failed to delete %s", path))
 			}
 			continue
 		}
 		// Skipped files are just ignored
-		if shouldSkipFile(files[path].Name(), skips) {
+		if shouldSkipFile(entry.info.Name(), skips) {
 			continue
 		}
-		modTime := files[path].ModTime()
+		modTime := entry.info.ModTime()
 		if !force && modTime.Equal(w.modTime[path]) {
 			continue
 		}
-		if err := w.deploy(path, !force); err != nil {
+		if err := w.deploy(path, entry.realPath, !force); err != nil {
 			errs = append(errs, errors.WithMessagef(err, "failed to process %s", path))
 		} else {
 			w.modTime[path] = modTime
@@ -188,8 +220,10 @@ func (w *watcher) listFilesIn(base string, force bool) error {
 }
 
 // deploy loads yaml from a manifest on disk, creates an AddOn resource to track its application, and then applies
-// all resources contained within to the cluster.
-func (w *watcher) deploy(path string, compareChecksum bool) error {
+// all resources contained within to the cluster. path is the file's logical path under the watched manifests
+// directory (used for the addon's Source field and user-facing events); realPath is the actual on-disk path
+// read from, which differs from path only for files discovered through a top-level symlinked directory.
+func (w *watcher) deploy(path, realPath string, compareChecksum bool) error {
 	name := basename(path)
 	addon, err := w.getOrCreateAddon(name)
 	if err != nil {
@@ -208,7 +242,7 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 		addon = *newAddon
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(realPath)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
 		return err
@@ -268,8 +302,11 @@ func (w *watcher) deploy(path string, compareChecksum bool) error {
 }
 
 // delete completely removes both a manifest, and any resources that it did or would have created. The manifest is
-// parsed, and any resources it specified are deleted. Finally, the file itself is removed from disk.
-func (w *watcher) delete(path string) error {
+// parsed, and any resources it specified are deleted. Finally, the file itself is removed from disk - except when
+// it was found by descending into a top-level symlinked directory, in which case the file lives outside the
+// watched base and is left in place so the administrator's external manifests directory is not modified.
+// path is the file's logical path under the watched manifests directory; realPath is the actual on-disk path.
+func (w *watcher) delete(path, realPath string) error {
 	name := basename(path)
 	addon, err := w.getOrCreateAddon(name)
 	if err != nil {
@@ -283,7 +320,7 @@ func (w *watcher) delete(path string) error {
 		}
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(realPath)
 	if err != nil {
 		w.recorder.Eventf(&addon, corev1.EventTypeWarning, "ReadManifestFailed", "Read manifest at %q failed: %v", path, err)
 	} else {
@@ -308,9 +345,13 @@ func (w *watcher) delete(path string) error {
 		return err
 	}
 
-	// Remove the addon file
-	if err := os.Remove(path); err != nil {
-		return err
+	// Remove the addon file, but only when it lives inside the watched base
+	// directory. Files reached via a top-level symlinked directory belong to
+	// an external location and must be left alone.
+	if path == realPath {
+		if err := os.Remove(realPath); err != nil {
+			return err
+		}
 	}
 
 	// Delete the addon
