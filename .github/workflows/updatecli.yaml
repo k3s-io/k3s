@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Updatecli
-        uses: updatecli/updatecli-action@af341a800cdbcde3ddcebb7a62410ac06a78a207 # v3.1.2
+        uses: updatecli/updatecli-action@5bda7da77bf4d181bce5f807d73d832b62062acf # v3.3.0
 
       - name: Apply Updatecli
         # Never use '--debug' option, because it might leak the access tokens.
