@@ -79,7 +79,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with: {fetch-depth: 1}
       - name: Set up Docker
-        uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
+        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -155,7 +155,7 @@ jobs:
           ## If no one connects after 5 minutes, shut down server.
           wait-timeout-minutes: 5
       - name: Upload Results To Codecov
-        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/e2e/${{ matrix.etest }}/coverage.out
@@ -255,7 +255,7 @@ jobs:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
     - name: Set up Docker
-      uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
+      uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
       with:
         version: type=image,tag=28
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -311,7 +311,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Set up Docker
-      uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5
+      uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
       with:
         version: type=image,tag=28
         set-host: true
