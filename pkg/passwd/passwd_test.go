@@ -68,7 +68,7 @@ func Test_UnitRead(t *testing.T) {
 			}
 
 			if got == nil {
-				t.Fatalf("Read() returned nil Passwd")
+				t.Fatal("Read() returned nil Passwd")
 			}
 			if !reflect.DeepEqual(got.names, tt.wantNames) {
 				t.Errorf("Read() names = %+v, want %+v", got.names, tt.wantNames)

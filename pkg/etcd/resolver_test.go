@@ -177,7 +177,7 @@ func Test_UnitSimpleResolver_Build(t *testing.T) {
 				t.Fatalf("Build() error = %v", err)
 			}
 			if res == nil {
-				t.Fatalf("Build() returned nil resolver")
+				t.Fatal("Build() returned nil resolver")
 			}
 
 			if tt.withClientConn {

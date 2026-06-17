@@ -27,10 +27,10 @@ func Test_storageKey(t *testing.T) {
 				t.Errorf("storageKey() = %q, want prefix /bootstrap/", got)
 			}
 			if got != storageKey(tt.passphrase) {
-				t.Errorf("storageKey() should be deterministic for same passphrase")
+				t.Error("storageKey() should be deterministic for same passphrase")
 			}
 			if got == storageKey(tt.other) {
-				t.Errorf("storageKey() should differ for different passphrases")
+				t.Error("storageKey() should differ for different passphrases")
 			}
 		})
 	}
@@ -80,7 +80,7 @@ func Test_encrypt(t *testing.T) {
 				t.Fatalf("second encrypt() error = %v", err)
 			}
 			if bytes.Equal(ciphertext, second) {
-				t.Fatalf("encrypt() should produce unique ciphertext due to random salt/nonce")
+				t.Fatal("encrypt() should produce unique ciphertext due to random salt/nonce")
 			}
 		})
 	}
