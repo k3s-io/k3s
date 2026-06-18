@@ -851,8 +851,6 @@ github.com/k3s-io/api v0.1.4 h1:mnu1pgtEEwplvDHgjeyekbC96wykUWsq0E5ouJoRkM4=
 github.com/k3s-io/api v0.1.4/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
 github.com/k3s-io/cadvisor v0.52.1 h1:KeeADD5no2159ICWnTRTJfExlNbVfhqbo9ohixQ74GM=
 github.com/k3s-io/cadvisor v0.52.1/go.mod h1:OAhPcx1nOm5YwMh/JhpUOMKyv1YKLRtS9KgzWPndHmA=
-github.com/k3s-io/containerd/v2 v2.2.4-k3s2 h1:zf9mw0LbvvUQiR/AH7/D85WLdWLuv1Fy3l7ANcGwhgU=
-github.com/k3s-io/containerd/v2 v2.2.4-k3s2/go.mod h1:5MNZ8eoMI+6XjSuFm5WlRJJcrxEb3UhG3Bb10N96IqE=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s3 h1:fZTPlYTPZaUwh6Z8RTN6jYFjC3gvyW/O4VFKhG03tf4=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s3/go.mod h1:t9ANNTpfHRdsVoKuwd+/INWoGgjQQRHiBENk4yfumSc=
 github.com/k3s-io/cri-tools v1.35.0-k3s2 h1:2NkF77ovhrs9mLBnxwM9pGB5qLzrPvVM23J6buZi82g=
@@ -1421,6 +1419,8 @@ github.com/vishvananda/netlink v1.3.1 h1:3AEMt62VKqz90r0tmNhog0r/PpWKmrEShJU0wJW
 github.com/vishvananda/netlink v1.3.1/go.mod h1:ARtKouGSTGchR8aMwmkzC0qiNPrrWO5JS/XMVl45+b4=
 github.com/vishvananda/netns v0.0.5 h1:DfiHV+j8bA32MFM7bfEunvT8IAqQ/NzSJHtcmW5zdEY=
 github.com/vishvananda/netns v0.0.5/go.mod h1:SpkAiCQRtJ6TvvxPnOSyH3BMl6unz3xZlaprSwhNNJM=
+github.com/vitorsavian/containerd/v2 v2.2.4-k3s3 h1:UGiSSByp3Zu3tOD+WHd40jo6R5YaU+FGiHIUcp4v9Oc=
+github.com/vitorsavian/containerd/v2 v2.2.4-k3s3/go.mod h1:5y5/OfxQUfpP/ilnf/w51lR89yoHBt370r0bH0M0UuI=
 github.com/warpfork/go-wish v0.0.0-20220906213052-39a1cc7a02d0 h1:GDDkbFiaK8jsSDJfjId/PEGEShv6ugrt4kYsC5UIDaQ=
 github.com/warpfork/go-wish v0.0.0-20220906213052-39a1cc7a02d0/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
