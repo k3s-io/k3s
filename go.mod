@@ -8,7 +8,7 @@ replace (
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.3-k3s1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.10.0
-	github.com/containerd/containerd/v2 => github.com/vitorsavian/containerd/v2 v2.2.4-k3s3
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.2.5-k3s1
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker => github.com/docker/docker v25.0.15-0.20260325154711-d2dbc0547253+incompatible
@@ -147,11 +147,11 @@ require (
 	go.etcd.io/etcd/server/v3 v3.6.12
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.51.0
-	golang.org/x/mod v0.35.0
+	golang.org/x/crypto v0.53.0
+	golang.org/x/mod v0.36.0
 	golang.org/x/net v0.55.0
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.45.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.6
@@ -505,11 +505,11 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
-	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
+	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.44.0 // indirect
+	golang.org/x/tools v0.45.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
