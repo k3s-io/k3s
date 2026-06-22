@@ -26,6 +26,9 @@ func RunCommand(cmd string) (string, error) {
 	if kc, ok := os.LookupEnv("DOCKER_KUBECONFIG"); ok {
 		c.Env = append(os.Environ(), "KUBECONFIG="+kc)
 	}
+	if _, ok := os.LookupEnv("E2E_GOCOVER"); ok && strings.HasPrefix(cmd, "kubectl") {
+		c.Env = append(c.Env, "GOCOVERDIR=/tmp/k3scov")
+	}
 	out, err := c.CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
