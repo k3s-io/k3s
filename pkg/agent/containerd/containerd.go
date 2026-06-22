@@ -161,49 +161,49 @@ func PreloadImages(ctx context.Context, cfg *config.Node) error {
 // preloadFile handles loading images from a single tarball or pre-pull image list.
 // This is in its own function so that we can ensure that the various readers are properly closed, as some
 // decompressing readers need to be explicitly closed and others do not.
-func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Client, imageClient runtimeapi.ImageServiceClient, filePath string) error {
+func preloadFile(ctx context.Context, cfg *config.Node, client *containerd.Client, imageClient runtimeapi.ImageServiceClient, filePath string) ([]images.Image, error) {
 	var images []images.Image
 	if util2.HasSuffixI(filePath, ".txt") {
 		file, err := os.Open(filePath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer file.Close()
 		logrus.Infof("Pulling images from %s", filePath)
 		images, err = prePullImages(ctx, client, imageClient, file)
 		if err != nil {
-			return errors.WithMessage(err, "failed to pull images from "+filePath)
+			return nil, errors.WithMessage(err, "failed to pull images from "+filePath)
 		}
 	} else {
 		opener, err := tarfile.GetOpener(filePath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		imageReader, err := opener()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer imageReader.Close()
 
 		logrus.Infof("Importing images from %s", filePath)
 		images, err = client.Import(ctx, imageReader, containerd.WithAllPlatforms(true), containerd.WithSkipMissing())
 		if err != nil {
-			return errors.WithMessage(err, "failed to import images from "+filePath)
+			return nil, errors.WithMessage(err, "failed to import images from "+filePath)
 		}
 	}
 
 	if err := labelImages(ctx, client, images, filepath.Base(filePath)); err != nil {
-		return errors.WithMessage(err, "failed to add pinned label to images")
+		return nil, errors.WithMessage(err, "failed to add pinned label to images")
 	}
 	if err := retagImages(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
-		return errors.WithMessage(err, "failed to retag images")
+		return nil, errors.WithMessage(err, "failed to retag images")
 	}
 	if err := labelContent(ctx, client, images, cfg.AgentConfig.AirgapExtraRegistry); err != nil {
-		return errors.WithMessage(err, "failed to add source labels to layer content")
+		return nil, errors.WithMessage(err, "failed to add source labels to layer content")
 	}
 
-	return nil
+	return images, nil
 }
 
 // clearLeases deletes any leases left by previous versions of k3s.
@@ -240,6 +240,19 @@ func clearLabels(ctx context.Context, client *containerd.Client) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// labelImagesByName adds labels to the listed image names, indicating that they
+// are pinned by k3s and should not be pruned.
+func labelImagesByName(ctx context.Context, client *containerd.Client, names []string, fileName string) error {
+	imageService := client.ImageService()
+	images := []images.Image{}
+	for _, name := range names {
+		if image, err := imageService.Get(ctx, name); err == nil {
+			images = append(images, image)
+		}
+	}
+	return labelImages(ctx, client, images, fileName)
 }
 
 // labelImages adds labels to the listed images, indicating that they

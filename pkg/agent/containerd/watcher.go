@@ -24,6 +24,7 @@ import (
 type fileInfo struct {
 	Size    int64       `json:"size"`
 	ModTime metav1.Time `json:"modTime"`
+	Images  []string    `json:"images"`
 	seen    bool        // field is not serialized, and can be used to track if a file has been seen since the last restart
 }
 
@@ -161,17 +162,31 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 		return nil
 	}
 
-	if lastFileState := w.filesCache[key]; lastFileState == nil || (file.Size() != lastFileState.Size && file.ModTime().After(lastFileState.ModTime.Time)) {
+	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || (file.Size() != lastFileState.Size && file.ModTime().After(lastFileState.ModTime.Time)) {
 		start := time.Now()
-		if err := preloadFile(ctx, w.cfg, client, imageClient, key); err != nil {
+		images, err := preloadFile(ctx, w.cfg, client, imageClient, key)
+		if err != nil {
 			return errors.WithMessagef(err, "failed to import %s", key)
 		}
-		logrus.Infof("Imported images from %s in %s", key, time.Since(start))
-		w.filesCache[key] = &fileInfo{Size: file.Size(), ModTime: metav1.NewTime(file.ModTime()), seen: true}
+		logrus.Infof("Imported %d images from %s in %s", len(images), key, time.Since(start))
+		imageNames := make([]string, len(images))
+		for i, image := range images {
+			imageNames[i] = image.Name
+		}
+		w.filesCache[key] = &fileInfo{
+			Size:    file.Size(),
+			ModTime: metav1.NewTime(file.ModTime()),
+			Images:  imageNames,
+			seen:    true,
+		}
 		defer w.syncCache()
 	} else if lastFileState != nil && !lastFileState.seen {
+		// first time seeing this file this start, re-add pinned label since K3s clears all pins on startup
+		if err := labelImagesByName(ctx, client, lastFileState.Images, filepath.Base(key)); err != nil {
+			return errors.WithMessagef(err, "failed to add pinned label to cached images from %s", key)
+		}
 		lastFileState.seen = true
-		// no need to sync as the field is not serialized
+		// no need to sync as seen field is not serialized
 	}
 
 	return nil
