@@ -176,7 +176,7 @@ func scheduler(ctx context.Context, cfg *config.Control) error {
 		argsMap["vmodule"] = cfg.VModule
 	}
 
-	args := util.GetArgs(argsMap, cfg.ExtraSchedulerAPIArgs)
+	args := util.GetArgs(argsMap, cfg.ExtraSchedulerArgs)
 
 	nodeReady := make(chan struct{})
 
