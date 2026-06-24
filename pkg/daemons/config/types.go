@@ -225,7 +225,8 @@ type Control struct {
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
 	ExtraEtcdArgs            []string
-	ExtraSchedulerAPIArgs    []string
+	ExtraSchedulerArgs       []string
+	ExtraHelmArgs            []string
 	NoLeaderElect            bool
 	JoinURL                  string
 	IPSECPSK                 string
