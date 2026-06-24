@@ -1142,8 +1142,8 @@ github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/api v0.1.4 h1:mnu1pgtEEwplvDHgjeyekbC96wykUWsq0E5ouJoRkM4=
 github.com/k3s-io/api v0.1.4/go.mod h1:9aQAaTKBFWO+BpGrMFJk9uZaUhZRrL9aahobcOQQm64=
-github.com/k3s-io/containerd/v2 v2.3.2-k3s1 h1:zBHGIwSFoBBC0468/ZR8WLL+hcOBo1b40Xf+QhlIduY=
-github.com/k3s-io/containerd/v2 v2.3.2-k3s1/go.mod h1:eCbIMwvMpF0Eri7vyKU08kjuKw5NDG7gaJtOgMCNZmY=
+github.com/k3s-io/containerd/v2 v2.3.2-k3s2 h1:d+bZCem1meQ6dhRmSmm/QCvSsCRiwGz3T9Z87ds3Fck=
+github.com/k3s-io/containerd/v2 v2.3.2-k3s2/go.mod h1:w0vk2xH0tWd9lLZyBeYQdbs8ITcWqAIVQcraVInLarM=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s5 h1:LymM6LDgeqeEhxAdmVYuqucatFEOiWHqsp8hXAaJODc=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s5/go.mod h1:S6JjJaIsB/SXLnBk5qhQxhNMCIbYWGmirCGdarULFWM=
 github.com/k3s-io/cri-tools v1.36.0-k3s1 h1:k2VEj/iQsOP8iJ7r8XA+ETPl1OgY1/q1QCIEcFbwfec=
@@ -1192,8 +1192,8 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.36.2-k3s1 h
 github.com/k3s-io/kubernetes/staging/src/k8s.io/component-helpers v1.36.2-k3s1/go.mod h1:XxrmAwgGMHXSL2fOBiA+PynyL7PHQKlP5znEFSMkYmY=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.36.2-k3s1 h1:DyrMLpSlUg7pxSiy5hXpgGkouFfXVywVllYajYeFh8g=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/controller-manager v1.36.2-k3s1/go.mod h1:qtrea9ja8YsgnVO5P6VnULVbggUpLZ6KMTvD2Ap02J8=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.36.2-k3s1 h1:1r7COL5hOissE4/T91thMMlTnDFYUKUJiKAA1/Br6Ok=
-github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.36.2-k3s1/go.mod h1:1gMX7udEAiRCWGS4uxscdbxq6vufwhZt38Ri+XH6P00=
+github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.36.2-k3s2 h1:YYohH3LUebcOeSI6DZdAPBrElFlWkBC/LZ8WoKHEvCQ=
+github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-api v1.36.2-k3s2/go.mod h1:1gMX7udEAiRCWGS4uxscdbxq6vufwhZt38Ri+XH6P00=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-client v1.36.2-k3s1 h1:Rz6BLjiHQMU0cRkQyi8/y69XUv/blyVxwjK4G76OSRs=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-client v1.36.2-k3s1/go.mod h1:hIbYArKyFbf0UZzFXFYD+aQYmMylp/e4oMT8+LhBdzI=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/cri-streaming v1.36.2-k3s1 h1:6l4vLHNf4ewnPTDL5+pMxBEShKcUyfO6IhAzZFZCkfE=
