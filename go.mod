@@ -109,7 +109,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
-	github.com/k3s-io/helm-controller v0.17.1
+	github.com/k3s-io/helm-controller v0.16.22
 	github.com/k3s-io/kine v0.16.1
 	github.com/klauspost/compress v1.18.6
 	github.com/libp2p/go-libp2p v0.48.0
@@ -173,8 +173,8 @@ require (
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.33.13
 	k8s.io/kubectl v0.33.13
-	k8s.io/kubelet v0.34.5
-	k8s.io/kubernetes v1.34.5
+	k8s.io/kubelet v0.35.1
+	k8s.io/kubernetes v1.35.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/cri-tools v0.33.0
 	sigs.k8s.io/yaml v1.6.0
@@ -527,7 +527,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/controller-manager v0.34.5 // indirect
+	k8s.io/controller-manager v0.35.1 // indirect
 	k8s.io/csi-translation-lib v0.33.13 // indirect
 	k8s.io/dynamic-resource-allocation v0.33.13 // indirect
 	k8s.io/endpointslice v0.33.13 // indirect

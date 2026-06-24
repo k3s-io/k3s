@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	helmchart "github.com/k3s-io/helm-controller/pkg/controllers/chart"
-	helmcommon "github.com/k3s-io/helm-controller/pkg/controllers/common"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -29,8 +27,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/k3s-io/k3s/pkg/util/home"
+	"github.com/k3s-io/k3s/pkg/util/logger"
 	"github.com/k3s-io/k3s/pkg/util/permissions"
 	"github.com/k3s-io/k3s/pkg/version"
+
+	helmchart "github.com/k3s-io/helm-controller/pkg/controllers/chart"
+	helmcommon "github.com/k3s-io/helm-controller/pkg/controllers/common"
 	"github.com/rancher/wrangler/v3/pkg/apply"
 	v1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/leader"
@@ -173,7 +175,7 @@ func runControllers(ctx context.Context, config *Config) error {
 	return nil
 }
 
-// apiServerControllers starts the core controllers, as well as the leader-elected controllers
+// apiserverControllers starts the core controllers, as well as the leader-elected controllers
 // that should only run on a control-plane node.
 func apiserverControllers(ctx context.Context, sc *Context, config *Config) {
 	if err := coreControllers(ctx, sc, config); err != nil {
@@ -218,14 +220,6 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 		return err
 	}
 
-	// Apply SystemDefaultRegistry setting to Helm before starting controllers.
-	// Internally helm-controller defaults to latest tag, but we inject a immutable version at build time.
-	if config.ControlConfig.HelmJobImage != "" {
-		helmchart.DefaultJobImage = config.ControlConfig.HelmJobImage
-	} else if config.ControlConfig.SystemDefaultRegistry != "" {
-		helmchart.DefaultJobImage = config.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
-	}
-
 	if sc.Helm != nil {
 		restConfig, err := util.GetRESTConfig(config.ControlConfig.Runtime.KubeConfigSupervisor)
 		if err != nil {
@@ -238,6 +232,7 @@ func coreControllers(ctx context.Context, sc *Context, config *Config) error {
 			return err
 		}
 
+		ctx := logger.NewContext(ctx, "helm-controller")
 		apply := apply.New(k8s, apply.NewClientFactory(restConfig)).WithDynamicLookup().WithSetOwnerReference(false, false)
 		helm := sc.Helm.WithAgent(restConfig.UserAgent)
 		batch := sc.Batch.WithAgent(restConfig.UserAgent)
