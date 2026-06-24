@@ -54,6 +54,7 @@ type Server struct {
 	ExtraSchedulerArgs       cli.StringSlice
 	ExtraControllerArgs      cli.StringSlice
 	ExtraCloudControllerArgs cli.StringSlice
+	ExtraHelmArgs            cli.StringSlice
 	Rootless                 bool
 	DatastoreEndpoint        string
 	DatastoreCAFile          string
@@ -178,6 +179,11 @@ var (
 		Name:        "kube-controller-manager-arg",
 		Usage:       "(flags) Customized flag for kube-controller-manager process",
 		Destination: &ServerConfig.ExtraControllerArgs,
+	}
+	ExtraHelmArgs = &cli.StringSliceFlag{
+		Name:        "helm-controller-arg",
+		Usage:       "(flags) Customized flag for helm-controller process",
+		Destination: &ServerConfig.ExtraHelmArgs,
 	}
 )
 
@@ -342,6 +348,7 @@ var ServerFlags = []cli.Flag{
 	ExtraEtcdArgs,
 	ExtraControllerArgs,
 	ExtraSchedulerArgs,
+	ExtraHelmArgs,
 	&cli.StringSliceFlag{
 		Name:        "kube-cloud-controller-manager-arg",
 		Usage:       "(flags) Customized flag for kube-cloud-controller-manager process",
