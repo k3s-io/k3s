@@ -298,7 +298,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "helm-job-image",
-		Usage:       "(helm) Default image to use for helm jobs",
+		Usage:       "(helm) (deprecated) Default image to use for helm jobs. Use --helm-controller-arg=default-job-image instead",
 		Destination: &ServerConfig.HelmJobImage,
 	},
 	ServerToken,
