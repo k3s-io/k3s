@@ -5,7 +5,7 @@ set -e
 . ./scripts/version.sh
 
 GO=${GO-go}
-ARCH=${ARCH:-$("${GO}" env GOARCH)}
+. ./scripts/platform.sh
 
 if [ "${DEBUG}" = 1 ]; then
     set -x
@@ -15,15 +15,6 @@ fi
 # "64M ought to be enough for anybody"
 MAX_BINARY_MB=80
 MAX_BINARY_SIZE=$((MAX_BINARY_MB * 1024 * 1024))
-BIN_SUFFIX="-${ARCH}"
-if [ ${ARCH} = amd64 ]; then
-    BIN_SUFFIX=""
-elif [ ${ARCH} = arm ]; then
-    BIN_SUFFIX="-armhf"
-elif [ ${ARCH} = s390x ]; then
-    BIN_SUFFIX="-s390x"
-fi
-
 CMD_NAME="dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}"
 SIZE=$(stat -c '%s' ${CMD_NAME})
 
