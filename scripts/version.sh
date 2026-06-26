@@ -1,9 +1,7 @@
 #!/bin/bash
 
 GO=${GO-go}
-ARCH=${ARCH:-$("${GO}" env GOARCH)}
-OS=${OS:-$("${GO}" env GOOS)}
-SUFFIX="-${ARCH}"
+. ./scripts/platform.sh
 
 if [ -z "$NO_DAPPER" ]; then
     . ./scripts/git_version.sh
@@ -95,8 +93,3 @@ else
     VERSION="$VERSION_K8S+k3s-${COMMIT:0:8}$DIRTY"
 fi
 VERSION_TAG="$(sed -e 's/+/-/g' <<< "$VERSION")"
-
-BINARY_POSTFIX=
-if [ ${OS} = windows ]; then
-    BINARY_POSTFIX=.exe
-fi
