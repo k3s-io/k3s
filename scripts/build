@@ -106,13 +106,10 @@ fi
 
 mkdir -p bin
 
-if [ ${ARCH} = armv7l ] || [ ${ARCH} = arm ]; then
-    export GOARCH="arm"
-    export GOARM="7"
-fi
-
-if [ ${ARCH} = s390x ]; then
-    export GOARCH="s390x"
+export GOOS=${GOOS:-${OS}}
+export GOARCH=${GOARCH:-${ARCH}}
+if [ ${ARCH} = arm ]; then
+  export GOARM=${GOARM:-7}
 fi
 
 k3s_binaries=(
