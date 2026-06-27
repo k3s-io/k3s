@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	cloudprovider "k8s.io/cloud-provider"
 	ccmapp "k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
@@ -240,6 +241,13 @@ func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, 
 }
 
 func (e *Embedded) APIServer(ctx context.Context, args []string) error {
+	// set feature-gates now, to avoid race conditions between components started in parallel
+	if featureGates := util.ArgValue("feature-gates", args); featureGates != "" {
+		if err := utilfeature.DefaultMutableFeatureGate.Set(featureGates); err != nil {
+			logrus.Warnf("Failed to set feature-gates %s: %v", featureGates, err)
+		}
+	}
+
 	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
