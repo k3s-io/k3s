@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	cloudprovider "k8s.io/cloud-provider"
 	ccmapp "k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
@@ -240,6 +241,20 @@ func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, 
 }
 
 func (e *Embedded) APIServer(ctx context.Context, args []string) error {
+	// Pre-apply feature gates to the global default before starting the API
+	// server goroutine. In the embedded executor all Kubernetes components
+	// share a single utilfeature.DefaultFeatureGate. The API server's REST
+	// storage registration reads the global gate during startup, but flag
+	// parsing (which normally sets the gate) only happens inside
+	// command.ExecuteContext. Without this early application, there is a
+	// race: REST storage may read the gate before flags are parsed, seeing
+	// alpha-default values instead of the user-configured ones.
+	if featureGates := util.ArgValue("feature-gates", args); featureGates != "" {
+		if err := utilfeature.DefaultMutableFeatureGate.Set(featureGates); err != nil {
+			logrus.Warnf("Failed to pre-apply feature gates: %v", err)
+		}
+	}
+
 	command := apiapp.NewAPIServerCommand(ctx.Done())
 	command.SetArgs(args)
 
