@@ -43,7 +43,7 @@ jobs:
       contents: read
       packages: write
     with:
-      arch: arm64
+      platforms: linux/arm64
       upload-image: true
   e2e:
     name: "E2E Tests"
