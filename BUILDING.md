@@ -8,7 +8,13 @@ Before getting started, bear in mind that this repository includes all of Kubern
 git clone --depth 1 https://github.com/k3s-io/k3s.git
 ```
 
-To build the full release binary, you may now run `make`, which will create `./dist/artifacts/k3s`.
+To build the full release binary for your local platform, you may now run `make binary`, which will create `./dist/artifacts/k3s`.
+
+To build the full release platform set with Docker Buildx, run:
+
+```bash
+make multiarch-binary
+```
 
 To build the binaries using `make` without running linting (i.e.: if you have uncommitted changes):
 
