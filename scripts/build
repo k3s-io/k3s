@@ -81,6 +81,12 @@ case ${OS} in
       TAGS="$TAGS selinux"
       RUNC_TAGS="$RUNC_TAGS selinux"
     fi
+
+    # runc's vendored libseccomp-golang can fail on riscv64 with duplicate
+    # C_ARCH_* switch cases when the seccomp build tag is enabled.
+    if [ "${ARCH}" = "riscv64" ]; then
+      RUNC_TAGS="${RUNC_TAGS/seccomp/}"
+    fi
     ;;
   windows)
     TAGS="$TAGS no_cri_dockerd"
@@ -194,11 +200,16 @@ case ${OS} in
     echo Building runc
     pushd ./build/src/github.com/opencontainers/runc
     rm -f runc
-    make EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    make GO="${GO}" EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
     popd
     cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
     ;;
   windows)
+    if [ "${ARCH}" != "amd64" ]; then
+      echo "[ERROR] unsupported windows architecture: ${ARCH}"
+      exit 1
+    fi
+
     echo Building containerd-shim-runhcs-v1
     pushd ./build/src/github.com/microsoft/hcsshim
     TAGS="${TAGS/netcgo/netgo}"

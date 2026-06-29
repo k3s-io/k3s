@@ -55,6 +55,20 @@ binary:
 		--build-arg="DEBUG=$(DEBUG)" \
 		-f Dockerfile --target=result --output=. .
 
+.PHONY: multiarch-binary
+multiarch-binary:
+	@echo "INFO: Building K3s binaries and assets for all release platforms..."
+	. ./scripts/git_version.sh && \
+	DOCKER_BUILDKIT=1 docker buildx build \
+		--platform linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64,windows/amd64 \
+		--build-arg "GIT_TAG=$$GIT_TAG" \
+		--build-arg "TREE_STATE=$$TREE_STATE" \
+		--build-arg "COMMIT=$$COMMIT" \
+		--build-arg "DIRTY=$$DIRTY" \
+		--build-arg="GOCOVER=$(GOCOVER)" \
+		--build-arg="DEBUG=$(DEBUG)" \
+		-f Dockerfile --target=multiarch-result --output type=local,dest=.,platform-split=false .
+
 .PHONY: image
 image: binary
 	@echo "INFO: Building K3s image..."
