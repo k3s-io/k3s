@@ -936,8 +936,8 @@ github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.33.13-k3s1 h1:cdC
 github.com/k3s-io/kubernetes/staging/src/k8s.io/mount-utils v1.33.13-k3s1/go.mod h1:+AWFtgfQsRNlGrrBm2bFruSB/0pQTB28yLymNf7JRNM=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.33.13-k3s1 h1:jntY19YxBJviEpDKuQFWICLbMC0utq5g4izyeb0xmAY=
 github.com/k3s-io/kubernetes/staging/src/k8s.io/pod-security-admission v1.33.13-k3s1/go.mod h1:3ev29dxpASvWm3f3HZqxff2ZyD5J/AR/tLGJDQn2E84=
-github.com/k3s-io/spegel v0.7.1-k3s1 h1:yuZDh77+YQNLCAJS0uKwQtiUwm7LIN2co3dVdWVWDco=
-github.com/k3s-io/spegel v0.7.1-k3s1/go.mod h1:DLw832twvYHLyR1Aa+qIcO63ERZoNUDX5WJ4dZ1kCTg=
+github.com/k3s-io/spegel v0.7.2-k3s1 h1:KsYrhHgrCYdk5EN8KexgO5VzYkUXiWzm4ZgxDB5hOIY=
+github.com/k3s-io/spegel v0.7.2-k3s1/go.mod h1:K6K8/o/FJNtQ7Qm2oyO6oJGAQEsEp1EXfTg0D7ERYMY=
 github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwSWoI=
 github.com/karrick/godirwalk v1.17.0/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
@@ -1285,10 +1285,12 @@ github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoG
 github.com/prometheus/procfs v0.16.1/go.mod h1:teAbpZRB1iIAJYREa1LsoWUXykVXA1KlTmWl8x/U+Is=
 github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEycfc=
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
+github.com/quic-go/go-ossfuzz-seeds v0.1.0 h1:APacT+iIaNF6fd8AGEiN3bT/Jtkd2jz4v4TzM7MFjy0=
+github.com/quic-go/go-ossfuzz-seeds v0.1.0/go.mod h1:3IOHRbJIc+L6YKMwfDtJAM9Vj9k0YY4muhuyUYk5tbk=
 github.com/quic-go/qpack v0.6.0 h1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=
 github.com/quic-go/qpack v0.6.0/go.mod h1:lUpLKChi8njB4ty2bFLX2x4gzDqXwUpaO1DP9qMDZII=
-github.com/quic-go/quic-go v0.59.0 h1:OLJkp1Mlm/aS7dpKgTc6cnpynnD2Xg7C1pwL6vy/SAw=
-github.com/quic-go/quic-go v0.59.0/go.mod h1:upnsH4Ju1YkqpLXC305eW3yDZ4NfnNbmQRCMWS58IKU=
+github.com/quic-go/quic-go v0.60.0 h1:xcQioE8OM66UQLeUMHltK1CCcOu3JbVB4JAQdDQSB+0=
+github.com/quic-go/quic-go v0.60.0/go.mod h1:wpKpjmPpftl30sL6pFh7REVpjbcCVy4zt2vDyK1TuJk=
 github.com/quic-go/webtransport-go v0.10.0 h1:LqXXPOXuETY5Xe8ITdGisBzTYmUOy5eSj+9n4hLTjHI=
 github.com/quic-go/webtransport-go v0.10.0/go.mod h1:LeGIXr5BQKE3UsynwVBeQrU1TPrbh73MGoC6jd+V7ow=
 github.com/rancher/dynamiclistener v0.7.5 h1:C8Aqefrwo18Z6//CNXt7Wf2gwajMOpVmWEcSU/dJRE8=
