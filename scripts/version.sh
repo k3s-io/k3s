@@ -3,9 +3,7 @@
 GO=${GO-go}
 . ./scripts/platform.sh
 
-if [ -z "$NO_DAPPER" ]; then
-    . ./scripts/git_version.sh
-fi
+. ./scripts/git_version.sh
 
 get-module-version(){
   go list -mod=readonly -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $1

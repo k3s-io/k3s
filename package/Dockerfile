@@ -3,9 +3,9 @@ RUN apk add -U ca-certificates zstd tzdata
 ARG TARGETARCH
 COPY build/out/data-linux*.tar.zst /
 RUN SOURCE_TAR_ZST="/data-linux-${TARGETARCH}.tar.zst" && \
-    # If the arch-specific file doesn't exist, try the default one (used with Dapper or single-arch)
     if [ ! -f "${SOURCE_TAR_ZST}" ]; then \
-       SOURCE_TAR_ZST="/data-linux.tar.zst" ; \
+         echo "Missing ${SOURCE_TAR_ZST}" >&2; \
+         exit 1; \
     fi && \
     \
     mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware /image/var/lib/rancher/k3s/data/cni && \
