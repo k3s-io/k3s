@@ -55,11 +55,12 @@ mkdir -p ./etc
 )
 
 # Ensure the embedded tarball is reproducible: sort file order and clamp timestamps
+DATA_TAR_ZST=./build/out/data-${OS}-${ARCH}.tar.zst
 tar --sort=name --mtime=@0 -cvf ./build/out/data-${OS}.tar ./bin ./etc
-zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data-${OS}.tar -o ./build/out/data-${OS}.tar.zst
-HASH=$(sha256sum ./build/out/data-${OS}.tar.zst | awk '{print $1}')
+zstd --no-progress -T0 -16 -f --long=25 --rm ./build/out/data-${OS}.tar -o ${DATA_TAR_ZST}
+HASH=$(sha256sum ${DATA_TAR_ZST} | awk '{print $1}')
 
-cp ./build/out/data-${OS}.tar.zst ./build/data/${HASH}.tar.zst
+cp ${DATA_TAR_ZST} ./build/data/${HASH}.tar.zst
 
 CMD_NAME=dist/artifacts/k3s${BIN_SUFFIX}${BINARY_POSTFIX}
 
