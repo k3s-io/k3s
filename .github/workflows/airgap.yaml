@@ -7,6 +7,9 @@ on:
       - ".github/workflows/airgap.yaml"
   workflow_call: {}
 
+permissions:
+  contents: read
+
 jobs:
   build-airgap:
     name: Export Images (${{ matrix.arch }})
