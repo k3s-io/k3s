@@ -4,6 +4,9 @@ on:
     paths:
       - ".github/workflows/*"
 
+permissions:
+  contents: read
+  
 jobs:
   acitonlint:
     name: Lint GitHub Workflows
