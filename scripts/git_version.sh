@@ -1,8 +1,9 @@
 #!/bin/bash
 
-GIT_TAG=$TAG
-TREE_STATE=clean
-COMMIT=$GITHUB_SHA
+GIT_TAG=${GIT_TAG:-$TAG}
+TREE_STATE=${TREE_STATE:-clean}
+COMMIT=${COMMIT:-$GITHUB_SHA}
+DIRTY=${DIRTY:-}
 
 if [ -d .git ]; then
     if [ -z "$GIT_TAG" ]; then
