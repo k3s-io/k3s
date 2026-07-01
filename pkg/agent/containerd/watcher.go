@@ -162,7 +162,7 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 		return nil
 	}
 
-	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || (file.Size() != lastFileState.Size || file.ModTime().After(lastFileState.ModTime.Time)) {
+	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || file.Size() != lastFileState.Size || file.ModTime().After(lastFileState.ModTime.Time) {
 		start := time.Now()
 		images, err := preloadFile(ctx, w.cfg, client, imageClient, key)
 		if err != nil {
