@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/k3s-io/k3s/pkg/cluster/dynacert"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
@@ -149,7 +150,11 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 // tlsStorage creates an in-memory cache for dynamiclistener's certificate, backed by a file on disk
 // and the Kubernetes datastore.
 func tlsStorage(ctx context.Context, dataDir string, runtime *config.ControlRuntime) dynamiclistener.TLSStorage {
-	fileStorage := file.New(filepath.Join(dataDir, "tls/dynamic-cert.json"))
+	certPath := filepath.Join(dataDir, "tls/dynamic-cert.json")
+	fileStorage := &dynacert.RecoveringStorage{
+		Path:  certPath,
+		Inner: file.New(certPath),
+	}
 	cache := memory.NewBacked(fileStorage)
 	coreGetter := func() *core.Factory {
 		if coreFactory, ok := runtime.Core.(*core.Factory); ok {
