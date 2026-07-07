@@ -30,7 +30,7 @@ const (
 func getNodeArgs() (string, error) {
 	nodeArgsList := []string{}
 	for _, arg := range configfilearg.MustParse(os.Args[1:]) {
-		if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
+		if strings.HasPrefix(arg, "-") && strings.Contains(arg, "=") {
 			parsedArg := strings.SplitN(arg, "=", 2)
 			nodeArgsList = append(nodeArgsList, parsedArg...)
 			continue
