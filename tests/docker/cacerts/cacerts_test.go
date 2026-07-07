@@ -42,7 +42,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 			testID = filepath.Base(config.TestDir)
 			pauseName := fmt.Sprintf("k3s-pause-%s", strings.ToLower(testID))
 			tlsMount := fmt.Sprintf("--mount type=volume,src=%s,dst=/var/lib/rancher/k3s/server/tls", pauseName)
-			cmd := fmt.Sprintf("docker run -d --name %s --hostname %s %s rancher/mirrored-pause:3.6",
+			cmd := fmt.Sprintf("docker run -d --name %s --hostname %s %s rancher/mirrored-pause:3.10",
 				pauseName, pauseName, tlsMount)
 			_, err = tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
