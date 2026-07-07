@@ -60,7 +60,7 @@ func authorizer(req *http.Request) (clientKey string, authed bool, err error) {
 var _ http.Handler = &TunnelServer{}
 
 type TunnelServer struct {
-	sync.Mutex
+	sync.RWMutex
 	cidrs  cidranger.Ranger
 	client kubernetes.Interface
 	config *config.Control
@@ -211,6 +211,7 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 
 	var nodeName string
 	var toKubelet, useTunnel bool
+	t.RLock()
 	if ip := net.ParseIP(host); ip != nil {
 		// Destination is an IP address, which could be either a pod, or node by IP.
 		// We can only use the tunnel for egress to pods if the agent supports it.
@@ -233,6 +234,7 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 		toKubelet = true
 		useTunnel = true
 	}
+	t.RUnlock()
 
 	// If connecting to something hosted by the local node, don't tunnel
 	if nodeName == t.config.ServerNodeName {
