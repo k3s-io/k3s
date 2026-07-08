@@ -211,10 +211,10 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 
 	var nodeName string
 	var toKubelet, useTunnel bool
-	t.RLock()
 	if ip := net.ParseIP(host); ip != nil {
 		// Destination is an IP address, which could be either a pod, or node by IP.
 		// We can only use the tunnel for egress to pods if the agent supports it.
+		t.RLock()
 		if nets, err := t.cidrs.ContainingNetworks(ip); err == nil && len(nets) > 0 {
 			if n, ok := nets[0].(*tunnelEntry); ok {
 				nodeName = n.nodeName
@@ -228,13 +228,13 @@ func (t *TunnelServer) dialBackend(ctx context.Context, addr string) (net.Conn, 
 				logrus.Debugf("Tunnel server egress proxy CIDR lookup returned unknown type for address %s", ip)
 			}
 		}
+		t.RUnlock()
 	} else {
 		// Destination is a node by name, it is safe to use the tunnel.
 		nodeName = host
 		toKubelet = true
 		useTunnel = true
 	}
-	t.RUnlock()
 
 	// If connecting to something hosted by the local node, don't tunnel
 	if nodeName == t.config.ServerNodeName {
