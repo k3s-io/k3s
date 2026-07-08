@@ -193,7 +193,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		dir = "."
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
+		return errors.WithMessage(err, "mkdir subnet directory")
 	}
 
 	// Preserve original file permissions if the file already exists
@@ -204,62 +204,86 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 
 	f, err := os.CreateTemp(dir, "."+name+".")
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "create temp file")
 	}
 	tempFile := f.Name()
-	cleanupNoClose := func(err error) error {
-		return errors.Join(err, os.Remove(tempFile))
-	}
-	cleanup := func(err error) error {
-		return errors.Join(err, f.Close(), os.Remove(tempFile))
-	}
+	// Remove the temp file on any early exit
+	// After a successful rename the file no longer exists so
+	// this is a harmless no-op
+	defer os.Remove(tempFile)
+	// Close the file descriptor on any early exit.
+	// On the success path the explicit Close below will run first,
+	// and double-closing a file is harmless.
+	defer f.Close()
+
 	if err := f.Chmod(perm); err != nil {
-		return cleanup(err)
+		return errors.WithMessage(err, "chmod temp file")
 	}
 
-	// Write out the first usable IP by incrementing
-	// sn.IP by one
+	// We lease a subnet for the node from the cluster state (etcd)
 	sn := bn.Lease().Subnet
+	// Increment from network address to the first usable host address
 	sn.IP++
 	if nm.IPv4Enabled() {
+		// Save the CIDR assigned to flannel
 		if _, err := fmt.Fprintf(f, "FLANNEL_NETWORK=%s\n", nw); err != nil {
-			return cleanup(err)
+			return errors.WithMessage(err, "failed to write FLANNEL_NETWORK")
 		}
+		// Save the first usable address in the node's subnet
 		if _, err := fmt.Fprintf(f, "FLANNEL_SUBNET=%s\n", sn); err != nil {
-			return cleanup(err)
+			return errors.WithMessage(err, "failed to write FLANNEL_SUBNET")
 		}
 	}
 
 	if nwv6.String() != emptyIPv6Network {
+		// We lease a subnet for the node from the cluster state (etcd)
 		snv6 := bn.Lease().IPv6Subnet
+		// Increment from network address to the first usable host address
 		snv6.IncrementIP()
+		// Save the CIDR assigned to flannel
 		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_NETWORK=%s\n", nwv6); err != nil {
-			return cleanup(err)
+			return errors.WithMessage(err, "failed to write FLANNEL_IPV6_NETWORK")
 		}
+		// Save the first usable address in the node's subnet
 		if _, err := fmt.Fprintf(f, "FLANNEL_IPV6_SUBNET=%s\n", snv6); err != nil {
-			return cleanup(err)
+			return errors.WithMessage(err, "failed to write FLANNEL_IPV6_SUBNET")
 		}
 	}
 
+	// 1. Write
 	if _, err := fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU()); err != nil {
-		return cleanup(err)
+		return errors.WithMessage(err, "failed to write FLANNEL_MTU")
 	}
 	if _, err := fmt.Fprintf(f, "FLANNEL_IPMASQ=%v\n", ipMasq); err != nil {
-		return cleanup(err)
-	}
-	if err := f.Sync(); err != nil {
-		return cleanup(err)
-	}
-	if err := f.Close(); err != nil {
-		return cleanupNoClose(err)
+		return errors.WithMessage(err, "failed to write FLANNEL_IPMASQ")
 	}
 
-	// rename(2) the temporary file to the desired location so that it becomes
+	// 2. Fsync(file)
+	if err := f.Sync(); err != nil {
+		return errors.WithMessage(err, "failed to sync subnet file")
+	}
+
+	// 3. Close
+	if err := f.Close(); err != nil {
+		return errors.WithMessage(err, "failed to close subnet file")
+	}
+
+	// 4. Rename the temporary file to the desired location so that it becomes
 	// atomically visible with the contents (same directory keeps it on the same FS)
 	if err := os.Rename(tempFile, path); err != nil {
-		_ = os.Remove(tempFile)
-		return err
+		return errors.WithMessage(err, "failed to rename subnet file")
 	}
+
+	// 5. Fsync(directory)
+	dirFile, err := os.Open(dir)
+	if err != nil {
+		return errors.WithMessage(err, "failed to open subnet directory")
+	}
+	defer dirFile.Close()
+	if err := dirFile.Sync(); err != nil {
+		return errors.WithMessage(err, "failed to sync subnet directory")
+	}
+
 	return nil
 }
 
