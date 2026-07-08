@@ -150,6 +150,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			Runtime:               e.config.Runtime,
 			DataDir:               e.config.DataDir,
 			Datastore:             e.config.Datastore,
+			DisableAgent:          e.config.DisableAgent,
 			EtcdSnapshotCompress:  e.config.EtcdSnapshotCompress,
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
