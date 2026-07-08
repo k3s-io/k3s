@@ -166,7 +166,7 @@ func (e *etcdSnapshotHandler) onRemove(key string, esf *k3s.ETCDSnapshotFile) (*
 			return nil, errors.WithMessage(err, "failed to remove snapshot from ConfigMap")
 		}
 	}
-	e.etcd.emitEvent(esf)
+	e.etcd.snapshotEvent(esf)
 	return nil, nil
 }
 
