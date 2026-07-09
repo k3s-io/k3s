@@ -98,6 +98,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/google/cadvisor v0.56.2
 	github.com/google/go-containerregistry v0.20.2
+	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/inetaf/tcpproxy v0.0.0-20240214030015-3ce58045626c

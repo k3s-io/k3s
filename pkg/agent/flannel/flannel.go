@@ -28,6 +28,7 @@ import (
 	"github.com/flannel-io/flannel/pkg/ip"
 	"github.com/flannel-io/flannel/pkg/subnet/kube"
 	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
+	"github.com/google/renameio"
 	"github.com/joho/godotenv"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
@@ -184,11 +185,10 @@ func LookupExtInterface(iface *net.Interface, nm netMode) (*backend.ExternalInte
 }
 
 // WriteSubnetFile atomically writes the flannel subnet configuration file.
-// Uses CreateTemp to avoid issues with pre-existing temp files (stale files
-// from crashes, unexpected permissions/ownership) and to ensure clean atomic
-// rename semantics with O_EXCL guarantees.
+// Uses google/renameio for safe atomic write semantics, which handles creating
+// a temporary file, syncing, closing, renaming, and directory fsync.
 func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn backend.Network, nm netMode) error {
-	dir, name := filepath.Split(path)
+	dir, _ := filepath.Split(path)
 	if dir == "" {
 		dir = "."
 	}
@@ -202,19 +202,11 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		perm = info.Mode().Perm()
 	}
 
-	f, err := os.CreateTemp(dir, "."+name+".")
+	f, err := renameio.TempFile(dir, path)
 	if err != nil {
 		return errors.WithMessage(err, "create temp file")
 	}
-	tempFile := f.Name()
-	// Remove the temp file on any early exit
-	// After a successful rename the file no longer exists so
-	// this is a harmless no-op
-	defer os.Remove(tempFile)
-	// Close the file descriptor on any early exit.
-	// On the success path the explicit Close below will run first,
-	// and double-closing a file is harmless.
-	defer f.Close()
+	defer f.Cleanup()
 
 	if err := f.Chmod(perm); err != nil {
 		return errors.WithMessage(err, "chmod temp file")
@@ -250,7 +242,7 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		}
 	}
 
-	// 1. Write
+	// 1. write
 	if _, err := fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU()); err != nil {
 		return errors.WithMessage(err, "failed to write FLANNEL_MTU")
 	}
@@ -258,33 +250,8 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		return errors.WithMessage(err, "failed to write FLANNEL_IPMASQ")
 	}
 
-	// 2. Fsync(file)
-	if err := f.Sync(); err != nil {
-		return errors.WithMessage(err, "failed to sync subnet file")
-	}
-
-	// 3. Close
-	if err := f.Close(); err != nil {
-		return errors.WithMessage(err, "failed to close subnet file")
-	}
-
-	// 4. Rename the temporary file to the desired location so that it becomes
-	// atomically visible with the contents (same directory keeps it on the same FS)
-	if err := os.Rename(tempFile, path); err != nil {
-		return errors.WithMessage(err, "failed to rename subnet file")
-	}
-
-	// 5. Fsync(directory)
-	dirFile, err := os.Open(dir)
-	if err != nil {
-		return errors.WithMessage(err, "failed to open subnet directory")
-	}
-	defer dirFile.Close()
-	if err := dirFile.Sync(); err != nil {
-		return errors.WithMessage(err, "failed to sync subnet directory")
-	}
-
-	return nil
+	// CloseAtomicallyReplace does steps 2-5: fsync, close, rename, dir fsync.
+	return f.CloseAtomicallyReplace()
 }
 
 // ReadCIDRFromSubnetFile reads the flannel subnet file and extracts the value of IPv4 network key
