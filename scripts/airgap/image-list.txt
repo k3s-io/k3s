@@ -5,4 +5,4 @@ docker.io/rancher/mirrored-coredns-coredns:1.14.4
 docker.io/rancher/mirrored-library-busybox:1.37.0
 docker.io/rancher/mirrored-library-traefik:3.7.4
 docker.io/rancher/mirrored-metrics-server:v0.8.1
-docker.io/rancher/mirrored-pause:3.6
+docker.io/rancher/mirrored-pause:3.10.2
