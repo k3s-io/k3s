@@ -28,7 +28,7 @@ import (
 	"github.com/flannel-io/flannel/pkg/ip"
 	"github.com/flannel-io/flannel/pkg/subnet/kube"
 	"github.com/flannel-io/flannel/pkg/trafficmngr/iptables"
-	"github.com/google/renameio"
+	"github.com/google/renameio/v2"
 	"github.com/joho/godotenv"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
