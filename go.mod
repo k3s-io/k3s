@@ -125,12 +125,12 @@ require (
 	github.com/pdtpartners/nix-snapshotter v0.4.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
-	github.com/rancher/dynamiclistener v0.9.0-rc.2
+	github.com/rancher/dynamiclistener v0.9.1-0.20260710234258-e4a1908ede0d
 	github.com/rancher/lasso v0.2.9
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
 	github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d
 	github.com/rancher/wharfie v0.7.1
-	github.com/rancher/wrangler/v3 v3.7.0-rc.1
+	github.com/rancher/wrangler/v3 v3.7.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/sirupsen/logrus v1.9.4
@@ -313,6 +313,7 @@ require (
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/google/renameio/v2 v2.0.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect

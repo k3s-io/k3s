@@ -960,6 +960,8 @@ github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1/go.mod h1:kpwsk12EmLe
 github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 h1:z2ogiKUYzX5Is6zr/vP9vJGqPwcdqsWjOt+V8J7+bTc=
 github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
+github.com/google/renameio/v2 v2.0.2 h1:qKZs+tfn+arruZZhQ7TKC/ergJunuJicWS6gLDt/dGw=
+github.com/google/renameio/v2 v2.0.2/go.mod h1:OX+G6WHHpHq3NVj7cAOleLOwJfcQ1s3uUJQCrr78SWo=
 github.com/google/s2a-go v0.1.0/go.mod h1:OJpEgntRZo8ugHpF9hkoLJbS5dSI20XZeXJ9JVywLlM=
 github.com/google/s2a-go v0.1.3/go.mod h1:Ej+mSEMGRnqRzjc7VtF+jdBwYG5fuJfiZ8ELkjEwM0A=
 github.com/google/s2a-go v0.1.4/go.mod h1:Ej+mSEMGRnqRzjc7VtF+jdBwYG5fuJfiZ8ELkjEwM0A=
@@ -1619,8 +1621,8 @@ github.com/quic-go/quic-go v0.60.0 h1:xcQioE8OM66UQLeUMHltK1CCcOu3JbVB4JAQdDQSB+
 github.com/quic-go/quic-go v0.60.0/go.mod h1:wpKpjmPpftl30sL6pFh7REVpjbcCVy4zt2vDyK1TuJk=
 github.com/quic-go/webtransport-go v0.10.0 h1:LqXXPOXuETY5Xe8ITdGisBzTYmUOy5eSj+9n4hLTjHI=
 github.com/quic-go/webtransport-go v0.10.0/go.mod h1:LeGIXr5BQKE3UsynwVBeQrU1TPrbh73MGoC6jd+V7ow=
-github.com/rancher/dynamiclistener v0.9.0-rc.2 h1:TZHW8KvNMOe/LGxkBn/ZPF1pI7WLAUlTzd5Sa6Q+JaU=
-github.com/rancher/dynamiclistener v0.9.0-rc.2/go.mod h1:NvYAfFxT9+8Xwc0jBiTMu2sgXK749xOHrk+g6WWzSLs=
+github.com/rancher/dynamiclistener v0.9.1-0.20260710234258-e4a1908ede0d h1:8Xm41QfMb8KZ7GEmwytio5MCyPzlbGiDgpcZKjr2o/U=
+github.com/rancher/dynamiclistener v0.9.1-0.20260710234258-e4a1908ede0d/go.mod h1:bQ4AJIuI/ghhuo8NuO2nUAEmqEXCJLWqPymOUbipzWM=
 github.com/rancher/lasso v0.2.9 h1:5Xk9Qid+YDOLpa6s5xalcSR0cA5BMbgWcaOZ8kdNU7k=
 github.com/rancher/lasso v0.2.9/go.mod h1:PMtxoVahRQvhEAi1HVOfyLDe1CrtGwTqOtkPVjSSkns=
 github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7 h1:0Kg2SGoMeU1ll4xPi4DE0+qNHLFO/U5MwtK0WrIdK+o=
@@ -1629,8 +1631,8 @@ github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d h1:0ck
 github.com/rancher/remotedialer v0.6.0-rc.1.0.20250916111157-f160aa32568d/go.mod h1:CW6Q8F8IESN05/yl48OSwhVi54nDwVQQriV16zAiGkg=
 github.com/rancher/wharfie v0.7.1 h1:/4MPrr71I7aXESB0C5DVf7an4H1TYOYv1yx6vA6eKko=
 github.com/rancher/wharfie v0.7.1/go.mod h1:x/X8GGrrjBAdKHJuSF4ANqcljVQAhu3jBHoutVKeCE8=
-github.com/rancher/wrangler/v3 v3.7.0-rc.1 h1:qgOSzhUK2s7vMppoeZop9yTou8r+HxaXm399YwdpGw4=
-github.com/rancher/wrangler/v3 v3.7.0-rc.1/go.mod h1:+XYUarLGlHehE127p8DFrukWDuJrq4eGVkMEgydS3rs=
+github.com/rancher/wrangler/v3 v3.7.0 h1:rB6GJpnc4Kz8lWuAH3wZwQPgJqPGOu43Aih6147uZB8=
+github.com/rancher/wrangler/v3 v3.7.0/go.mod h1:kqldrBWdHR5zIipX/nr8yuZBFqFrL7GfVP1uwVJSWPQ=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
