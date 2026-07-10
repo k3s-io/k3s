@@ -242,7 +242,6 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		}
 	}
 
-	// 1. write
 	if _, err := fmt.Fprintf(f, "FLANNEL_MTU=%d\n", bn.MTU()); err != nil {
 		return errors.WithMessage(err, "failed to write FLANNEL_MTU")
 	}
@@ -250,7 +249,6 @@ func WriteSubnetFile(path string, nw ip.IP4Net, nwv6 ip.IP6Net, ipMasq bool, bn 
 		return errors.WithMessage(err, "failed to write FLANNEL_IPMASQ")
 	}
 
-	// CloseAtomicallyReplace does steps 2-5: fsync, close, rename, dir fsync.
 	return f.CloseAtomicallyReplace()
 }
 
