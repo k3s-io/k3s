@@ -34,17 +34,17 @@ jobs:
     needs: [build-amd64, build-arm]
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
+        uses: docker/setup-docker-action@6d7cfa65f60a9dda7b46e5513fa982536f3c9877 # v5
         with:
           version: type=image,tag=28
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
           set-host: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Read registry secrets (staging)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
@@ -74,7 +74,7 @@ jobs:
     
       - name: Login to DockerHub with Rancher Secrets
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_TOKEN }}
@@ -82,14 +82,14 @@ jobs:
       # For forks, setup DockerHub login with GHA secrets
       - name: Login to DockerHub with GHA Secrets
         if: github.repository_owner != 'k3s-io'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to Staging Registry
         if: github.repository_owner == 'k3s-io'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           registry: ${{ env.STAGING_REGISTRY }}
           username: ${{ env.STAGING_REGISTRY_USERNAME }}
@@ -97,14 +97,14 @@ jobs:
 
       - name: Login to Prime Registry
         if: ${{ !contains(github.ref_name, '-rc') && github.repository_owner == 'k3s-io' }}
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -138,7 +138,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/k3s
@@ -161,7 +161,7 @@ jobs:
           cp ./dist/artifacts/data-* ./build/out
 
       - name: Build and push K3s runtime image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           file: ./package/Dockerfile
@@ -185,7 +185,7 @@ jobs:
     needs: [build-amd64, build-arm, build-airgap]
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
     - name: Read Prime artifacts secrets
       uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
