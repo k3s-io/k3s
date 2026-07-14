@@ -44,12 +44,12 @@ jobs:
             /usr/share/swift
           df -khl
       - name: "Checkout"
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {fetch-depth: 1}
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: "Vagrant Cache"
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
              ~/.vagrant.d/boxes
@@ -112,7 +112,7 @@ jobs:
             /usr/share/swift
           df -khl
       - name: "Checkout"
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {fetch-depth: 1}
       - name: "Download K3s image"
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -120,7 +120,7 @@ jobs:
           name: k3s-amd64
           path: ./dist/artifacts
       - name: Set up Docker
-        uses: docker/setup-docker-action@6d7cfa65f60a9dda7b46e5513fa982536f3c9877 # v5
+        uses: docker/setup-docker-action@6d7cfa65f60a9dda7b46e5513fa982536f3c9877 # v5.3.0
         with:
           version: type=image,tag=28
           set-host: true
