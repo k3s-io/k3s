@@ -40,7 +40,7 @@ scms:
       email: '{{ .github.email }}'
       owner: '{{ .k3s.org }}'
       repository: '{{ .k3s.repo }}'
-      branch: '{{ .k3s.branch }}'
+      branch: '{{ requiredEnv .github.branch }}'
       
 actions:
     default:

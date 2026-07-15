@@ -10,7 +10,7 @@ scms:
       token: "{{ requiredEnv .github.token }}"
       owner: "{{ .k3s.org }}"
       repository: "{{ .k3s.repo }}"
-      branch: "{{ .k3s.branch }}"
+      branch: '{{ requiredEnv .github.branch }}'
       commitmessage:
         title: "Bump Klipper LB version"
   klipper-lb:
