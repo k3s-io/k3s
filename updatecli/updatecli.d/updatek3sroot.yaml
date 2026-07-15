@@ -47,7 +47,8 @@ actions:
         title: 'Bump K3s-root version to {{ source "k3sroot" }}'
         kind: github/pullrequest
         spec:
-            automerge: false
+            merge:
+                strategy: "manual"
             labels:
                 - dependencies
         scmid: default

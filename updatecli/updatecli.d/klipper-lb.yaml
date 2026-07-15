@@ -30,7 +30,8 @@ actions:
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
-      automerge: false
+      merge:
+        strategy: "manual"
       mergemethod: "squash"
       usetitleforautomerge: true
       parent: false
