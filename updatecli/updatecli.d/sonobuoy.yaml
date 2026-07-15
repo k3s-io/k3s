@@ -55,7 +55,6 @@ conditions:
     spec:
       files:
         - "Dockerfile.test"
-        - "conformance/Dockerfile"
       matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
 
 targets:
@@ -67,6 +66,5 @@ targets:
     spec:
       files:
         - "Dockerfile.test"
-        - "conformance/Dockerfile"
       matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
       replacepattern: 'ENV SONOBUOY_VERSION {{ source "sonobuoy" }}'
