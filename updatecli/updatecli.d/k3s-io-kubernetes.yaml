@@ -111,6 +111,7 @@ targets:
      name: "Bump k3s-io/kubernetes staging module versions"
      kind: "shell"
      scmid: "k3s"
+     disablesourceinput: true
      spec:
        command: 'bash {{ source "get-pwd" }}/updatecli/scripts/bump-staging-deps.sh {{ source "candidate-base-version" }}'
        environments:
