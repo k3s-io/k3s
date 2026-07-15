@@ -14,7 +14,7 @@ scms:
 
 actions:
   github:
-    title: "[{{ .github.branch }}] Bump Sonobuoy version"
+    title: "[{{ requiredEnv .github.branch }}] Bump Sonobuoy version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:

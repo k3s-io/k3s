@@ -20,7 +20,7 @@ sources:
 
 targets:
   versionfile:
-    name: "[{{ .github.branch }}] Bump to latest k3s-root version in scripts/version.sh"
+    name: "[{{ requiredEnv .github.branch }}] Bump to latest k3s-root version in scripts/version.sh"
     kind: file
     scmid: default
     sourceid: k3sroot
