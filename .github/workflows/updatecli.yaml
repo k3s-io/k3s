@@ -66,3 +66,5 @@ jobs:
           UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
           UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_BRANCH: ${{ matrix.branch }}
+          TARGET_REPO: ${{ github.repository }}
+          TARGET_ORG: ${{ github.repository_owner }}

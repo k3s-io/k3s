@@ -4,6 +4,8 @@ github:
   username: "UPDATECLI_GITHUB_ACTOR"
   token: "UPDATECLI_GITHUB_TOKEN"
   branch: "TARGET_BRANCH"
+  repo: "TARGET_REPO"
+  org: "TARGET_ORG"
 k3s:
   org: "k3s-io"
   repo: "k3s"
