@@ -50,8 +50,9 @@ sources:
     scmid: "kubernetes-fork"
     spec:
       versionfilter:
-        kind: "semver"
-        pattern: '~{{ source "current-k8s-minor" }}'
+        kind: "regex/semver"
+        regex: '^({{ source "current-k8s-minor" }}\.\d+-k3s\d+)$'
+
 
   k8s-base-version:
     name: "Strip -k3sN suffix from fork tag"
@@ -97,6 +98,17 @@ targets:
       matchpattern: '(github\.com/k3s-io/kubernetes/staging/src/\S+) v\d+\.\d+\.\d+-k3s\d+'
       replacepattern: '${1} {{ source "kubernetes-fork-tag" }}'
 
+  go-mod-k8s-replace:
+    name: "Bump k8s.io/kubernetes replace directive"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "kubernetes-fork-tag"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: 'k8s\.io/kubernetes => github\.com/k3s-io/kubernetes v\d+\.\d+\.\d+-k3s\d+'
+      replacepattern: 'k8s.io/kubernetes => github.com/k3s-io/kubernetes {{ source "kubernetes-fork-tag" }}'
+
   go-mod-k8s-require:
     name: "Bump k8s.io/kubernetes require line"
     kind: "file"
@@ -136,18 +148,6 @@ targets:
       matchpattern: 'golang:\S+-'
       replacepattern: 'golang:{{ source "go-version" }}-'
 
-  workflow-go-version:
-    name: "Bump Go version in CI workflows"
-    kind: "file"
-    scmid: "k3s"
-    sourceid: "go-version"
-    spec:
-      files:
-        - ".github/workflows/integration.yaml"
-        - ".github/workflows/unitcoverage.yaml"
-      matchpattern: 'go-version:.*$'
-      replacepattern: 'go-version: "{{ source "go-version" }}"'
-
   go-mod-tidy:
     name: "Run go mod tidy"
     kind: "shell"
@@ -157,6 +157,7 @@ targets:
       - "target#go-mod-staging-deps"
       - "target#go-mod-k8s-require"
       - "target#go-mod-k8s-client"
+      - "target#go-mod-k8s-replace"
     spec:
       command: 'go mod tidy'
       environments:
