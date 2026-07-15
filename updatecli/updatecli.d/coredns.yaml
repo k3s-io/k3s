@@ -15,7 +15,7 @@ scms:
 
 actions:
   github:
-    title: "Bump rancher/mirrored-coredns-coredns image version"
+    title: "[{{ .github.branch }}] Bump rancher/mirrored-coredns-coredns image version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:

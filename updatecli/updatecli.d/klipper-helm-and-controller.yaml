@@ -26,7 +26,7 @@ scms:
 
 actions:
   github:
-    title: "Bump Klipper Helm and Helm Controller version"
+    title: "[{{ .github.branch }}] Bump Klipper Helm and Helm Controller version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:

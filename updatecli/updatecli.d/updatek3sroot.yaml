@@ -20,7 +20,7 @@ sources:
 
 targets:
   versionfile:
-    name: "Bump to latest k3s-root version in scripts/version.sh"
+    name: "[{{ .github.branch }}] Bump to latest k3s-root version in scripts/version.sh"
     kind: file
     scmid: default
     sourceid: k3sroot
@@ -44,7 +44,7 @@ scms:
       
 actions:
     default:
-        title: 'Bump K3s-root version to {{ source "k3sroot" }}'
+        title: '[{{ .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
         kind: github/pullrequest
         spec:
             merge:
