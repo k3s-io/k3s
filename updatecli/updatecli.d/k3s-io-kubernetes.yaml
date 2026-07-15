@@ -108,15 +108,13 @@ sources:
 
 targets:
   go-mod-staging-deps:
-    name: "Bump k3s-io/kubernetes staging module versions"
-    kind: "file"
-    scmid: "k3s"
-    sourceid: "kubernetes-fork-tag"
-    spec:
-      files:
-        - "go.mod"
-      matchpattern: '(github\.com/k3s-io/kubernetes/staging/src/\S+) v\d+\.\d+\.\d+-k3s\d+'
-      replacepattern: '${1} {{ source "kubernetes-fork-tag" }}'
+     name: "Bump k3s-io/kubernetes staging module versions"
+     kind: "shell"
+     scmid: "k3s"
+     spec:
+       command: 'bash {{ source "get-pwd" }}/updatecli/scripts/bump-staging-deps.sh {{ source "candidate-base-version" }}'
+       environments:
+         - name: PATH
 
   go-mod-k8s-replace:
     name: "Bump k8s.io/kubernetes replace directive"
