@@ -44,6 +44,16 @@ sources:
     transformers:
       - find: 'v\d+\.\d+'
 
+  current-k8s-client-version:
+    name: "Get currently pinned k8s.io/client-go version from go.mod"
+    kind: "file"
+    scmid: "k3s"
+    spec:
+      file: "go.mod"
+      matchpattern: 'k8s\.io/client-go v\d+\.\d+\.\d+'
+    transformers:
+      - find: 'v\d+\.\d+\.\d+'
+
   kubernetes-fork-tag:
     name: "Get latest matching k3s-io/kubernetes tag"
     kind: "gittag"
@@ -121,18 +131,15 @@ targets:
       replacepattern: 'k8s.io/kubernetes {{ source "k8s-base-version" }}'
 
   go-mod-k8s-client:
-    # PLACEHOLDER — matchpattern is a guess, need a real go.mod line to confirm.
-    # Original sed just did a blind string swap of OldK8sClient -> NewK8sClient
-    # across ~6 lines, no anchoring pattern given.
-    name: "Bump k8s.io/client-go version"
+    name: "Bump k8s.io/* modules pinned to client-go version"
     kind: "file"
     scmid: "k3s"
     sourceid: "k8s-client-version"
     spec:
       files:
         - "go.mod"
-      matchpattern: 'k8s\.io/client-go v0\.\d+\.\d+'
-      replacepattern: 'k8s.io/client-go {{ source "k8s-client-version" }}'
+      matchpattern: '(k8s\.io/\S+) {{ source "current-k8s-client-version" }}'
+      replacepattern: '${1} {{ source "k8s-client-version" }}'
 
   dockerfile-go-version:
     # PLACEHOLDER — confirm actual Dockerfile filenames (script used Dockerfile.*)
