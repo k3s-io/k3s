@@ -44,7 +44,7 @@ scms:
       
 actions:
     default:
-        title: '[{{ .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
+        title: '[{{ requiredEnv .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
         kind: github/pullrequest
         spec:
             merge:
