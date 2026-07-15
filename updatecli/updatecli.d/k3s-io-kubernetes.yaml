@@ -22,14 +22,14 @@ scms:
       branch: "master"    # confirm this is the fork's actual default branch
 
 conditions:
-  kubernetes-fork-staging-tags-ready:
-    name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
-    kind: "shell"
-    disablesourceinput: true
-    spec:
-      command: '{{ source "get-pwd" }}/updatecli/scripts/check-staging-tags-ready.sh {{ source "kubernetes-fork-tag" }}'
-      environments:
-        - name: PATH
+   kubernetes-fork-staging-tags-ready:
+     name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
+     kind: "shell"
+     disablesourceinput: true
+     spec:
+       command: '{{ source "get-pwd" }}/updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
+       environments:
+         - name: PATH
 
 actions:
   github:
@@ -108,14 +108,14 @@ sources:
 
 targets:
   go-mod-staging-deps:
-     name: "Bump k3s-io/kubernetes staging module versions"
-     kind: "shell"
-     scmid: "k3s"
-     disablesourceinput: true
-     spec:
-       command: 'bash {{ source "get-pwd" }}/updatecli/scripts/bump-staging-deps.sh {{ source "candidate-base-version" }}'
-       environments:
-         - name: PATH
+      name: "Bump k3s-io/kubernetes staging module versions"
+      kind: "shell"
+      scmid: "k3s"
+      disablesourceinput: true
+      spec:
+        command: '{{ source "get-pwd" }}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
+        environments:
+          - name: PATH
 
   go-mod-k8s-replace:
     name: "Bump k8s.io/kubernetes replace directive"
