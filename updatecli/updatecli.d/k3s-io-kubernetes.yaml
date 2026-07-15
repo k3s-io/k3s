@@ -50,7 +50,7 @@ sources:
     scmid: "k3s"
     spec:
       file: "go.mod"
-      matchpattern: 'k8s\.io/client-go v\d+\.\d+\.\d+'
+      matchpattern: '(?m)^\s*k8s\.io/client-go v\d+\.\d+\.\d+\s*$'
     transformers:
       - find: 'v\d+\.\d+\.\d+'
 
@@ -138,7 +138,7 @@ targets:
     spec:
       files:
         - "go.mod"
-      matchpattern: '(k8s\.io/\S+) {{ source "current-k8s-client-version" }}'
+      matchpattern: '(?m)^(\s*k8s\.io/\S+) {{ source "current-k8s-client-version" }}\s*$'
       replacepattern: '${1} {{ source "k8s-client-version" }}'
 
   dockerfile-go-version:
