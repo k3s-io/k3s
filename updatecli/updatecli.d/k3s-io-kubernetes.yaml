@@ -21,6 +21,16 @@ scms:
       repository: "kubernetes"
       branch: "master"    # confirm this is the fork's actual default branch
 
+conditions:
+  kubernetes-fork-staging-tags-ready:
+    name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
+    kind: "shell"
+    disablesourceinput: true
+    spec:
+      command: '{{ source "get-pwd" }}/updatecli/scripts/check-staging-tags-ready.sh {{ source "kubernetes-fork-tag" }}'
+      environments:
+        - name: PATH
+
 actions:
   github:
     title: "[{{ requiredEnv .github.branch }}] Bump k3s-io/kubernetes references"
