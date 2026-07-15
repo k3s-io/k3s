@@ -49,7 +49,7 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Install Updatecli
-        uses: updatecli/updatecli-action@5bda7da77bf4d181bce5f807d73d832b62062acf # v3.3.0
+        uses: updatecli/updatecli-action@5dfc616e57b07d2302c3f37e5b72a4ead82dbbf8 # v3.4.0
 
       - name: Apply Updatecli
         # Never use '--debug' option, because it might leak the access tokens.
