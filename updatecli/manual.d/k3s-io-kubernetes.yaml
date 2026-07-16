@@ -19,7 +19,7 @@ scms:
       token: "{{ requiredEnv .github.token }}"
       owner: "k3s-io"
       repository: "kubernetes"
-      branch: "master"    # confirm this is the fork's actual default branch
+      branch: "master"
 
 conditions:
   kubernetes-fork-staging-tags-ready:
@@ -156,14 +156,13 @@ targets:
       replacepattern: '${1} {{ source "k8s-client-version" }}'
 
   dockerfile-go-version:
-    # PLACEHOLDER — confirm actual Dockerfile filenames (script used Dockerfile.*)
     name: "Bump Go version in Dockerfiles"
     kind: "file"
     scmid: "k3s"
     sourceid: "go-version"
     spec:
       files:
-        - "Dockerfile.local"
+        - "Dockerfile"
         - "Dockerfile.manifest"
         - "Dockerfile.test"
       matchpattern: 'golang:\S+-'
