@@ -25,11 +25,13 @@ conditions:
   kubernetes-fork-staging-tags-ready:
     name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
     kind: "shell"
+    scmid: "k3s"
     disablesourceinput: true
     spec:
-      command: './updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
+      command: 'bash ${GITHUB_WORKSPACE}/updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
       environments:
         - name: PATH
+        - name: GITHUB_WORKSPACE
 
 actions:
   github:
@@ -105,9 +107,10 @@ targets:
     scmid: "k3s"
     disablesourceinput: true
     spec:
-      command: './updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
+      command: 'bash ${GITHUB_WORKSPACE}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
       environments:
         - name: PATH
+        - name: GITHUB_WORKSPACE
 
   go-mod-go-version:
     name: "Bump Go version directive in go.mod"
