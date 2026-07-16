@@ -181,7 +181,8 @@ targets:
       - "target#go-mod-k8s-replace"
       - "target#go-mod-go-version"
     spec:
-      command: 'go mod tidy'
+      # git status so Updatecli detects the file changes
+      command: 'go mod tidy && git status --porcelain go.mod go.sum'
       environments:
         - name: PATH
         - name: HOME
