@@ -22,14 +22,14 @@ scms:
       branch: "master"    # confirm this is the fork's actual default branch
 
 conditions:
-   kubernetes-fork-staging-tags-ready:
-     name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
-     kind: "shell"
-     disablesourceinput: true
-     spec:
-       command: '{{ source "get-pwd" }}/updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
-       environments:
-         - name: PATH
+  kubernetes-fork-staging-tags-ready:
+    name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
+    kind: "shell"
+    disablesourceinput: true
+    spec:
+      command: './updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
+      environments:
+        - name: PATH
 
 actions:
   github:
@@ -98,24 +98,27 @@ sources:
       environments:
         - name: PATH
 
-  get-pwd:
-    name: "Run Updatecli execution directory"
+targets:
+  go-mod-staging-deps:
+    name: "Bump k3s-io/kubernetes staging module versions"
     kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
     spec:
-      command: 'pwd'
+      command: './updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
       environments:
         - name: PATH
 
-targets:
-  go-mod-staging-deps:
-      name: "Bump k3s-io/kubernetes staging module versions"
-      kind: "shell"
-      scmid: "k3s"
-      disablesourceinput: true
-      spec:
-        command: '{{ source "get-pwd" }}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
-        environments:
-          - name: PATH
+  go-mod-go-version:
+    name: "Bump Go version directive in go.mod"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "go-version"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: '(?m)^go \d+\.\d+(?:\.\d+)?$'
+      replacepattern: 'go {{ source "go-version" }}'
 
   go-mod-k8s-replace:
     name: "Bump k8s.io/kubernetes replace directive"
@@ -174,6 +177,7 @@ targets:
       - "target#go-mod-k8s-require"
       - "target#go-mod-k8s-client"
       - "target#go-mod-k8s-replace"
+      - "target#go-mod-go-version"
     spec:
       command: 'go mod tidy'
       environments:
