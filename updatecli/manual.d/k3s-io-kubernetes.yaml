@@ -33,7 +33,7 @@ conditions:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io/kubernetes references"
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io/kubernetes and Go references"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
