@@ -71,7 +71,7 @@ sources:
     spec:
       versionfilter:
         kind: "regex/semver"
-        regex: '^({{ source "current-k8s-minor" }}\.\d+-k3s999)$'
+        regex: '^({{ source "current-k8s-minor" }}\.\d+-k3s\d+)$'
 
 
   k8s-base-version:
