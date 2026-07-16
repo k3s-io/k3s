@@ -34,7 +34,7 @@ jobs:
         uses: updatecli/updatecli-action@5dfc616e57b07d2302c3f37e5b72a4ead82dbbf8 # v3.4.0
 
       - name: Apply Updatecli
-        run: "updatecli diff --config ./updatecli/manual.d/k3s-io-kubernetes.yaml --values ./updatecli/values.yaml"
+        run: "updatecli apply --clean --config ./updatecli/manual.d/k3s-io-kubernetes.yaml --values ./updatecli/values.yaml"
         env:
           UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
           UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
