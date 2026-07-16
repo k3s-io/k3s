@@ -107,10 +107,9 @@ targets:
     scmid: "k3s"
     disablesourceinput: true
     spec:
-      command: 'bash ${GITHUB_WORKSPACE}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
+      command: 'bash {{ requiredEnv "GITHUB_WORKSPACE" }}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
       environments:
         - name: PATH
-        - name: GITHUB_WORKSPACE
 
   go-mod-go-version:
     name: "Bump Go version directive in go.mod"
