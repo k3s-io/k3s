@@ -350,7 +350,7 @@ func (e *ETCD) snapshot(ctx context.Context) (_ *managed.SnapshotResult, rerr er
 		deleted, err := snapshotRetention(e.config.EtcdSnapshotRetention, e.config.EtcdSnapshotName, snapshotDir)
 		res.Deleted = append(res.Deleted, deleted...)
 		if err != nil {
-			e.warningEventf("ETDCSnapshotRetentionFailedLocal", "Failed to apply local snapshot retention policy: %v", err)
+			e.warningEventf("ETCDSnapshotRetentionFailedLocal", "Failed to apply local snapshot retention policy: %v", err)
 		}
 
 		if e.config.EtcdS3 != nil {
