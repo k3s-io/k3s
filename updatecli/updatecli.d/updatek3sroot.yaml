@@ -20,7 +20,7 @@ sources:
 
 targets:
   versionfile:
-    name: "Bump to latest k3s-root version in scripts/version.sh"
+    name: "[{{ requiredEnv .github.branch }}] Bump to latest k3s-root version in scripts/version.sh"
     kind: file
     scmid: default
     sourceid: k3sroot
@@ -38,16 +38,17 @@ scms:
       username: '{{ requiredEnv .github.username }}'
       user: '{{ .github.user }}'
       email: '{{ .github.email }}'
-      owner: '{{ .k3s.org }}'
-      repository: '{{ .k3s.repo }}'
-      branch: '{{ .k3s.branch }}'
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
       
 actions:
     default:
-        title: 'Bump K3s-root version to {{ source "k3sroot" }}'
+        title: '[{{ requiredEnv .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
         kind: github/pullrequest
         spec:
-            automerge: false
+            merge:
+                strategy: "manual"
             labels:
                 - dependencies
         scmid: default

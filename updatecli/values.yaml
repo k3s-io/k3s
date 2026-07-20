@@ -3,10 +3,12 @@ github:
   email: "41898282+github-actions[bot]@users.noreply.github.com"
   username: "UPDATECLI_GITHUB_ACTOR"
   token: "UPDATECLI_GITHUB_TOKEN"
+  branch: "TARGET_BRANCH"
+  repo: "TARGET_REPO"
+  org: "TARGET_ORG"
 k3s:
   org: "k3s-io"
   repo: "k3s"
-  branch: "main"
 klipper_helm:
   org: "k3s-io"
   repo: "klipper-helm"

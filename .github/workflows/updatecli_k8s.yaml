@@ -1,0 +1,43 @@
+name: "Updatecli: k3s-io/kubernetes Dependency and Go Bumps"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  updatecli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: 
+          - main
+          - release-1.36
+          - release-1.35
+          - release-1.34
+          - release-1.33
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Updatecli
+        uses: updatecli/updatecli-action@5dfc616e57b07d2302c3f37e5b72a4ead82dbbf8 # v3.4.0
+
+      - name: Apply Updatecli
+        run: "updatecli apply --clean --config ./updatecli/manual.d/k3s-io-kubernetes.yaml --values ./updatecli/values.yaml"
+        env:
+          UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
+          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_BRANCH: ${{ matrix.branch }}
+          TARGET_REPO: ${{ github.event.repository.name }}
+          TARGET_ORG: ${{ github.repository_owner }}

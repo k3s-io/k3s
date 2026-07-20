@@ -7,19 +7,20 @@ scms:
       email: "{{ .github.email }}"
       username: "{{ .github.username }}"
       token: "{{ requiredEnv .github.token }}"
-      owner: "{{ .k3s.org }}"
-      repository: "{{ .k3s.repo }}"
-      branch: "{{ .k3s.branch }}"
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
       commitmessage:
         title: "Bump rancher/mirrored-coredns-coredns image version"
 
 actions:
   github:
-    title: "Bump rancher/mirrored-coredns-coredns image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump rancher/mirrored-coredns-coredns image version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
-      automerge: false
+      merge:
+        strategy: "manual"
       mergemethod: "squash"
       labels:
         - "dependencies"

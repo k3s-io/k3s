@@ -1,0 +1,187 @@
+name: "Bump k8s.io/kubernetes dependencies from k3s-io/kubernetes fork"
+
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: '{{ requiredEnv "TARGET_ORG" }}'
+      repository: '{{ requiredEnv "TARGET_REPO" }}'
+      branch: '{{ requiredEnv "TARGET_BRANCH" }}'
+      commitmessage:
+        title: "Bump k8s.io/kubernetes dependencies"
+  kubernetes-fork:
+    kind: "github"
+    spec:
+      token: "{{ requiredEnv .github.token }}"
+      owner: "k3s-io"
+      repository: "kubernetes"
+      branch: "master"
+
+conditions:
+  kubernetes-fork-staging-tags-ready:
+    name: "Verify k3s-io/kubernetes staging tags are fully pushed for the resolved version"
+    kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      command: 'bash ${GITHUB_WORKSPACE}/updatecli/scripts/check-staging-tags-ready.sh {{ source "k8s-base-version" }}'
+      environments:
+        - name: PATH
+        - name: GITHUB_WORKSPACE
+
+actions:
+  github:
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io/kubernetes and Go references"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      merge:
+        strategy: "manual"
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
+
+sources:
+  current-k8s-minor:
+    name: "Get currently pinned k8s minor from go.mod"
+    kind: "file"
+    scmid: "k3s"
+    spec:
+      file: "go.mod"
+      matchpattern: 'k3s-io/kubernetes/staging/src/k8s.io/api (v\d+\.\d+)\.\d+-k3s\d+'
+    transformers:
+      - find: 'v\d+\.\d+'
+
+  current-k8s-client-version:
+    name: "Get currently pinned k8s.io/client-go version from go.mod"
+    kind: "file"
+    scmid: "k3s"
+    spec:
+      file: "go.mod"
+      matchpattern: '(?m)^\s*k8s\.io/client-go v\d+\.\d+\.\d+\s*$'
+    transformers:
+      - find: 'v\d+\.\d+\.\d+'
+
+  kubernetes-fork-tag:
+    name: "Get latest matching k3s-io/kubernetes tag"
+    kind: "gittag"
+    scmid: "kubernetes-fork"
+    spec:
+      versionfilter:
+        kind: "regex/semver"
+        regex: '^({{ source "current-k8s-minor" }}\.\d+-k3s\d+)$'
+
+
+  k8s-base-version:
+    name: "Strip -k3sN suffix from fork tag"
+    kind: "shell"
+    spec:
+      command: 'echo "{{ source "kubernetes-fork-tag" }}" | sed -E "s/-k3s[0-9]+$//"'
+      environments:
+        - name: PATH
+
+  k8s-client-version:
+    name: "Derive k8s.io/client-go version"
+    kind: "shell"
+    spec:
+      command: 'echo "{{ source "k8s-base-version" }}" | sed -E "s/^v1\./v0./"'
+      environments:
+        - name: PATH
+
+  go-version:
+    name: "Get upstream Go version for the resolved k8s tag"
+    kind: "shell"
+    spec:
+      command: 'curl -sf https://raw.githubusercontent.com/kubernetes/kubernetes/refs/tags/{{ source "k8s-base-version" }}/.go-version'
+      environments:
+        - name: PATH
+
+targets:
+  go-mod-staging-deps:
+    name: "Bump k3s-io/kubernetes staging module versions"
+    kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      command: 'bash {{ requiredEnv "GITHUB_WORKSPACE" }}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
+      environments:
+        - name: PATH
+
+  go-mod-go-version:
+    name: "Bump Go version directive in go.mod"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "go-version"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: '(?m)^go \d+\.\d+(?:\.\d+)?$'
+      replacepattern: 'go {{ source "go-version" }}'
+
+  go-mod-k8s-replace:
+    name: "Bump k8s.io/kubernetes replace directive"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "kubernetes-fork-tag"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: 'k8s\.io/kubernetes => github\.com/k3s-io/kubernetes v\d+\.\d+\.\d+-k3s\d+'
+      replacepattern: 'k8s.io/kubernetes => github.com/k3s-io/kubernetes {{ source "kubernetes-fork-tag" }}'
+
+  go-mod-k8s-require:
+    name: "Bump k8s.io/kubernetes require line"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "k8s-base-version"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: 'k8s\.io/kubernetes v\S+'
+      replacepattern: 'k8s.io/kubernetes {{ source "k8s-base-version" }}'
+
+  go-mod-k8s-client:
+    name: "Bump k8s.io/* modules pinned to client-go version"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "k8s-client-version"
+    spec:
+      files:
+        - "go.mod"
+      matchpattern: '(?m)^(\s*k8s\.io/\S+) {{ source "current-k8s-client-version" }}\s*$'
+      replacepattern: '${1} {{ source "k8s-client-version" }}'
+
+  dockerfile-go-version:
+    name: "Bump Go version in Dockerfiles"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "go-version"
+    spec:
+      files:
+        - "Dockerfile"
+        - "Dockerfile.manifest"
+        - "Dockerfile.test"
+      matchpattern: 'golang:\S+-'
+      replacepattern: 'golang:{{ source "go-version" }}-'
+
+  go-mod-tidy:
+    name: "Run go mod tidy"
+    kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
+    dependson:
+      - "target#go-mod-staging-deps"
+      - "target#go-mod-k8s-require"
+      - "target#go-mod-k8s-client"
+      - "target#go-mod-k8s-replace"
+      - "target#go-mod-go-version"
+    spec:
+      # git status so Updatecli detects the file changes
+      command: 'go mod tidy && git status --porcelain go.mod go.sum'
+      environments:
+        - name: PATH
+        - name: HOME

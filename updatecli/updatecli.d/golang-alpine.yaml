@@ -8,19 +8,20 @@ scms:
       email: "{{ .github.email }}"
       username: "{{ .github.username }}"
       token: "{{ requiredEnv .github.token }}"
-      owner: "{{ .k3s.org }}"
-      repository: "{{ .k3s.repo }}"
-      branch: "{{ .k3s.branch }}"
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
       commitmessage:
         title: "Bump golang:alpine version"
 
 actions:
   github:
-    title: "Bump golang:alpine image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump golang:alpine image version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
-      automerge: false
+      merge:
+        strategy: "manual"
       mergemethod: "squash"
       labels: 
         - "dependencies"
@@ -49,7 +50,7 @@ sources:
     scmid: "k3s"
     disablesourceinput: true
     spec:
-      file: "Dockerfile"
+      file: "Dockerfile.local"
       matchpattern: 'golang:\S+-alpine(\S+)?'
     # Example: if the version found is golang:1.19.3-alpine3.16, then
     # we extract only 1.19.3-alpine .

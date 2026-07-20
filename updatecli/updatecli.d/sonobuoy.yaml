@@ -8,17 +8,18 @@ scms:
       email: "{{ .github.email }}"
       username: "{{ .github.username }}"
       token: "{{ requiredEnv .github.token }}"
-      owner: "{{ .k3s.org }}"
-      repository: "{{ .k3s.repo }}"
-      branch: "{{ .k3s.branch }}"
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
 
 actions:
   github:
-    title: "Bump Sonobuoy version"
+    title: "[{{ requiredEnv .github.branch }}] Bump Sonobuoy version"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
-      automerge: false
+      merge:
+        strategy: "manual"
       labels: 
         - "dependencies"
 
@@ -54,7 +55,6 @@ conditions:
     spec:
       files:
         - "Dockerfile.test"
-        - "conformance/Dockerfile"
       matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
 
 targets:
@@ -66,6 +66,5 @@ targets:
     spec:
       files:
         - "Dockerfile.test"
-        - "conformance/Dockerfile"
       matchpattern: 'ENV SONOBUOY_VERSION \d+\.\d+\.\d+(-\w+)?'
       replacepattern: 'ENV SONOBUOY_VERSION {{ source "sonobuoy" }}'
