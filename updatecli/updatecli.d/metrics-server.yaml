@@ -33,7 +33,7 @@ sources:
       image: "rancher/mirrored-metrics-server"
       versionfilter:
         kind: "semver"
-        strict: true
+        strict: false
     transformers:
       - find: 'v\d+\.\d+\.\d+'
 
