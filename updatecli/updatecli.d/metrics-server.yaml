@@ -1,0 +1,78 @@
+name: "Bump Metrics Server Image Version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: "{{ .k3s.org }}"
+      repository: "{{ .k3s.repo }}"
+      branch: "{{ .k3s.branch }}"
+      commitmessage:
+        title: "Bump rancher/mirrored-metrics-server image version"
+
+actions:
+  github:
+    title: "Bump rancher/mirrored-metrics-server image version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      automerge: false
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
+
+sources:
+  # Retrieve the latest tag from the rancher/mirrored-metrics-server repository
+  metrics-server-docker-image:
+    name: "Check Metrics Server image tag in DockerHub"
+    kind: "dockerimage"
+    spec:
+      image: "rancher/mirrored-metrics-server"
+      versionfilter:
+        kind: "semver"
+        strict: true
+    transformers:
+      - find: 'v\d+\.\d+\.\d+'
+
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  docker-image:
+    name: "Check latest image tag for rancher/mirrored-metrics-server"
+    kind: "dockerimage"
+    disablesourceinput: true
+    spec:
+      image: "rancher/mirrored-metrics-server"
+      tag: '{{ source "metrics-server-docker-image" }}'
+
+targets:
+  metrics-server-manifest:
+    name: "Update Metrics Server image version in manifests/metrics-server/metrics-server-deployment.yaml"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "manifests/metrics-server/metrics-server-deployment.yaml"
+      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:\S+"'
+      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}"'
+
+  metrics-server-airgap:
+    name: "Update Metrics Server image version in scripts/airgap/image-list"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "scripts/airgap/image-list.txt"
+      matchpattern: 'docker.io/rancher/mirrored-metrics-server:\S+'
+      replacepattern: 'docker.io/rancher/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}'
