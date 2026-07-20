@@ -50,7 +50,7 @@ sources:
     scmid: "k3s"
     disablesourceinput: true
     spec:
-      file: "Dockerfile.local"
+      file: "Dockerfile"
       matchpattern: 'golang:\S+-alpine(\S+)?'
     # Example: if the version found is golang:1.19.3-alpine3.16, then
     # we extract only 1.19.3-alpine .
