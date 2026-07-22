@@ -207,6 +207,7 @@ type Control struct {
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	KubeConfigGroup          string
+	KubeConfigName           string
 	HelmJobImage             string
 	DataDir                  string
 	KineTLS                  bool

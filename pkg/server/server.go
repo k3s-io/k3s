@@ -439,7 +439,12 @@ func writeKubeConfig(certs string, config *Config) error {
 		}
 	}
 
-	if err = clientaccess.WriteClientKubeConfig(kubeConfig, url, config.ControlConfig.Runtime.ServerCA, config.ControlConfig.Runtime.ClientAdminCert,
+	kubeConfigName := "default"
+	if config.ControlConfig.KubeConfigName != "" {
+		kubeConfigName = config.ControlConfig.KubeConfigName
+	}
+
+	if err = clientaccess.WriteClientKubeConfig(kubeConfig, kubeConfigName, url, config.ControlConfig.Runtime.ServerCA, config.ControlConfig.Runtime.ClientAdminCert,
 		config.ControlConfig.Runtime.ClientAdminKey); err == nil {
 		logrus.Infof("Wrote kubeconfig %s", kubeConfig)
 	} else {
