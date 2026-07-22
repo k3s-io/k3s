@@ -10,7 +10,7 @@ import (
 )
 
 // WriteClientKubeConfig generates a kubeconfig at destFile that can be used to connect to a server at url with the given certs and keys
-func WriteClientKubeConfig(destFile, url, serverCAFile, clientCertFile, clientKeyFile string) error {
+func WriteClientKubeConfig(destFile, name, url, serverCAFile, clientCertFile, clientKeyFile string) error {
 	serverCA, err := os.ReadFile(serverCAFile)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to read %s", serverCAFile)
@@ -37,13 +37,13 @@ func WriteClientKubeConfig(destFile, url, serverCAFile, clientCertFile, clientKe
 	authInfo.ClientKeyData = clientKey
 
 	context := clientcmdapi.NewContext()
-	context.AuthInfo = "default"
-	context.Cluster = "default"
+	context.AuthInfo = name
+	context.Cluster = name
 
-	config.Clusters["default"] = cluster
-	config.AuthInfos["default"] = authInfo
-	config.Contexts["default"] = context
-	config.CurrentContext = "default"
+	config.Clusters[name] = cluster
+	config.AuthInfos[name] = authInfo
+	config.Contexts[name] = context
+	config.CurrentContext = name
 
 	return clientcmd.WriteToFile(*config, destFile)
 }
