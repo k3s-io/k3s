@@ -79,7 +79,7 @@ case ${ARCH} in
     ;;
 esac
 
-VERSION_HELM_JOB="v0.13.1-build20260715"
+VERSION_HELM_JOB="v0.13.2-build20260716"
 
 if [[ -n "$GIT_TAG" ]]; then
     if [[ ! "$GIT_TAG" =~ ^"$VERSION_K8S"[+-] ]]; then
