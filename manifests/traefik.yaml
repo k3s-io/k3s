@@ -5,6 +5,8 @@ metadata:
   name: traefik-crd
   namespace: kube-system
 spec:
+  forceConflicts: true
+  failurePolicy: retry
   chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-40.1.4+up40.1.0.tgz
 ---
 apiVersion: helm.cattle.io/v1
@@ -13,6 +15,8 @@ metadata:
   name: traefik
   namespace: kube-system
 spec:
+  forceConflicts: true
+  failurePolicy: retry
   chart: https://%{KUBERNETES_API}%/static/charts/traefik-40.1.4+up40.1.0.tgz
   set:
     global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
