@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.26.4-alpine3.24
+ARG GOLANG=golang:1.26.5-alpine3.24
 
 FROM ${GOLANG} AS test-base
 
