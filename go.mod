@@ -154,17 +154,17 @@ require (
 	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.34.10
+	k8s.io/api v0.35.6
 	k8s.io/apiextensions-apiserver v0.35.2
-	k8s.io/apimachinery v0.34.10
+	k8s.io/apimachinery v0.35.6
 	k8s.io/apiserver v0.35.4
 	k8s.io/cli-runtime v0.35.2
-	k8s.io/client-go v0.34.10
+	k8s.io/client-go v0.35.6
 	k8s.io/cloud-provider v0.35.2
 	k8s.io/cluster-bootstrap v0.35.2
 	k8s.io/component-base v0.35.4
 	k8s.io/component-helpers v0.35.2
-	k8s.io/cri-api v0.34.10
+	k8s.io/cri-api v0.35.6
 	k8s.io/cri-client v0.35.4
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.34.9
@@ -514,7 +514,7 @@ require (
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
