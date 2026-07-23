@@ -2,6 +2,7 @@ package nodepassword
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -60,30 +61,52 @@ func (npc *nodePasswordController) verifyHash(nodeName, pass string, cached bool
 	return &passwordError{node: nodeName, err: errors.New("password hash not found in node secret")}
 }
 
-// ensure will verify a node-password secret if it exists, otherwise it will create one
+// ensure verifies a node-password secret if it exists, otherwise creates one.
 func (npc *nodePasswordController) ensure(nodeName, pass string) error {
-	err := npc.verifyHash(nodeName, pass, true)
-	if apierrors.IsNotFound(err) {
-		var hash string
-		hash, err = Hasher.CreateHash(pass)
-		if err != nil {
-			return &passwordError{node: nodeName, err: err}
-		}
-		_, err = npc.secrets.Create(&v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      getSecretName(nodeName),
-				Namespace: metav1.NamespaceSystem,
-			},
-			Immutable: ptr.To(true),
-			Data:      map[string][]byte{"hash": []byte(hash)},
-			Type:      SecretTypeNodePassword,
-		})
-		if apierrors.IsAlreadyExists(err) {
-			// secret already exists, try to verify again without cache
-			return npc.verifyHash(nodeName, pass, false)
-		}
+	// Try cache, then apiserver, before create (avoid AlreadyExists on cache lag).
+	if err := npc.verifyHash(nodeName, pass, true); err == nil {
+		return nil
+	} else if !secretNotFound(err) {
+		return err
+	}
+	if err := npc.verifyHash(nodeName, pass, false); err == nil {
+		return nil
+	} else if !secretNotFound(err) {
+		return err
+	}
+
+	hash, err := Hasher.CreateHash(pass)
+	if err != nil {
+		return &passwordError{node: nodeName, err: err}
+	}
+	_, err = npc.secrets.Create(&v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getSecretName(nodeName),
+			Namespace: metav1.NamespaceSystem,
+		},
+		Immutable: ptr.To(true),
+		Data:      map[string][]byte{"hash": []byte(hash)},
+		Type:      SecretTypeNodePassword,
+	})
+	if err == nil {
+		return nil
+	}
+	if apierrors.IsAlreadyExists(err) {
+		return npc.verifyHash(nodeName, pass, false)
+	}
+	if vErr := npc.verifyHash(nodeName, pass, false); vErr == nil {
+		return nil
 	}
 	return err
+}
+
+func secretNotFound(err error) bool {
+	for e := err; e != nil; e = stderrors.Unwrap(e) {
+		if apierrors.IsNotFound(e) {
+			return true
+		}
+	}
+	return false
 }
 
 // verifyNode confirms that a node with the given name exists, to prevent auth
