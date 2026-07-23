@@ -38,9 +38,10 @@ func Register(ctx context.Context, coreClient kubernetes.Interface, secrets core
 	informerOpts := toolscache.InformerOptions{ListerWatcher: lw, ObjectType: &corev1.Secret{}, Handler: &toolscache.ResourceEventHandlerFuncs{}}
 	indexer, informer := toolscache.NewInformerWithOptions(informerOpts)
 	npc := &nodePasswordController{
-		nodes:        nodes,
-		secrets:      secrets,
-		secretsStore: indexer,
+		nodes:         nodes,
+		secrets:       secrets,
+		secretsStore:  indexer,
+		secretsSynced: informer.HasSynced,
 	}
 
 	// migrate legacy secrets over to the new type. this must not be fatal, as
@@ -51,7 +52,7 @@ func Register(ctx context.Context, coreClient kubernetes.Interface, secrets core
 	}
 
 	nodes.OnChange(ctx, "node-password", npc.onChangeNode)
-	go informer.Run(ctx.Done())
+	go informer.RunWithContext(ctx)
 	go wait.UntilWithContext(ctx, npc.sync, time.Minute)
 
 	controller = npc
@@ -59,9 +60,10 @@ func Register(ctx context.Context, coreClient kubernetes.Interface, secrets core
 }
 
 type nodePasswordController struct {
-	nodes        coreclient.NodeController
-	secrets      coreclient.SecretController
-	secretsStore toolscache.Store
+	nodes         coreclient.NodeController
+	secrets       coreclient.SecretController
+	secretsStore  toolscache.Store
+	secretsSynced func() bool
 }
 
 // onChangeNode ensures that the node password secret has an OwnerRefence to its
@@ -114,7 +116,8 @@ func (npc *nodePasswordController) sync(ctx context.Context) {
 		if !ok || secret.CreationTimestamp.After(minCreateTime) || nodeSecretNames.Has(secret.Name) {
 			continue
 		}
-		if err := npc.secrets.Delete(secret.Namespace, secret.Name, &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil {
+		deleteOpts := &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
+		if err := npc.secrets.Delete(secret.Namespace, secret.Name, deleteOpts); err != nil && !apierrors.IsNotFound(err) {
 			logrus.Errorf("Failed to delete orphaned node-password secret %s: %v", secret.Name, err)
 		} else {
 			logrus.Warnf("Deleted orphaned node-password secret %s created %s", secret.Name, secret.CreationTimestamp)
@@ -159,9 +162,10 @@ func (npc *nodePasswordController) migrateSecrets(ctx context.Context) error {
 }
 
 // getSecret is a helper function to get a node password secret from the store,
-// or directly from the apiserver.
+// or directly from the apiserver. If cache access is requested, cache may
+// still be bypassed if the informer has not yet synced.
 func (npc *nodePasswordController) getSecret(nodeName string, cached bool) (*corev1.Secret, error) {
-	if cached {
+	if cached && npc.secretsSynced() {
 		name := metav1.NamespaceSystem + "/" + getSecretName(nodeName)
 		val, ok, err := npc.secretsStore.GetByKey(name)
 		if err != nil {
