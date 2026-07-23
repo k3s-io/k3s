@@ -1,4 +1,4 @@
-ARG GOLANG=golang:1.25.11-alpine3.23
+ARG GOLANG=golang:1.25.12-alpine3.23
 ARG XX=tonistiigi/xx:1.6.1
 
 FROM --platform=$BUILDPLATFORM ${XX} AS xx
