@@ -58,9 +58,19 @@ func Register(ctx context.Context, coreClient kubernetes.Interface, secrets core
 	return nil
 }
 
+// secretOps is the subset of SecretController used by node-password code.
+// Narrowed for unit tests (ensure cache miss / apiserver recheck paths).
+type secretOps interface {
+	Create(*corev1.Secret) (*corev1.Secret, error)
+	Get(namespace, name string, options metav1.GetOptions) (*corev1.Secret, error)
+	Update(*corev1.Secret) (*corev1.Secret, error)
+	Delete(namespace, name string, options *metav1.DeleteOptions) error
+	List(namespace string, opts metav1.ListOptions) (*corev1.SecretList, error)
+}
+
 type nodePasswordController struct {
 	nodes        coreclient.NodeController
-	secrets      coreclient.SecretController
+	secrets      secretOps
 	secretsStore toolscache.Store
 }
 
