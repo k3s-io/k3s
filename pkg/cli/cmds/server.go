@@ -46,6 +46,7 @@ type Server struct {
 	KubeConfigOutput         string
 	KubeConfigMode           string
 	KubeConfigGroup          string
+	KubeConfigName           string
 	HelmJobImage             string
 	TLSSan                   cli.StringSlice
 	TLSSanSecurity           bool
@@ -295,6 +296,13 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(client) Write kubeconfig with this group",
 		Destination: &ServerConfig.KubeConfigGroup,
 		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_GROUP"},
+	},
+	&cli.StringFlag{
+		Name:        "write-kubeconfig-name",
+		Usage:       "(client) Write kubeconfig with this name",
+		Destination: &ServerConfig.KubeConfigName,
+		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_NAME"},
+		Value:       "default",
 	},
 	&cli.StringFlag{
 		Name:        "helm-job-image",
