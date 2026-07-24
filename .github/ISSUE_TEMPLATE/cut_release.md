@@ -3,6 +3,7 @@ name: Cut Release
 about: Create a new release checklist
 title: 'Cut VERSION'
 labels: 'kind/release'
+type: 'task'
 assignees: ''
 
 ---

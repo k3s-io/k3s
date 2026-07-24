@@ -1,0 +1,38 @@
+name: Issue Filter
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  close-oversized-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Check issue size and type
+        id: issue-check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const hasType = Boolean(issue.type);
+            const isOversized = (issue.body || '').length > 2000;
+            const { data: { permission } } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: issue.user.login,
+            });
+            const isMaintainer = permission === 'maintain' || permission === 'admin';
+            core.setOutput('should-close', isOversized && !hasType && !isMaintainer);
+
+      - name: Close oversized issue
+        if: steps.issue-check.outputs.should-close == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue close "${{ github.event.issue.number }}" \
+            --comment "Large UnTemplated Issue Detected. Please resubmit using one of our issue templates."
