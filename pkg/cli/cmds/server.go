@@ -302,6 +302,7 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(client) Write kubeconfig with this name",
 		Destination: &ServerConfig.KubeConfigName,
 		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_NAME"},
+		Value:       "default",
 	},
 	&cli.StringFlag{
 		Name:        "helm-job-image",
