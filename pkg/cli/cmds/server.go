@@ -299,7 +299,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "write-kubeconfig-name",
-		Usage:       "(client) Write kubeconfig with this name",
+		Usage:       "(client) Write kubeconfig using this name for the generated cluster, user, and context",
 		Destination: &ServerConfig.KubeConfigName,
 		EnvVars:     []string{version.ProgramUpper + "_KUBECONFIG_NAME"},
 		Value:       "default",
