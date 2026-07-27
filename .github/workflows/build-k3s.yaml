@@ -95,7 +95,7 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
-          GOCOVER=${{ inputs.test-coverage && '1' || '0' }}
+          GOCOVER=${{ inputs.test-coverage && '1' || '' }}
         push: false
         provenance: mode=min
         platforms: ${{ steps.platforms.outputs.platforms }}
