@@ -605,10 +605,13 @@ setup_selinux() {
         rpm_target=sle
         rpm_site_infix=microos
         package_installer=zypper
-        if [ "${VARIANT_ID:-}" = sle-micro ] || [ "${ID:-}" = sle-micro ] || [ "${ID:-}" = sl-micro ] || [ "${ID:-}" = sles ]; then
+
+        if [ "${ID:-}" = sles ] && [ -n "${VERSION_ID}" ] && [ "${VERSION_ID%%.*}" -ge 16 ]; then
             rpm_site_infix=slemicro
-            package_installer=zypper
+        elif [ "${VARIANT_ID:-}" = sle-micro ] || [ "${ID:-}" = sle-micro ] || [ "${ID:-}" = sl-micro ] || [ "${ID:-}" = sle-micro-rancher ]; then
+            rpm_site_infix=slemicro
         fi
+
     # cover any atomic fedora flavors using rpm-ostree
     elif  { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; then
         rpm_target=coreos
