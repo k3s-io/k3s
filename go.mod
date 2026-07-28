@@ -110,7 +110,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.1.4
-	github.com/k3s-io/helm-controller v0.16.25
+	github.com/k3s-io/helm-controller v0.16.26
 	github.com/k3s-io/kine v0.16.3
 	github.com/klauspost/compress v1.18.6
 	github.com/libp2p/go-libp2p v0.48.0
@@ -175,7 +175,7 @@ require (
 	k8s.io/kube-proxy v0.33.13
 	k8s.io/kubectl v0.33.13
 	k8s.io/kubelet v0.35.1
-	k8s.io/kubernetes v1.34.9
+	k8s.io/kubernetes v1.35.1
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
 	sigs.k8s.io/cri-tools v0.33.0
 	sigs.k8s.io/yaml v1.6.0
