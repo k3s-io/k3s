@@ -14,7 +14,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
-func Test_isDirEmpty(t *testing.T) {
+func Test_UnitisDirEmpty(t *testing.T) {
 	const tmpDir = "test_dir"
 
 	type args struct {
@@ -78,7 +78,7 @@ func Test_isDirEmpty(t *testing.T) {
 	}
 }
 
-func TestCluster_checkCertrtDirs(t *testing.T) {
+func TestCluster_UnitcheckCertrtDirs(t *testing.T) {
 	const testDataDir = "/tmp/k3s/"
 
 	testCredDir := filepath.Join(testDataDir, "server", "cred")
@@ -144,7 +144,7 @@ func TestCluster_checkCertrtDirs(t *testing.T) {
 	}
 }
 
-func TestCluster_migrateBootstrapData(t *testing.T) {
+func TestCluster_UnitmigrateBootstrapData(t *testing.T) {
 	type fields struct {
 		clientAccessInfo *clientaccess.Info
 		config           *config.Control

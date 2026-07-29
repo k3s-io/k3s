@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_storageKey(t *testing.T) {
+func Test_UnitstorageKey(t *testing.T) {
 	tests := []struct {
 		name       string
 		passphrase string
@@ -36,7 +36,7 @@ func Test_storageKey(t *testing.T) {
 	}
 }
 
-func Test_encrypt(t *testing.T) {
+func Test_Unitencrypt(t *testing.T) {
 	tests := []struct {
 		name       string
 		passphrase string
@@ -86,7 +86,7 @@ func Test_encrypt(t *testing.T) {
 	}
 }
 
-func Test_decrypt(t *testing.T) {
+func Test_Unitdecrypt(t *testing.T) {
 	goodCiphertext, err := encrypt("correct-passphrase", []byte("payload"))
 	if err != nil {
 		t.Fatalf("setup encrypt() error = %v", err)
