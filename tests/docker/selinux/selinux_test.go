@@ -1,4 +1,4 @@
-package main
+package selinux
 
 import (
 	"flag"
@@ -34,41 +34,6 @@ type distro struct {
 	queryCmd    string
 }
 
-var distros = []distro{
-	{
-		name:        "sles16",
-		image:       "registry.suse.com/bci/bci-base:16.0",
-		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
-		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
-		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
-		queryCmd:    "zypper --non-interactive info k3s-selinux",
-	},
-	{
-		name:        "sle-micro",
-		image:       "registry.suse.com/suse/sle-micro/5.5:latest",
-		prepare:     "mkdir -p /usr/share/selinux",
-		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
-		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
-		queryCmd:    "zypper --non-interactive info k3s-selinux",
-	},
-	{
-		name:        "opensuse-leap",
-		image:       "opensuse/leap:15.6",
-		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
-		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
-		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/microos/noarch",
-		queryCmd:    "zypper --non-interactive info k3s-selinux",
-	},
-	{
-		name:        "almalinux",
-		image:       "almalinux:10",
-		prepare:     "mkdir -p /usr/share/selinux",
-		repoFile:    "/etc/yum.repos.d/rancher-k3s-common.repo",
-		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/centos/9/noarch",
-		queryCmd:    "dnf -q info k3s-selinux",
-	},
-}
-
 func Test_DockerSELinux(t *testing.T) {
 	flag.Parse()
 	RegisterFailHandler(Fail)
@@ -100,128 +65,175 @@ func skipScript(d distro) string {
 	}, "\n")
 }
 
-// run is a container that executes its script once and exits. It is started
-// detached so every distro installs in parallel, and collect() blocks on it.
-type run struct {
-	tc   *docker.TestConfig
-	name string
-}
-
-var runs []*run
-
-func start(name string, d distro, script string) (*run, error) {
+// runScript runs the script in a container that executes it once and exits,
+// and returns the test config and everything the container logged.
+func runScript(name string, d distro, script string) (*docker.TestConfig, string, error) {
 	tc, err := docker.NewTestConfig(d.image)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	r := &run{tc: tc, name: fmt.Sprintf("selinux-%s-%s", name, strings.ToLower(filepath.Base(tc.TestDir)))}
-	runs = append(runs, r)
+	name = fmt.Sprintf("selinux-%s-%s", name, strings.ToLower(filepath.Base(tc.TestDir)))
 
 	installShPath, err := filepath.Abs(installSh)
 	if err != nil {
-		return r, err
+		return tc, "", err
 	}
-	scriptPath := filepath.Join(tc.TestDir, "install-test.sh")
+	scriptPath := filepath.Join(tc.TestDir, "test.sh")
 	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		return r, err
+		return tc, "", err
 	}
 
-	dRun := strings.Join([]string{"docker run -d",
-		"--name", r.name,
+	tc.Servers = append(tc.Servers, docker.DockerNode{Name: name})
+	dRun := strings.Join([]string{"timeout 900 docker run",
+		"--name", name,
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=/tmp/install.sh,ro", installShPath),
-		"--mount", fmt.Sprintf("type=bind,src=%s,dst=/tmp/install-test.sh,ro", scriptPath),
-		tc.K3sImage, "/bin/sh", "/tmp/install-test.sh"}, " ")
-	if out, err := tests.RunCommand(dRun); err != nil {
-		return r, fmt.Errorf("failed to start %s: %s: %v", r.name, out, err)
-	}
-	// Registering the exited container as a server lets Cleanup remove it.
-	tc.Servers = append(tc.Servers, docker.DockerNode{Name: r.name})
-
-	return r, nil
-}
-
-// collect waits for the container to exit and returns everything it logged.
-func (r *run) collect() (string, error) {
-	if out, err := tests.RunCommand("timeout 900 docker wait " + r.name); err != nil {
-		return out, fmt.Errorf("waiting for %s: %s: %v", r.name, out, err)
-	}
-	out, err := tests.RunCommand("docker logs " + r.name)
+		"--mount", fmt.Sprintf("type=bind,src=%s,dst=/tmp/test.sh,ro", scriptPath),
+		tc.K3sImage, "/bin/sh", "/tmp/test.sh"}, " ")
+	out, err := tests.RunCommand(dRun)
 	if err != nil {
-		return out, fmt.Errorf("logs for %s: %v", r.name, err)
+		return tc, out, fmt.Errorf("failed to run %s: %v", name, err)
 	}
+
 	GinkgoWriter.Println(out)
-	logPath := filepath.Join(r.tc.TestDir, "logs", r.name+".log")
-	return out, os.WriteFile(logPath, []byte(out), 0644)
+	logPath := filepath.Join(tc.TestDir, "logs", name+".log")
+	return tc, out, os.WriteFile(logPath, []byte(out), 0644)
 }
 
-var _ = Describe("SELinux RPM Tests", Ordered, func() {
-	started := make(map[string]*run)
+var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
+	var (
+		tc     *docker.TestConfig
+		out    string
+		failed bool
+	)
 
 	BeforeAll(func() {
-		for _, d := range distros {
-			r, err := start(d.name, d, installScript(d))
-			Expect(err).NotTo(HaveOccurred())
-			started[d.name] = r
-		}
-		r, err := start("skip", distros[0], skipScript(distros[0]))
-		Expect(err).NotTo(HaveOccurred())
-		started["skip"] = r
+		var err error
+		tc, out, err = runScript(d.name, d, installScript(d))
+		Expect(err).NotTo(HaveOccurred(), out)
 	})
 
-	for _, d := range distros {
-		Context(d.name, Ordered, func() {
-			var out string
+	It("should run install.sh", func() {
+		Expect(out).To(ContainSubstring("Finding available k3s-selinux versions"),
+			"install.sh skipped setup_selinux entirely")
+	})
 
-			BeforeAll(func() {
-				var err error
-				out, err = started[d.name].collect()
-				Expect(err).NotTo(HaveOccurred(), out)
-			})
+	It("should configure the expected repository", func() {
+		Expect(out).To(ContainSubstring("REPO: baseurl=" + d.wantBaseURL))
+	})
 
-			It("should run install.sh", func() {
-				Expect(out).To(ContainSubstring("Finding available k3s-selinux versions"),
-					"install.sh skipped setup_selinux entirely")
-			})
+	It("should resolve k3s-selinux from that repository", func() {
+		Expect(out).To(MatchRegexp(`(?i)QUERY: .*rancher.k3s.common`),
+			"k3s-selinux was resolved from an unexpected repository")
+	})
 
-			It("should configure the expected repository", func() {
-				Expect(out).To(ContainSubstring("REPO: baseurl=" + d.wantBaseURL))
-			})
+	AfterEach(func() {
+		failed = failed || CurrentSpecReport().Failed()
+	})
 
-			It("should resolve k3s-selinux from that repository", func() {
-				Expect(out).To(MatchRegexp(`(?i)QUERY: .*rancher.k3s.common`),
-					"k3s-selinux was resolved from an unexpected repository")
-			})
-		})
-	}
+	AfterAll(func() {
+		cleanup(tc, failed)
+	})
+},
+	Entry("sles16", distro{
+		name:        "sles16",
+		image:       "registry.suse.com/bci/bci-base:16.0",
+		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("sle-micro", distro{
+		name:        "sle-micro",
+		image:       "registry.suse.com/suse/sle-micro/5.5:latest",
+		prepare:     "mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("sl-micro-6.2", distro{
+		name:        "sl-micro-6.2",
+		image:       "registry.suse.com/suse/sl-micro/6.2/base-os-container:latest",
+		prepare:     "mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("sl-micro-6.1", distro{
+		name:        "sl-micro-6.1",
+		image:       "registry.suse.com/suse/sl-micro/6.1/base-os-container:latest",
+		prepare:     "mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("sl-micro-6.0", distro{
+		name:        "sl-micro-6.0",
+		image:       "registry.suse.com/suse/sl-micro/6.0/base-os-container:latest",
+		prepare:     "mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/slemicro/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("opensuse-leap", distro{
+		name:        "opensuse-leap",
+		image:       "opensuse/leap:15.6",
+		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/microos/noarch",
+		queryCmd:    "zypper --non-interactive info k3s-selinux",
+	}),
+	Entry("almalinux", distro{
+		name:        "almalinux",
+		image:       "almalinux:10",
+		prepare:     "mkdir -p /usr/share/selinux",
+		repoFile:    "/etc/yum.repos.d/rancher-k3s-common.repo",
+		wantBaseURL: "https://rpm.rancher.io/k3s/stable/common/centos/9/noarch",
+		queryCmd:    "dnf -q info k3s-selinux",
+	}),
+)
 
-	Context("skip", Ordered, func() {
-		var out string
+var _ = Describe("SELinux RPM Skip", Ordered, func() {
+	var (
+		d = distro{
+			name:     "skip",
+			image:    "registry.suse.com/bci/bci-base:16.0",
+			prepare:  "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
+			repoFile: "/etc/zypp/repos.d/rancher-k3s-common.repo",
+		}
 
-		BeforeAll(func() {
-			var err error
-			out, err = started["skip"].collect()
-			Expect(err).NotTo(HaveOccurred(), out)
-		})
+		tc     *docker.TestConfig
+		out    string
+		failed bool
+	)
 
-		It("should not configure a repository when the RPM is skipped", func() {
-			Expect(out).To(ContainSubstring("Skipping installation of SELinux RPM"))
-			Expect(out).To(ContainSubstring("REPO: missing"))
-		})
+	BeforeAll(func() {
+		var err error
+		tc, out, err = runScript(d.name, d, skipScript(d))
+		Expect(err).NotTo(HaveOccurred(), out)
+	})
+
+	It("should not configure a repository when the RPM is skipped", func() {
+		Expect(out).To(ContainSubstring("Skipping installation of SELinux RPM"))
+		Expect(out).To(ContainSubstring("REPO: missing"))
+	})
+
+	AfterEach(func() {
+		failed = failed || CurrentSpecReport().Failed()
+	})
+
+	AfterAll(func() {
+		cleanup(tc, failed)
 	})
 })
 
-var failed bool
-var _ = AfterEach(func() {
-	failed = failed || CurrentSpecReport().Failed()
-})
-
-var _ = AfterSuite(func() {
-	for _, r := range runs {
-		if failed {
-			AddReportEntry("test-dir", r.tc.TestDir)
-		}
-		if *ci || !failed {
-			Expect(r.tc.Cleanup()).To(Succeed())
-		}
+func cleanup(tc *docker.TestConfig, failed bool) {
+	if tc == nil {
+		return
 	}
-})
+	if failed {
+		AddReportEntry("test-dir", tc.TestDir)
+	}
+	if *ci || !failed {
+		Expect(tc.Cleanup()).To(Succeed())
+	}
+}
