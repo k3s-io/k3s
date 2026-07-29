@@ -55,20 +55,20 @@ func installScript(d distro) string {
 }
 
 // skipScript checks that INSTALL_K3S_SKIP_SELINUX_RPM prevents install.sh from configuring a repository or resolving the RPM.
-func skipScript(d distro) string {
+func skipScript() string {
 	return strings.Join([]string{
 		"exec 2>&1",
 		k3sBinary,
-		d.prepare,
+		"zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
 		installEnv + " INSTALL_K3S_SKIP_SELINUX_RPM=true sh /tmp/install.sh server",
-		fmt.Sprintf(`echo "REPO: $(test -f %[1]s && echo %[1]s || echo missing)"`, d.repoFile),
+		fmt.Sprintf(`echo "REPO: $(test -f %[1]s && echo %[1]s || echo missing)"`, skipRepoFile),
 	}, "\n")
 }
 
 // runScript runs the script in a container that executes it once and exits,
 // and returns the test config and everything the container logged.
-func runScript(name string, d distro, script string) (*docker.TestConfig, string, error) {
-	tc, err := docker.NewTestConfig(d.image)
+func runScript(name, image, script string) (*docker.TestConfig, string, error) {
+	tc, err := docker.NewTestConfig(image)
 	if err != nil {
 		return nil, "", err
 	}
@@ -108,7 +108,7 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 
 	BeforeAll(func() {
 		var err error
-		tc, out, err = runScript(d.name, d, installScript(d))
+		tc, out, err = runScript(d.name, d.image, installScript(d))
 		Expect(err).NotTo(HaveOccurred(), out)
 	})
 
@@ -192,15 +192,11 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 	}),
 )
 
+const skipImage = "registry.suse.com/bci/bci-base:16.0"
+const skipRepoFile = "/etc/zypp/repos.d/rancher-k3s-common.repo"
+
 var _ = Describe("SELinux RPM Skip", Ordered, func() {
 	var (
-		d = distro{
-			name:     "skip",
-			image:    "registry.suse.com/bci/bci-base:16.0",
-			prepare:  "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
-			repoFile: "/etc/zypp/repos.d/rancher-k3s-common.repo",
-		}
-
 		tc     *docker.TestConfig
 		out    string
 		failed bool
@@ -208,7 +204,7 @@ var _ = Describe("SELinux RPM Skip", Ordered, func() {
 
 	BeforeAll(func() {
 		var err error
-		tc, out, err = runScript(d.name, d, skipScript(d))
+		tc, out, err = runScript("skip", skipImage, skipScript())
 		Expect(err).NotTo(HaveOccurred(), out)
 	})
 
