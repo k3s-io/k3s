@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_isValidResolvConf(t *testing.T) {
+func Test_UnitisValidResolvConf(t *testing.T) {
 	tests := []struct {
 		name           string
 		fileContent    string

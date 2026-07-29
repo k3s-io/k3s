@@ -156,7 +156,7 @@ func Test_UnitcreateCNIConf(t *testing.T) {
 	}
 }
 
-func Test_findNetMode(t *testing.T) {
+func Test_UnitfindNetMode(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    string

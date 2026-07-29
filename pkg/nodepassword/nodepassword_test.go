@@ -22,7 +22,7 @@ func Test_UnitAsserts(t *testing.T) {
 	assertNotEqual(t, 1, 0)
 }
 
-func Test_PasswordError(t *testing.T) {
+func Test_UnitpasswordError(t *testing.T) {
 	err := &passwordError{node: "test", err: errors.New("inner error")}
 	assertEqual(t, errors.Is(err, ErrVerifyFailed), true)
 	assertEqual(t, errors.Is(err, errors.New("different error")), false)
