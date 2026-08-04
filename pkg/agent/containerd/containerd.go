@@ -49,10 +49,6 @@ const (
 	criPinnedImageLabelKey    = criContainerdPrefix + ".pinned"
 	criPinnedImageLabelValue  = "pinned"
 	criK8sContainerdNamespace = "k8s.io"
-
-	// forceCreateTagAttempts is the number of times to attempt tagging an image, in case
-	// another writer is concurrently creating or deleting a record with the same name.
-	forceCreateTagAttempts = 3
 )
 
 // Run configures and starts containerd as a child process. Once it is up, images are preloaded
@@ -302,8 +298,6 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 		for _, name := range newNames {
 			if err := forceCreateTag(ctx, imageService, image, name); err != nil {
 				errs = append(errs, err)
-			} else {
-				logrus.Infof("Tagged %s", name)
 			}
 		}
 	}
@@ -345,28 +339,28 @@ func isHostedBy(name docker.Named, registry string) bool {
 }
 
 // forceCreateTag retags an image with the provided reference, replacing any image that
-// currently holds that name. Create and Update are each atomic, but another writer such as the
-// CRI plugin may add or remove the record between our calls, so retry a bounded number of times.
+// currently holds that name. If something else takes the name first, the tag is skipped.
 func forceCreateTag(ctx context.Context, imageService images.Store, image images.Image, targetRef string) error {
 	image.Name = targetRef
-	var err error
-	for range forceCreateTagAttempts {
-		if _, err = imageService.Create(ctx, image); err == nil {
-			return nil
-		}
+	if _, err := imageService.Create(ctx, image); err != nil {
 		if !errdefs.IsAlreadyExists(err) {
 			return errors.WithMessage(err, "failed to tag image "+image.Name)
 		}
-		// Update replaces the record within a single transaction; deleting and recreating
-		// it would leave a window for another writer to take the name first.
-		if _, err = imageService.Update(ctx, image); err == nil {
-			return nil
+		if err := imageService.Delete(ctx, image.Name); err != nil {
+			return errors.WithMessage(err, "failed to delete existing image "+image.Name)
 		}
-		if !errdefs.IsNotFound(err) {
-			return errors.WithMessage(err, "failed to tag image "+image.Name)
+		if _, err := imageService.Create(ctx, image); err != nil {
+			if errdefs.IsAlreadyExists(err) {
+				// Something else took the name after we deleted it; don't fail the
+				// import over a tag that we no longer own.
+				logrus.Warnf("Failed to tag after deleting existing image %s: %v", image.Name, err)
+				return nil
+			}
+			return errors.WithMessage(err, "failed to tag after deleting existing image "+image.Name)
 		}
 	}
-	return errors.WithMessagef(err, "failed to tag image %s after %d attempts", image.Name, forceCreateTagAttempts)
+	logrus.Infof("Tagged %s", image.Name)
+	return nil
 }
 
 // labelContent adds distribution source labels to layer content.
