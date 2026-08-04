@@ -48,7 +48,9 @@ mkdir -p /etc/systemd/system/user@.service.d
 echo "[Service]
 Delegate=cpu cpuset io memory pids
 ">> /etc/systemd/system/user@.service.d/delegate.conf
+apt-get update
 apt-get install -y uidmap
+command -v newuidmap >/dev/null || { echo "uidmap install failed: newuidmap not found"; exit 1; }
 
 systemctl daemon-reload
 loginctl enable-linger vagrant
