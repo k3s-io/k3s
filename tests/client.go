@@ -31,7 +31,7 @@ func RunCommand(cmd string) (string, error) {
 	}
 	out, err := c.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("failed to run command: %s, %v", cmd, err)
+		return string(out), fmt.Errorf("failed to run command: %s, %v: %s", cmd, err, string(out))
 	}
 	return string(out), err
 }
