@@ -6,6 +6,7 @@ on:
       - "channel.yaml"
       - "install.sh"
       - "tests/install/**"
+      - "tests/docker/selinux/**"
       - ".github/workflows/install.yaml"
 
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - "install.sh"
       - "tests/install/**"
+      - "tests/docker/selinux/**"
       - ".github/workflows/install.yaml"
   workflow_dispatch: {}
 
@@ -22,6 +24,22 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
+  docker-go:
+    name: Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dtest: [selinux]
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with: {fetch-depth: 1}
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+      - name: Run ${{ matrix.dtest }} Test
+        run: go test -timeout=15m -v ./tests/docker/${{ matrix.dtest }}/ -args -ginkgo.v -ci
   test:
     name: "Smoke Test"
     needs: build
