@@ -145,12 +145,14 @@ type fakeImageStore struct {
 	images.Store
 	records map[string]images.Image
 	creates int
-	updates int
 	deletes int
 	// onCall is invoked before each store operation with the operation name and the
 	// 1-based call count, and may mutate records to simulate a concurrent writer.
 	onCall func(f *fakeImageStore, op string, call int)
 	calls  int
+	// createErr is returned by the createErrOnCall'th Create.
+	createErr       error
+	createErrOnCall int
 }
 
 func newFakeImageStore() *fakeImageStore {
@@ -167,18 +169,11 @@ func (f *fakeImageStore) hook(op string) {
 func (f *fakeImageStore) Create(ctx context.Context, image images.Image) (images.Image, error) {
 	f.hook("create")
 	f.creates++
+	if f.createErr != nil && f.creates == f.createErrOnCall {
+		return images.Image{}, f.createErr
+	}
 	if _, ok := f.records[image.Name]; ok {
 		return images.Image{}, errdefs.ErrAlreadyExists
-	}
-	f.records[image.Name] = image
-	return image, nil
-}
-
-func (f *fakeImageStore) Update(ctx context.Context, image images.Image, fieldpaths ...string) (images.Image, error) {
-	f.hook("update")
-	f.updates++
-	if _, ok := f.records[image.Name]; !ok {
-		return images.Image{}, errdefs.ErrNotFound
 	}
 	f.records[image.Name] = image
 	return image, nil
@@ -211,18 +206,18 @@ func Test_UnitForceCreateTag(t *testing.T) {
 		require.NoError(t, forceCreateTag(context.Background(), store, image, targetRef))
 		assert.Equal(t, image.Target, store.records[targetRef].Target)
 		assert.Equal(t, 1, store.creates)
-		assert.Equal(t, 0, store.updates)
+		assert.Equal(t, 0, store.deletes)
 	})
 
-	t.Run("overwrites an existing record without deleting it", func(t *testing.T) {
+	t.Run("replaces an existing record", func(t *testing.T) {
 		store := newFakeImageStore()
 		store.records[targetRef] = newImage("stale")
 		image := newImage("fresh")
 
 		require.NoError(t, forceCreateTag(context.Background(), store, image, targetRef))
 		assert.Equal(t, image.Target, store.records[targetRef].Target)
-		assert.Equal(t, 1, store.updates)
-		assert.Equal(t, 0, store.deletes, "the existing record must be replaced, not deleted and recreated")
+		assert.Equal(t, 2, store.creates)
+		assert.Equal(t, 1, store.deletes)
 	})
 
 	t.Run("tagging the same name twice is idempotent", func(t *testing.T) {
@@ -234,49 +229,51 @@ func Test_UnitForceCreateTag(t *testing.T) {
 		assert.Equal(t, image.Target, store.records[targetRef].Target)
 	})
 
-	t.Run("recovers when another writer creates the record first", func(t *testing.T) {
+	t.Run("tolerates the record being recreated after we delete it", func(t *testing.T) {
 		store := newFakeImageStore()
-		// Another writer creates the record just before our Create.
+		store.records[targetRef] = newImage("stale")
+		// Another writer takes the name back between our delete and our second create.
+		// The import must not fail over a tag that we no longer own.
 		store.onCall = func(f *fakeImageStore, op string, call int) {
-			if call == 1 {
+			if op == "create" && call == 3 {
 				f.records[targetRef] = newImage("other")
 			}
 		}
-		image := newImage("ours")
 
-		require.NoError(t, forceCreateTag(context.Background(), store, image, targetRef))
-		assert.Equal(t, image.Target, store.records[targetRef].Target)
+		assert.NoError(t, forceCreateTag(context.Background(), store, newImage("ours"), targetRef))
+		assert.Equal(t, newImage("other").Target, store.records[targetRef].Target, "the other writer's record must be left alone")
 	})
 
-	t.Run("recovers when another writer deletes the record mid-flight", func(t *testing.T) {
+	t.Run("returns errors from the first create", func(t *testing.T) {
 		store := newFakeImageStore()
-		store.records[targetRef] = newImage("stale")
-		// Another writer deletes the record after our Create fails but before our Update.
-		store.onCall = func(f *fakeImageStore, op string, call int) {
-			if call == 2 {
-				delete(f.records, targetRef)
-			}
-		}
-		image := newImage("ours")
+		store.createErr = errdefs.ErrInvalidArgument
+		store.createErrOnCall = 1
 
-		require.NoError(t, forceCreateTag(context.Background(), store, image, targetRef))
-		assert.Equal(t, image.Target, store.records[targetRef].Target)
+		err := forceCreateTag(context.Background(), store, newImage("ours"), targetRef)
+		assert.ErrorContains(t, err, "failed to tag image "+targetRef)
 	})
 
-	t.Run("gives up after repeated interference", func(t *testing.T) {
+	t.Run("returns errors from the delete", func(t *testing.T) {
 		store := newFakeImageStore()
 		store.records[targetRef] = newImage("stale")
-		// Another writer defeats every attempt: the record is always present when we
-		// try to create it, and always gone by the time we try to update it.
+		// The record is already gone by the time we try to delete it.
 		store.onCall = func(f *fakeImageStore, op string, call int) {
-			if op == "create" {
-				f.records[targetRef] = newImage("other")
-			} else {
+			if op == "delete" {
 				delete(f.records, targetRef)
 			}
 		}
 
 		err := forceCreateTag(context.Background(), store, newImage("ours"), targetRef)
-		assert.ErrorContains(t, err, "failed to tag image "+targetRef)
+		assert.ErrorContains(t, err, "failed to delete existing image "+targetRef)
+	})
+
+	t.Run("returns non-AlreadyExists errors from the second create", func(t *testing.T) {
+		store := newFakeImageStore()
+		store.records[targetRef] = newImage("stale")
+		store.createErr = errdefs.ErrInvalidArgument
+		store.createErrOnCall = 2
+
+		err := forceCreateTag(context.Background(), store, newImage("ours"), targetRef)
+		assert.ErrorContains(t, err, "failed to tag after deleting existing image "+targetRef)
 	})
 }
