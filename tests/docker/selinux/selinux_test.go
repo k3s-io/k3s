@@ -14,16 +14,28 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	skipImage    = "registry.suse.com/bci/bci-base:16.0"
+	skipRepoFile = "/etc/zypp/repos.d/rancher-k3s-common.repo"
+
+	installSh = "../../../install.sh"
+
+	k3sBinary = "touch /usr/local/bin/k3s; chmod 0755 /usr/local/bin/k3s"
+
+	installEnv = "INSTALL_K3S_SKIP_DOWNLOAD=binary " +
+		"INSTALL_K3S_SKIP_START=true " +
+		"INSTALL_K3S_SKIP_ENABLE=true " +
+		"INSTALL_K3S_SELINUX_WARN=true"
+)
+
 var ci = flag.Bool("ci", false, "running on CI, forced cleanup")
-
-const installSh = "../../../install.sh"
-
-const k3sBinary = "touch /usr/local/bin/k3s; chmod 0755 /usr/local/bin/k3s"
-
-const installEnv = "INSTALL_K3S_SKIP_DOWNLOAD=binary " +
-	"INSTALL_K3S_SKIP_START=true " +
-	"INSTALL_K3S_SKIP_ENABLE=true " +
-	"INSTALL_K3S_SELINUX_WARN=true"
+var skipScript = strings.Join([]string{
+	"exec 2>&1",
+	k3sBinary,
+	"zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
+	installEnv + " INSTALL_K3S_SKIP_SELINUX_RPM=true sh /tmp/install.sh server",
+	fmt.Sprintf(`echo "REPO: $(test -f %[1]s && echo %[1]s || echo missing)"`, skipRepoFile),
+}, "\n")
 
 type distro struct {
 	name        string
@@ -51,17 +63,6 @@ func installScript(d distro) string {
 		installEnv + " sh /tmp/install.sh server",
 		fmt.Sprintf(`echo "REPO: $(test -f %[1]s && grep -h '^baseurl=' %[1]s || echo missing)"`, d.repoFile),
 		fmt.Sprintf(`echo "QUERY: $(%s 2>/dev/null | grep -i 'rancher.k3s.common' | head -1)"`, d.queryCmd),
-	}, "\n")
-}
-
-// skipScript checks that INSTALL_K3S_SKIP_SELINUX_RPM prevents install.sh from configuring a repository or resolving the RPM.
-func skipScript() string {
-	return strings.Join([]string{
-		"exec 2>&1",
-		k3sBinary,
-		"zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
-		installEnv + " INSTALL_K3S_SKIP_SELINUX_RPM=true sh /tmp/install.sh server",
-		fmt.Sprintf(`echo "REPO: $(test -f %[1]s && echo %[1]s || echo missing)"`, skipRepoFile),
 	}, "\n")
 }
 
@@ -93,10 +94,7 @@ func runScript(name, image, script string) (*docker.TestConfig, string, error) {
 	if err != nil {
 		return tc, out, fmt.Errorf("failed to run %s: %v", name, err)
 	}
-
-	GinkgoWriter.Println(out)
-	logPath := filepath.Join(tc.TestDir, "logs", name+".log")
-	return tc, out, os.WriteFile(logPath, []byte(out), 0644)
+	return tc, out, nil
 }
 
 var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
@@ -108,7 +106,9 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 
 	BeforeAll(func() {
 		var err error
-		tc, out, err = runScript(d.name, d.image, installScript(d))
+		texts := CurrentSpecReport().ContainerHierarchyTexts
+		name := texts[len(texts)-1]
+		tc, out, err = runScript(name, d.image, installScript(d))
 		Expect(err).NotTo(HaveOccurred(), out)
 	})
 
@@ -135,7 +135,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 	})
 },
 	Entry("sles16", distro{
-		name:        "sles16",
 		image:       "registry.suse.com/bci/bci-base:16.0",
 		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -143,7 +142,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("sle-micro", distro{
-		name:        "sle-micro",
 		image:       "registry.suse.com/suse/sle-micro/5.5:latest",
 		prepare:     "mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -151,7 +149,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("sl-micro-6.2", distro{
-		name:        "sl-micro-6.2",
 		image:       "registry.suse.com/suse/sl-micro/6.2/base-os-container:latest",
 		prepare:     "mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -159,7 +156,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("sl-micro-6.1", distro{
-		name:        "sl-micro-6.1",
 		image:       "registry.suse.com/suse/sl-micro/6.1/base-os-container:latest",
 		prepare:     "mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -167,7 +163,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("sl-micro-6.0", distro{
-		name:        "sl-micro-6.0",
 		image:       "registry.suse.com/suse/sl-micro/6.0/base-os-container:latest",
 		prepare:     "mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -175,7 +170,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("opensuse-leap", distro{
-		name:        "opensuse-leap",
 		image:       "opensuse/leap:15.6",
 		prepare:     "zypper --non-interactive --gpg-auto-import-keys install -y systemd; mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/zypp/repos.d/rancher-k3s-common.repo",
@@ -183,7 +177,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "zypper --non-interactive info k3s-selinux",
 	}),
 	Entry("almalinux", distro{
-		name:        "almalinux",
 		image:       "almalinux:10",
 		prepare:     "mkdir -p /usr/share/selinux",
 		repoFile:    "/etc/yum.repos.d/rancher-k3s-common.repo",
@@ -191,9 +184,6 @@ var _ = DescribeTableSubtree("SELinux RPM Tests", Ordered, func(d distro) {
 		queryCmd:    "dnf -q info k3s-selinux",
 	}),
 )
-
-const skipImage = "registry.suse.com/bci/bci-base:16.0"
-const skipRepoFile = "/etc/zypp/repos.d/rancher-k3s-common.repo"
 
 var _ = Describe("SELinux RPM Skip", Ordered, func() {
 	var (
@@ -204,7 +194,7 @@ var _ = Describe("SELinux RPM Skip", Ordered, func() {
 
 	BeforeAll(func() {
 		var err error
-		tc, out, err = runScript("skip", skipImage, skipScript())
+		tc, out, err = runScript("skip", skipImage, skipScript)
 		Expect(err).NotTo(HaveOccurred(), out)
 	})
 
@@ -223,13 +213,10 @@ var _ = Describe("SELinux RPM Skip", Ordered, func() {
 })
 
 func cleanup(tc *docker.TestConfig, failed bool) {
-	if tc == nil {
-		return
-	}
 	if failed {
-		AddReportEntry("test-dir", tc.TestDir)
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, tc.Servers))
 	}
-	if *ci || !failed {
+	if tc != nil && (*ci || !failed) {
 		Expect(tc.Cleanup()).To(Succeed())
 	}
 }
