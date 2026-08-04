@@ -606,10 +606,10 @@ setup_selinux() {
         rpm_site_infix=microos
         package_installer=zypper
 
-        # SleMicro 6.2 and SLEs 16 uses the same ID and same VERSION_ID
+        # SleMicro 6.2 and SLEs 16 uses the same ID and same VERSION_ID in case the ID and VERSION_ID changes we will catch SLEMicro 6.2 using VARIANT_ID transactional
         if [ "${ID:-}" = sles ] && [ -n "${VERSION_ID}" ] && [ "${VERSION_ID%%.*}" -ge 16 ]; then
             rpm_site_infix=slemicro
-        elif [ "${VARIANT_ID:-}" = sle-micro ] || [ "${ID:-}" = sle-micro ] || [ "${ID:-}" = sl-micro ] || [ "${ID:-}" = sle-micro-rancher ]; then
+        elif [ "${VARIANT_ID:-}" = sle-micro ] || [ "${VARIANT_ID:-}" = transactional ] || [ "${ID:-}" = sle-micro ] || [ "${ID:-}" = sl-micro ] || [ "${ID:-}" = sle-micro-rancher ]; then
             rpm_site_infix=slemicro
         fi
 
