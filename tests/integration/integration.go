@@ -366,7 +366,7 @@ func RunCommand(cmd string) (string, error) {
 	c.Stderr = &out
 	err := c.Run()
 	if err != nil {
-		return out.String(), fmt.Errorf("%s", err)
+		return out.String(), fmt.Errorf("failed to run command: %s, %v: %s", cmd, err, out.String())
 	}
 	return out.String(), nil
 }
