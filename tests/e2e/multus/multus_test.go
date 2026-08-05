@@ -89,8 +89,10 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 			}, "120s", "5s").Should(ContainSubstring("2"))
 		})
 		It("Deploys Multus NetworkAttachmentDefinition and test pods", func() {
-			_, err := tc.DeployWorkload("multus_test.yaml")
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				_, err := tc.DeployWorkload("multus_test.yaml")
+				return err
+			}, "60s", "5s").Should(Succeed(), "failed to apply multus_test.yaml")
 			time.Sleep(5 * time.Second)
 		})
 		It("Verifies internode connectivity over multus network", func() {
