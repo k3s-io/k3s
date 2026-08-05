@@ -1,6 +1,16 @@
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
+  name: multus-crd
+  namespace: kube-system
+spec:
+  repo: https://rke2-charts.rancher.io
+  chart: rke2-multus-crd
+  targetNamespace: kube-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
   name: multus
   namespace: kube-system
 spec:
