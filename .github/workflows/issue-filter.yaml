@@ -35,4 +35,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue close "${{ github.event.issue.number }}" \
-            --comment "Large UnTemplated Issue Detected. Please resubmit using one of our issue templates."
+            --comment "Large Untemplated Issue Detected. Please resubmit using one of our issue templates."
