@@ -520,7 +520,7 @@ func (e *ETCD) pollJoin(ctx context.Context, wg *sync.WaitGroup, clientAccessInf
 }
 
 // startClient sets up the config's datastore endpoints, and starts an etcd client connected to the server endpoint.
-// The client is destroyed when the context is closed.
+// The client's connection is closed when the context is closed.
 func (e *ETCD) startClient(ctx context.Context) error {
 	if e.client != nil {
 		return errors.New("etcd datastore already started")
@@ -540,7 +540,6 @@ func (e *ETCD) startClient(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		e.client = nil
 		conn.Close()
 	}()
 
