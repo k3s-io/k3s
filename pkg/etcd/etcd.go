@@ -1519,6 +1519,12 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
 		return err
 	}
+	// Restore is an offline operation, so create a logger for it instead of borrowing one from
+	// the datastore client. Do it before anything is moved, so that we fail early.
+	logger, err := logutil.CreateDefaultZapLogger(zapcore.InfoLevel)
+	if err != nil {
+		return err
+	}
 
 	var restorePath string
 	if strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
@@ -1543,7 +1549,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	}
 
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
-	return snapshotv3.NewV3(e.client.GetLogger()).Restore(snapshotv3.RestoreConfig{
+	return snapshotv3.NewV3(logger).Restore(snapshotv3.RestoreConfig{
 		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  dbDir(e.config),
