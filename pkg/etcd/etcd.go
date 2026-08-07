@@ -536,7 +536,7 @@ func (e *ETCD) pollJoin(ctx context.Context, wg *sync.WaitGroup, clientAccessInf
 }
 
 // startClient sets up the config's datastore endpoints, and starts an etcd client connected to the server endpoint.
-// The client is destroyed when the context is closed.
+// The client's connection is closed when the context is closed.
 func (e *ETCD) startClient(ctx context.Context) error {
 	if e.client != nil {
 		return errors.New("etcd datastore already started")
@@ -556,7 +556,6 @@ func (e *ETCD) startClient(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		e.client = nil
 		conn.Close()
 	}()
 
@@ -1545,6 +1544,12 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	if _, err := os.Stat(e.config.ClusterResetRestorePath); err != nil {
 		return err
 	}
+	// Restore is an offline operation, so create a logger for it instead of borrowing one from
+	// the datastore client. Do it before anything is moved, so that we fail early.
+	logger, err := logutil.CreateDefaultZapLogger(zapcore.InfoLevel)
+	if err != nil {
+		return err
+	}
 
 	var restorePath string
 	if strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
@@ -1569,7 +1574,7 @@ func (e *ETCD) Restore(ctx context.Context) error {
 	}
 
 	logrus.Infof("Pre-restore etcd database moved to %s", oldDataDir)
-	return snapshotv3.NewV3(e.client.GetLogger()).Restore(snapshotv3.RestoreConfig{
+	return snapshotv3.NewV3(logger).Restore(snapshotv3.RestoreConfig{
 		SnapshotPath:   restorePath,
 		Name:           e.name,
 		OutputDataDir:  dbDir(e.config),
