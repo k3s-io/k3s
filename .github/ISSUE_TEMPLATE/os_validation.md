@@ -3,6 +3,7 @@ name: Validate Operating System
 about: Request validation of an operating system
 title: 'Validate OS VERSION'
 labels: ["kind/os-validation"]
+type: 'task'
 assignees: ''
 
 ---

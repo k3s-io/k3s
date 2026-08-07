@@ -16,6 +16,9 @@ If you're interested in contributing new tests, please see the [TESTING.md](./te
 
 ## AI Guidance
 
+When using AI tools to help prepare an issue, use the applicable [issue template](.github/ISSUE_TEMPLATE)
+and limit generated content to the information requested by that template.
+
 Using AI tools to help write your PR is acceptable, but as the author, you are responsible for
 understanding every change. If you used AI tools in preparing your PR, you must disclose this in the
 description of your PR. Listing AI tooling as a co-author, co-signing commits using an AI tool, or using
