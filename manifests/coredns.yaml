@@ -53,6 +53,8 @@ metadata:
   namespace: kube-system
 data:
   Corefile: |
+    # THIS FILE IS RESET EVERY TIME THE K3S CONTROL-PLANE IS STARTED
+    # CUSTOMIZATIONS MUST BE MADE IN THE coredns-custom CONFIGMAP
     .:53 {
         errors
         health
