@@ -289,48 +289,77 @@ func retagImages(ctx context.Context, client *containerd.Client, images []images
 	var errs []error
 	imageService := client.ImageService()
 	for _, image := range images {
-		name, err := parseNamedTagged(image.Name)
+		newNames, err := imageTagNames(image, registries)
 		if err != nil {
 			errs = append(errs, errors.WithMessage(err, "failed to parse tag for image "+image.Name))
 			continue
 		}
 		logrus.Infof("Imported %s", image.Name)
-		newNames := []string{fmt.Sprintf("%s@%s", name.Name(), image.Target.Digest)}
-		for _, registry := range registries {
-			newNames = append(newNames,
-				fmt.Sprintf("%s/%s:%s", registry, docker.Path(name), name.Tag()),
-				fmt.Sprintf("%s/%s@%s", registry, docker.Path(name), image.Target.Digest),
-			)
-		}
 		for _, name := range newNames {
-			if name == image.Name {
-				continue
-			}
 			if err := forceCreateTag(ctx, imageService, image, name); err != nil {
 				errs = append(errs, err)
-			} else {
-				logrus.Infof("Tagged %s", name)
 			}
 		}
 	}
 	return errors.Join(errs...)
 }
 
-// forceCreateTag retags an image with the provided reference.
+// imageTagNames returns the additional names that an image should be tagged with, given the
+// list of registries that it may be pulled from. Registries that the image is already hosted
+// by are skipped, so the returned list never includes the image's current name.
+func imageTagNames(image images.Image, registries []string) ([]string, error) {
+	name, err := parseNamedTagged(image.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	newNames := make([]string, 0, 1+2*len(registries))
+	newNames = append(newNames, fmt.Sprintf("%s@%s", name.Name(), image.Target.Digest))
+
+	seen := make(map[string]bool, len(registries))
+	for _, registry := range registries {
+		registry = strings.TrimSuffix(registry, "/")
+		if seen[registry] || isHostedBy(name, registry) {
+			continue
+		}
+		seen[registry] = true
+		newNames = append(newNames,
+			fmt.Sprintf("%s/%s:%s", registry, docker.Path(name), name.Tag()),
+			fmt.Sprintf("%s/%s@%s", registry, docker.Path(name), image.Target.Digest),
+		)
+	}
+	return newNames, nil
+}
+
+// isHostedBy reports whether an image is already hosted by the given registry, which must not
+// have a trailing slash. Registries may include a path component; because docker.Path returns
+// everything after the domain, retagging for one would repeat that component on every import.
+func isHostedBy(name docker.Named, registry string) bool {
+	return strings.HasPrefix(name.Name(), registry+"/")
+}
+
+// forceCreateTag retags an image with the provided reference, replacing any image that
+// currently holds that name. If something else takes the name first, the tag is skipped.
 func forceCreateTag(ctx context.Context, imageService images.Store, image images.Image, targetRef string) error {
 	image.Name = targetRef
 	if _, err := imageService.Create(ctx, image); err != nil {
-		if errdefs.IsAlreadyExists(err) {
-			if err = imageService.Delete(ctx, image.Name); err != nil {
-				return errors.WithMessage(err, "failed to delete existing image "+image.Name)
-			}
-			if _, err = imageService.Create(ctx, image); err != nil {
-				return errors.WithMessage(err, "failed to tag after deleting existing image "+image.Name)
-			}
-		} else {
+		if !errdefs.IsAlreadyExists(err) {
 			return errors.WithMessage(err, "failed to tag image "+image.Name)
 		}
+		if err := imageService.Delete(ctx, image.Name); err != nil {
+			return errors.WithMessage(err, "failed to delete existing image "+image.Name)
+		}
+		if _, err := imageService.Create(ctx, image); err != nil {
+			if errdefs.IsAlreadyExists(err) {
+				// Something else took the name after we deleted it; don't fail the
+				// import over a tag that we no longer own.
+				logrus.Warnf("Failed to tag after deleting existing image %s: %v", image.Name, err)
+				return nil
+			}
+			return errors.WithMessage(err, "failed to tag after deleting existing image "+image.Name)
+		}
 	}
+	logrus.Infof("Tagged %s", image.Name)
 	return nil
 }
 
