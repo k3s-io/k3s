@@ -84,7 +84,7 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
         with:
-          version: type=image,tag=28
+          version: type=image,tag=29
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
           set-host: true
       - name: Set up vagrant and libvirt
@@ -261,7 +261,7 @@ jobs:
     - name: Set up Docker
       uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
       with:
-        version: type=image,tag=28
+        version: type=image,tag=29
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
         set-host: true
     - name: Load and set K3s image
@@ -317,7 +317,7 @@ jobs:
     - name: Set up Docker
       uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 # v5
       with:
-        version: type=image,tag=28
+        version: type=image,tag=29
         set-host: true
     - name: "Download K3s image"
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
