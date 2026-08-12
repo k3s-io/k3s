@@ -27,8 +27,8 @@ import (
 
 // ReadCloser is a generic wrapper around a MVCC store that provides only read/close functions
 type ReadCloser interface {
-	List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error)
-	Get(ctx context.Context, key string) (mvccpb.KeyValue, error)
+	List(ctx context.Context, key string, rev int64) ([]*mvccpb.KeyValue, error)
+	Get(ctx context.Context, key string) (*mvccpb.KeyValue, error)
 	Close() error
 }
 
@@ -77,27 +77,27 @@ func NewRemoteStore(config endpoint.ETCDConfig) (*RemoteStore, error) {
 	return &RemoteStore{client: c}, nil
 }
 
-func (r *RemoteStore) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error) {
+func (r *RemoteStore) List(ctx context.Context, key string, rev int64) ([]*mvccpb.KeyValue, error) {
 	resp, err := r.client.Get(ctx, key, clientv3.WithPrefix(), clientv3.WithRev(rev))
 	if err != nil {
 		return nil, err
 	}
-	vals := make([]mvccpb.KeyValue, len(resp.Kvs))
+	vals := make([]*mvccpb.KeyValue, len(resp.Kvs))
 	for i := range resp.Kvs {
-		vals[i] = *resp.Kvs[i]
+		vals[i] = resp.Kvs[i]
 	}
 	return vals, nil
 }
 
-func (r *RemoteStore) Get(ctx context.Context, key string) (mvccpb.KeyValue, error) {
+func (r *RemoteStore) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
 	resp, err := r.client.Get(ctx, key)
 	if err != nil {
-		return mvccpb.KeyValue{}, err
+		return nil, err
 	}
 	if len(resp.Kvs) == 1 {
-		return *resp.Kvs[0], nil
+		return resp.Kvs[0], nil
 	}
-	return mvccpb.KeyValue{}, etcderrors.ErrKeyNotFound
+	return nil, etcderrors.ErrKeyNotFound
 }
 
 func (r *RemoteStore) Close() error {
@@ -194,11 +194,11 @@ func NewTemporaryStore(dataDir string) (*TemporaryStore, error) {
 	return &TemporaryStore{store: s, dataDir: tempDir}, nil
 }
 
-func (t *TemporaryStore) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error) {
+func (t *TemporaryStore) List(ctx context.Context, key string, rev int64) ([]*mvccpb.KeyValue, error) {
 	return t.store.List(ctx, key, rev)
 }
 
-func (t *TemporaryStore) Get(ctx context.Context, key string) (mvccpb.KeyValue, error) {
+func (t *TemporaryStore) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
 	return t.store.Get(ctx, key)
 }
 
@@ -308,7 +308,7 @@ func (s *Store) Close() error {
 	return errors.Join(errs...)
 }
 
-func (s *Store) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyValue, error) {
+func (s *Store) List(ctx context.Context, key string, rev int64) ([]*mvccpb.KeyValue, error) {
 	resp, err := s.kv.Range(ctx, []byte(key), []byte(key+"\xff"), mvcc.RangeOptions{Rev: rev})
 	if err != nil {
 		return nil, err
@@ -316,15 +316,15 @@ func (s *Store) List(ctx context.Context, key string, rev int64) ([]mvccpb.KeyVa
 	return resp.KVs, nil
 }
 
-func (s *Store) Get(ctx context.Context, key string) (mvccpb.KeyValue, error) {
+func (s *Store) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
 	resp, err := s.kv.Range(ctx, []byte(key), nil, mvcc.RangeOptions{})
 	if err != nil {
-		return mvccpb.KeyValue{}, err
+		return nil, err
 	}
 
 	if len(resp.KVs) == 1 {
 		return resp.KVs[0], nil
 	}
 
-	return mvccpb.KeyValue{}, etcderrors.ErrKeyNotFound
+	return nil, etcderrors.ErrKeyNotFound
 }
