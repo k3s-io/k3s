@@ -15,17 +15,21 @@ replace (
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.13.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
+	github.com/k3s-io/kine => github.com/brandond/kine v0.16.4-0.20260812231043-d5100ab98ae2
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.2
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.15.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common => github.com/prometheus/common v0.70.0
 	github.com/spegel-org/spegel => github.com/k3s-io/spegel v0.7.2-k3s1
-	go.etcd.io/etcd/api/v3 => github.com/k3s-io/etcd/api/v3 v3.6.14-k3s1
-	go.etcd.io/etcd/client/pkg/v3 => github.com/k3s-io/etcd/client/pkg/v3 v3.6.14-k3s1
-	go.etcd.io/etcd/client/v3 => github.com/k3s-io/etcd/client/v3 v3.6.14-k3s1
-	go.etcd.io/etcd/etcdutl/v3 => github.com/k3s-io/etcd/etcdutl/v3 v3.6.14-k3s1
-	go.etcd.io/etcd/pkg/v3 => github.com/k3s-io/etcd/pkg/v3 v3.6.14-k3s1
-	go.etcd.io/etcd/server/v3 => github.com/k3s-io/etcd/server/v3 v3.6.14-k3s1
+	github.com/spf13/cobra => github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag => github.com/spf13/pflag v1.0.10
+	github.com/spf13/viper => github.com/spf13/viper v1.21.0
+	go.etcd.io/etcd/api/v3 => github.com/brandond/etcd/api/v3 v3.7.1-bd1
+	go.etcd.io/etcd/client/pkg/v3 => github.com/brandond/etcd/client/pkg/v3 v3.7.1-bd1
+	go.etcd.io/etcd/client/v3 => github.com/brandond/etcd/client/v3 v3.7.1-bd1
+	go.etcd.io/etcd/etcdutl/v3 => github.com/brandond/etcd/etcdutl/v3 v3.7.1-bd1
+	go.etcd.io/etcd/pkg/v3 => github.com/brandond/etcd/pkg/v3 v3.7.1-bd1
+	go.etcd.io/etcd/server/v3 => github.com/brandond/etcd/server/v3 v3.7.1-bd1
 	go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful => go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful v0.69.0
 	golang.org/x/crypto => golang.org/x/crypto v0.54.0
 	golang.org/x/net => golang.org/x/net v0.57.0
@@ -109,7 +113,7 @@ require (
 	github.com/k3s-io/api v0.1.4
 	github.com/k3s-io/helm-controller v0.17.7
 	github.com/k3s-io/kine v0.16.3
-	github.com/klauspost/compress v1.19.0
+	github.com/klauspost/compress v1.19.2
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/moby/sys/reexec v0.1.0
@@ -124,8 +128,8 @@ require (
 	github.com/opencontainers/selinux v1.15.1
 	github.com/otiai10/copy v1.14.1
 	github.com/pdtpartners/nix-snapshotter v0.4.0
-	github.com/prometheus/client_golang v1.24.0
-	github.com/prometheus/common v0.70.0
+	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/common v0.70.1
 	github.com/rancher/dynamiclistener v0.9.1-0.20260710234258-e4a1908ede0d
 	github.com/rancher/lasso v0.2.9
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
@@ -142,11 +146,11 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/vishvananda/netlink v1.3.1
 	github.com/yl2chen/cidranger v1.0.2
-	go.etcd.io/etcd/api/v3 v3.7.0
-	go.etcd.io/etcd/client/pkg/v3 v3.7.0
-	go.etcd.io/etcd/client/v3 v3.7.0
-	go.etcd.io/etcd/etcdutl/v3 v3.6.6
-	go.etcd.io/etcd/server/v3 v3.7.0
+	go.etcd.io/etcd/api/v3 v3.7.1
+	go.etcd.io/etcd/client/pkg/v3 v3.7.1
+	go.etcd.io/etcd/client/v3 v3.7.1
+	go.etcd.io/etcd/etcdutl/v3 v3.7.1
+	go.etcd.io/etcd/server/v3 v3.7.1
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.54.0
@@ -159,7 +163,7 @@ require (
 	k8s.io/api v0.37.0-rc.0
 	k8s.io/apiextensions-apiserver v0.36.0
 	k8s.io/apimachinery v0.37.0-rc.0
-	k8s.io/apiserver v0.36.1
+	k8s.io/apiserver v0.37.0-rc.0
 	k8s.io/cli-runtime v0.36.1
 	k8s.io/client-go v0.37.0-rc.0
 	k8s.io/cloud-provider v0.35.2
@@ -480,7 +484,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.7.0 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.7.1 // indirect
 	go.etcd.io/raft/v3 v3.7.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
