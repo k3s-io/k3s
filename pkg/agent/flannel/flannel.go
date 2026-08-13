@@ -120,9 +120,8 @@ func flannel(ctx context.Context, wg *sync.WaitGroup, flannelIface *net.Interfac
 
 	if err := WriteSubnetFile(subnetFile, config.Network, config.IPv6Network, true, bn, nm); err != nil {
 		return errors.WithMessage(err, "failed to write flannel subnet file")
-	} else {
-		logrus.Infof("Wrote flannel subnet file to %s", subnetFile)
 	}
+	logrus.Infof("Wrote flannel subnet file to %s", subnetFile)
 
 	// Start "Running" the backend network. This will block until the context is done so run in another goroutine.
 	logrus.Info("Running flannel backend")
