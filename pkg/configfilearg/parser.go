@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
-	"github.com/rancher/wrangler/v3/pkg/data/convert"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
@@ -135,7 +134,7 @@ func (p *Parser) FindString(args []string, target string) (string, error) {
 			return "", err
 		}
 		for _, i := range data {
-			k, v := convert.ToString(i.Key), convert.ToString(i.Value)
+			k, v := ToString(i.Key), ToString(i.Value)
 			isAppend := strings.HasSuffix(k, "+")
 			k = strings.TrimSuffix(k, "+")
 			if k == target {
@@ -277,7 +276,7 @@ func readConfigFile(file string) (result []string, _ error) {
 		}
 
 		for _, i := range data {
-			k, v := convert.ToString(i.Key), i.Value
+			k, v := ToString(i.Key), i.Value
 			isAppend := strings.HasSuffix(k, "+")
 			k = strings.TrimSuffix(k, "+")
 
@@ -304,10 +303,10 @@ func readConfigFile(file string) (result []string, _ error) {
 
 		if slice, ok := v.([]any); ok {
 			for _, v := range slice {
-				result = append(result, prefix+k+"="+convert.ToString(v))
+				result = append(result, prefix+k+"="+ToString(v))
 			}
 		} else {
-			str := convert.ToString(v)
+			str := ToString(v)
 			result = append(result, prefix+k+"="+str)
 		}
 	}
@@ -322,7 +321,7 @@ func toSlice(v any) []any {
 	case []any:
 		return k
 	default:
-		str := strings.TrimSpace(convert.ToString(v))
+		str := strings.TrimSpace(ToString(v))
 		if str == "" {
 			return nil
 		}
