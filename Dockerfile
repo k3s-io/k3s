@@ -7,35 +7,36 @@ FROM --platform=$BUILDPLATFORM ${GOLANG} AS infra
 COPY --from=xx / /
 ARG TARGETOS
 ARG TARGETARCH
+ARG SELINUX=true
 ENV TARGETOS=$TARGETOS
 ENV TARGETARCH=$TARGETARCH
-
-RUN apk -U --no-cache add bash git docker vim less file curl wget ca-certificates jq \
-    tar zip squashfs-tools coreutils openssl-dev libffi-dev make libuv-static \
-    zstd pigz alpine-sdk yq clang lld \
-    && \
-    if [ "${TARGETARCH}" = "arm64" ]; then \
-    apk -U --no-cache add binutils-gold; \
-    fi \
-    && \
-    if [ "${TARGETOS}" = "windows" ] && [ "${TARGETARCH}" = "amd64" ]; then \
-    apk -U --no-cache add mingw-w64-gcc; \
-    fi
-
-RUN if [ "${TARGETOS}" = "linux" ]; then \
-      xx-apk add --no-cache gcc musl-dev linux-headers zlib-dev zlib-static libseccomp libseccomp-dev libseccomp-static sqlite-dev sqlite-static libselinux libselinux-dev btrfs-progs-dev btrfs-progs-static; \
-    fi
-
-# Install goimports
-RUN GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.20.0
-RUN rm -rf /go/src /go/pkg
-
-ARG SELINUX=true
 ENV SELINUX=$SELINUX
 ENV STATIC_BUILD=true
 ENV SRC_DIR=/go/src/github.com/k3s-io/k3s
 WORKDIR ${SRC_DIR}/
 
+RUN apk -U add bash git docker vim less file curl wget ca-certificates jq \
+    tar zip squashfs-tools coreutils openssl-dev libffi-dev make libuv-static \
+    zstd pigz alpine-sdk yq clang lld \
+    && \
+    if [ "${TARGETARCH}" = "arm64" ]; then \
+    apk -U add binutils-gold; \
+    fi \
+    && \
+    if [ "${TARGETOS}" = "windows" ] && [ "${TARGETARCH}" = "amd64" ]; then \
+    apk -U add mingw-w64-gcc; \
+    fi \
+    && \
+    if [ "${TARGETOS}" = "linux" ]; then \
+      xx-apk add gcc musl-dev linux-headers zlib-dev zlib-static libseccomp libseccomp-dev libseccomp-static sqlite-dev sqlite-static libselinux libselinux-dev btrfs-progs-dev btrfs-progs-static; \
+    fi \
+    && \
+    git config --global advice.detachedHead false
+
+# Install goimports
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuild-${TARGETOS}-${TARGETARCH},target=/root/.cache/go-build \
+    GOPROXY=direct go install golang.org/x/tools/cmd/goimports@gopls/v0.20.0
 
 FROM infra AS manifests
 ARG GIT_TAG
