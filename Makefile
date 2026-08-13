@@ -35,7 +35,7 @@ tag-image-latest:
 
 .PHONY: validate
 validate:
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--build-arg="SKIP_VALIDATE=$(SKIP_VALIDATE)" \
 		--build-arg="DEBUG=$(DEBUG)" \
 		--progress=plain \
@@ -45,7 +45,7 @@ validate:
 binary:
 	@echo "INFO: Building K3s binaries and assets..."
 	. ./scripts/git_version.sh && \
-	DOCKER_BUILDKIT=1 docker build \
+	docker buildx build \
 		--build-arg "GIT_TAG=$$GIT_TAG" \
 		--build-arg "TREE_STATE=$$TREE_STATE" \
 		--build-arg "COMMIT=$$COMMIT" \
@@ -59,7 +59,7 @@ binary:
 multiarch-binary:
 	@echo "INFO: Building K3s binaries and assets for all release platforms..."
 	. ./scripts/git_version.sh && \
-	DOCKER_BUILDKIT=1 docker buildx build \
+	docker buildx build \
 		--platform linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64,windows/amd64 \
 		--build-arg "GIT_TAG=$$GIT_TAG" \
 		--build-arg "TREE_STATE=$$TREE_STATE" \
