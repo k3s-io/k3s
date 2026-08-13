@@ -479,8 +479,8 @@ github.com/envoyproxy/protoc-gen-validate v0.9.1/go.mod h1:OKNgG7TCp5pF4d6XftA0+
 github.com/envoyproxy/protoc-gen-validate v1.0.4/go.mod h1:qys6tmnRsYrQqIhm2bvKZH4Blx/1gTIZ2UKVY1M+Yew=
 github.com/envoyproxy/protoc-gen-validate v1.1.0/go.mod h1:sXRDRVmzEbkM7CVcM06s9shE/m23dg3wzjl0UWqJ2q4=
 github.com/envoyproxy/protoc-gen-validate v1.2.1/go.mod h1:d/C80l/jxXLdfEIhX1W2TmLfsJ31lvEjwamM4DxlWXU=
-github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83 h1:ngHdSomn2MyugZYKHiycad2xERwIrmMlET7A0lC0UU4=
-github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83/go.mod h1:v6o7m/E9bfvm79dE1iFiF+3T7zLBnrjYjkWMa1J+Hv0=
+github.com/erikdubbelboer/gspt v0.0.0-20210805194459-ce36a5128377 h1:gT+RM6gdTIAzMT7HUvmT5mL8SyG8Wx7iS3+L0V34Km4=
+github.com/erikdubbelboer/gspt v0.0.0-20210805194459-ce36a5128377/go.mod h1:v6o7m/E9bfvm79dE1iFiF+3T7zLBnrjYjkWMa1J+Hv0=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible h1:cHD53+PLQuuQyLZeriD1V/esuG4MuU0Pjs5y6iknohY=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible/go.mod h1:MhmAMZ8V4CYH4ybgdRwPr2TU5ThnS43puaKEMpja1uw=
 github.com/evanphx/json-patch v5.9.11+incompatible h1:ixHHqfcGvxhWkniF1tWxBHA0yb4Z+d1UQi45df52xW8=
