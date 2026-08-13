@@ -248,17 +248,24 @@ func stageAndRun(dataDir, cmd string, args []string, calledAsInternal bool) erro
 
 // getAssetAndDir returns the name of the bindata asset, along with a directory path
 // derived from the data-dir and bindata asset name.
-func getAssetAndDir(dataDir string) (string, string) {
-	asset := data.AssetNames()[0]
+func getAssetAndDir(dataDir string) (string, string, error) {
+	names := data.AssetNames()
+	if len(names) == 0 {
+		return "", "", errors.New("embedded data assets not found")
+	}
+	asset := names[0]
 	dir := filepath.Join(dataDir, "data", strings.SplitN(filepath.Base(asset), ".", 2)[0])
-	return asset, dir
+	return asset, dir, nil
 }
 
 // extract checks for and if necessary unpacks the bindata archive, returning the unique path
 // to the extracted bindata asset.
 func extract(dataDir string) (string, error) {
 	// check if content already exists in requested data-dir
-	asset, dir := getAssetAndDir(dataDir)
+	asset, dir, err := getAssetAndDir(dataDir)
+	if err != nil {
+		return "", err
+	}
 	if _, err := os.Stat(filepath.Join(dir, "bin", "k3s"+programPostfix)); err == nil {
 		return dir, nil
 	}
@@ -267,7 +274,10 @@ func extract(dataDir string) (string, error) {
 	// to extracting. This will prevent re-extracting into the user's home
 	// dir if the assets already exist in the default path.
 	if dataDir != datadir.DefaultDataDir {
-		_, defaultDir := getAssetAndDir(datadir.DefaultDataDir)
+		_, defaultDir, err := getAssetAndDir(datadir.DefaultDataDir)
+		if err != nil {
+			return "", err
+		}
 		if _, err := os.Stat(filepath.Join(defaultDir, "bin", "k3s"+programPostfix)); err == nil {
 			return defaultDir, nil
 		}
