@@ -3,7 +3,7 @@ module github.com/k3s-io/k3s
 go 1.25.12
 
 replace (
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.14.0-rc.1
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.15.0-rc.1
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.19-k3s3
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.3-k3s1
