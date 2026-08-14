@@ -137,7 +137,6 @@ func controllerManager(ctx context.Context, cfg *config.Control) error {
 	}
 	if !cfg.DisableCCM {
 		argsMap["configure-cloud-routes"] = "false"
-		argsMap["controllers"] = argsMap["controllers"] + ",-service,-route,-cloud-node-lifecycle"
 	}
 
 	if cfg.VLevel != 0 {
