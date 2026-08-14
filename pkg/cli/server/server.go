@@ -552,6 +552,14 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		}
 	}
 
+	// if we ended up with any advertise-ips, ensure they're added to the SAN list
+	// before PrepareServer generates the apiserver serving certificate;
+	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
+	// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
+	if serverConfig.ControlConfig.AdvertiseIP != "" {
+		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
+	}
+
 	if err := server.PrepareServer(ctx, wg, &serverConfig, cfg); err != nil {
 		return err
 	}
@@ -626,13 +634,6 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		if err := agent.Run(ctx, wg, agentConfig); err != nil {
 			return err
 		}
-	}
-
-	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
-	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
-	// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
-	if serverConfig.ControlConfig.AdvertiseIP != "" {
-		serverConfig.ControlConfig.SANs = append(serverConfig.ControlConfig.SANs, serverConfig.ControlConfig.AdvertiseIP)
 	}
 
 	go cmds.WriteCoverage(ctx)
