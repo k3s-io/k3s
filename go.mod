@@ -3,12 +3,12 @@ module github.com/k3s-io/k3s
 go 1.25.12
 
 replace (
-	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.14.0-rc.1
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.15.0-rc.1
 	github.com/Mirantis/cri-dockerd => github.com/k3s-io/cri-dockerd v0.3.19-k3s3
 	github.com/cilium/ebpf => github.com/cilium/ebpf v0.12.3
 	github.com/cloudnativelabs/kube-router/v2 => github.com/k3s-io/kube-router/v2 v2.6.3-k3s1
 	github.com/containerd/containerd/api => github.com/containerd/containerd/api v1.10.0
-	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.2.5-k3s2
+	github.com/containerd/containerd/v2 => github.com/k3s-io/containerd/v2 v2.2.7-k3s1
 	github.com/containerd/imgcrypt => github.com/containerd/imgcrypt v1.1.11
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker => github.com/docker/docker v25.0.15-0.20260325154711-d2dbc0547253+incompatible
@@ -154,17 +154,17 @@ require (
 	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.82.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.35.6
+	k8s.io/api v0.35.7
 	k8s.io/apiextensions-apiserver v0.35.2
-	k8s.io/apimachinery v0.35.6
+	k8s.io/apimachinery v0.35.7
 	k8s.io/apiserver v0.35.4
 	k8s.io/cli-runtime v0.35.2
-	k8s.io/client-go v0.35.6
+	k8s.io/client-go v0.35.7
 	k8s.io/cloud-provider v0.35.2
 	k8s.io/cluster-bootstrap v0.35.2
 	k8s.io/component-base v0.35.4
 	k8s.io/component-helpers v0.35.2
-	k8s.io/cri-api v0.35.6
+	k8s.io/cri-api v0.35.7
 	k8s.io/cri-client v0.35.4
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.34.9
@@ -202,7 +202,7 @@ require (
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
-	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29 // indirect
 	github.com/Microsoft/hnslib v0.1.1 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
