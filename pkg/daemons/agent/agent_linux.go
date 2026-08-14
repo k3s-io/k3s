@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	cadvisorcontainerd "github.com/google/cadvisor/lib/container/containerd"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -87,10 +88,11 @@ func kubeletArgsAndConfig(cfg *config.Agent) (map[string]string, *kubeletconfig.
 	}
 	if cfg.RuntimeSocket != "" {
 		defaultConfig.SerializeImagePulls = utilsptr.To(false)
-		// note: this is a legacy cadvisor flag that the kubelet still exposes, but
-		// it must be set in order for cadvisor to pull stats properly.
+		// cadvisor needs the containerd endpoint in order to pull stats properly. The kubelet
+		// used to expose this as a --containerd flag, but stopped registering it in v1.37, and
+		// does not pass its own runtime endpoint through.
 		if strings.Contains(cfg.RuntimeSocket, "containerd") {
-			argsMap["containerd"] = cfg.RuntimeSocket
+			*cadvisorcontainerd.ArgContainerdEndpoint = strings.TrimPrefix(cfg.RuntimeSocket, socketPrefix)
 		}
 		// cadvisor wants the containerd CRI socket without the prefix, but kubelet wants it with the prefix
 		if strings.HasPrefix(cfg.RuntimeSocket, socketPrefix) {
