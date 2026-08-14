@@ -179,6 +179,11 @@ var _ = Describe("startup tests", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(apiInfo).To(ContainSubstring("11.11.22.22"))
 		})
+		It("has the advertise ip in the apiserver serving cert SANs", func() {
+			cert, err := testutil.RunCommand("openssl x509 -noout -text -in /var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cert).To(ContainSubstring("IP Address:11.11.22.22"))
+		})
 		It("dies cleanly", func() {
 			Expect(testutil.K3sKillServer(startupServer)).To(Succeed())
 			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
