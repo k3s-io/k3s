@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/google/cadvisor/machine"
-	"github.com/google/cadvisor/utils/sysfs"
+	"github.com/google/cadvisor/lib/machine"
+	"github.com/google/cadvisor/lib/utils/sysfs"
 	"github.com/sirupsen/logrus"
 	"k8s.io/component-helpers/node/util/sysctl"
 	kubeproxyconfig "k8s.io/kubernetes/pkg/proxy/apis/config"

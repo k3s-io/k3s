@@ -908,8 +908,6 @@ github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Z
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.1.3 h1:CVpQJjYgC4VbzxeGVHfvZrv1ctoYCAI8vbl07Fcxlyg=
 github.com/google/btree v1.1.3/go.mod h1:qOPhT0dTNdNzV6Z/lhRX0YXUafgPLFUh+gZMl761Gm4=
-github.com/google/cadvisor v0.56.2 h1:ra6p4Nxc4zT8VLbZscWUxhvjsqy+1AzMvuSdEM90o1w=
-github.com/google/cadvisor v0.56.2/go.mod h1:CWidr4DqGbkN4aKuOEjLB7Bab3gl01Xxm3co38C3xRU=
 github.com/google/cadvisor/lib v0.60.5 h1:C2Ty0ccuKDQnFW4vCSa58wmjc26jL6GiwGEY00pQcIg=
 github.com/google/cadvisor/lib v0.60.5/go.mod h1:htHKT0OSYO6zaik+iLOo3Wj1mf/5l8uV5TJaqLz13oM=
 github.com/google/cel-go v0.29.2 h1:ZtDxkeiMmz0mxbKDYiNkE5Lk7V5edMRcaaDf2jX002k=
