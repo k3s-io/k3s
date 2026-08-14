@@ -22,7 +22,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"google.golang.org/grpc"
 )
 
 // ReadCloser is a generic wrapper around a MVCC store that provides only read/close functions
@@ -63,15 +62,21 @@ func NewRemoteStore(config endpoint.ETCDConfig) (*RemoteStore, error) {
 
 	logrus.Infof("Opening etcd client connection with endpoints %v", config.Endpoints)
 
+	clientCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	c, err := clientv3.New(clientv3.Config{
-		Endpoints:   config.Endpoints,
-		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock(), grpc.FailOnNonTempDialError(true)},
-		Logger:      logger,
-		TLS:         tlsConfig,
+		Endpoints: config.Endpoints,
+		Logger:    logger,
+		TLS:       tlsConfig,
+		Context:   clientCtx,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if _, err := c.MemberList(clientCtx); err != nil {
+		return nil, errors.Join(err, c.Close())
 	}
 
 	return &RemoteStore{client: c}, nil
