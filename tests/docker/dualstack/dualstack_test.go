@@ -33,7 +33,7 @@ var _ = DescribeTableSubtree("DualStack Tests", Ordered, func(ipConfig string) {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			tc, err = docker.NewTestConfig("rancher/systemd-node")
+			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			tc.DualStack = true
 			tc.ServerYaml = ipConfig

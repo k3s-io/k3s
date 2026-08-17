@@ -35,7 +35,7 @@ var _ = Describe("CA Certs Tests", Ordered, func() {
 		// share it with the other containers that need the file.
 		It("should configure CA certs", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.MkdirAll(filepath.Join(config.TestDir, "pause"), 0755)).To(Succeed())
 

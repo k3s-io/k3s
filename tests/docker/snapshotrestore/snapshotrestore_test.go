@@ -3,6 +3,7 @@ package snapshotrestore
 import (
 	"flag"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,8 +17,8 @@ import (
 var serverCount = flag.Int("serverCount", 3, "number of server nodes")
 var agentCount = flag.Int("agentCount", 1, "number of agent nodes")
 var ci = flag.Bool("ci", false, "running on CI")
-var config *docker.TestConfig
-var snapshotname string
+
+const defaultSnapshotPath = "/var/lib/rancher/k3s/server/db/snapshots/"
 
 func Test_DockerSnapshotRestore(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -26,11 +27,25 @@ func Test_DockerSnapshotRestore(t *testing.T) {
 	RunSpecs(t, "SnapshotRestore Test Suite", suiteConfig, reporterConfig)
 }
 
-var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
+type snapshotOptions struct {
+	path     string
+	compress bool
+	s3       bool
+}
+
+var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", Ordered, func(opts snapshotOptions) {
+	var config *docker.TestConfig
+	var snapshotname string
+	var failed bool
+
 	Context("Setup Cluster", func() {
+		It("should start s3 mock", func() {
+			_, err := tests.RunCommand("docker run --name s3mock -p 9090:9090 -p 9191:9191 -d -e COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS=test-bucket -e debug=true -t mirror.gcr.io/adobe/s3mock:5.0.0")
+			Expect(err).NotTo(HaveOccurred())
+		})
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = docker.NewTestConfig("rancher/systemd-node")
+			config, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(config.ProvisionAgents(*agentCount)).To(Succeed())
@@ -57,9 +72,23 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 
 		It("Verifies Snapshot is created", func() {
 			Eventually(func(g Gomega) {
-				_, err := config.Servers[0].RunCmdOnNode("k3s etcd-snapshot save")
+				cmd := "k3s etcd-snapshot save"
+				if opts.compress {
+					cmd += " --etcd-snapshot-compress=true"
+				}
+				if opts.s3 {
+					cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=172.17.0.1:9090 --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test"
+				}
+				if opts.path != "" {
+					cmd = "mkdir -p " + opts.path + "; " + cmd + " --etcd-snapshot-dir=" + opts.path
+				}
+				_, err := config.Servers[0].RunCmdOnNode(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
-				cmd := "ls /var/lib/rancher/k3s/server/db/snapshots/"
+				if opts.path != "" {
+					cmd = "ls " + opts.path
+				} else {
+					cmd = "ls " + defaultSnapshotPath
+				}
 				snapshotname, err = config.Servers[0].RunCmdOnNode(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 				fmt.Println("Snapshot Name", snapshotname)
@@ -92,7 +121,16 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 				}
 			}
 			//Restores from snapshot on server-0
-			cmd := "k3s server --cluster-init --cluster-reset --cluster-reset-restore-path=/var/lib/rancher/k3s/server/db/snapshots/" + snapshotname
+			cmd := "k3s server --cluster-reset"
+			if opts.s3 {
+				cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=172.17.0.1:9090 --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test --cluster-reset-restore-path=" + snapshotname
+			} else {
+				if opts.path != "" {
+					cmd += " --cluster-reset-restore-path=" + filepath.Join(opts.path, snapshotname)
+				} else {
+					cmd += " --cluster-reset-restore-path=" + filepath.Join(defaultSnapshotPath, snapshotname)
+				}
+			}
 			res, err := config.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).Should(ContainSubstring("Managed etcd cluster membership has been reset, restart without --cluster-reset flag now"))
@@ -122,7 +160,7 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			// We must remove the db directory on the other servers before restarting k3s
 			// otherwise the nodes may join the old cluster
 			for _, server := range config.Servers[1:] {
-				cmd := "rm -rf /var/lib/rancher/k3s/server/db"
+				cmd := "rm -rf /var/lib/rancher/k3s/server/db/etcd"
 				Expect(server.RunCmdOnNode(cmd)).Error().NotTo(HaveOccurred())
 			}
 
@@ -152,21 +190,31 @@ var _ = Describe("Verify snapshots and cluster restores work", Ordered, func() {
 			Expect(res).ShouldNot(ContainSubstring("test-nodeport"))
 		})
 	})
-})
 
-var failed bool
-var _ = AfterEach(func() {
-	failed = failed || CurrentSpecReport().Failed()
-})
+	AfterEach(func() {
+		failed = failed || CurrentSpecReport().Failed()
+	})
 
-var _ = AfterSuite(func() {
-	if failed {
-		AddReportEntry("journald-logs", docker.TailJournalLogs(1000, append(config.Servers, config.Agents...)))
-	}
-	if *ci || (config != nil && !failed) {
-		Expect(config.Cleanup()).To(Succeed())
-	}
-})
+	AfterAll(func() {
+		if config != nil && failed {
+			AddReportEntry("journald-logs", docker.TailJournalLogs(1000, append(config.Servers, config.Agents...)))
+		}
+		if *ci || (config != nil && !failed) {
+			Expect(config.Cleanup()).To(Succeed())
+		}
+		_, err := tests.RunCommand("docker rm -fv s3mock")
+		Expect(err).NotTo(HaveOccurred())
+	})
+},
+	Entry("with default args", snapshotOptions{}),
+	Entry("with default path, compressed", snapshotOptions{compress: true}),
+	Entry("with default path (explicit)", snapshotOptions{path: defaultSnapshotPath}),
+	Entry("with default path (explicit), compressed", snapshotOptions{path: defaultSnapshotPath, compress: true}),
+	Entry("with custom path", snapshotOptions{path: "/tmp/snapshots/"}),
+	Entry("with custom path, compressed", snapshotOptions{path: "/tmp/snapshots/", compress: true}),
+	Entry("with S3", snapshotOptions{s3: true}),
+	Entry("with S3, compressed", snapshotOptions{s3: true, compress: true}),
+)
 
 // Checks if nodes match the expected status
 // We use kubectl directly, because getting a NotReady node status from the API is not easy

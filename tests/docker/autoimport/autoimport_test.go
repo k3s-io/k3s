@@ -25,7 +25,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision server", func() {
 			var err error
-			tc, err = docker.NewTestConfig("rancher/systemd-node")
+			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tc.ProvisionServers(1)).To(Succeed())
 			Eventually(func() error {

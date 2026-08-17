@@ -26,7 +26,7 @@ var _ = Describe("Hardened Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = docker.NewTestConfig("rancher/systemd-node")
+			config, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			config.ServerYaml = `
 secrets-encryption: true
