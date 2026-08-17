@@ -81,12 +81,6 @@ case ${OS} in
       TAGS="$TAGS selinux"
       RUNC_TAGS="$RUNC_TAGS selinux"
     fi
-
-    # runc's vendored libseccomp-golang can fail on riscv64 with duplicate
-    # C_ARCH_* switch cases when the seccomp build tag is enabled.
-    if [ "${ARCH}" = "riscv64" ]; then
-      RUNC_TAGS="${RUNC_TAGS/seccomp/}"
-    fi
     ;;
   windows)
     TAGS="$TAGS no_cri_dockerd"
