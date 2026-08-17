@@ -154,9 +154,8 @@ func (e *ETCD) compressSnapshot(snapshotDir, snapshotFilename string, mtime time
 
 // decompressSnapshot decompresses the given snapshot and provides the caller
 // with the full path to the uncompressed snapshot.
-func (e *ETCD) decompressSnapshot(snapshotDir, snapshotFilename string) (unzipPath string, err error) {
-	logrus.Info("Decompressing etcd snapshot file: " + snapshotFilename)
-	snapshotPath := filepath.Join(snapshotDir, snapshotFilename)
+func (e *ETCD) decompressSnapshot(snapshotPath string) (unzipPath string, err error) {
+	logrus.Info("Decompressing etcd snapshot file: " + filepath.Base(snapshotPath))
 	unzipPath = strings.TrimSuffix(snapshotPath, snapshot.CompressedExtension)
 
 	defer func() {

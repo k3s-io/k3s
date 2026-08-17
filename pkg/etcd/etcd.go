@@ -1526,21 +1526,9 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		return err
 	}
 
-	var restorePath string
-	if strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
-		dir, err := snapshotDir(e.config, true)
-		if err != nil {
-			return errors.WithMessage(err, "failed to get the snapshot dir")
-		}
-
-		decompressSnapshot, err := e.decompressSnapshot(dir, e.config.ClusterResetRestorePath)
-		if err != nil {
-			return err
-		}
-
-		restorePath = decompressSnapshot
-	} else {
-		restorePath = e.config.ClusterResetRestorePath
+	restorePath, err := e.restorePath()
+	if err != nil {
+		return err
 	}
 
 	// move the data directory to a temp path
@@ -1557,6 +1545,16 @@ func (e *ETCD) Restore(ctx context.Context) error {
 		PeerURLs:       []string{e.peerURL()},
 		InitialCluster: e.name + "=" + e.peerURL(),
 	})
+}
+
+// restorePath returns the path of the snapshot file to restore from.
+// Compressed snapshots are decompressed alongside the archive and the path to
+// the decompressed path is returned then (or an error if decompression fails).
+func (e *ETCD) restorePath() (string, error) {
+	if !strings.HasSuffix(e.config.ClusterResetRestorePath, snapshot.CompressedExtension) {
+		return e.config.ClusterResetRestorePath, nil
+	}
+	return e.decompressSnapshot(e.config.ClusterResetRestorePath)
 }
 
 // backupDirWithRetention will move the dir to a backup dir
