@@ -26,7 +26,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 	Context("Test a 3 server cluster", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers", func() {
@@ -46,7 +46,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 	Context("Test a Split Role cluster with 3 etcd, 2 control-plane, 1 agents", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.Setenv("SERVER_0_ARGS", "--disable-apiserver --disable-controller-manager --disable-scheduler --cluster-init")).To(Succeed())
 			Expect(os.Setenv("SERVER_1_ARGS", "--disable-apiserver --disable-controller-manager --disable-scheduler")).To(Succeed())

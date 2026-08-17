@@ -28,7 +28,7 @@ var _ = Describe("Nix Snapshotter Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers with nix snapshotter", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Write a container entrypoint wrapper that symlinks nix-store
