@@ -49,7 +49,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 	Context("Setup Cluster with Server newer than Agent", func() {
 		It("should provision new server and old agent", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.ProvisionServers(1)).To(Succeed())
 			config.K3sImage = "rancher/k3s:" + lastMinorVersion
@@ -90,7 +90,7 @@ var _ = Describe("Skew Tests", Ordered, func() {
 	Context("Test cluster with 1 Server older and 2 Servers newer", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig("rancher/k3s:" + lastMinorVersion)
+			config, err = docker.NewTestConfig(GinkgoTB(), "rancher/k3s:" + lastMinorVersion)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers", func() {
