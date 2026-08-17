@@ -26,7 +26,7 @@ var _ = Describe("T4 Tests", Ordered, func() {
 	Context("Test a cluster with 1 server, no S3", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.Setenv("SERVER_0_ARGS", "--datastore-endpoint=t4://")).To(Succeed())
 		})
@@ -47,7 +47,7 @@ var _ = Describe("T4 Tests", Ordered, func() {
 	Context("Test a cluster with 2 servers, 1 agent, with S3", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			config.DBType = "t4"
 		})

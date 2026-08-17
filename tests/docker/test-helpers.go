@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/k3s-io/k3s/tests"
@@ -19,6 +20,8 @@ import (
 )
 
 type TestConfig struct {
+	testing.TB
+
 	TestDir        string
 	KubeconfigFile string
 	Token          string
@@ -33,6 +36,8 @@ type TestConfig struct {
 }
 
 type DockerNode struct {
+	testing.TB
+
 	Name string
 	IP   string
 	Port int    // Not filled by agent nodes
@@ -42,6 +47,7 @@ type DockerNode struct {
 // RunCmdOnNode runs a command on a docker container
 func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
 	dCmd := fmt.Sprintf("docker exec %s /bin/sh -c \"%s\"", node.Name, cmd)
+	node.TB.Logf("Running command on node %s: %s", node.Name, cmd)
 	out, err := tests.RunCommand(dCmd)
 	if err != nil {
 		return out, fmt.Errorf("%v: on node %s: %s", err, node.Name, out)
@@ -54,12 +60,13 @@ func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
 // will be used to start the server. This is useful for scenarios where the server needs to be restarted.
 // k3s version and tag information should be extracted from the version.sh script
 // and supplied as an argument to the function/test
-func NewTestConfig(k3sImage string) (*TestConfig, error) {
+func NewTestConfig(tb testing.TB, k3sImage string) (*TestConfig, error) {
 	if k3sImage == "" {
 		return nil, errors.New("k3s image must be set")
 	}
 
 	config := &TestConfig{
+		TB:       tb,
 		K3sImage: k3sImage,
 	}
 
@@ -144,6 +151,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 			joinServer = fmt.Sprintf("--server %s", config.Servers[0].URL)
 		}
 		newServer := DockerNode{
+			TB:   config.TB,
 			Name: name,
 			Port: port,
 		}
@@ -186,6 +194,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
 				fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
+			config.TB.Logf("Starting server %s: %s", name, dRun)
 			if out, err := tests.RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
 			}
@@ -241,6 +250,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				yamlMount,
 				config.K3sImage,
 				"server", dbConnect, joinServer, os.Getenv(fmt.Sprintf("SERVER_%d_ARGS", i))}, " ")
+			config.TB.Logf("Starting server %s: %s", name, dRun)
 			if out, err := tests.RunCommand(dRun); err != nil {
 				return fmt.Errorf("failed to run server container: %s: %v", out, err)
 			}
@@ -259,7 +269,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 		newServer.IP = ip
 		config.Servers = append(config.Servers, newServer)
 
-		fmt.Printf("Started %s @ %s\n", name, url)
+		config.TB.Logf("Started %s @ %s", name, url)
 
 		// Sleep for a bit to allow the first server to start
 		if i == 0 && numOfServers > 1 {
@@ -326,6 +336,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 
 			agentInstanceArgs := fmt.Sprintf("AGENT_%d_ARGS", i)
 			newAgent := DockerNode{
+				TB:   config.TB,
 				Name: name,
 			}
 
@@ -353,6 +364,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
 					fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
+				config.TB.Logf("Starting agent %s: %s", name, dRun)
 				if out, err := tests.RunCommand(dRun); err != nil {
 					return fmt.Errorf("failed to start systemd container: %s: %v", out, err)
 				}
@@ -392,7 +404,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
 					config.K3sImage,
 					"agent", os.Getenv("ARGS"), os.Getenv(agentInstanceArgs)}, " ")
-
+				config.TB.Logf("Starting agent %s: %s", name, dRun)
 				if out, err := tests.RunCommand(dRun); err != nil {
 					return fmt.Errorf("failed to run agent container: %s: %v", out, err)
 				}
@@ -408,7 +420,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			newAgent.IP = ip
 			config.Agents = append(config.Agents, newAgent)
 
-			fmt.Printf("Started %s\n", name)
+			config.TB.Logf("Started %s", name)
 			return nil
 		})
 	}
@@ -429,7 +441,7 @@ func (config *TestConfig) RemoveNode(nodeName string) error {
 	if _, err := tests.RunCommand(cmd); err != nil {
 		return fmt.Errorf("failed to remove node %s: %v", nodeName, err)
 	}
-	fmt.Println("Stopped and removed ", nodeName)
+	config.TB.Logf("Stopped and removed %s", nodeName)
 	return nil
 }
 
@@ -537,7 +549,7 @@ func (config *TestConfig) CopyAndModifyKubeconfig() error {
 		cmd = fmt.Sprintf("docker cp %s:/etc/rancher/k3s/k3s.yaml %s/kubeconfig.yaml", config.Servers[serverID].Name, config.TestDir)
 		_, err = tests.RunCommand(cmd)
 		if err != nil {
-			fmt.Printf("Failed to copy kubeconfig, attempt %d: %v\n", i, err)
+			config.TB.Logf("Failed to copy kubeconfig, attempt %d: %v\n", i, err)
 			time.Sleep(10 * time.Second)
 		} else {
 			break
@@ -560,7 +572,7 @@ func (config *TestConfig) CopyAndModifyKubeconfig() error {
 	if err := os.Setenv("DOCKER_KUBECONFIG", config.KubeconfigFile); err != nil {
 		return err
 	}
-	fmt.Println("Kubeconfig file: ", config.KubeconfigFile)
+	config.TB.Log("Kubeconfig file: ", config.KubeconfigFile)
 	return nil
 }
 
@@ -651,7 +663,7 @@ func (config TestConfig) DeployWorkload(workload string) (string, error) {
 		err = fmt.Errorf("%s : Unable to read resource manifest file for %s", err, workload)
 		return "", err
 	}
-	fmt.Println("\nDeploying", workload)
+	config.TB.Log("Deploying", workload)
 	for _, f := range files {
 		filename := filepath.Join(resourceDir, f.Name())
 		if strings.TrimSpace(f.Name()) == workload {

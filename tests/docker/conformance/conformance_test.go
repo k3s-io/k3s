@@ -34,7 +34,7 @@ var _ = Describe("Conformance Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 			config.DBType = *db
 			Expect(config.ProvisionServers(1)).To(Succeed())

@@ -26,7 +26,7 @@ var _ = Describe("Verify Secrets Encryption Rotation", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			tc, err = docker.NewTestConfig("rancher/systemd-node")
+			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tc.ProvisionServers(*serverCount)).To(Succeed())
 			Eventually(func() error {
