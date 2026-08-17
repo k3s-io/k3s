@@ -69,7 +69,7 @@ func installScript(d distro) string {
 // runScript runs the script in a container that executes it once and exits,
 // and returns the test config and everything the container logged.
 func runScript(name, image, script string) (*docker.TestConfig, string, error) {
-	tc, err := docker.NewTestConfig(image)
+	tc, err := docker.NewTestConfig(GinkgoTB(), image)
 	if err != nil {
 		return nil, "", err
 	}
