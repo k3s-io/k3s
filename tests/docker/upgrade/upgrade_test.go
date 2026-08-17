@@ -51,7 +51,7 @@ var _ = Describe("Upgrade Tests", Ordered, func() {
 		})
 		It("should setup environment", func() {
 			var err error
-			tc, err = docker.NewTestConfig("rancher/k3s:" + latestVersion)
+			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/k3s:" + latestVersion)
 			testID := filepath.Base(tc.TestDir)
 			Expect(err).NotTo(HaveOccurred())
 			for i := 0; i < numServers; i++ {
