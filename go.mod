@@ -119,8 +119,8 @@ require (
 	github.com/moby/sys/userns v0.1.0
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.32.0
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/onsi/gomega v1.42.1
 	github.com/opencontainers/cgroups v0.0.7
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
