@@ -41,11 +41,6 @@ jobs:
       run: |
         go test -coverpkg ./pkg/... -coverprofile coverage.out ./pkg/... -run Unit
         go tool cover -func coverage.out
-    - name: On Failure, Launch Debug Session
-      if: ${{ failure() }}
-      uses: lhotari/action-upterm@b0357f23233f5ea6d58947c0c402e0631bab7334 # v1
-      with:
-        wait-timeout-minutes: 5
     - name: Upload Results To Codecov
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v5
       with:
