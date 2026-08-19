@@ -55,7 +55,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -880,11 +879,13 @@ func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 	}, nil
 }
 
-// getAdvertiseAddress returns the IP address best suited for advertising to clients
+// getAdvertiseAddress returns the IP address best suited for advertising to clients.
+// When no advertise IP is configured, it uses ChooseHostInterfaceWithRetry to
+// wait for a default network route to become available during startup.
 func getAdvertiseAddress(advertiseIP string) (string, error) {
 	ip := advertiseIP
 	if ip == "" {
-		ipAddr, err := utilnet.ChooseHostInterface()
+		ipAddr, err := util.ChooseHostInterfaceWithRetry()
 		if err != nil {
 			return "", err
 		}
