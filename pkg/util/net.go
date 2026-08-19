@@ -11,6 +11,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	apinet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/wait"
 	netutils "k8s.io/utils/net"
 )
 
@@ -132,13 +133,43 @@ func JoinIP6Nets(elems []*net.IPNet) string {
 	return strings.Join(strs, ",")
 }
 
+// ChooseHostInterfaceWithRetry wraps ChooseHostInterfaceWithContext with a default context.
+func ChooseHostInterfaceWithRetry() (net.IP, error) {
+	return ChooseHostInterfaceWithContext(context.TODO())
+}
+
+// ChooseHostInterfaceWithContext wraps apinet.ChooseHostInterface with a retry loop
+// that waits for a default network route to become available during startup.
+func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
+	var ip net.IP
+	first := true
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
+		var err error
+		ip, err = apinet.ChooseHostInterface()
+		if err == nil {
+			return true, nil
+		}
+		if first {
+			logrus.Infof("Waiting for default network route to become available...")
+			first = false
+		}
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ip, nil
+}
+
 // GetHostnameAndIPs takes a node name and list of IPs, usually from CLI args.
 // If set, these are used to return the node's name and addresses. If not set,
 // the system hostname and primary interface addresses are returned instead.
+// When no node IPs are provided and the host has no default route yet,
+// the lookup is retried until a route becomes available or the timeout is reached.
 func GetHostnameAndIPs(name string, nodeIPs []string) (string, []net.IP, error) {
 	ips := []net.IP{}
 	if len(nodeIPs) == 0 {
-		hostIP, err := apinet.ChooseHostInterface()
+		hostIP, err := ChooseHostInterfaceWithRetry()
 		if err != nil {
 			return "", nil, err
 		}
