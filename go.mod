@@ -155,15 +155,15 @@ require (
 	golang.org/x/sys v0.47.0
 	google.golang.org/grpc v1.83.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.36.0
-	k8s.io/apiextensions-apiserver v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/apiserver v0.36.0
+	k8s.io/api v0.35.8
+	k8s.io/apiextensions-apiserver v0.35.8
+	k8s.io/apimachinery v0.35.8
+	k8s.io/apiserver v0.35.8
 	k8s.io/cli-runtime v0.35.2
-	k8s.io/client-go v0.36.0
+	k8s.io/client-go v0.35.8
 	k8s.io/cloud-provider v0.35.2
 	k8s.io/cluster-bootstrap v0.35.2
-	k8s.io/component-base v0.36.0
+	k8s.io/component-base v0.35.8
 	k8s.io/component-helpers v0.35.2
 	k8s.io/cri-api v0.35.7
 	k8s.io/cri-client v0.35.7
