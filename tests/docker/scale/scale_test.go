@@ -38,7 +38,7 @@ var _ = Describe("Scale Tests", Ordered, func() {
 	Context("Setup Cluster", func() {
 		It("should provision a 5 server, 50 agent cluster", func() {
 			var err error
-			config, err = docker.NewTestConfig(*k3sImage)
+			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(config.ProvisionServers(*serverCount)).To(Succeed())

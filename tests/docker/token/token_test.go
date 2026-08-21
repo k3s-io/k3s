@@ -27,7 +27,7 @@ var _ = Describe("Use the token CLI to create and join agents", Ordered, func() 
 	Context("Setup cluster with 3 servers", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			tc, err = docker.NewTestConfig("rancher/systemd-node")
+			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tc.ProvisionServers(3)).To(Succeed())
 			tc.SkipStart = true
