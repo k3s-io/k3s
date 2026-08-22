@@ -740,6 +740,13 @@ type mockEtcd struct {
 	noLeader    bool
 	defragDelay time.Duration
 	extraAlarms []*etcdserverpb.AlarmMember
+
+	// stub all unhandled calls as Unimplemented
+	etcdserverpb.UnimplementedLeaseServer
+	etcdserverpb.UnimplementedWatchServer
+	etcdserverpb.UnimplementedKVServer
+	etcdserverpb.UnimplementedClusterServer
+	etcdserverpb.UnimplementedMaintenanceServer
 }
 
 // increment call counter for this function
