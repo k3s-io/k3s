@@ -13,6 +13,7 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
 - [Rocket Technologies GmbH](https://www.rocket-technologies.de/)
 - [k8gb](https://www.k8gb.io/) - multicluster CI/CD testing with https://github.com/AbsaOSS/k3d-action/
 - [Sophotech](https://sopho.tech)
+- [Project Bluefin](https://projectbluefin.io) - for CI/CD and as a base for [Bluefin Server](https://projectbluefin.io/server/)
 
 
 **_Other Projects_** - While the above list provides a number of official adopters, k3s' compact and simple nature provides a clean base for other projects to build off of, or to embed.  Some such projects are listed below:
