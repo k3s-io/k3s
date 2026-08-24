@@ -141,11 +141,22 @@ func (k *k3s) onChangePod(key string, pod *core.Pod) (*core.Pod, error) {
 }
 
 // onChangeNode handles changes to Nodes. We need to handle this as we may need to kick the DaemonSet
-// to add or remove pods from nodes if labels have changed.
+// to add or remove pods from nodes if labels have changed, and to update the status of Services
+// with pods on this node if the node addresses have changed.
 func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
 	if node == nil {
+		k.nodeAddressMu.Lock()
+		delete(k.nodeAddresses, key)
+		k.nodeAddressMu.Unlock()
 		return nil, nil
 	}
+
+	if k.nodeAddressesChanged(node) {
+		if err := k.enqueueNodeServices(node.Name); err != nil {
+			return node, err
+		}
+	}
+
 	if _, ok := node.Labels[daemonsetNodeLabel]; !ok {
 		return node, nil
 	}
@@ -155,6 +166,58 @@ func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
 	}
 
 	return node, nil
+}
+
+// nodeAddressesChanged records the current addresses of a node, returning true if they differ
+// from the addresses last seen for that node. Nodes are updated frequently by the kubelet, so
+// only reacting to address changes avoids re-checking Service status on every node update.
+func (k *k3s) nodeAddressesChanged(node *core.Node) bool {
+	addresses := lbNodeAddresses(node)
+
+	k.nodeAddressMu.Lock()
+	defer k.nodeAddressMu.Unlock()
+
+	previous, ok := k.nodeAddresses[node.Name]
+	k.nodeAddresses[node.Name] = addresses
+	return !ok || previous != addresses
+}
+
+// enqueueNodeServices enqueues a status update for all Services with ServiceLB pods on the named
+// node. The addresses of the node hosting a pod are used as the LoadBalancer ingress IPs, so the
+// status of these Services must be re-checked when the node addresses change.
+func (k *k3s) enqueueNodeServices(nodeName string) error {
+	pods, err := k.podCache.List(k.LBNamespace, labels.Everything())
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range pods {
+		if pod.Spec.NodeName != nodeName {
+			continue
+		}
+		serviceName := pod.Labels[svcNameLabel]
+		serviceNamespace := pod.Labels[svcNamespaceLabel]
+		if serviceName == "" || serviceNamespace == "" {
+			continue
+		}
+		k.workqueue.Add(serviceNamespace + "/" + serviceName)
+	}
+
+	return nil
+}
+
+// lbNodeAddresses returns a stable representation of the node addresses used to populate
+// LoadBalancer status, so that changes to them can be detected. Addresses that are not used
+// by the load balancer, such as the node hostname, are ignored.
+func lbNodeAddresses(node *core.Node) string {
+	addresses := make([]string, 0, len(node.Status.Addresses))
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == core.NodeExternalIP || addr.Type == core.NodeInternalIP {
+			addresses = append(addresses, string(addr.Type)+"="+addr.Address)
+		}
+	}
+	slices.Sort(addresses)
+	return strings.Join(addresses, ",")
 }
 
 // onChangeEndpointSlice handles changes to EndpointSlices. This is used to ensure that LoadBalancer

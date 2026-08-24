@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/logger"
@@ -49,6 +50,11 @@ type k3s struct {
 	nodeCache      coreclient.NodeCache
 	podCache       coreclient.PodCache
 	workqueue      workqueue.RateLimitingInterface
+
+	// nodeAddressMu guards nodeAddresses, which tracks the addresses last seen for each node,
+	// keyed by node name. This is used to detect changes to addresses used by LoadBalancer status.
+	nodeAddressMu sync.Mutex
+	nodeAddresses map[string]string
 }
 
 var _ cloudprovider.Interface = &k3s{}
@@ -106,6 +112,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 		k.endpointsCache = lbDiscFactory.Discovery().V1().EndpointSlice().Cache()
 		k.podCache = lbCoreFactory.Core().V1().Pod().Cache()
 		k.workqueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		k.nodeAddresses = map[string]string{}
 
 		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod(), lbDiscFactory.Discovery().V1().EndpointSlice()); err != nil {
 			logrus.Panicf("failed to register %s handlers: %v", controllerName, err)
