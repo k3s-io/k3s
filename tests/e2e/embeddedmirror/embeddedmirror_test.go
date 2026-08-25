@@ -185,6 +185,15 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 		*/
+
+		It("Should reject anonymous access", func() {
+			for _, path := range []string{"/v1-k3s/p2p", "/v2/", "/debug/pprof/"} {
+				res, err := tc.Servers[0].RunCmdOnNode("curl -ks -o /dev/null -w '%{response_code}' https://localhost:6443" + path)
+				fmt.Println("curl " + path + ": " + res)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).To(ContainSubstring("401"), "unexpected response to "+path)
+			}
+		})
 	})
 })
 
