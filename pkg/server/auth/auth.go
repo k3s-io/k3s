@@ -1,16 +1,23 @@
 package auth
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/mux"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/apis/apiserver"
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/apiserver/pkg/authorization/union"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/server"
@@ -98,28 +105,31 @@ func Delegated(clientCA, kubeConfig string, config *server.Config) mux.Middlewar
 	}
 
 	authn := options.NewDelegatingAuthenticationOptions()
-	authn.Anonymous = &apiserver.AnonymousAuthConfig{
-		Enabled: false,
-	}
 	authn.SkipInClusterLookup = true
-	authn.ClientCert = options.ClientCertAuthenticationOptions{
-		ClientCA: clientCA,
-	}
 	authn.RemoteKubeConfigFile = kubeConfig
+	authn.Anonymous = &apiserver.AnonymousAuthConfig{Enabled: false}
+	authn.ClientCert = options.ClientCertAuthenticationOptions{ClientCA: clientCA}
 	if err := authn.ApplyTo(&config.Authentication, config.SecureServing, nil); err != nil {
 		logrus.Fatalf("Failed to apply authentication configuration: %v", err)
 	}
 
 	authz := options.NewDelegatingAuthorizationOptions()
-	authz.AlwaysAllowPaths = []string{ // skip authz for paths that should not use SubjectAccessReview; basically everything that will use this router other than metrics
-		"/v1-" + version.Program + "/p2p", // spegel libp2p peer discovery
-		"/v2/*",                           // spegel registry mirror
-		"/debug/pprof/*",                  // profiling
-	}
+	authz.AlwaysAllowPaths = []string{}
 	authz.RemoteKubeConfigFile = kubeConfig
 	if err := authz.ApplyTo(&config.Authorization); err != nil {
 		logrus.Fatalf("Failed to apply authorization configuration: %v", err)
 	}
+
+	// Use a custom authorizer to handle authz for embedded registry paths, other paths (pprof
+	// and metrics) are handled by core Kubernetes RBAC via delegated auth SubjectAccessReview.
+	// We use this instead of setting authz.AlwaysAllowPaths as AlwaysAllowPaths also allows
+	// access to unauthenticated users, even if authn.Anonymous is disabled.
+	registryAuth, err := NewNonResourceGroupAuthorizer(user.AllAuthenticated, "/v1-"+version.Program+"/p2p", "/v2/*")
+	if err != nil {
+		logrus.Fatalf("Failed to create authorizer: %v", err)
+	}
+
+	config.Authorization.Authorizer = union.New(registryAuth, config.Authorization.Authorizer)
 
 	return func(handler http.Handler) http.Handler {
 		handler = genericapifilters.WithAuthorization(handler, config.Authorization.Authorizer, scheme.Codecs)
@@ -143,4 +153,51 @@ func MaxInFlight(nonMutatingLimit, mutatingLimit int) mux.MiddlewareFunc {
 	return func(handler http.Handler) http.Handler {
 		return genericfilters.WithMaxInFlightLimit(handler, nonMutatingLimit, mutatingLimit, nil)
 	}
+}
+
+// NewNonResourceGroupAuthorizer returns an authorizer that allows the group to access
+// the specified non-resource paths.
+func NewNonResourceGroupAuthorizer(group string, allowPaths ...string) (authorizer.Authorizer, error) {
+	prefixes := []string{}
+	paths := sets.New[string]()
+	for _, p := range allowPaths {
+		p = strings.TrimPrefix(p, "/")
+		if len(p) == 0 {
+			paths.Insert(p)
+			continue
+		}
+		if strings.ContainsRune(p[:len(p)-1], '*') {
+			return nil, fmt.Errorf("only trailing * allowed in %q", p)
+		}
+		if strings.HasSuffix(p, "*") {
+			prefixes = append(prefixes, p[:len(p)-1])
+		} else {
+			paths.Insert(p)
+		}
+	}
+
+	return authorizer.AuthorizerFunc(func(ctx context.Context, a authorizer.Attributes) (authorizer.Decision, string, error) {
+		if a.IsResourceRequest() {
+			return authorizer.DecisionNoOpinion, "", nil
+		}
+
+		user := a.GetUser()
+		if user == nil {
+			return authorizer.DecisionNoOpinion, "", nil
+		}
+
+		if sets.New(user.GetGroups()...).Has(group) {
+			path := strings.TrimPrefix(a.GetPath(), "/")
+			if paths.Has(path) {
+				return authorizer.DecisionAllow, "", nil
+			}
+			for _, prefix := range prefixes {
+				if strings.HasPrefix(path, prefix) {
+					return authorizer.DecisionAllow, "", nil
+				}
+			}
+		}
+
+		return authorizer.DecisionNoOpinion, "", nil
+	}), nil
 }
