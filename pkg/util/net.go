@@ -133,20 +133,15 @@ func JoinIP6Nets(elems []*net.IPNet) string {
 	return strings.Join(strs, ",")
 }
 
-// ChooseHostInterfaceWithRetry wraps ChooseHostInterfaceWithContext with a default context.
-func ChooseHostInterfaceWithRetry() (net.IP, error) {
-	return ChooseHostInterfaceWithContext(context.TODO())
-}
-
 // ChooseHostInterfaceWithContext wraps apinet.ChooseHostInterface with a retry loop
 // that waits for a default network route to become available during startup.
 func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
 	var ip net.IP
+	var lastErr error
 	first := true
 	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, 60*time.Second, true, func(ctx context.Context) (bool, error) {
-		var err error
-		ip, err = apinet.ChooseHostInterface()
-		if err == nil {
+		ip, lastErr = apinet.ChooseHostInterface()
+		if lastErr == nil {
 			return true, nil
 		}
 		if first {
@@ -156,6 +151,9 @@ func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
 		return false, nil
 	})
 	if err != nil {
+		if lastErr != nil {
+			return nil, lastErr
+		}
 		return nil, err
 	}
 	return ip, nil
@@ -166,10 +164,10 @@ func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
 // the system hostname and primary interface addresses are returned instead.
 // When no node IPs are provided and the host has no default route yet,
 // the lookup is retried until a route becomes available or the timeout is reached.
-func GetHostnameAndIPs(name string, nodeIPs []string) (string, []net.IP, error) {
+func GetHostnameAndIPs(ctx context.Context, name string, nodeIPs []string) (string, []net.IP, error) {
 	ips := []net.IP{}
 	if len(nodeIPs) == 0 {
-		hostIP, err := ChooseHostInterfaceWithRetry()
+		hostIP, err := ChooseHostInterfaceWithContext(ctx)
 		if err != nil {
 			return "", nil, err
 		}
