@@ -84,7 +84,7 @@ func (c *Cluster) registerDBHandlers(handler http.Handler) (http.Handler, error)
 func (c *Cluster) assignManagedDriver(ctx context.Context) error {
 	// Check all managed drivers for an initialized database on disk; use one if found
 	for _, driver := range managed.Registered() {
-		if err := driver.SetControlConfig(c.config); err != nil {
+		if err := driver.SetControlConfig(ctx, c.config); err != nil {
 			return err
 		}
 		if ok, err := driver.IsInitialized(); err != nil {
