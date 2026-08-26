@@ -125,7 +125,7 @@ func (c *Cluster) startEtcdProxy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP.Value())
+	_, nodeIPs, err := util.GetHostnameAndIPs(ctx, cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP.Value())
 	if err != nil {
 		return errors.WithMessage(err, "failed to get node name and addresses")
 	}
