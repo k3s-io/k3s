@@ -174,14 +174,14 @@ func (e *ETCD) EndpointName() string {
 
 // SetControlConfig passes the cluster config into the etcd datastore. This is necessary
 // because the config may not yet be fully built at the time the Driver instance is registered.
-func (e *ETCD) SetControlConfig(config *config.Control) error {
+func (e *ETCD) SetControlConfig(ctx context.Context, config *config.Control) error {
 	if e.config != nil {
 		return errors.New("control config already set")
 	}
 
 	e.config = config
 
-	address, err := getAdvertiseAddress(e.config.PrivateIP)
+	address, err := getAdvertiseAddress(ctx, e.config.PrivateIP)
 	if err != nil {
 		return err
 	}
@@ -880,12 +880,12 @@ func toTLSConfig(runtime *config.ControlRuntime) (*tls.Config, error) {
 }
 
 // getAdvertiseAddress returns the IP address best suited for advertising to clients.
-// When no advertise IP is configured, it uses ChooseHostInterfaceWithRetry to
+// When no advertise IP is configured, it uses ChooseHostInterfaceWithContext to
 // wait for a default network route to become available during startup.
-func getAdvertiseAddress(advertiseIP string) (string, error) {
+func getAdvertiseAddress(ctx context.Context, advertiseIP string) (string, error) {
 	ip := advertiseIP
 	if ip == "" {
-		ipAddr, err := util.ChooseHostInterfaceWithRetry()
+		ipAddr, err := util.ChooseHostInterfaceWithContext(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -1461,7 +1461,7 @@ func ClientURLs(ctx context.Context, clientAccessInfo *clientaccess.Info, selfIP
 	var memberList Members
 
 	// find the address advertised for our own client URL, so that we don't connect to ourselves
-	ip, err := getAdvertiseAddress(selfIP)
+	ip, err := getAdvertiseAddress(ctx, selfIP)
 	if err != nil {
 		return nil, memberList, err
 	}
