@@ -14,7 +14,7 @@ var (
 )
 
 type Driver interface {
-	SetControlConfig(config *config.Control) error
+	SetControlConfig(ctx context.Context, config *config.Control) error
 	IsInitialized() (bool, error)
 	Register(handler http.Handler) (http.Handler, error)
 	Reset(ctx context.Context, wg *sync.WaitGroup, reboostrap func() error) error
