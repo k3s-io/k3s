@@ -653,12 +653,14 @@ func (k *k3s) updateDaemonSets() error {
 	}
 
 	for _, ds := range daemonsets {
-		ds.Labels[nodeSelectorLabel] = fmt.Sprintf("%t", enableNodeSelector)
-		ds.Spec.Template.Spec.NodeSelector = map[string]string{}
+		// The cache returns pointers into the shared informer store, so copy before mutating.
+		updated := ds.DeepCopy()
+		updated.Labels[nodeSelectorLabel] = fmt.Sprintf("%t", enableNodeSelector)
+		updated.Spec.Template.Spec.NodeSelector = map[string]string{}
 		if enableNodeSelector {
-			ds.Spec.Template.Spec.NodeSelector[daemonsetNodeLabel] = "true"
+			updated.Spec.Template.Spec.NodeSelector[daemonsetNodeLabel] = "true"
 		}
-		if _, err := k.client.AppsV1().DaemonSets(ds.Namespace).Update(context.TODO(), ds, meta.UpdateOptions{}); err != nil {
+		if _, err := k.client.AppsV1().DaemonSets(updated.Namespace).Update(context.TODO(), updated, meta.UpdateOptions{}); err != nil {
 			return err
 		}
 	}
