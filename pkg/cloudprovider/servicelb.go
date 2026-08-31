@@ -36,15 +36,16 @@ import (
 )
 
 var (
-	finalizerName          = "svccontroller." + version.Program + ".cattle.io/daemonset"
-	svcNameLabel           = "svccontroller." + version.Program + ".cattle.io/svcname"
-	svcNamespaceLabel      = "svccontroller." + version.Program + ".cattle.io/svcnamespace"
-	daemonsetNodeLabel     = "svccontroller." + version.Program + ".cattle.io/enablelb"
-	daemonsetNodePoolLabel = "svccontroller." + version.Program + ".cattle.io/lbpool"
-	nodeSelectorLabel      = "svccontroller." + version.Program + ".cattle.io/nodeselector"
-	priorityAnnotation     = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
-	tolerationsAnnotation  = "svccontroller." + version.Program + ".cattle.io/tolerations"
-	controllerName         = names.ServiceLBController
+	finalizerName           = "svccontroller." + version.Program + ".cattle.io/daemonset"
+	svcNameLabel            = "svccontroller." + version.Program + ".cattle.io/svcname"
+	svcNamespaceLabel       = "svccontroller." + version.Program + ".cattle.io/svcnamespace"
+	daemonsetNodeLabel      = "svccontroller." + version.Program + ".cattle.io/enablelb"
+	daemonsetNodePoolLabel  = "svccontroller." + version.Program + ".cattle.io/lbpool"
+	daemonsetNodePoolPrefix = "lbpool.svccontroller." + version.Program + ".cattle.io/"
+	nodeSelectorLabel       = "svccontroller." + version.Program + ".cattle.io/nodeselector"
+	priorityAnnotation      = "svccontroller." + version.Program + ".cattle.io/priorityclassname"
+	tolerationsAnnotation   = "svccontroller." + version.Program + ".cattle.io/tolerations"
+	controllerName          = names.ServiceLBController
 )
 
 const (
@@ -586,12 +587,11 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 		ds.Spec.Template.Spec.NodeSelector = map[string]string{
 			daemonsetNodeLabel: "true",
 		}
-		// Add node selector for "svccontroller.k3s.cattle.io/lbpool=<pool>" if service has lbpool label
-		if svc.Labels[daemonsetNodePoolLabel] != "" {
-			ds.Spec.Template.Spec.NodeSelector[daemonsetNodePoolLabel] = svc.Labels[daemonsetNodePoolLabel]
-		}
 		ds.Labels[nodeSelectorLabel] = "true"
 	}
+
+	// Restrict the DaemonSet to nodes in the pool named by the service's lbpool label, if set.
+	ds.Spec.Template.Spec.Affinity = nodePoolAffinity(svc.Labels[daemonsetNodePoolLabel])
 
 	// Fetch tolerations from the "svccontroller.k3s.cattle.io/tolerations" annotation on the service
 	// and append them to the DaemonSet's pod tolerations.
@@ -602,6 +602,39 @@ func (k *k3s) newDaemonSet(svc *core.Service) (*apps.DaemonSet, error) {
 	ds.Spec.Template.Spec.Tolerations = append(ds.Spec.Template.Spec.Tolerations, tolerations...)
 
 	return ds, nil
+}
+
+// nodePoolAffinity returns node affinity restricting pods to nodes belonging to the named pool,
+// or nil if no pool is named. A node is considered part of the pool if it is labeled with either
+// "svccontroller.k3s.cattle.io/lbpool=<pool>" or "lbpool.svccontroller.k3s.cattle.io/<pool>=true".
+// The two forms are listed as separate node selector terms, which are ORed by the scheduler, so
+// that nodes using the older single-pool label are still selected.
+func nodePoolAffinity(pool string) *core.Affinity {
+	if pool == "" {
+		return nil
+	}
+	return &core.Affinity{
+		NodeAffinity: &core.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &core.NodeSelector{
+				NodeSelectorTerms: []core.NodeSelectorTerm{
+					{
+						MatchExpressions: []core.NodeSelectorRequirement{{
+							Key:      daemonsetNodePoolLabel,
+							Operator: core.NodeSelectorOpIn,
+							Values:   []string{pool},
+						}},
+					},
+					{
+						MatchExpressions: []core.NodeSelectorRequirement{{
+							Key:      daemonsetNodePoolPrefix + pool,
+							Operator: core.NodeSelectorOpIn,
+							Values:   []string{"true"},
+						}},
+					},
+				},
+			},
+		},
+	}
 }
 
 // updateDaemonSets ensures that our DaemonSets have a NodeSelector present if one is enabled,
