@@ -96,7 +96,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 				By("checking command results: " + res)
 				Expect(err).NotTo(HaveOccurred())
 			}
-			supervisorPortYAML := "supervisor-port: 9345\napiserver-port: 6443\napiserver-bind-address: 0.0.0.0\ndisable: traefik\nnode-taint: node-role.kubernetes.io/control-plane:NoExecute"
+			supervisorPortYAML := "supervisor-port: 9345\napiserver-port: 6443\napiserver-bind-address: 0.0.0.0\ndisable: [traefik, gateway-api-crd]\nnode-taint: node-role.kubernetes.io/control-plane:NoExecute"
 			err := StartK3sCluster(tc.AllNodes(), supervisorPortYAML, "")
 			Expect(err).NotTo(HaveOccurred(), e2e.GetVagrantLog(err))
 
