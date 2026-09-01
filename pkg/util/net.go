@@ -150,13 +150,7 @@ func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
 		}
 		return false, nil
 	})
-	if err != nil {
-		if lastErr != nil {
-			return nil, lastErr
-		}
-		return nil, err
-	}
-	return ip, nil
+	return ip, errors.Join(err, lastErr)
 }
 
 // GetHostnameAndIPs takes a node name and list of IPs, usually from CLI args.
