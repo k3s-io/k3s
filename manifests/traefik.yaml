@@ -7,7 +7,7 @@ metadata:
 spec:
   forceConflicts: true
   failurePolicy: retry
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-40.1.4+up40.1.0.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-41.4.2+up41.4.0.tgz
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
@@ -17,7 +17,7 @@ metadata:
 spec:
   forceConflicts: true
   failurePolicy: retry
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-40.1.4+up40.1.0.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-41.4.2+up41.4.0.tgz
   set:
     global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
   valuesContent: |-
@@ -32,7 +32,7 @@ spec:
     priorityClassName: "system-cluster-critical"
     image:
       repository: "rancher/mirrored-library-traefik"
-      tag: "3.7.8"
+      tag: "3.7.12"
     tolerations:
     - key: "CriticalAddonsOnly"
       operator: "Exists"
