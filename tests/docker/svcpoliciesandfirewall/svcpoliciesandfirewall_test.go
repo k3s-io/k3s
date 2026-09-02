@@ -288,6 +288,40 @@ spec:
 				}, "40s", "5s").Should(MatchError(ContainSubstring("exit status")))
 			}
 		})
+
+		It("Updates ServiceLB addresses after a node restart", func() {
+			const (
+				serviceName = "nginx-loadbalancer-svc"
+				oldIP       = "192.0.2.10"
+				newIP       = "192.0.2.11"
+			)
+
+			setNodeExternalIP := func(ip string) {
+				cmd := fmt.Sprintf("if grep -q '^node-external-ip:' /etc/rancher/k3s/config.yaml; then sed -i 's/^node-external-ip:.*/node-external-ip: %s/' /etc/rancher/k3s/config.yaml; else printf '\\nnode-external-ip: %s\\n' >> /etc/rancher/k3s/config.yaml; fi && systemctl restart k3s", ip, ip)
+				_, err := tc.Servers[0].RunCmdOnNode(cmd)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			serviceLBPod := func() (string, error) {
+				cmd := fmt.Sprintf("kubectl get pods -n kube-system -l svccontroller.k3s.io/svcname=%s -o jsonpath='{.items[?(@.spec.nodeName==\"%s\")].metadata.name}' --kubeconfig=%s", serviceName, tc.Servers[0].Name, tc.KubeconfigFile)
+				return tests.RunCommand(cmd)
+			}
+
+			setNodeExternalIP(oldIP)
+			Eventually(serviceLBPod, "120s", "5s").ShouldNot(BeEmpty())
+			Eventually(func() ([]string, error) {
+				return docker.FetchExternalIPs(tc.KubeconfigFile, serviceName)
+			}, "120s", "5s").Should(ContainElement(oldIP))
+
+			setNodeExternalIP(newIP)
+			Eventually(func(g Gomega) {
+				externalIPs, err := docker.FetchExternalIPs(tc.KubeconfigFile, serviceName)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(externalIPs).To(ContainElement(newIP))
+				g.Expect(externalIPs).NotTo(ContainElement(oldIP))
+			}, "120s", "5s").Should(Succeed())
+			Eventually(serviceLBPod, "120s", "5s").ShouldNot(BeEmpty())
+		})
 	})
 })
 
