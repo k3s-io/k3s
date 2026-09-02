@@ -114,6 +114,53 @@ func Test_UnitFilterByIPFamily_Ordering(t *testing.T) {
 	}
 }
 
+func Test_UnitNodePoolAffinity(t *testing.T) {
+	tests := []struct {
+		name string
+		pool string
+		want *core.Affinity
+	}{
+		{
+			name: "No pool",
+			pool: "",
+			want: nil,
+		},
+		{
+			name: "Named pool",
+			pool: "pool-a",
+			want: &core.Affinity{
+				NodeAffinity: &core.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &core.NodeSelector{
+						NodeSelectorTerms: []core.NodeSelectorTerm{
+							{
+								MatchExpressions: []core.NodeSelectorRequirement{{
+									Key:      "svccontroller.k3s.cattle.io/lbpool",
+									Operator: core.NodeSelectorOpIn,
+									Values:   []string{"pool-a"},
+								}},
+							},
+							{
+								MatchExpressions: []core.NodeSelectorRequirement{{
+									Key:      "lbpool.svccontroller.k3s.cattle.io/pool-a",
+									Operator: core.NodeSelectorOpIn,
+									Values:   []string{"true"},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nodePoolAffinity(tt.pool); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("nodePoolAffinity() = %+v\nWant = %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_UnitGenerateName(t *testing.T) {
 	uid := types.UID("35a5ccb3-4a82-40b7-8d83-cda9582e4251")
 	tests := []struct {
