@@ -553,6 +553,7 @@ func (c *Client) ListSnapshots(ctx context.Context) (map[string]snapshot.File, e
 					sf.Metadata = base64.StdEncoding.EncodeToString(m)
 					snapshots[sfKey] = sf
 				}
+				obj.Close()
 			}
 		}
 	}
