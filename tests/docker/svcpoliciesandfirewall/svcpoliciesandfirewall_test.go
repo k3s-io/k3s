@@ -303,7 +303,7 @@ spec:
 			}
 
 			serviceLBPod := func() (string, error) {
-				cmd := fmt.Sprintf("kubectl get pods -n kube-system -l svccontroller.k3s.io/svcname=%s -o jsonpath='{.items[?(@.spec.nodeName==\"%s\")].metadata.name}' --kubeconfig=%s", serviceName, tc.Servers[0].Name, tc.KubeconfigFile)
+				cmd := fmt.Sprintf("kubectl get pods -n kube-system -l svccontroller.k3s.cattle.io/svcname=%s -o jsonpath='{.items[?(@.spec.nodeName==\"%s\")].metadata.name}' --kubeconfig=%s", serviceName, tc.Servers[0].Name, tc.KubeconfigFile)
 				return tests.RunCommand(cmd)
 			}
 
