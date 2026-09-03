@@ -8,4 +8,4 @@ spec:
   forceConflicts: true
   failurePolicy: retry
   takeOwnership: true
-  chart: https://%{KUBERNETES_API}%/static/charts/gateway-api-crd-1.6.102.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/gateway-api-crd-1.6.103.tgz
