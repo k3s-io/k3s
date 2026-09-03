@@ -613,8 +613,8 @@ setup_selinux() {
             rpm_site_infix=slemicro
         fi
 
-    # cover any atomic fedora flavors using rpm-ostree
-    elif  { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; then
+    # cover coreos derivatives like flatcar, plus any atomic fedora flavors using rpm-ostree
+    elif [ "${ID_LIKE:-}" = coreos ] || { { [ "${ID:-}" = fedora ] || [ "${ID_LIKE:-}" = fedora ]; } && [ -n "${OSTREE_VERSION:-}" ]; }; then
         rpm_target=coreos
         rpm_site_infix=coreos
         package_installer=rpm-ostree
