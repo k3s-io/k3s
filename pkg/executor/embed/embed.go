@@ -91,7 +91,7 @@ func New(ctx context.Context, cfg *cmds.Agent) (*Embedded, error) {
 		}
 
 		// Pass ipv4, ipv6 or both depending on nodeIPs mode
-		_, nodeIPs, err := util.GetHostnameAndIPs(cfg.NodeName, util.SplitStringSlice(cfg.NodeIP.Value()))
+		_, nodeIPs, err := util.GetHostnameAndIPs(ctx, cfg.NodeName, util.SplitStringSlice(cfg.NodeIP.Value()))
 		if err != nil {
 			return nil, err
 		}
