@@ -191,7 +191,11 @@ var _ = Describe("Verify Create", Ordered, func() {
 				res, err := tc.Servers[0].RunCmdOnNode("curl -ks -o /dev/null -w '%{response_code}' https://localhost:6443" + path)
 				fmt.Println("curl " + path + ": " + res)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(res).To(ContainSubstring("401"), "unexpected response to "+path)
+				if path == "/debug/pprof/" {
+					Expect(res).To(ContainSubstring("401"), "unexpected response to "+path)
+				} else {
+					Expect(res).To(ContainSubstring("403"), "unexpected response to "+path)
+				}
 			}
 		})
 	})
