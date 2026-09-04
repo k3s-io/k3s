@@ -126,10 +126,16 @@ func Delegated(clientCA, kubeConfig string, config *server.Config) mux.Middlewar
 	// access to unauthenticated users, even if authn.Anonymous is disabled.
 	registryAuth, err := NewNonResourceGroupAuthorizer(user.AllAuthenticated, "/v1-"+version.Program+"/p2p", "/v2/*")
 	if err != nil {
-		logrus.Fatalf("Failed to create authorizer: %v", err)
+		logrus.Fatalf("Failed to create group authorizer: %v", err)
 	}
 
-	config.Authorization.Authorizer = union.New(registryAuth, config.Authorization.Authorizer)
+	config.Authorization.Authorizer, err = union.New(
+		union.NamedAuthorizer{AuthorizerName: "registry", Authorizer: registryAuth},
+		union.NamedAuthorizer{AuthorizerName: "core", Authorizer: config.Authorization.Authorizer},
+	)
+	if err != nil {
+		logrus.Fatalf("Failed to create union authorizer: %v", err)
+	}
 
 	return func(handler http.Handler) http.Handler {
 		handler = genericapifilters.WithAuthorization(handler, config.Authorization.Authorizer, scheme.Codecs)
