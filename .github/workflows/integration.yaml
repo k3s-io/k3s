@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         # Ordered longest-first from CI timings to reduce matrix tail latency.
-        itest: [startup, etcdsnapshot, kubeflags, cacertrotation, longhorn, secretsencryption, certrotation, etcdrestore, localstorage, flannelnone, custometcdargs]
+        itest: [startup, etcdsnapshot, kubeflags, cacertrotation, longhorn, secretsencryption, certrotation, etcdrestore, localstorage, flannelnone, flannelcniconf, custometcdargs]
       max-parallel: 5
     steps:
     - name: Remove Unnecessary Tools

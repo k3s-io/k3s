@@ -1,0 +1,27 @@
+{
+  "name":"cbr0",
+  "cniVersion":"1.0.0",
+  "plugins":[
+    {
+      "type":"flannel",
+      "delegate":{
+        "hairpinMode":true,
+        "forceAddress":true,
+        "isDefaultGateway":true,
+        "mtu":1370
+      }
+    },
+    {
+      "type":"portmap",
+      "capabilities":{
+        "portMappings":true
+      }
+    },
+    {
+      "type":"bandwidth",
+      "capabilities":{
+        "bandwidth":true
+      }
+    }
+  ]
+}
