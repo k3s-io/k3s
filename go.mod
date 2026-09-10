@@ -34,7 +34,7 @@ replace (
 	golang.org/x/net => golang.org/x/net v0.57.0
 	golang.org/x/sys => golang.org/x/sys v0.47.0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20230525234035-dd9d682886f9
-	google.golang.org/grpc => google.golang.org/grpc v1.82.2
+	google.golang.org/grpc => google.golang.org/grpc v1.83.2
 	k8s.io/api => github.com/k3s-io/kubernetes/staging/src/k8s.io/api v1.37.0-k3s1
 	k8s.io/apiextensions-apiserver => github.com/k3s-io/kubernetes/staging/src/k8s.io/apiextensions-apiserver v1.37.0-k3s1
 	k8s.io/apimachinery => github.com/k3s-io/kubernetes/staging/src/k8s.io/apimachinery v1.37.0-k3s1
@@ -152,7 +152,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.7.1
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.54.0
+	golang.org/x/crypto v0.55.0
 	golang.org/x/mod v0.38.0
 	golang.org/x/net v0.58.0
 	golang.org/x/sync v0.22.0
@@ -194,7 +194,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.25.1 // indirect
+	cel.dev/expr v0.25.2 // indirect
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect
