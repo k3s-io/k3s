@@ -7,7 +7,7 @@ runs:
       shell: bash
       run: |
         curl -fsSL https://apt.releases.hashicorp.com/gpg -o /tmp/hashicorp.asc
-        FINGERPRINT="798AEC654E5C15428C8E42EEAA16FCBCA621E701"
+        FINGERPRINT="D55C0D1AC78A8D8126CB631CFC9CA96ACA026560"
         # Verify the GPG key fingerprint before adding it to the keyring
         DOWNLOADED_FPR=$(gpg --show-keys --with-colons /tmp/hashicorp.asc | awk -F: '$1=="fpr"{print $10; exit}')
         if [ "$DOWNLOADED_FPR" != "$FINGERPRINT" ]; then
