@@ -328,7 +328,7 @@ func createProxyAndValidateToken(ctx context.Context, cfg *cmds.Agent) (proxy.Pr
 		return nil, err
 	}
 
-	_, nodeIPs, err := util.GetHostnameAndIPs(cfg.NodeName, cfg.NodeIP.Value())
+	_, nodeIPs, err := util.GetHostnameAndIPs(ctx, cfg.NodeName, cfg.NodeIP.Value())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to get node name and addresses")
 	}

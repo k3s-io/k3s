@@ -145,7 +145,7 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 				t.Errorf("Prep for ETCD.IsInitialized() failed = %v", err)
 				return
 			}
-			if err := e.SetControlConfig(tt.args.config); err != nil {
+			if err := e.SetControlConfig(t.Context(), tt.args.config); err != nil {
 				t.Errorf("ETCD.SetControlConfig() failed= %v", err)
 				return
 			}
@@ -226,7 +226,7 @@ func Test_UnitETCD_Register(t *testing.T) {
 				t.Errorf("Setup for ETCD.Register() failed = %v", err)
 				return
 			}
-			if err := e.SetControlConfig(tt.args.config); err != nil {
+			if err := e.SetControlConfig(t.Context(), tt.args.config); err != nil {
 				t.Errorf("ETCD.SetControlConfig() failed = %v", err)
 				return
 			}

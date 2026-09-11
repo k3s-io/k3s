@@ -453,7 +453,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		return nil, errors.WithMessage(err, "failed to retrieve configuration from server")
 	}
 
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(envInfo.NodeName, envInfo.NodeIP.Value())
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(ctx, envInfo.NodeName, envInfo.NodeIP.Value())
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to get node name and addresses")
 	}
