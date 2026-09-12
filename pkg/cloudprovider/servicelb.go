@@ -143,14 +143,13 @@ func (k *k3s) onChangePod(key string, pod *core.Pod) (*core.Pod, error) {
 
 // onChangeNode handles changes to Nodes. We need to handle this as we may need to kick the DaemonSet
 // to add or remove pods from nodes if labels have changed.
+//
+// Whether or not a NodeSelector is used depends on any node in the cluster having the label, so the
+// DaemonSets must be re-evaluated even when the changed node does not have it. Skipping those changes
+// would miss the cases that turn the NodeSelector off - the label being removed from the last labeled
+// node, or that node being deleted - leaving the DaemonSets with a NodeSelector that no other code
+// path removes, as it is not managed by the apply that deploys them.
 func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
-	if node == nil {
-		return nil, nil
-	}
-	if _, ok := node.Labels[daemonsetNodeLabel]; !ok {
-		return node, nil
-	}
-
 	if err := k.updateDaemonSets(); err != nil {
 		return node, err
 	}
