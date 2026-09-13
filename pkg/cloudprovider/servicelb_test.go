@@ -235,10 +235,11 @@ func Test_UnitK3s_DaemonSetNodeSelectorFollowsNodeLabel(t *testing.T) {
 	}
 
 	k := &k3s{
-		Config:         Config{LBEnabled: true, LBNamespace: DefaultLBNS},
-		client:         fake.NewClientset(ds),
-		nodeCache:      generic.NewNonNamespacedCache[*core.Node](nodeIndexer, core.Resource("nodes")),
-		daemonsetCache: generic.NewCache[*apps.DaemonSet](dsIndexer, apps.Resource("daemonsets")),
+		Config:               Config{LBEnabled: true, LBNamespace: DefaultLBNS},
+		client:               fake.NewClientset(ds),
+		nodeCache:            generic.NewNonNamespacedCache[*core.Node](nodeIndexer, core.Resource("nodes")),
+		daemonsetCache:       generic.NewCache[*apps.DaemonSet](dsIndexer, apps.Resource("daemonsets")),
+		nodeHadSelectorLabel: map[string]bool{},
 	}
 
 	// nodeSelector returns the NodeSelector currently set on the DaemonSet, syncing the cache
@@ -277,5 +278,24 @@ func Test_UnitK3s_DaemonSetNodeSelectorFollowsNodeLabel(t *testing.T) {
 	}
 	if got := nodeSelector(t); len(got) != 0 {
 		t.Fatalf("NodeSelector after removing label = %+v\nWant = empty", got)
+	}
+
+	// A routine update that does not change the node's label presence (e.g. a kubelet heartbeat)
+	// must not trigger reconciliation. Corrupt the DaemonSet out-of-band, fire an unchanged
+	// update for the still-unlabeled node, and confirm updateDaemonSets did not run (the corrupt
+	// value survives).
+	ds.Labels[nodeSelectorLabel] = "true"
+	ds.Spec.Template.Spec.NodeSelector = map[string]string{daemonsetNodeLabel: "true"}
+	if _, err := k.client.AppsV1().DaemonSets(DefaultLBNS).Update(context.TODO(), ds, meta.UpdateOptions{}); err != nil {
+		t.Fatalf("failed to seed out-of-band daemonset state: %v", err)
+	}
+	if err := dsIndexer.Update(ds); err != nil {
+		t.Fatalf("failed to sync daemonset cache: %v", err)
+	}
+	if _, err := k.onChangeNode(node.Name, node); err != nil {
+		t.Fatalf("onChangeNode() error = %v", err)
+	}
+	if got, want := nodeSelector(t), map[string]string{daemonsetNodeLabel: "true"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("no-op node update should not reconcile; NodeSelector = %+v\nWant unchanged = %+v", got, want)
 	}
 }

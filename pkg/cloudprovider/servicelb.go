@@ -141,15 +141,35 @@ func (k *k3s) onChangePod(key string, pod *core.Pod) (*core.Pod, error) {
 	return pod, nil
 }
 
-// onChangeNode handles changes to Nodes. We need to handle this as we may need to kick the DaemonSet
-// to add or remove pods from nodes if labels have changed.
+// onChangeNode handles changes to Nodes. Whether or not a NodeSelector is used on the ServiceLB
+// DaemonSets depends on any node in the cluster carrying daemonsetNodeLabel, so the DaemonSets must
+// be re-evaluated when a node gains or loses that label - including the removal of the label from
+// the last labeled node, and the deletion of a labeled node, which are the cases that turn the
+// NodeSelector back off. That NodeSelector is not managed by the apply that deploys the DaemonSets,
+// so nothing else clears it.
 //
-// Whether or not a NodeSelector is used depends on any node in the cluster having the label, so the
-// DaemonSets must be re-evaluated even when the changed node does not have it. Skipping those changes
-// would miss the cases that turn the NodeSelector off - the label being removed from the last labeled
-// node, or that node being deleted - leaving the DaemonSets with a NodeSelector that no other code
-// path removes, as it is not managed by the apply that deploys them.
+// Nodes change far more often than their labels do (kubelet status heartbeats, etc.), so rather than
+// reconcile on every event we track whether each node was last seen with the label and only re-run
+// updateDaemonSets when that presence actually changes.
 func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
+	var hadLabel, hasLabel bool
+
+	k.nodeSelectorMu.Lock()
+	hadLabel = k.nodeHadSelectorLabel[key]
+	if node == nil {
+		delete(k.nodeHadSelectorLabel, key)
+	} else {
+		_, hasLabel = node.Labels[daemonsetNodeLabel]
+		k.nodeHadSelectorLabel[key] = hasLabel
+	}
+	k.nodeSelectorMu.Unlock()
+
+	// The aggregate "any node labeled" state can only change when this node's label presence
+	// changes, or when a node that carried the label is deleted.
+	if hadLabel == hasLabel {
+		return node, nil
+	}
+
 	if err := k.updateDaemonSets(); err != nil {
 		return node, err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/logger"
@@ -49,6 +50,13 @@ type k3s struct {
 	nodeCache      coreclient.NodeCache
 	podCache       coreclient.PodCache
 	workqueue      workqueue.RateLimitingInterface
+
+	// nodeSelectorMu guards nodeHadSelectorLabel, which records whether each node was last seen
+	// carrying the daemonset label. It lets onChangeNode skip reconciliation on routine node
+	// updates (e.g. kubelet heartbeats) and only re-evaluate the DaemonSets when a node's label
+	// presence actually changes or a labeled node is deleted.
+	nodeSelectorMu       sync.Mutex
+	nodeHadSelectorLabel map[string]bool
 }
 
 var _ cloudprovider.Interface = &k3s{}
@@ -106,6 +114,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 		k.endpointsCache = lbDiscFactory.Discovery().V1().EndpointSlice().Cache()
 		k.podCache = lbCoreFactory.Core().V1().Pod().Cache()
 		k.workqueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		k.nodeHadSelectorLabel = map[string]bool{}
 
 		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod(), lbDiscFactory.Discovery().V1().EndpointSlice()); err != nil {
 			logrus.Panicf("failed to register %s handlers: %v", controllerName, err)
