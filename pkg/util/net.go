@@ -145,7 +145,7 @@ func ChooseHostInterfaceWithContext(ctx context.Context) (net.IP, error) {
 			return true, nil
 		}
 		if first {
-			logrus.Infof("Waiting for default network route to become available...")
+			logrus.Infof("Node address auto-detection requires default route but no default route is available, waiting up to 60 seconds for it to appear...")
 			first = false
 		}
 		return false, nil
