@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/logger"
@@ -49,6 +50,20 @@ type k3s struct {
 	nodeCache      coreclient.NodeCache
 	podCache       coreclient.PodCache
 	workqueue      workqueue.RateLimitingInterface
+
+	// nodeStateMu guards nodeStates, which records the last-seen state of each node keyed by
+	// node name. Nodes change far more often than the fields we care about (kubelet heartbeats,
+	// etc.), so onChangeNode uses this to react only when a tracked field actually changes.
+	nodeStateMu sync.Mutex
+	nodeStates  map[string]nodeState
+}
+
+// nodeState is the per-node state tracked across Node change events, used by onChangeNode to
+// decide what needs reconciling when a node changes.
+type nodeState struct {
+	// addresses is a stable representation of the node addresses used to populate LoadBalancer
+	// status, so changes to them can be detected.
+	addresses string
 }
 
 var _ cloudprovider.Interface = &k3s{}
@@ -106,6 +121,7 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 		k.endpointsCache = lbDiscFactory.Discovery().V1().EndpointSlice().Cache()
 		k.podCache = lbCoreFactory.Core().V1().Pod().Cache()
 		k.workqueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		k.nodeStates = map[string]nodeState{}
 
 		if err := k.Register(ctx, coreFactory.Core().V1().Node(), lbCoreFactory.Core().V1().Pod(), lbDiscFactory.Discovery().V1().EndpointSlice()); err != nil {
 			logrus.Panicf("failed to register %s handlers: %v", controllerName, err)
