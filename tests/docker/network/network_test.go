@@ -55,7 +55,7 @@ var _ = Describe("Network Tests", Ordered, func() {
 			// Instead of crashing instantly, it should hold in your retry loop
 			Eventually(func() (string, error) {
 				return tests.RunCommand(fmt.Sprintf("docker logs %s", containerName))
-			}, "20s", "2s").Should(ContainSubstring("Waiting for default network route to become available..."))
+			}, "20s", "2s").Should(ContainSubstring("Node address auto-detection requires default route but no default route is available, waiting up to 60 seconds for it to appear..."))
 		})
 
 		It("Restores the network dynamically", func() {

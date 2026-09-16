@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, t4, hardened, lazypull, nixsnapshotter, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, t4, hardened, lazypull, network, nixsnapshotter, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
@@ -175,6 +175,8 @@ jobs:
           - dtest: snapshotrestore
             arch: arm64
           - dtest: svcpoliciesandfirewall
+            arch: arm64
+          - dtest: network
             arch: arm64
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
