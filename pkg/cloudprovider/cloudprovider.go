@@ -64,6 +64,10 @@ type nodeState struct {
 	// addresses is a stable representation of the node addresses used to populate LoadBalancer
 	// status, so changes to them can be detected.
 	addresses string
+	// hasSelectorLabel records whether the node carried daemonsetNodeLabel. Whether the ServiceLB
+	// DaemonSets use a NodeSelector depends on any node in the cluster having that label, so a node
+	// gaining or losing it - or a labeled node being deleted - must re-evaluate the DaemonSets.
+	hasSelectorLabel bool
 }
 
 var _ cloudprovider.Interface = &k3s{}

@@ -142,10 +142,12 @@ func (k *k3s) onChangePod(key string, pod *core.Pod) (*core.Pod, error) {
 }
 
 // onChangeNode handles changes to Nodes. We may need to update the status of Services with pods on
-// this node if the node addresses used for LoadBalancer ingress have changed, and to kick the
-// DaemonSet to add or remove pods from nodes if labels have changed.
+// this node if the node addresses used for LoadBalancer ingress have changed, and to re-evaluate the
+// ServiceLB DaemonSets if the node gained or lost daemonsetNodeLabel (including a labeled node being
+// deleted, which is one of the cases that turns the DaemonSet NodeSelector back off - that
+// NodeSelector is not managed by the apply that deploys the DaemonSets, so nothing else clears it).
 func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
-	addrChanged := k.updateNodeState(key, node)
+	addrChanged, labelChanged := k.updateNodeState(key, node)
 
 	if addrChanged {
 		if err := k.enqueueNodeServices(key); err != nil {
@@ -153,37 +155,39 @@ func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
 		}
 	}
 
-	if node == nil {
-		return nil, nil
-	}
-	if _, ok := node.Labels[daemonsetNodeLabel]; !ok {
-		return node, nil
-	}
-
-	if err := k.updateDaemonSets(); err != nil {
-		return node, err
+	if labelChanged {
+		if err := k.updateDaemonSets(); err != nil {
+			return node, err
+		}
 	}
 
 	return node, nil
 }
 
 // updateNodeState records the current tracked state for a node under a single lock, returning
-// whether the node addresses used by LoadBalancer status changed since the last event. A node that
-// is gone (node == nil) or being deleted (DeletionTimestamp set) is treated as deleted and its entry
-// is removed - there is no point waiting for the final deletion event once we know it is going away.
-func (k *k3s) updateNodeState(key string, node *core.Node) (addrChanged bool) {
+// whether the node addresses used by LoadBalancer status changed, and whether the node's
+// daemonsetNodeLabel presence changed, since the last event. A node that is gone (node == nil) or
+// being deleted (DeletionTimestamp set) is treated as deleted and its entry is removed - there is no
+// point waiting for the final deletion event once we know it is going away; a previously-labeled node
+// going away counts as a label change so the DaemonSets can drop their NodeSelector.
+func (k *k3s) updateNodeState(key string, node *core.Node) (addrChanged, labelChanged bool) {
 	k.nodeStateMu.Lock()
 	defer k.nodeStateMu.Unlock()
 
 	prev, existed := k.nodeStates[key]
 	if node == nil || node.DeletionTimestamp != nil {
 		delete(k.nodeStates, key)
-		return false
+		return false, existed && prev.hasSelectorLabel
 	}
 
-	cur := nodeState{addresses: lbNodeAddresses(node)}
+	_, hasLabel := node.Labels[daemonsetNodeLabel]
+	cur := nodeState{addresses: lbNodeAddresses(node), hasSelectorLabel: hasLabel}
 	k.nodeStates[key] = cur
-	return !existed || prev.addresses != cur.addresses
+	if !existed {
+		// First time seeing this node: sync status, and evaluate the selector if it is labeled.
+		return true, hasLabel
+	}
+	return prev.addresses != cur.addresses, prev.hasSelectorLabel != cur.hasSelectorLabel
 }
 
 // enqueueNodeServices enqueues a status update for all Services with ServiceLB pods on the named
