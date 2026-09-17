@@ -19,7 +19,7 @@ spec:
   failurePolicy: retry
   chart: https://%{KUBERNETES_API}%/static/charts/traefik-41.4.2+up41.4.0.tgz
   set:
-    global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
+    global.systemDefaultRegistry: "%{SYSTEM_IMAGE_REGISTRY}%"
   valuesContent: |-
     deployment:
       podAnnotations:
@@ -31,7 +31,7 @@ spec:
           enabled: true
     priorityClassName: "system-cluster-critical"
     image:
-      repository: "rancher/mirrored-library-traefik"
+      repository: "k3s-io/mirrored-library-traefik"
       tag: "3.7.13"
     tolerations:
     - key: "CriticalAddonsOnly"
