@@ -15,7 +15,7 @@ spec:
         app: client
     spec:
       containers:
-      - image: rancher/mirrored-library-busybox:1.37.0
+      - image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
         args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         imagePullPolicy: Always
         name: client-wget

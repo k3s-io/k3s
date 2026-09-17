@@ -48,11 +48,11 @@ sources:
 
 conditions:
   docker-image:
-    name: "Check latest image tag for rancher/mirrored-metrics-server"
+    name: "Check latest image tag for k3s-io/mirrored-metrics-server"
     kind: "dockerimage"
     disablesourceinput: true
     spec:
-      image: "rancher/mirrored-metrics-server"
+      image: "ghcr.io/k3s-io/mirrored-metrics-server"
       tag: '{{ source "metrics-server-docker-image" }}'
 
 targets:
@@ -64,8 +64,8 @@ targets:
     spec:
       files:
         - "manifests/metrics-server/metrics-server-deployment.yaml"
-      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:\S+"'
-      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}"'
+      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-metrics-server:\S+"'
+      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}"'
 
   metrics-server-airgap:
     name: "Update Metrics Server image version in scripts/airgap/image-list"
@@ -75,5 +75,5 @@ targets:
     spec:
       files:
         - "scripts/airgap/image-list.txt"
-      matchpattern: 'docker.io/rancher/mirrored-metrics-server:\S+'
-      replacepattern: 'docker.io/rancher/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}'
+      matchpattern: 'ghcr.io/k3s-io/mirrored-metrics-server:\S+'
+      replacepattern: 'ghcr.io/k3s-io/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}'

@@ -48,11 +48,11 @@ sources:
 
 conditions:
   docker-image:
-    name: "Check latest image tag for rancher/mirrored-coredns-coredns"
+    name: "Check latest image tag for k3s-io/mirrored-coredns-coredns"
     kind: "dockerimage"
     disablesourceinput: true
     spec:
-      image: "rancher/mirrored-coredns-coredns"
+      image: "ghcr.io/k3s-io/mirrored-coredns-coredns"
       tag: '{{ source "coredns-docker-image" }}'
 
 targets:
@@ -64,8 +64,8 @@ targets:
     spec:
       files:
         - "manifests/coredns.yaml"
-      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:\S+"'
-      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}"'
+      matchpattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-coredns-coredns:\S+"'
+      replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}"'
 
   coredns-airgap:
     name: "Update CoreDNS image version in scripts/airgap/image-list"
@@ -75,5 +75,5 @@ targets:
     spec:
       files:
         - "scripts/airgap/image-list.txt"
-      matchpattern: 'docker.io/rancher/mirrored-coredns-coredns:\S+'
-      replacepattern: 'docker.io/rancher/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}'
+      matchpattern: 'ghcr.io/k3s-io/mirrored-coredns-coredns:\S+'
+      replacepattern: 'ghcr.io/k3s-io/mirrored-coredns-coredns:{{ source "coredns-docker-image" }}'

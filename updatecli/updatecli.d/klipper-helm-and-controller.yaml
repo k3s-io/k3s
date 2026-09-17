@@ -70,11 +70,11 @@ sources:
 
 conditions:
   klipper-helm:
-    name: "Check rancher/klipper-helm image version in DockerHub"
+    name: "Check k3s-io/klipper-helm image version in GHCR"
     kind: "dockerimage"
     sourceid: "klipper-helm"
     spec:
-      image: "rancher/klipper-helm"
+      image: "ghcr.io/k3s-io/klipper-helm"
   helm-controller:
     name: "Check Helm Controller usage in go.mod"
     kind: "file"
@@ -104,12 +104,12 @@ targets:
         - name: PATH
         - name: HOME
   klipper-helm:
-    name: "Update rancher/klipper-helm image version"
+    name: "Update k3s-io/klipper-helm image version"
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-helm"
     spec:
       file: "scripts/airgap/image-list.txt"
-      matchpattern: 'rancher/klipper-helm:v\d+\.\d+\.\d+(-\w+)?'
-      replacepattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
+      matchpattern: 'k3s-io/klipper-helm:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'k3s-io/klipper-helm:{{ source "klipper-helm" }}'
 

@@ -602,9 +602,10 @@ var ServerFlags = []cli.Flag{
 	PrivateRegistryFlag,
 	&cli.StringFlag{
 		Name:        "system-default-registry",
-		Usage:       "(agent/runtime) Private registry to be used for all system images",
+		Usage:       "(agent/runtime) Registry to be used for all system images",
 		EnvVars:     []string{version.ProgramUpper + "_SYSTEM_DEFAULT_REGISTRY"},
 		Destination: &ServerConfig.SystemDefaultRegistry,
+		Value:       "ghcr.io",
 	},
 	AirgapExtraRegistryFlag,
 	NodeIPFlag,
