@@ -455,8 +455,8 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		// Internally helm-controller defaults to latest tag, but we inject a immutable version at build time.
 		if helmConfig.DefaultJobImage != "" {
 			helmchart.DefaultJobImage = helmConfig.DefaultJobImage
-		} else if serverConfig.ControlConfig.SystemDefaultRegistry != "" {
-			helmchart.DefaultJobImage = serverConfig.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
+		} else {
+			helmchart.DefaultJobImage = util.ImageWithRegistry(serverConfig.ControlConfig.SystemDefaultRegistry, helmchart.DefaultJobImage)
 		}
 
 		helmchart.JobTolerations = helmConfig.JobTolerations

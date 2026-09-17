@@ -902,9 +902,7 @@ func genCloudConfig(controlConfig *config.Control) error {
 		Rootless:                   controlConfig.Rootless,
 		NodeEnabled:                !controlConfig.DisableCCM,
 	}
-	if controlConfig.SystemDefaultRegistry != "" {
-		cloudConfig.LBImage = controlConfig.SystemDefaultRegistry + "/" + cloudConfig.LBImage
-	}
+	cloudConfig.LBImage = util.ImageWithRegistry(controlConfig.SystemDefaultRegistry, cloudConfig.LBImage)
 	b, err := json.Marshal(cloudConfig)
 	if err != nil {
 		return err
