@@ -54,7 +54,7 @@ VERSIONFLAGS="
 
     -X ${PKG_ETCD}/api/v3/version.GitSHA=HEAD
     
-    -X ${PKG_HELM_CONTROLLER}/pkg/controllers/chart.DefaultJobImage=rancher/klipper-helm:${VERSION_HELM_JOB}
+    -X ${PKG_HELM_CONTROLLER}/pkg/controllers/chart.DefaultJobImage=ghcr.io/k3s-io/klipper-helm:${VERSION_HELM_JOB}
 "
 if [ -n "${DEBUG}" ]; then
   GCFLAGS="-N -l"

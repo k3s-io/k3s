@@ -59,15 +59,15 @@ sources:
 
 conditions:
   local-path-provisioner:
-    name: "Check rancher/local-path-provisioner image version in DockerHub"
+    name: "Check k3s-io/mirrored-local-path-provisioner image version in GHCR"
     kind: "dockerimage"
     sourceid: "local-path-provisioner"
     spec:
-      image: "rancher/local-path-provisioner"
+      image: "ghcr.io/k3s-io/mirrored-local-path-provisioner"
 
 targets:
   local-path-provisioner:
-    name: "Update rancher/local-path-provisioner image version"
+    name: "Update k3s-io/mirrored-local-path-provisioner image version"
     kind: "file"
     scmid: "k3s"
     sourceid: "local-path-provisioner"
@@ -75,5 +75,5 @@ targets:
       files:
         - "manifests/local-storage.yaml"
         - "scripts/airgap/image-list.txt"
-      matchpattern: 'rancher/local-path-provisioner:v\d+\.\d+\.\d+(-\w+)?'
-      replacepattern: 'rancher/local-path-provisioner:{{ source `local-path-provisioner` }}'
+      matchpattern: 'k3s-io/mirrored-local-path-provisioner:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'k3s-io/mirrored-local-path-provisioner:{{ source `local-path-provisioner` }}'

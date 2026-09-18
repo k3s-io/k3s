@@ -254,7 +254,7 @@ jobs:
       if: ${{ github.repository_owner == 'k3s-io' }}
       env:
         REGISTRY: ${{ env.REGISTRY }}
-      run: sed -i "s|docker.io|${REGISTRY}|g" dist/artifacts/k3s-images.txt
+      run: sed -i -E "s|^[^/]+/|${REGISTRY}/|" dist/artifacts/k3s-images.txt
 
     - name: Upload Assets to S3
       if: ${{ github.repository_owner == 'k3s-io' }}

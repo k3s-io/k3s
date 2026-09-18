@@ -52,15 +52,15 @@ sources:
 
 conditions:
   klipper-lb:
-    name: "Check rancher/klipper-lb image version in DockerHub"
+    name: "Check k3s-io/klipper-lb image version in GHCR"
     kind: "dockerimage"
     sourceid: "klipper-lb"
     spec:
-      image: "rancher/klipper-lb"
+      image: "ghcr.io/k3s-io/klipper-lb"
 
 targets:
   klipper-lb:
-    name: "Update rancher/klipper-lb image versions"
+    name: "Update k3s-io/klipper-lb image versions"
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-lb"
@@ -68,5 +68,5 @@ targets:
       files:
         - "pkg/cloudprovider/servicelb.go"
         - "scripts/airgap/image-list.txt"
-      matchpattern: 'rancher/klipper-lb:v\d+\.\d+\.\d+(-\w+)?'
-      replacepattern: 'rancher/klipper-lb:{{ source "klipper-lb" }}'
+      matchpattern: 'k3s-io/klipper-lb:v\d+\.\d+\.\d+(-\w+)?'
+      replacepattern: 'k3s-io/klipper-lb:{{ source "klipper-lb" }}'
