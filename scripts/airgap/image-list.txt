@@ -1,8 +1,8 @@
 ghcr.io/k3s-io/klipper-helm:v0.13.3-build20260727
 ghcr.io/k3s-io/klipper-lb:v0.4.17
-ghcr.io/rancher/local-path-provisioner:master-head
-ghcr.io/vitorsavian/mirrored-coredns-coredns:1.14.7
-ghcr.io/vitorsavian/mirrored-library-busybox:1.37.0
-ghcr.io/vitorsavian/mirrored-library-traefik:3.7.13
-ghcr.io/vitorsavian/mirrored-metrics-server:v0.9.0
-ghcr.io/vitorsavian/mirrored-pause:3.10.2
+ghcr.io/k3s-io/mirrored-coredns-coredns:1.14.7
+ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+ghcr.io/k3s-io/mirrored-library-traefik:3.7.13
+ghcr.io/k3s-io/mirrored-local-path-provisioner:v0.0.37
+ghcr.io/k3s-io/mirrored-metrics-server:v0.9.0
+ghcr.io/k3s-io/mirrored-pause:3.10.2
