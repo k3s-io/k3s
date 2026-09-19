@@ -7,7 +7,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 )
 
-func TestSnapshotRestrictions(t *testing.T) {
+func Test_UnitSnapshotRestrictions(t *testing.T) {
 	tests := []struct {
 		name                 string
 		restrictions         []string
