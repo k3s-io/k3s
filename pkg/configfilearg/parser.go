@@ -348,3 +348,21 @@ func readConfigFileData(file string) ([]byte, error) {
 		return os.ReadFile(file)
 	}
 }
+
+// IsFlagSet returns true if any of the specified flag names appear
+// in the raw arguments slice.
+func IsFlagSet(args []string, names ...string) bool {
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") {
+			continue
+		}
+		cleanArg := strings.TrimLeft(arg, "-")
+		cleanArg = strings.SplitN(cleanArg, "=", 2)[0]
+		for _, name := range names {
+			if cleanArg == name {
+				return true
+			}
+		}
+	}
+	return false
+}
