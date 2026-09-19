@@ -520,3 +520,51 @@ func Test_UnitParser_FindString(t *testing.T) {
 		})
 	}
 }
+
+func Test_UnitIsFlagSet(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      []string
+		flagNames []string
+		want      bool
+	}{
+		{
+			name:      "flag with double dash",
+			args:      []string{"k3s", "etcd-snapshot", "save", "--etcd-snapshot-dir", "/custom"},
+			flagNames: []string{"etcd-snapshot-dir", "dir"},
+			want:      true,
+		},
+		{
+			name:      "flag with equal sign",
+			args:      []string{"k3s", "etcd-snapshot", "save", "--dir=/custom"},
+			flagNames: []string{"etcd-snapshot-dir", "dir"},
+			want:      true,
+		},
+		{
+			name:      "flag with single dash",
+			args:      []string{"k3s", "etcd-snapshot", "save", "-dir", "/custom"},
+			flagNames: []string{"etcd-snapshot-dir", "dir"},
+			want:      true,
+		},
+		{
+			name:      "flag not present",
+			args:      []string{"k3s", "etcd-snapshot", "save", "--other", "value"},
+			flagNames: []string{"etcd-snapshot-dir", "dir"},
+			want:      false,
+		},
+		{
+			name:      "positional arg matching flag name",
+			args:      []string{"k3s", "etcd-snapshot", "delete", "dir"},
+			flagNames: []string{"etcd-snapshot-dir", "dir"},
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsFlagSet(tt.args, tt.flagNames...); got != tt.want {
+				t.Errorf("IsFlagSet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
