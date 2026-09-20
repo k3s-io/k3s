@@ -13,6 +13,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"fmt"
 	"strings"
@@ -80,7 +81,7 @@ func (e *ETCD) snapshotHandler() http.Handler {
 }
 
 func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
-	if e.config.EtcdS3 != nil {
+	if e.config != nil && e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
 			err = errors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
@@ -132,7 +133,8 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
 	for _, snapshot := range snapshots {
-		if filepath.Base(snapshot) != snapshot {
+		cleaned := filepath.Clean(snapshot)
+		if strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) {
 			util.SendError(errors.New("invalid snapshot name: path traversal not allowed"), rw, req, http.StatusBadRequest)
 			return nil
 		}
@@ -195,27 +197,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 	}
 	
 	if sr.S3 != nil {
-		if re.config.EtcdS3 == nil {
-			re.config.EtcdS3 = sr.S3
-		} else {
-			// Create a new S3 config based on the server's, overlaying provided sr.S3 fields
-			s3 := *re.config.EtcdS3
-			if sr.S3.Endpoint != "" { s3.Endpoint = sr.S3.Endpoint }
-			if sr.S3.Bucket != "" { s3.Bucket = sr.S3.Bucket }
-			if sr.S3.Folder != "" { s3.Folder = sr.S3.Folder }
-			if sr.S3.Proxy != "" { s3.Proxy = sr.S3.Proxy }
-			if sr.S3.Region != "" { s3.Region = sr.S3.Region }
-			if sr.S3.AccessKey != "" { s3.AccessKey = sr.S3.AccessKey }
-			if sr.S3.SecretKey != "" { s3.SecretKey = sr.S3.SecretKey }
-			if sr.S3.ConfigSecret != "" { s3.ConfigSecret = sr.S3.ConfigSecret }
-			if sr.S3.EndpointCA != "" { s3.EndpointCA = sr.S3.EndpointCA }
-			// The boolean properties can be copied over directly since they are boolean.
-			// But since we can't tell if it was explicitly provided if it's false, we trust sr.S3's value if EtcdS3 is populated.
-			s3.Insecure = sr.S3.Insecure
-			s3.SkipSSLVerify = sr.S3.SkipSSLVerify
-			s3.Retention = sr.S3.Retention
-			re.config.EtcdS3 = &s3
-		}
+		re.config.EtcdS3 = sr.S3
 	}
 	return re
 }
@@ -262,25 +244,10 @@ func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
 		return nil
 	}
 
-	var restrictions []string
-	hasAll := false
-	for _, r := range e.config.EtcdSnapshotRestrictions {
-		if r == "all" {
-			hasAll = true
-		}
-		restrictions = append(restrictions, r)
-	}
-
+	restrictions := sets.New(e.config.EtcdSnapshotRestrictions...)
+	hasAll := restrictions.Has("all")
 	isRestricted := func(field string) bool {
-		if hasAll {
-			return true
-		}
-		for _, r := range restrictions {
-			if r == field {
-				return true
-			}
-		}
-		return false
+		return hasAll || restrictions.Has(field)
 	}
 
 	var ignored []string
@@ -291,21 +258,29 @@ func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
 	}
 
 	if sr.S3 != nil {
-		if isRestricted("s3-endpoint") && sr.S3.Endpoint != "" {
+		serverS3 := e.config.EtcdS3
+		getExpected := func(getter func(*config.EtcdS3) string) string {
+			if serverS3 != nil {
+				return getter(serverS3)
+			}
+			return ""
+		}
+
+		if isRestricted("s3-endpoint") && sr.S3.Endpoint != getExpected(func(s *config.EtcdS3) string { return s.Endpoint }) {
 			ignored = append(ignored, "s3-endpoint")
-			sr.S3.Endpoint = ""
+			sr.S3.Endpoint = getExpected(func(s *config.EtcdS3) string { return s.Endpoint })
 		}
-		if isRestricted("s3-bucket") && sr.S3.Bucket != "" {
+		if isRestricted("s3-bucket") && sr.S3.Bucket != getExpected(func(s *config.EtcdS3) string { return s.Bucket }) {
 			ignored = append(ignored, "s3-bucket")
-			sr.S3.Bucket = ""
+			sr.S3.Bucket = getExpected(func(s *config.EtcdS3) string { return s.Bucket })
 		}
-		if isRestricted("s3-folder") && sr.S3.Folder != "" {
+		if isRestricted("s3-folder") && sr.S3.Folder != getExpected(func(s *config.EtcdS3) string { return s.Folder }) {
 			ignored = append(ignored, "s3-folder")
-			sr.S3.Folder = ""
+			sr.S3.Folder = getExpected(func(s *config.EtcdS3) string { return s.Folder })
 		}
-		if isRestricted("s3-proxy") && sr.S3.Proxy != "" {
+		if isRestricted("s3-proxy") && sr.S3.Proxy != getExpected(func(s *config.EtcdS3) string { return s.Proxy }) {
 			ignored = append(ignored, "s3-proxy")
-			sr.S3.Proxy = ""
+			sr.S3.Proxy = getExpected(func(s *config.EtcdS3) string { return s.Proxy })
 		}
 	}
 

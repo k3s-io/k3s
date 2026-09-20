@@ -1,6 +1,8 @@
 package etcd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -136,4 +138,92 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+
+func Test_UnitSnapshotWithRequestS3(t *testing.T) {
+	e := &ETCD{
+		config: &config.Control{
+			EtcdS3: &config.EtcdS3{
+				Bucket: "server-bucket",
+				Folder: "cluster-backups",
+				Proxy:  "http://server-proxy:8080",
+			},
+		},
+	}
+
+	// Case 1: User explicitly unsets folder and proxy (sets them to empty string)
+	sr := &SnapshotRequest{
+		S3: &config.EtcdS3{
+			Bucket: "server-bucket",
+			Folder: "",
+			Proxy:  "",
+		},
+	}
+	re := e.withRequest(sr)
+	if re.config.EtcdS3.Folder != "" {
+		t.Errorf("expected Folder to be cleared to empty string, got: %s", re.config.EtcdS3.Folder)
+	}
+	if re.config.EtcdS3.Proxy != "" {
+		t.Errorf("expected Proxy to be cleared to empty string, got: %s", re.config.EtcdS3.Proxy)
+	}
+
+	// Case 2: sr.S3 is nil -> keeps server config
+	srNil := &SnapshotRequest{}
+	reNil := e.withRequest(srNil)
+	if reNil.config.EtcdS3 == nil || reNil.config.EtcdS3.Folder != "cluster-backups" {
+		t.Errorf("expected server S3 config preserved when sr.S3 is nil, got: %v", reNil.config.EtcdS3)
+	}
+}
+
+func Test_UnitSnapshotHandleDeleteTraversal(t *testing.T) {
+	e := &ETCD{config: &config.Control{}}
+
+	tests := []struct {
+		name      string
+		snapshots []string
+		wantErr   bool
+	}{
+		{
+			name:      "relative path traversal with dots",
+			snapshots: []string{"../../etc/passwd"},
+			wantErr:   true,
+		},
+		{
+			name:      "nested relative traversal",
+			snapshots: []string{"foo/../../bar"},
+			wantErr:   true,
+		},
+		{
+			name:      "absolute path",
+			snapshots: []string{"/etc/passwd"},
+			wantErr:   true,
+		},
+		{
+			name:      "valid bare snapshot name",
+			snapshots: []string{"on-demand-1234"},
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rw := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/db/snapshot", nil)
+			_ = e.handleDelete(rw, req, tt.snapshots)
+
+			if tt.wantErr {
+				if rw.Code != http.StatusBadRequest {
+					t.Errorf("expected status %d, got %d", http.StatusBadRequest, rw.Code)
+				}
+				if !strings.Contains(rw.Body.String(), "path traversal not allowed") {
+					t.Errorf("expected error message to contain 'path traversal not allowed', got: %s", rw.Body.String())
+				}
+			} else {
+				if rw.Code == http.StatusBadRequest && strings.Contains(rw.Body.String(), "path traversal not allowed") {
+					t.Errorf("did not expect path traversal error for valid snapshot, got: %s", rw.Body.String())
+				}
+			}
+		})
+	}
 }

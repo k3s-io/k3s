@@ -52,7 +52,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			res, err := testutil.K3sCmd("etcd-snapshot", "save", "--etcd-snapshot-dir="+maliciousDir)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainSubstring("saved"))
-			Expect(res).To(ContainSubstring("ignored restricted override snapshot-dir"))
+			Expect(res).To(ContainSubstring("snapshot-dir override ignored by server-side snapshot restrictions"))
 
 			matches, err := filepath.Glob(filepath.Join(restrictedServerDir, "on-demand*"))
 			Expect(err).ToNot(HaveOccurred())
@@ -63,7 +63,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			Expect(maliciousMatches).To(BeEmpty(), "snapshot escaped to the malicious directory")
 
 			res, _ = testutil.K3sCmd("etcd-snapshot", "save", "--s3", "--s3-bucket=malicious-bucket")
-			Expect(res).To(ContainSubstring("ignored restricted override s3-bucket"))
+			Expect(res).To(ContainSubstring("s3-bucket override ignored by server-side snapshot restrictions"))
 		})
 	})
 
@@ -95,9 +95,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			res, err := testutil.K3sCmd("etcd-snapshot", "save", "--config", configPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainSubstring("saved"))
-			Expect(res).To(ContainSubstring("ignored restricted override snapshot-dir"))
-			Expect(res).To(ContainSubstring("ignored restricted override s3-bucket"))
-			Expect(res).To(ContainSubstring("ignored restricted override s3-folder"))
+			Expect(res).To(ContainSubstring("restricted snapshot options were ignored: all supported destination overrides"))
 
 			matches, err := filepath.Glob(filepath.Join(restrictedServerDir, "on-demand*"))
 			Expect(err).ToNot(HaveOccurred())
@@ -170,7 +168,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			res, err := testutil.K3sCmd("etcd-snapshot", "save", "--etcd-snapshot-dir="+customDir)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainSubstring("saved"))
-			Expect(res).ToNot(ContainSubstring("ignored restricted override"))
+			Expect(res).ToNot(ContainSubstring("override ignored"))
 
 			matches, err := filepath.Glob(filepath.Join(customDir, "on-demand*"))
 			Expect(err).ToNot(HaveOccurred())

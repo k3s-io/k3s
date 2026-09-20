@@ -20,10 +20,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/printers"
 
 	"github.com/k3s-io/k3s/pkg/configfilearg"
@@ -77,25 +79,10 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 	}
 
 	// Filter restricted fields if they were loaded from config.yaml and not explicitly passed on the CLI.
-	var restrictions []string
-	hasAll := false
-	for _, r := range cfg.EtcdSnapshotRestrictions.Value() {
-		if r == "all" {
-			hasAll = true
-		}
-		restrictions = append(restrictions, r)
-	}
-
+	restrictions := sets.New(util.SplitStringSlice(cfg.EtcdSnapshotRestrictions.Value())...)
+	hasAll := restrictions.Has("all")
 	isRestricted := func(field string) bool {
-		if hasAll {
-			return true
-		}
-		for _, r := range restrictions {
-			if r == field {
-				return true
-			}
-		}
-		return false
+		return hasAll || restrictions.Has(field)
 	}
 
 	// We use configfilearg.IsFlagSet to see if the user explicitly provided the override.

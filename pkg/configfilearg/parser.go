@@ -13,6 +13,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
@@ -352,17 +353,13 @@ func readConfigFileData(file string) ([]byte, error) {
 // IsFlagSet returns true if any of the specified flag names appear
 // in the raw arguments slice.
 func IsFlagSet(args []string, names ...string) bool {
+	argSet := sets.New[string]()
 	for _, arg := range args {
-		if !strings.HasPrefix(arg, "-") {
-			continue
-		}
-		cleanArg := strings.TrimLeft(arg, "-")
-		cleanArg = strings.SplitN(cleanArg, "=", 2)[0]
-		for _, name := range names {
-			if cleanArg == name {
-				return true
-			}
+		if strings.HasPrefix(arg, "-") {
+			cleanArg := strings.TrimLeft(arg, "-")
+			cleanArg = strings.SplitN(cleanArg, "=", 2)[0]
+			argSet.Insert(cleanArg)
 		}
 	}
-	return false
+	return argSet.HasAny(names...)
 }
