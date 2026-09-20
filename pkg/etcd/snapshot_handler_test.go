@@ -13,6 +13,7 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 	tests := []struct {
 		name                 string
 		restrictions         []string
+		serverDir            string
 		reqDir               *string
 		reqEndpoint          string
 		reqBucket            string
@@ -52,6 +53,14 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 			expectedFolder:       "custom-folder",
 		},
 		{
+			name:                 "snapshot-dir matching server dir emits no warning",
+			restrictions:         []string{"snapshot-dir"},
+			serverDir:            "/var/lib/server/snapshots",
+			reqDir:               stringPtr("/var/lib/server/snapshots"),
+			expectedWarnings:     nil,
+			expectedDir:          nil,
+		},
+		{
 			name:                 "all restrictions",
 			restrictions:         []string{"all"},
 			reqDir:               stringPtr("/tmp/custom"),
@@ -84,6 +93,7 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 			e := &ETCD{
 				config: &config.Control{
 					EtcdSnapshotRestrictions: tt.restrictions,
+					EtcdSnapshotDir:          tt.serverDir,
 				},
 			}
 			sr := &SnapshotRequest{
@@ -168,11 +178,11 @@ func Test_UnitSnapshotWithRequestS3(t *testing.T) {
 		t.Errorf("expected Proxy to be cleared to empty string, got: %s", re.config.EtcdS3.Proxy)
 	}
 
-	// Case 2: sr.S3 is nil -> keeps server config
+	// Case 2: sr.S3 is nil -> EtcdS3 should be nil (local snapshot, no S3 upload)
 	srNil := &SnapshotRequest{}
 	reNil := e.withRequest(srNil)
-	if reNil.config.EtcdS3 == nil || reNil.config.EtcdS3.Folder != "cluster-backups" {
-		t.Errorf("expected server S3 config preserved when sr.S3 is nil, got: %v", reNil.config.EtcdS3)
+	if reNil.config.EtcdS3 != nil {
+		t.Errorf("expected EtcdS3 to be nil when sr.S3 is nil, got: %v", reNil.config.EtcdS3)
 	}
 }
 
@@ -203,6 +213,21 @@ func Test_UnitSnapshotHandleDeleteTraversal(t *testing.T) {
 			name:      "valid bare snapshot name",
 			snapshots: []string{"on-demand-1234"},
 			wantErr:   false,
+		},
+		{
+			name:      "current directory dot",
+			snapshots: []string{"."},
+			wantErr:   true,
+		},
+		{
+			name:      "empty snapshot name",
+			snapshots: []string{""},
+			wantErr:   true,
+		},
+		{
+			name:      "subdirectory name",
+			snapshots: []string{"sub/snap"},
+			wantErr:   true,
 		},
 	}
 

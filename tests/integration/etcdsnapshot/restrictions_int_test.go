@@ -88,7 +88,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			defer os.RemoveAll(maliciousDir)
 
 			configPath := filepath.Join(os.TempDir(), "k3s-test-config.yaml")
-			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3-bucket: bad-bucket\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
+			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3: true\netcd-s3-bucket: bad-bucket\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
 			Expect(err).ToNot(HaveOccurred())
 			defer os.Remove(configPath)
 

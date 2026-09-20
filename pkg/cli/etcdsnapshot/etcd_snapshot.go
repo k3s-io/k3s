@@ -20,15 +20,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/k3s-io/k3s/pkg/proctitle"
 	"github.com/k3s-io/k3s/pkg/server"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/printers"
 
-	"github.com/k3s-io/k3s/pkg/configfilearg"
 )
 
 var timeout = 2 * time.Minute
@@ -76,33 +73,6 @@ func commandSetup(app *cli.Context, cfg *cmds.Server) (*etcd.SnapshotRequest, *c
 		}
 		// extend request timeout to allow the S3 operation to complete
 		timeout += cfg.EtcdS3Timeout
-	}
-
-	// Filter restricted fields if they were loaded from config.yaml and not explicitly passed on the CLI.
-	restrictions := sets.New(util.SplitStringSlice(cfg.EtcdSnapshotRestrictions.Value())...)
-	hasAll := restrictions.Has("all")
-	isRestricted := func(field string) bool {
-		return hasAll || restrictions.Has(field)
-	}
-
-	// We use configfilearg.IsFlagSet to see if the user explicitly provided the override.
-	if isRestricted("snapshot-dir") && !configfilearg.IsFlagSet(os.Args, "etcd-snapshot-dir", "dir") {
-		sr.Dir = nil
-	}
-
-	if sr.S3 != nil {
-		if isRestricted("s3-endpoint") && !configfilearg.IsFlagSet(os.Args, "etcd-s3-endpoint") {
-			sr.S3.Endpoint = ""
-		}
-		if isRestricted("s3-bucket") && !configfilearg.IsFlagSet(os.Args, "etcd-s3-bucket") {
-			sr.S3.Bucket = ""
-		}
-		if isRestricted("s3-folder") && !configfilearg.IsFlagSet(os.Args, "etcd-s3-folder") {
-			sr.S3.Folder = ""
-		}
-		if isRestricted("s3-proxy") && !configfilearg.IsFlagSet(os.Args, "etcd-s3-proxy") {
-			sr.S3.Proxy = ""
-		}
 	}
 
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)

@@ -134,7 +134,7 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
 	for _, snapshot := range snapshots {
 		cleaned := filepath.Clean(snapshot)
-		if strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) {
+		if cleaned == "." || cleaned == "" || strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) || filepath.Base(cleaned) != cleaned {
 			util.SendError(errors.New("invalid snapshot name: path traversal not allowed"), rw, req, http.StatusBadRequest)
 			return nil
 		}
@@ -175,7 +175,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
 			EtcdSnapshotDir:       e.config.EtcdSnapshotDir,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
-			EtcdS3:                e.config.EtcdS3, // Use base config initially
+			EtcdS3:                sr.S3,
 		},
 		s3:         e.s3,
 		name:       e.name,
@@ -194,10 +194,6 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 	}
 	if sr.Retention != nil {
 		re.config.EtcdSnapshotRetention = *sr.Retention
-	}
-	
-	if sr.S3 != nil {
-		re.config.EtcdS3 = sr.S3
 	}
 	return re
 }
@@ -253,7 +249,9 @@ func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
 	var ignored []string
 
 	if isRestricted("snapshot-dir") && sr.Dir != nil {
-		ignored = append(ignored, "snapshot-dir")
+		if e.config.EtcdSnapshotDir == "" || *sr.Dir != e.config.EtcdSnapshotDir {
+			ignored = append(ignored, "snapshot-dir")
+		}
 		sr.Dir = nil
 	}
 
