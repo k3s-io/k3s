@@ -210,17 +210,17 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		serverConfig.ControlConfig.EtcdSnapshotCron = cfg.EtcdSnapshotCron
 		serverConfig.ControlConfig.EtcdSnapshotDir = cfg.EtcdSnapshotDir
 
-		validRestrictions := map[string]bool{
-			"snapshot-dir": true,
-			"s3-endpoint":  true,
-			"s3-bucket":    true,
-			"s3-folder":    true,
-			"s3-proxy":     true,
-			"all":          true,
-		}
+		validRestrictions := sets.New(
+			"snapshot-dir",
+			"s3-endpoint",
+			"s3-bucket",
+			"s3-folder",
+			"s3-proxy",
+			"all",
+		)
 		var processedRestrictions []string
 		hasAll := false
-		for _, r := range cfg.EtcdSnapshotRestrictions {
+		for _, r := range util.SplitStringSlice(cfg.EtcdSnapshotRestrictions) {
 			if !validRestrictions[r] {
 				return fmt.Errorf("invalid value for --etcd-snapshot-restrictions: %s\nvalid values are: snapshot-dir, s3-endpoint, s3-bucket, s3-folder, s3-proxy, all", r)
 			}
