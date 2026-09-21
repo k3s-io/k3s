@@ -111,8 +111,7 @@ image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-coredns-coredns:1.14.7"
   users must take a matching tarball and K3s version.
 * Version bump automation now verifies the GHCR copy rather than the Docker Hub one, so updatecli
   will not propose a version that is not on the registry K3s pulls from.
-* The migration was originally planned for v1.40, but the contract ends before that, so it lands in
-  the releases that follow this ADR instead. Docker Hub keeps receiving the images under
-  `rancher/<image>` through v1.40, so anyone still pulling from there has until then to repoint.
+* The migration is planned for v1.40. Docker Hub keeps receiving the images under
+  `rancher/<image>`, so anyone still pulling from there has until then to repoint.
 * We will also do a blogpost about this migration, and not just the release notes, since anyone
   that mirror the images will need to change them in the registry.
