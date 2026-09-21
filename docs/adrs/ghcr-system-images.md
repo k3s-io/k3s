@@ -4,24 +4,23 @@ Date: 2026-09-08
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
-K3s is losing its exemption from Docker Hub rate limiting, and every image K3s deploys is pulled
-from Docker Hub today. See [k3s-io/k3s#14561](https://github.com/k3s-io/k3s/issues/14561).
+K3s currently uses images from the `rancher` Organization on Docker Hub, which is exempt from image
+pull rate limits due to a paid contract in place between SUSE and Docker Hub. This contract is coming
+to an end, and image pulls will be affected by rate limits. For more information, see
+[k3s-io/k3s#14561](https://github.com/k3s-io/k3s/issues/14561).
 
-Users are not the only ones exposed. CI is a heavy anonymous puller: the airgap job pulls the full
-list once per architecture, and a single pass brings up clusters across nine e2e scenarios, sixteen
-Docker suites over two architectures, and six install distributions. GitHub-hosted runners share a
-pool of IP addresses, so the quota is not even ours alone, and pre-release runs multiply the job
-count exactly when a failed pull is most expensive. A throttled pull surfaces as `ImagePullBackOff`
-and a test timeout rather than as a quota error, so it gets chased as a flake.
+CI is affected as well. The airgap job pulls the full image list once per architecture, and a single
+pass brings up clusters across nine e2e scenarios, sixteen Docker suites over two architectures, and
+six install distributions.
 
-The eight images in `scripts/airgap/image-list.txt` are referenced without a registry host, so
-`--system-default-registry` was applied by prefixing, and an empty setting left containerd to
-resolve against `docker.io`. Docker Hub was never named as our default anywhere in the tree; we
-inherited it from the runtime's convention.
+The eight images in `scripts/airgap/image-list.txt` are referenced without a registry host.
+`--system-default-registry` is applied by prefixing that host onto the reference, and when the
+setting is empty containerd resolves the reference against its own default of `docker.io`. Docker
+Hub is not named as a default anywhere in the tree; it is inherited from the runtime's convention.
 
 Those images do not all belong to the same org, which decides what we can do with each:
 
@@ -57,14 +56,22 @@ the CI matrix during a release cycle.
 * **quay.io.** A second hosting relationship to negotiate and a new credential in CI, for a registry
   that is not already part of the release workflow. It has its own anonymous pull quota, so the
   problem is traded rather than solved.
-* **registry.k8s.io.** Serves artifacts released by Kubernetes SIGs. A distribution's service load
-  balancer and Helm job runner are not Kubernetes project artifacts, and publishing there would need
-  acceptance by the release engineering group that runs it.
+* **registry.k8s.io.** Serves artifacts released by Kubernetes SIGs. The klipper-lb and klipper-helm images
+  are specific to K3s and RKE2, and it is unlikely that the upstream project would accept a request to
+  publish these images to the k8s.io registry unless the whole project was moved into kubernetes-sigs,
+  which is even less likely.
 
 ## Decision
 
-* Every image in `scripts/airgap/image-list.txt` is pulled from `ghcr.io`, named explicitly in the
-  reference rather than left to the runtime's default. A default install stops reaching Docker Hub.
+* Every image in `scripts/airgap/image-list.txt` is pulled from `ghcr.io`. A default install stops
+  reaching Docker Hub.
+* `--system-default-registry` defaults to `ghcr.io` rather than being empty. No new mechanism is
+  introduced: every bundled image reference is without host by default, and the setting is already applied
+  to all of them, so changing the default is the best implementation.
+* `--system-default-registry` only sets the registry for images used by bundled components. It does
+  not change the implicit default registry that the runtime uses when a reference does not name one.
+  Example: a pod that asks for `library/busybox` still gets it from Docker Hub.
+* `docker.io/k3s-io` does not exists, so an empty `--system-default-registry` is rejected at server startup.
 * The images K3s already builds keep the org that builds them: `ghcr.io/k3s-io/klipper-lb` and
   `ghcr.io/k3s-io/klipper-helm`.
 * K3s mirrors the five `mirrored-*` images to `ghcr.io/k3s-io`, taking each one from its upstream
@@ -75,52 +82,37 @@ the CI matrix during a release cycle.
   floating `master-head`. Mirroring `v0.0.37` ourselves keeps the manifest pinned to a release
   while staying off Docker Hub. Once `v0.0.38` is published to `ghcr.io/rancher`, this image can
   point back at the org that builds it.
-* `ghcr.io` does **not** become a global default. It is the default for the images K3s deploys, and
-  for nothing else. `config.Control.SystemDefaultRegistry` stays empty unless the operator sets it,
-  so containerd keeps resolving against its own default and a pod that asks for `library/busybox`
-  still gets it from Docker Hub.
-* `--system-default-registry` remains the only supported way to serve system images from elsewhere,
-  and now covers both reference styles: one that names a registry has that host replaced, carrying
-  its path and tag along; one that does not, such as a user-supplied `--pause-image`, is still
-  prefixed.
 * The images are still published to Docker Hub under `rancher/<image>`. GHCR is primary, not
   exclusive.
-* The release workflow repoints the published image list by replacing each entry's leading registry
-  host, rather than substituting the literal string `docker.io`.
 
 #### How the default is applied
 
-The images are declared in two places, so the default reaches them two ways. Both resolve to the
-same host, and neither writes into `config.Control.SystemDefaultRegistry`, which is what keeps the
-containerd default for user workloads out of it.
-
-Manifests name the host through a `%{SYSTEM_IMAGE_REGISTRY}%` template variable that `stageFiles`
-expands, so the YAML keeps a complete image reference that updatecli can still match and bump:
+Manifests keep the existing `%{SYSTEM_DEFAULT_REGISTRY}%` template variable, which `stageFiles`
+expands to the setting followed by a separator, so the YAML keeps a complete image reference that
+updatecli can still match and bump:
 
 ```yaml
-image: "%{SYSTEM_IMAGE_REGISTRY}%/k3s-io/mirrored-coredns-coredns:1.14.7"
+image: "%{SYSTEM_DEFAULT_REGISTRY}%k3s-io/mirrored-coredns-coredns:1.14.7"
 ```
-
-The variable is deliberately not `%{SYSTEM_DEFAULT_REGISTRY}%`, which stays as it is for manifests
-users drop into `server/manifests`: that one expands to nothing when unset, and ours never does.
-`traefik.yaml` is the exception, because the Traefik chart builds its own reference out of
-`global.systemDefaultRegistry`, `image.repository` and `image.tag`. It takes the same variable as a
-Helm value and the chart supplies the separator. The older `%{SYSTEM_DEFAULT_REGISTRY_RAW}%` existed
-only to serve that spot with a copy that had no trailing slash; a variable that is never empty does
-not need to carry its own separator, so the two uses collapse into one.
 
 ## Consequences
 
 * Availability and rate limits for the images K3s deploys stop being inherited from Docker Hub's
   commercial terms. Because every image moves rather than most of them, the exposure is removed for
   a default install and for a CI run, instead of being reduced to whichever image is left.
-* Replacing the host rather than prefixing it changes the result for an operator who already pairs
-  `--system-default-registry` with a fully qualified override such as `--pause-image`. That used to
-  yield `<registry>/docker.io/rancher/mirrored-pause`, it now yields `<registry>/rancher/mirrored-pause`. 
-  The old result reads like a defect, but anyone depending on it loses it quietly, since the new reference is valid and simply resolves to nothing.
+* An empty `--system-default-registry` used to be the normal case and now fails at startup. An
+  operator carrying `system-default-registry: ""` in `config.yaml`, or automation that always passes
+  the flag, has to drop it.
+* The bundled references move from `rancher/<image>` to `k3s-io/<image>`. An operator serving system
+  images from their own registry through `--system-default-registry` has to populate the new paths.
 * Airgap tarballs built before this change carry the old references. `imageTagNames` retags imported
   images using `docker.Path`, so an old tarball retagged into a private registry yields
   `<registry>/rancher/klipper-lb` while K3s now asks for `<registry>/k3s-io/klipper-lb`. Airgap
   users must take a matching tarball and K3s version.
 * Version bump automation now verifies the GHCR copy rather than the Docker Hub one, so updatecli
   will not propose a version that is not on the registry K3s pulls from.
+* The migration was originally planned for v1.40, but the contract ends before that, so it lands in
+  the releases that follow this ADR instead. Docker Hub keeps receiving the images under
+  `rancher/<image>` through v1.40, so anyone still pulling from there has until then to repoint.
+* We will also do a blogpost about this migration, and not just the release notes, since anyone
+  that mirror the images will need to change them in the registry.
