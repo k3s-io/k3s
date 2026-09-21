@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/rancher/wrangler/v3/pkg/generic"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -315,7 +316,7 @@ func Test_UnitK3s_UpdateNodeStateAddresses(t *testing.T) {
 	k := &k3s{nodeStates: map[string]nodeState{}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := k.updateNodeState("test-node", tt.node); got != tt.want {
+			if got, _ := k.updateNodeState("test-node", tt.node); got != tt.want {
 				t.Errorf("updateNodeState() addrChanged = %+v\nWant = %+v", got, tt.want)
 			}
 		})
@@ -421,5 +422,125 @@ func Test_UnitK3s_ServiceStatusFollowsNodeAddresses(t *testing.T) {
 	syncNode(t)
 	if got, want := ingressIPs(t), []string{addrv4_2}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("ingress IPs after node address change = %+v, want %+v", got, want)
+	}
+}
+
+// Test_UnitK3s_DaemonSetNodeSelectorFollowsNodeLabel confirms that the ServiceLB DaemonSet
+// NodeSelector is added when a node is labeled, removed again when the label goes away, and not
+// touched on node updates that do not change the label.
+func Test_UnitK3s_DaemonSetNodeSelectorFollowsNodeLabel(t *testing.T) {
+	node := &core.Node{ObjectMeta: meta.ObjectMeta{Name: "test-node"}}
+	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	if err := nodeIndexer.Add(node); err != nil {
+		t.Fatalf("failed to seed node cache: %v", err)
+	}
+
+	ds := &apps.DaemonSet{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      "svclb-test-service",
+			Namespace: DefaultLBNS,
+			Labels:    map[string]string{nodeSelectorLabel: "false"},
+		},
+	}
+	dsIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	if err := dsIndexer.Add(ds); err != nil {
+		t.Fatalf("failed to seed daemonset cache: %v", err)
+	}
+
+	podIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+
+	k := &k3s{
+		Config:         Config{LBEnabled: true, LBNamespace: DefaultLBNS},
+		client:         fake.NewClientset(ds),
+		nodeCache:      generic.NewNonNamespacedCache[*core.Node](nodeIndexer, core.Resource("nodes")),
+		podCache:       generic.NewCache[*core.Pod](podIndexer, core.Resource("pods")),
+		daemonsetCache: generic.NewCache[*apps.DaemonSet](dsIndexer, apps.Resource("daemonsets")),
+		workqueue:      workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		nodeStates:     map[string]nodeState{},
+	}
+
+	// nodeSelector returns the NodeSelector currently set on the DaemonSet, syncing the cache
+	// from the API as the shared informer would after an update.
+	nodeSelector := func(t *testing.T) map[string]string {
+		t.Helper()
+		updated, err := k.client.AppsV1().DaemonSets(DefaultLBNS).Get(context.TODO(), ds.Name, meta.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to get daemonset: %v", err)
+		}
+		if err := dsIndexer.Update(updated); err != nil {
+			t.Fatalf("failed to sync daemonset cache: %v", err)
+		}
+		return updated.Spec.Template.Spec.NodeSelector
+	}
+
+	// Labeling a node should restrict the DaemonSet to labeled nodes.
+	node.Labels = map[string]string{daemonsetNodeLabel: "true"}
+	if err := nodeIndexer.Update(node); err != nil {
+		t.Fatalf("failed to update node cache: %v", err)
+	}
+	if _, err := k.onChangeNode(node.Name, node); err != nil {
+		t.Fatalf("onChangeNode() error = %v", err)
+	}
+	if got, want := nodeSelector(t), map[string]string{daemonsetNodeLabel: "true"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("NodeSelector after labeling node = %+v\nWant = %+v", got, want)
+	}
+
+	// Removing the label from the only labeled node should return the DaemonSet to all nodes.
+	node.Labels = map[string]string{}
+	if err := nodeIndexer.Update(node); err != nil {
+		t.Fatalf("failed to update node cache: %v", err)
+	}
+	if _, err := k.onChangeNode(node.Name, node); err != nil {
+		t.Fatalf("onChangeNode() error = %v", err)
+	}
+	if got := nodeSelector(t); len(got) != 0 {
+		t.Fatalf("NodeSelector after removing label = %+v\nWant = empty", got)
+	}
+
+	// A routine update that does not change the node's label presence (e.g. a kubelet heartbeat)
+	// must not trigger reconciliation. Corrupt the DaemonSet out-of-band, fire an unchanged update
+	// for the still-unlabeled node, and confirm updateDaemonSets did not run (the corrupt value
+	// survives).
+	ds.Labels[nodeSelectorLabel] = "true"
+	ds.Spec.Template.Spec.NodeSelector = map[string]string{daemonsetNodeLabel: "true"}
+	if _, err := k.client.AppsV1().DaemonSets(DefaultLBNS).Update(context.TODO(), ds, meta.UpdateOptions{}); err != nil {
+		t.Fatalf("failed to seed out-of-band daemonset state: %v", err)
+	}
+	if err := dsIndexer.Update(ds); err != nil {
+		t.Fatalf("failed to sync daemonset cache: %v", err)
+	}
+	if _, err := k.onChangeNode(node.Name, node); err != nil {
+		t.Fatalf("onChangeNode() error = %v", err)
+	}
+	if got, want := nodeSelector(t), map[string]string{daemonsetNodeLabel: "true"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("no-op node update should not reconcile; NodeSelector = %+v\nWant unchanged = %+v", got, want)
+	}
+}
+
+// Test_UnitK3s_UpdateNodeStateTreatsDeletingNodeAsDeleted confirms that a node with a deletion
+// timestamp is handled the same as an already-deleted (nil) node, without waiting for the final
+// event: it is dropped from tracked state, and if it was labeled that counts as a label change.
+func Test_UnitK3s_UpdateNodeStateTreatsDeletingNodeAsDeleted(t *testing.T) {
+	k := &k3s{nodeStates: map[string]nodeState{}}
+	labeled := &core.Node{ObjectMeta: meta.ObjectMeta{
+		Name:   "n",
+		Labels: map[string]string{daemonsetNodeLabel: "true"},
+	}}
+
+	// First sight of a labeled node should report a label change.
+	if _, labelChanged := k.updateNodeState("n", labeled); !labelChanged {
+		t.Fatalf("labeling a new node should report labelChanged=true")
+	}
+
+	// The same node now being deleted (DeletionTimestamp set) must be treated as deleted: it was
+	// labeled, so that is a label change, and its tracked state is removed.
+	now := meta.Now()
+	deleting := labeled.DeepCopy()
+	deleting.DeletionTimestamp = &now
+	if _, labelChanged := k.updateNodeState("n", deleting); !labelChanged {
+		t.Fatalf("a labeled node being deleted should report labelChanged=true")
+	}
+	if _, ok := k.nodeStates["n"]; ok {
+		t.Fatalf("a deleting node should be removed from nodeStates")
 	}
 }
