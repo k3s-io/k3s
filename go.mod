@@ -106,7 +106,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.2.1
-	github.com/k3s-io/helm-controller v0.17.7
+	github.com/k3s-io/helm-controller v0.17.9
 	github.com/k3s-io/kine v0.16.5
 	github.com/klauspost/compress v1.20.0
 	github.com/libp2p/go-libp2p v0.48.0
@@ -115,8 +115,8 @@ require (
 	github.com/moby/sys/userns v0.1.0
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.27.2
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/onsi/gomega v1.42.1
 	github.com/opencontainers/cgroups v0.0.4
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
@@ -164,13 +164,13 @@ require (
 	k8s.io/cloud-provider v0.35.2
 	k8s.io/cluster-bootstrap v0.35.2
 	k8s.io/component-base v0.36.0
-	k8s.io/component-helpers v0.35.2
+	k8s.io/component-helpers v0.35.8
 	k8s.io/cri-api v0.35.8
 	k8s.io/cri-client v0.35.8
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-proxy v0.35.2
 	k8s.io/kubectl v0.35.2
-	k8s.io/kubelet v0.35.2
+	k8s.io/kubelet v0.35.8
 	k8s.io/kubernetes v1.35.8
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/cri-tools v0.35.2
@@ -520,7 +520,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/controller-manager v0.35.1 // indirect
+	k8s.io/controller-manager v0.35.8 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
 	k8s.io/endpointslice v0.0.0 // indirect
