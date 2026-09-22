@@ -1171,8 +1171,8 @@ github.com/k3s-io/etcd/pkg/v3 v3.6.14-k3s3 h1:SfZVsK/9PaBICd5kWRIRDQADY1uK8nsgb7
 github.com/k3s-io/etcd/pkg/v3 v3.6.14-k3s3/go.mod h1:grZHgzt+JCM8hnwSFrEAGxcl/VXksW0dRXfU0R2RmF8=
 github.com/k3s-io/etcd/server/v3 v3.6.14-k3s3 h1:YputbFBKq2o+V4wqldcSNusMdPrKyQG++H/WwmSVrEY=
 github.com/k3s-io/etcd/server/v3 v3.6.14-k3s3/go.mod h1:yj1SNtvmNLLl7JUQY3vpaUBm24qAzTVixJn/1OKG6i4=
-github.com/k3s-io/helm-controller v0.17.7 h1:9hzzLE4YeCHmpAn2Y/A4DjqYAQtQxnbsQSkBx6qTJrc=
-github.com/k3s-io/helm-controller v0.17.7/go.mod h1:pLlCfQ0hLtuA5Ga9fcIWWdB20id67pUgYCGHYVIn9e4=
+github.com/k3s-io/helm-controller v0.17.9 h1:HhZTiFhVDzhbAYeb/aSlExWhJTnDTpHypMqu5Mh8Uow=
+github.com/k3s-io/helm-controller v0.17.9/go.mod h1:iNhJkyNxQo3sG9PHvTDw/FFm0eVDo/CSsDjl1Gls3Pg=
 github.com/k3s-io/kine v0.16.5 h1:K3KWJo5dD1GYac6G+NPdwxY99KBtEiOkmKk3Q/HbN7E=
 github.com/k3s-io/kine v0.16.5/go.mod h1:aFaA9xfod+gam4Yp+j34cAXV8i5cOQYjObyn0hGRtpM=
 github.com/k3s-io/klog/v2 v2.140.0-k3s1 h1:Z6S9oqaxcKtLaTcQNgWsaZNE5a+qJmCrTI+Lahor4X8=
@@ -1494,11 +1494,11 @@ github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+W
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.16.5 h1:8xi0RTUf59SOSfEtZMvwTvXYMzG4gV23XVHOZiXNtnE=
 github.com/onsi/ginkgo v1.16.5/go.mod h1:+E8gABHa3K6zRBolWtd+ROzc/U5bkGt0FwiG042wbpU=
-github.com/onsi/ginkgo/v2 v2.27.2 h1:LzwLj0b89qtIy6SSASkzlNvX6WktqurSHwkk2ipF/Ns=
-github.com/onsi/ginkgo/v2 v2.27.2/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
+github.com/onsi/ginkgo/v2 v2.32.1 h1:6tlvcDm/3sE8lGJbZ4+d4mO3RLy24/tQWOFzVSQNIfw=
+github.com/onsi/ginkgo/v2 v2.32.1/go.mod h1:+aXOY+vzZ5mu2iI2HpTZUPmM//oQfsNFX6gU9kNcA44=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
-github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
-github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
+github.com/onsi/gomega v1.42.1 h1:iN1rCUX+44NZ1Dc97MPoeFYbFR0vh8zxoxMFwKdyZ6I=
+github.com/onsi/gomega v1.42.1/go.mod h1:REff/hsDsodHoKlWsP2mAPhu1+5/6hVYNf9rIEBpeSg=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/opencontainers/cgroups v0.0.4 h1:XVj8P/IHVms/j+7eh8ggdkTLAxjz84ZzuFyGoE28DR4=
 github.com/opencontainers/cgroups v0.0.4/go.mod h1:s8lktyhlGUqM7OSRL5P7eAW6Wb+kWPNvt4qvVfzA5vs=
