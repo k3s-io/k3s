@@ -110,7 +110,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.2.1
-	github.com/k3s-io/helm-controller v0.17.7
+	github.com/k3s-io/helm-controller v0.17.9
 	github.com/k3s-io/kine v0.17.1
 	github.com/klauspost/compress v1.20.0
 	github.com/libp2p/go-libp2p v0.48.0
@@ -518,7 +518,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/controller-manager v0.35.1 // indirect
+	k8s.io/controller-manager v0.35.8 // indirect
 	k8s.io/cri-streaming v0.37.0-rc.0 // indirect
 	k8s.io/csi-translation-lib v0.0.0 // indirect
 	k8s.io/dynamic-resource-allocation v0.0.0 // indirect
