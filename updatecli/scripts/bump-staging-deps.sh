@@ -26,7 +26,7 @@ while IFS= read -r pair; do
 
   n=$(latest_suffix_for "${fork_path}/")
   if [ -z "$n" ]; then
-    echo "No tag for ${module_name} at ${BASE_VERSION}, leaving untouched" >&2
+    echo "No tag for ${module_name} at ${BASE_VERSION}, leaving untouched"
     continue
   fi
 
