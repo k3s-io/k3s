@@ -64,6 +64,7 @@ jobs:
           linux/amd64) artifact_name='k3s-amd64' ;;
           linux/arm64) artifact_name='k3s-arm64' ;;
           linux/arm/v7) artifact_name='k3s-arm' ;;
+          linux/riscv64) artifact_name='k3s-riscv64' ;;
           windows/amd64) artifact_name='k3s-windows' ;;
           *) artifact_name='k3s-all' ;;
         esac

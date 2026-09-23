@@ -17,9 +17,11 @@ EXPECTED_ARTIFACTS=(
   dist/artifacts/k3s-arm64
   dist/artifacts/k3s-armhf
   dist/artifacts/k3s-images.txt
+  dist/artifacts/k3s-riscv64
   dist/artifacts/sha256sum-amd64.txt
   dist/artifacts/sha256sum-arm.txt
   dist/artifacts/sha256sum-arm64.txt
+  dist/artifacts/sha256sum-riscv64.txt
 )
 
 CURRENT_ARTIFACTS=(

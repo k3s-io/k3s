@@ -302,6 +302,10 @@ setup_verify_arch() {
             ARCH=arm64
             SUFFIX=-${ARCH}
             ;;
+        riscv64)
+            ARCH=riscv64
+            SUFFIX=-${ARCH}
+            ;;
         arm*)
             ARCH=arm
             SUFFIX=-${ARCH}hf

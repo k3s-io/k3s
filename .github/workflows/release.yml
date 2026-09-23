@@ -25,6 +25,12 @@ jobs:
       platforms: linux/arm64,linux/arm/v7
       upload-build: true
 
+  build-riscv64:
+    name: Build Binary (riscv64)
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/riscv64
+
   push-release-image:
     name: Build and Push Multi-Arch Image
     runs-on: ubuntu-latest
@@ -182,7 +188,7 @@ jobs:
       contents: write # Needed to update release with assets
       id-token: write
     runs-on: ubuntu-latest
-    needs: [build-amd64, build-arm, build-airgap]
+    needs: [build-amd64, build-arm, build-riscv64, build-airgap]
     steps:
     - name: Checkout code
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -240,6 +246,7 @@ jobs:
             rm ./dist/artifacts/k3s-${ARCH}.sha256sum # Remove the original file to avoid uploading it
           fi
         done
+        mv ./dist/artifacts/k3s-riscv64.sha256sum ./dist/artifacts/sha256sum-riscv64.txt
 
     - name: Validate Assets for Release
       run: |
@@ -277,4 +284,3 @@ jobs:
             -H "Content-Type: application/json" \
             https://api.github.com/repos/${{ github.repository_owner }}/k3s-upgrade/dispatches \
             -d '{"event_type":"tag-release","client_payload":{"tag":"${{ github.ref_name }}"}}'
-
