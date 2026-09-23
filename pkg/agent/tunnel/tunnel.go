@@ -302,8 +302,9 @@ func (a *agentTunnel) watchEndpointSlices(ctx context.Context, rbacReady <-chan 
 
 	labelSelector := labels.Set{discoveryv1.LabelServiceName: "kubernetes"}.String()
 	lw := toolscache.NewFilteredListWatchFromClient(a.client.DiscoveryV1().RESTClient(), "endpointslices", metav1.NamespaceDefault, func(options *metav1.ListOptions) { options.LabelSelector = labelSelector })
-	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(wrapListWithRefresh(ctx, lw, refreshFromSupervisor), &discoveryv1.EndpointSlice{})
+	indexer, informer, watch, done := toolswatch.NewIndexerInformerWatcher(wrapListWithRefresh(ctx, lw, refreshFromSupervisor), &discoveryv1.EndpointSlice{})
 
+	go informer.RunWithContext(ctx)
 	defer func() {
 		watch.Stop()
 		<-done
@@ -313,11 +314,18 @@ func (a *agentTunnel) watchEndpointSlices(ctx context.Context, rbacReady <-chan 
 		select {
 		case <-ctx.Done():
 			return
-		case ev, ok := <-watch.ResultChan():
-			endpointslice, ok := ev.Object.(*discoveryv1.EndpointSlice)
-			if !ok {
-				logrus.Errorf("Tunnel watch failed: event object not of type discoveryv1.EndpointSlice")
+		case <-watch.ResultChan():
+			if !informer.HasSynced() {
 				continue
+			}
+			objs := indexer.List()
+			eps := make([]discoveryv1.EndpointSlice, 0, len(objs))
+			for _, obj := range objs {
+				if ep, ok := obj.(*discoveryv1.EndpointSlice); ok {
+					eps = append(eps, *ep)
+				} else {
+					logrus.Warnf("Tunnel watch: expected *discoveryv1.EndpointSlice, got %T", obj)
+				}
 			}
 
 			// When joining the cluster, the apiserver adds, removes, and then re-adds itself to
@@ -326,7 +334,7 @@ func (a *agentTunnel) watchEndpointSlices(ctx context.Context, rbacReady <-chan 
 			// goroutine that sleeps for a short period before checking for changes and updating
 			// the proxy addresses.  If another update occurs, the previous update operation
 			// will be cancelled and a new one queued.
-			addresses := util.GetAddressesFromSlices(*endpointslice)
+			addresses := util.GetAddressesFromSlices(eps...)
 			logrus.Debugf("Syncing apiserver addresses from tunnel watch: %v", addresses)
 			syncProxyAddresses(addresses)
 		}
