@@ -18,7 +18,7 @@ import (
 func registerEndpointsHandlers(ctx context.Context, etcd *ETCD) {
 	labelSelector := labels.Set{discoveryv1.LabelServiceName: "kubernetes"}.String()
 	lw := toolscache.NewFilteredListWatchFromClient(etcd.config.Runtime.K8s.DiscoveryV1().RESTClient(), "endpointslices", metav1.NamespaceDefault, func(options *metav1.ListOptions) { options.LabelSelector = labelSelector })
-	_, _, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &discoveryv1.EndpointSlice{})
+	indexer, informer, watch, done := toolswatch.NewIndexerInformerWatcher(lw, &discoveryv1.EndpointSlice{})
 
 	go func() {
 		<-ctx.Done()
@@ -27,17 +27,22 @@ func registerEndpointsHandlers(ctx context.Context, etcd *ETCD) {
 	}()
 
 	h := &handler{
-		etcd:  etcd,
-		watch: watch,
+		etcd:     etcd,
+		indexer:  indexer,
+		informer: informer,
+		watch:    watch,
 	}
 
 	logrus.Infof("Starting managed etcd apiserver addresses controller")
+	go h.informer.RunWithContext(ctx)
 	go h.watchEndpointSlice(ctx)
 }
 
 type handler struct {
-	etcd  *ETCD
-	watch watch.Interface
+	etcd     *ETCD
+	indexer  toolscache.Indexer
+	informer toolscache.Controller
+	watch    watch.Interface
 }
 
 // This controller will update the version.program/apiaddresses etcd key with a list of
@@ -47,14 +52,22 @@ func (h *handler) watchEndpointSlice(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case ev, ok := <-h.watch.ResultChan():
-			slice, ok := ev.Object.(*discoveryv1.EndpointSlice)
-			if !ok {
-				logrus.Fatalf("Failed to watch apiserver addresses: could not convert event object to endpointslice: %v", ev)
+		case <-h.watch.ResultChan():
+			if !h.informer.HasSynced() {
+				continue
+			}
+			objs := h.indexer.List()
+			eps := make([]discoveryv1.EndpointSlice, 0, len(objs))
+			for _, obj := range objs {
+				if ep, ok := obj.(*discoveryv1.EndpointSlice); ok {
+					eps = append(eps, *ep)
+				} else {
+					logrus.Warnf("Watch apiserver addresses: expected *discoveryv1.EndpointSlice, got %T", obj)
+				}
 			}
 
 			w := &bytes.Buffer{}
-			if err := json.NewEncoder(w).Encode(util.GetAddressesFromSlices(*slice)); err != nil {
+			if err := json.NewEncoder(w).Encode(util.GetAddressesFromSlices(eps...)); err != nil {
 				logrus.Warnf("Failed to encode apiserver addresses: %v", err)
 				continue
 			}
