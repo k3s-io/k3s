@@ -175,7 +175,7 @@ require (
 	k8s.io/kube-proxy v0.35.2
 	k8s.io/kubectl v0.37.0
 	k8s.io/kubelet v0.37.0
-	k8s.io/kubernetes v1.36.3
+	k8s.io/kubernetes v1.37.1
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 	sigs.k8s.io/cri-tools v0.35.1
 	sigs.k8s.io/yaml v1.6.0
