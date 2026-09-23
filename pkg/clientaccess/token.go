@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -61,7 +62,7 @@ type Info struct {
 	Password string
 	CertFile string
 	KeyFile  string
-	caHash   string
+	CAHash   string
 }
 
 // ValidationOption is a callback to mutate the token prior to use
@@ -78,11 +79,11 @@ func WithCACertificate(certFile string) ValidationOption {
 		}
 
 		digest, _ := hashCA(cacerts)
-		if i.caHash != "" && i.caHash != digest {
+		if i.CAHash != "" && i.CAHash != digest {
 			return
 		}
 
-		i.caHash = digest
+		i.CAHash = digest
 		i.CACerts = cacerts
 	}
 }
@@ -174,7 +175,7 @@ func hashCA(b []byte) (string, error) {
 		roots := x509.NewCertPool()
 		intermediates := x509.NewCertPool()
 		for i, cert := range certs {
-			if i > 0 {
+			if i > 0 && cert.KeyUsage&x509.KeyUsageCertSign != 0 {
 				if len(cert.AuthorityKeyId) == 0 || bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
 					roots.AddCert(cert)
 				} else {
@@ -238,7 +239,7 @@ func parseToken(token string) (*Info, error) {
 		if hashLen > 0 && hashLen != caHashLength {
 			return nil, errors.New("invalid token CA hash length")
 		}
-		info.caHash = parts[0]
+		info.CAHash = parts[0]
 		token = parts[1]
 	}
 
@@ -264,7 +265,7 @@ func parseToken(token string) (*Info, error) {
 // If the CA bundle is not empty but does not contain any valid certs, it validates using
 // an empty CA bundle (which will always fail).
 // If valid cert+key paths can be loaded from the provided paths, they are used for client cert auth.
-func GetHTTPClient(cacerts []byte, certFile, keyFile string, options ...any) *http.Client {
+func GetHTTPClient(cacerts []byte, caHash, certFile, keyFile string, options ...any) *http.Client {
 	if len(cacerts) == 0 {
 		return defaultClient
 	}
@@ -273,7 +274,7 @@ func GetHTTPClient(cacerts []byte, certFile, keyFile string, options ...any) *ht
 		RootCAs: x509.NewCertPool(),
 	}
 
-	tlsConfig.RootCAs.AppendCertsFromPEM(cacerts)
+	appendCertsFromPEM(tlsConfig.RootCAs, cacerts, caHash)
 
 	// Try to load certs from the provided cert and key. We ignore errors,
 	// as it is OK if the paths were empty or the files don't currently exist.
@@ -322,7 +323,7 @@ func (i *Info) Get(path string, options ...any) ([]byte, error) {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-	client := GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, options...)
+	client := GetHTTPClient(i.CACerts, i.CAHash, i.CertFile, i.KeyFile, options...)
 	return get(p.String(), client, i.Username, i.Password, i.Token(), options...)
 }
 
@@ -338,7 +339,7 @@ func (i *Info) Put(path string, body []byte, options ...any) error {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-	client := GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, options...)
+	client := GetHTTPClient(i.CACerts, i.CAHash, i.CertFile, i.KeyFile, options...)
 	return put(p.String(), body, client, i.Username, i.Password, i.Token(), options...)
 }
 
@@ -354,7 +355,7 @@ func (i *Info) Post(path string, body []byte, options ...any) ([]byte, error) {
 	}
 	p.Scheme = u.Scheme
 	p.Host = u.Host
-	client := GetHTTPClient(i.CACerts, i.CertFile, i.KeyFile, options...)
+	client := GetHTTPClient(i.CACerts, i.CAHash, i.CertFile, i.KeyFile, options...)
 	return post(p.String(), body, client, i.Username, i.Password, i.Token(), options...)
 }
 
@@ -376,7 +377,7 @@ func (i *Info) setServer(server string) error {
 	}
 
 	if len(i.CACerts) == 0 {
-		cacerts, err := getCACerts(*url)
+		cacerts, err := getCACerts(*url, i.CAHash)
 		if err != nil {
 			return err
 		}
@@ -389,27 +390,68 @@ func (i *Info) setServer(server string) error {
 
 // ValidateCAHash validates that info's caHash matches the CACerts hash.
 func (i *Info) validateCAHash() error {
-	if len(i.caHash) > 0 && len(i.CACerts) == 0 {
+	if len(i.CAHash) > 0 && len(i.CACerts) == 0 {
 		// Warn if the user provided a CA hash but we're not going to validate because it's already trusted
 		logrus.Warn("Cluster CA certificate is trusted by the host CA bundle. " +
 			"Token CA hash will not be validated.")
-	} else if len(i.caHash) == 0 && len(i.CACerts) > 0 {
+	} else if len(i.CAHash) == 0 && len(i.CACerts) > 0 {
 		// Warn if the CA is self-signed but the user didn't provide a hash to validate it against
 		logrus.Warn("Cluster CA certificate is not trusted by the host CA bundle, but the token does not include a CA hash. " +
 			"Use the full token from the server's node-token file to enable Cluster CA validation.")
-	} else if len(i.CACerts) > 0 && len(i.caHash) > 0 {
+	} else if len(i.CACerts) > 0 && len(i.CAHash) > 0 {
 		// only verify CA hash if the server cert is not trusted by the OS CA bundle
-		if ok, serverHash := validateCACerts(i.CACerts, i.caHash); !ok {
-			return fmt.Errorf("token CA hash does not match the Cluster CA certificate hash: %s != %s", i.caHash, serverHash)
+		if ok, serverHash := validateCACerts(i.CACerts, i.CAHash); !ok {
+			return fmt.Errorf("token CA hash does not match the Cluster CA certificate hash: %s != %s", i.CAHash, serverHash)
 		}
 	}
 	return nil
 }
 
+// appendCertsFromPEM adds root and intermediate certs to a cert pool. If
+// caHash is set, only root certificates with a matching hash, and intermediate
+// certificates signed by a CA with a matching hash, are added to the pool.
+func appendCertsFromPEM(pool *x509.CertPool, cacerts []byte, caHash string) {
+	certs, err := certutil.ParseCertsPEM(cacerts)
+	if err != nil {
+		return
+	}
+
+	// legacy behavior: if there's a single cert in the bundle, hash the raw pem bytes
+	if len(certs) == 1 {
+		digest := sha256.Sum256(cacerts)
+		if caHash == "" || caHash == hex.EncodeToString(digest[:]) {
+			pool.AddCert(certs[0])
+		}
+		return
+	}
+
+	// prune all certs that do not have CertSign key usage
+	certs = slices.DeleteFunc(certs, func(cert *x509.Certificate) bool { return cert.KeyUsage&x509.KeyUsageCertSign == 0 })
+
+	// pass 1: add trusted roots
+	for _, cert := range certs {
+		if len(cert.AuthorityKeyId) == 0 || bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
+			digest := sha256.Sum256(cert.Raw)
+			if caHash == "" || caHash == hex.EncodeToString(digest[:]) {
+				pool.AddCert(cert)
+			}
+		}
+	}
+
+	// pass 2: add intermediates issued by a trusted root
+	for _, cert := range certs {
+		if len(cert.AuthorityKeyId) != 0 && !bytes.Equal(cert.AuthorityKeyId, cert.SubjectKeyId) {
+			if _, err := cert.Verify(x509.VerifyOptions{Roots: pool}); err == nil {
+				pool.AddCert(cert)
+			}
+		}
+	}
+}
+
 // getCACerts retrieves the CA bundle from a server.
 // An error is raised if the CA bundle cannot be retrieved,
 // or if the server's cert is not signed by the returned bundle.
-func getCACerts(u url.URL) ([]byte, error) {
+func getCACerts(u url.URL, caHash string) ([]byte, error) {
 	u.Path = "/cacerts"
 	url := u.String()
 
@@ -430,7 +472,7 @@ func getCACerts(u url.URL) ([]byte, error) {
 	// Request the CA bundle again, validating that the CA bundle can be loaded
 	// and used to validate the server certificate. This should only fail if we somehow
 	// get an empty CA bundle. or if the dynamiclistener cert is incorrectly signed.
-	_, err = get(url, GetHTTPClient(cacerts, "", ""), "", "", "")
+	_, err = get(url, GetHTTPClient(cacerts, caHash, "", ""), "", "", "")
 	if err != nil {
 		return nil, errors.WithMessage(err, "CA cert validation failed")
 	}
