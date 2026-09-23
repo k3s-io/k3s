@@ -110,6 +110,11 @@ targets:
       command: 'bash {{ requiredEnv "GITHUB_WORKSPACE" }}/updatecli/scripts/bump-staging-deps.sh {{ source "k8s-base-version" }}'
       environments:
         - name: PATH
+      changedif:
+        kind: file/checksum
+        spec:
+          files:
+            - go.mod
 
   go-mod-go-version:
     name: "Bump Go version directive in go.mod"

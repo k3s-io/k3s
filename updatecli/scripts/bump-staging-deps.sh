@@ -33,7 +33,6 @@ while IFS= read -r pair; do
   # More robust regex for spaces/tabs, and execute the replacement
   sed -i -E "s#(${module_name}[[:space:]]+=>[[:space:]]+github\.com/k3s-io/kubernetes/staging/src/[^[:space:]]+)[[:space:]]+v[0-9]+\.[0-9]+\.[0-9]+-k3s[0-9]+#\1 ${BASE_VERSION}-k3s${n}#" go.mod
   
-  # CRITICAL: We must echo output so Updatecli knows a change occurred!
   echo "Bumped staging module ${module_name} to ${BASE_VERSION}-k3s${n}"
   changed=1
 done <<< "$pairs"
