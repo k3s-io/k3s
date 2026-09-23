@@ -14,6 +14,7 @@ replace (
 	github.com/docker/docker => github.com/docker/docker v25.0.15-0.20260325154711-d2dbc0547253+incompatible
 	github.com/emicklei/go-restful/v3 => github.com/emicklei/go-restful/v3 v3.13.0
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
+	github.com/google/cadvisor/lib => github.com/k3s-io/cadvisor/lib v0.60.5-k3s1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.2
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.15.1

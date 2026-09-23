@@ -5,11 +5,11 @@ package agent
 import (
 	"errors"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	cadvisorcontainerd "github.com/google/cadvisor/lib/container/containerd"
 	"github.com/k3s-io/k3s/pkg/cgroups"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/util"
@@ -92,7 +92,8 @@ func kubeletArgsAndConfig(cfg *config.Agent) (map[string]string, *kubeletconfig.
 		// used to expose this as a --containerd flag, but stopped registering it in v1.37, and
 		// does not pass its own runtime endpoint through.
 		if strings.Contains(cfg.RuntimeSocket, "containerd") {
-			*cadvisorcontainerd.ArgContainerdEndpoint = strings.TrimPrefix(cfg.RuntimeSocket, socketPrefix)
+			runtimeWithoutPrefix := strings.TrimPrefix(cfg.RuntimeSocket, socketPrefix)
+			os.Setenv("CADVISOR_CONTAINERD_ENDPOINT", runtimeWithoutPrefix)
 		}
 		// cadvisor wants the containerd CRI socket without the prefix, but kubelet wants it with the prefix
 		if strings.HasPrefix(cfg.RuntimeSocket, socketPrefix) {
