@@ -25,7 +25,7 @@ func Test_UnitTrustedCA(t *testing.T) {
 		BaseURL:  server.URL,
 		Username: defaultUsername,
 		Password: defaultPassword,
-		caHash:   digest,
+		CAHash:   digest,
 	}
 
 	testCases := []struct {

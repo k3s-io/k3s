@@ -132,7 +132,7 @@ func Request(path string, info *clientaccess.Info, requester HTTPRequester) ([]b
 		return nil, err
 	}
 	u.Path = path
-	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts, info.CertFile, info.KeyFile), info.Username, info.Password, info.Token())
+	return requester(u.String(), clientaccess.GetHTTPClient(info.CACerts, info.CAHash, info.CertFile, info.KeyFile), info.Username, info.Password, info.Token())
 }
 
 func getNodeNamedCrt(nodeName string, nodeIPs []net.IP, nodePasswordFile string, csr []byte) HTTPRequester {
