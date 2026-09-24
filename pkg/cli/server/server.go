@@ -248,6 +248,10 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 	serverConfig.ControlConfig.ClusterReset = cfg.ClusterReset
 	serverConfig.ControlConfig.ClusterResetRestorePath = cfg.ClusterResetRestorePath
+
+	if cfg.SystemDefaultRegistry == "" {
+		return errors.New("invalid flag use; --system-default-registry cannot be empty, system images are published by default to ghcr.io")
+	}
 	serverConfig.ControlConfig.SystemDefaultRegistry = cfg.SystemDefaultRegistry
 
 	if serverConfig.ControlConfig.SupervisorPort == 0 {
@@ -455,9 +459,9 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 		// Internally helm-controller defaults to latest tag, but we inject a immutable version at build time.
 		if helmConfig.DefaultJobImage != "" {
 			helmchart.DefaultJobImage = helmConfig.DefaultJobImage
-		} else if serverConfig.ControlConfig.SystemDefaultRegistry != "" {
-			helmchart.DefaultJobImage = serverConfig.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
 		}
+
+		helmchart.DefaultJobImage = serverConfig.ControlConfig.SystemDefaultRegistry + "/" + helmchart.DefaultJobImage
 
 		helmchart.JobTolerations = helmConfig.JobTolerations
 		helmchart.JobResources = helmConfig.JobResources
