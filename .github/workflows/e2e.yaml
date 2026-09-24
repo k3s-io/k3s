@@ -240,9 +240,11 @@ jobs:
       run: |
         go install github.com/onsi/ginkgo/v2/ginkgo@$(. ./scripts/version.sh; get-module-version github.com/onsi/ginkgo/v2)
         # These tests use rancher/systemd-node and have different flags.
-        CI_TESTS="autoimport dualstack hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        CI_TESTS="autoimport dualstack hardened secretsencryption svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ginkgo run -v -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -k3sImage=$K3S_IMAGE -channel=$CHANNEL
+        elif [ ${{ matrix.dtest }} = "snapshotrestore" ]; then
+          ginkgo run -v --procs=2 -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -ci
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
           ginkgo run -v -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -ci
         else

@@ -37,10 +37,14 @@ var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", Order
 	var config *docker.TestConfig
 	var snapshotname string
 	var failed bool
+	s3MockName := fmt.Sprintf("s3mock-%d", GinkgoParallelProcess())
+	s3MockPort := 9090 + GinkgoParallelProcess()
+	s3MockEndpoint := fmt.Sprintf("172.17.0.1:%d", s3MockPort)
 
 	Context("Setup Cluster", func() {
 		It("should start s3 mock", func() {
-			_, err := tests.RunCommand("docker run --name s3mock -p 9090:9090 -p 9191:9191 -d -e COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS=test-bucket -e debug=true -t mirror.gcr.io/adobe/s3mock:5.0.0")
+			cmd := fmt.Sprintf("docker run --name %s -p %d:9090 -d -e COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS=test-bucket -e debug=true -t mirror.gcr.io/adobe/s3mock:5.0.0", s3MockName, s3MockPort)
+			_, err := tests.RunCommand(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers and agents", func() {
@@ -77,7 +81,7 @@ var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", Order
 					cmd += " --etcd-snapshot-compress=true"
 				}
 				if opts.s3 {
-					cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=172.17.0.1:9090 --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test"
+					cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=" + s3MockEndpoint + " --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test"
 				}
 				if opts.path != "" {
 					cmd = "mkdir -p " + opts.path + "; " + cmd + " --etcd-snapshot-dir=" + opts.path
@@ -123,7 +127,7 @@ var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", Order
 			//Restores from snapshot on server-0
 			cmd := "k3s server --cluster-reset"
 			if opts.s3 {
-				cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=172.17.0.1:9090 --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test --cluster-reset-restore-path=" + snapshotname
+				cmd += " --etcd-s3=true --etcd-s3-insecure=true --etcd-s3-bucket=test-bucket --etcd-s3-folder=test-folder --etcd-s3-endpoint=" + s3MockEndpoint + " --etcd-s3-skip-ssl-verify=true --etcd-s3-access-key=test --cluster-reset-restore-path=" + snapshotname
 			} else {
 				if opts.path != "" {
 					cmd += " --cluster-reset-restore-path=" + filepath.Join(opts.path, snapshotname)
@@ -202,7 +206,7 @@ var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", Order
 		if *ci || (config != nil && !failed) {
 			Expect(config.Cleanup()).To(Succeed())
 		}
-		_, err := tests.RunCommand("docker rm -fv s3mock")
+		_, err := tests.RunCommand("docker rm -fv " + s3MockName)
 		Expect(err).NotTo(HaveOccurred())
 	})
 },
