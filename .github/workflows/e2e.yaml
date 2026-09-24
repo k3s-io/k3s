@@ -244,7 +244,7 @@ jobs:
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ginkgo run -v -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [ ${{ matrix.dtest }} = "snapshotrestore" ]; then
-          ginkgo run -v --procs=2 -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -ci
+          ginkgo run -v --procs=4 -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -ci
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
           ginkgo run -v -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -ci
         else
