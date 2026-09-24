@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, t4, hardened, lazypull, network, nixsnapshotter, skew, secretsencryption, snapshotrestore, svcpoliciesandfirewall, token, upgrade]
+        dtest: [autoimport, basics, bootstraptoken, cacerts, dualstack, etcd, t4, hardened, lazypull, network, nixsnapshotter, skew, secretsencryption, svcpoliciesandfirewall, token, upgrade]
         arch: [amd64, arm64]
         exclude:
           - dtest: autoimport
@@ -171,8 +171,6 @@ jobs:
           - dtest: nixsnapshotter
             arch: arm64
           - dtest: secretsencryption
-            arch: arm64
-          - dtest: snapshotrestore
             arch: arm64
           - dtest: svcpoliciesandfirewall
             arch: arm64
@@ -240,7 +238,7 @@ jobs:
       run: |
         go install github.com/onsi/ginkgo/v2/ginkgo@$(. ./scripts/version.sh; get-module-version github.com/onsi/ginkgo/v2)
         # These tests use rancher/systemd-node and have different flags.
-        CI_TESTS="autoimport dualstack hardened secretsencryption snapshotrestore svcpoliciesandfirewall token"
+        CI_TESTS="autoimport dualstack hardened secretsencryption svcpoliciesandfirewall token"
         if [ ${{ matrix.dtest }} = "upgrade" ] || [ ${{ matrix.dtest }} = "skew" ]; then
           ginkgo run -v -timeout=0 ./tests/docker/${{ matrix.dtest }}/ -- -k3sImage=$K3S_IMAGE -channel=$CHANNEL
         elif [[ $CI_TESTS =~ ${{ matrix.dtest }} ]]; then
@@ -252,7 +250,7 @@ jobs:
   docker-large:
     needs: build
     name: Docker Large
-    timeout-minutes: 45
+    timeout-minutes: 60
     runs-on: cncf-ubuntu-32-128-x86
     if: github.repository_owner == 'k3s-io'
     steps:
@@ -280,3 +278,7 @@ jobs:
       run: |
         go install github.com/onsi/ginkgo/v2/ginkgo@$(. ./scripts/version.sh; get-module-version github.com/onsi/ginkgo/v2)
         ginkgo run -v -timeout=40m ./tests/docker/scale/ -- -ci -k3sImage=$K3S_IMAGE
+    - name: Run snapshot restore test
+      run: |
+        go install github.com/onsi/ginkgo/v2/ginkgo@$(. ./scripts/version.sh; get-module-version github.com/onsi/ginkgo/v2)
+        ginkgo run -v --procs=8 -timeout=40m ./tests/docker/snapshotrestore/ -- -ci
