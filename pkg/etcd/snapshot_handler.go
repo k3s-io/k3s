@@ -13,6 +13,12 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	"fmt"
+	"strings"
+
+	"path/filepath"
 )
 
 type SnapshotOperation string
@@ -48,7 +54,14 @@ func (e *ETCD) snapshotHandler() http.Handler {
 		sr, err := getSnapshotRequest(req)
 		if err != nil {
 			util.SendErrorWithID(err, "etcd-snapshot", rw, req, http.StatusInternalServerError)
+			return
 		}
+
+		warnings := e.applySnapshotRestrictions(sr)
+		for _, w := range warnings {
+			rw.Header().Add("Warning", fmt.Sprintf("299 - \"%s\"", w))
+		}
+
 		switch sr.Operation {
 		case SnapshotOperationList:
 			err = e.withRequest(sr).handleList(rw, req)
@@ -68,7 +81,7 @@ func (e *ETCD) snapshotHandler() http.Handler {
 }
 
 func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
-	if e.config.EtcdS3 != nil {
+	if e.config != nil && e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
 			err = errors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
@@ -119,6 +132,13 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
+	for _, snapshot := range snapshots {
+		cleaned := filepath.Clean(snapshot)
+		if cleaned == "." || cleaned == "" || strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) || filepath.Base(cleaned) != cleaned {
+			util.SendError(errors.New("invalid snapshot name: path traversal not allowed"), rw, req, http.StatusBadRequest)
+			return nil
+		}
+	}
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
 			err = errors.WithMessage(err, "failed to initialize S3 client")
@@ -153,6 +173,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			DisableAgent:          e.config.DisableAgent,
 			EtcdSnapshotCompress:  e.config.EtcdSnapshotCompress,
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
+			EtcdSnapshotDir:       e.config.EtcdSnapshotDir,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
 			EtcdS3:                sr.S3,
 		},
@@ -212,4 +233,64 @@ func sendSnapshotList(rw http.ResponseWriter, req *http.Request, sf *k3s.ETCDSna
 	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Write(b)
+}
+
+func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
+	if len(e.config.EtcdSnapshotRestrictions) == 0 {
+		return nil
+	}
+
+	restrictions := sets.New(e.config.EtcdSnapshotRestrictions...)
+	hasAll := restrictions.Has("all")
+	isRestricted := func(field string) bool {
+		return hasAll || restrictions.Has(field)
+	}
+
+	var ignored []string
+
+	if isRestricted("snapshot-dir") && sr.Dir != nil {
+		if e.config.EtcdSnapshotDir == "" || *sr.Dir != e.config.EtcdSnapshotDir {
+			ignored = append(ignored, "snapshot-dir")
+		}
+		sr.Dir = nil
+	}
+
+	if sr.S3 != nil {
+		serverS3 := e.config.EtcdS3
+		getExpected := func(getter func(*config.EtcdS3) string) string {
+			if serverS3 != nil {
+				return getter(serverS3)
+			}
+			return ""
+		}
+
+		if isRestricted("s3-endpoint") && sr.S3.Endpoint != getExpected(func(s *config.EtcdS3) string { return s.Endpoint }) {
+			ignored = append(ignored, "s3-endpoint")
+			sr.S3.Endpoint = getExpected(func(s *config.EtcdS3) string { return s.Endpoint })
+		}
+		if isRestricted("s3-bucket") && sr.S3.Bucket != getExpected(func(s *config.EtcdS3) string { return s.Bucket }) {
+			ignored = append(ignored, "s3-bucket")
+			sr.S3.Bucket = getExpected(func(s *config.EtcdS3) string { return s.Bucket })
+		}
+		if isRestricted("s3-folder") && sr.S3.Folder != getExpected(func(s *config.EtcdS3) string { return s.Folder }) {
+			ignored = append(ignored, "s3-folder")
+			sr.S3.Folder = getExpected(func(s *config.EtcdS3) string { return s.Folder })
+		}
+		if isRestricted("s3-proxy") && sr.S3.Proxy != getExpected(func(s *config.EtcdS3) string { return s.Proxy }) {
+			ignored = append(ignored, "s3-proxy")
+			sr.S3.Proxy = getExpected(func(s *config.EtcdS3) string { return s.Proxy })
+		}
+	}
+
+	if len(ignored) == 0 {
+		return nil
+	}
+
+	if hasAll && len(ignored) > 1 {
+		return []string{"restricted snapshot options were ignored: all supported destination overrides. Using the server-configured snapshot destination."}
+	} else if len(ignored) > 1 {
+		return []string{fmt.Sprintf("restricted snapshot options were ignored: %s. Using the server-configured snapshot destination.", strings.Join(ignored, ", "))}
+	}
+	
+	return []string{fmt.Sprintf("%s override ignored by server-side snapshot restrictions. Using the server-configured destination.", ignored[0])}
 }
