@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
@@ -75,7 +76,9 @@ func (e *etcdproxy) Update(addresses []string) {
 // start a polling routine that makes periodic requests to the etcd node's supervisor port.
 // If the request fails, the node is marked unhealthy.
 func (e etcdproxy) createHealthCheck(ctx context.Context, address string) loadbalancer.HealthCheckFunc {
-	var status loadbalancer.HealthCheckResult
+	// status holds a loadbalancer.HealthCheckResult; it is written by the polling
+	// goroutine below and swapped out by the returned health check func.
+	var status atomic.Int32
 
 	host, _, _ := net.SplitHostPort(address)
 	url := fmt.Sprintf("https://%s/ping", net.JoinHostPort(host, strconv.Itoa(e.supervisorPort)))
@@ -88,20 +91,19 @@ func (e etcdproxy) createHealthCheck(ctx context.Context, address string) loadba
 		var statusCode int
 		if resp != nil {
 			statusCode = resp.StatusCode
+			resp.Body.Close()
 		}
 		if err != nil || statusCode != http.StatusOK {
 			logrus.Debugf("Health check %s failed: %v (StatusCode: %d)", address, err, statusCode)
-			status = loadbalancer.HealthCheckResultFailed
+			status.Store(int32(loadbalancer.HealthCheckResultFailed))
 		} else {
-			status = loadbalancer.HealthCheckResultOK
+			status.Store(int32(loadbalancer.HealthCheckResultOK))
 		}
 	}, 5*time.Second, 1.0, true)
 
 	return func() loadbalancer.HealthCheckResult {
 		// Reset the status to unknown on reading, until next time it is checked.
 		// This avoids having a health check result alter the server state between active checks.
-		s := status
-		status = loadbalancer.HealthCheckResultUnknown
-		return s
+		return loadbalancer.HealthCheckResult(status.Swap(int32(loadbalancer.HealthCheckResultUnknown)))
 	}
 }
