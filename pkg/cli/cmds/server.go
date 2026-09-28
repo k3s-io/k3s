@@ -422,7 +422,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.IntFlag{
 		Name:        "etcd-snapshot-retention",
-		Usage:       "(db) Number of local snapshots to retain per server node",
+		Usage:       "(db) Number of local snapshots to retain on each server node",
 		Destination: &ServerConfig.EtcdSnapshotRetention,
 		Value:       defaultSnapshotRentention,
 	},
