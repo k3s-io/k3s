@@ -29,7 +29,7 @@ runs:
       with:
         go-version: ${{ env.INPUT_GO_VERSION }}
         go-version-file: 'go.mod'  # if go-version is not set, just use whatever version is in the go.mod file
-        cache: ${{ github.ref == 'refs/heads/main' || github.ref == env.LATEST_RELEASE_REF }}  # use default cache for main and most recent minor
+        cache: ${{ runner.os != 'Windows' && (github.ref == 'refs/heads/main' || github.ref == env.LATEST_RELEASE_REF) }}  # use default cache for main and most recent minor; Windows is not cached
 
     - name: Prepare for go cache
       if: github.ref != 'refs/heads/main' && github.ref != env.LATEST_RELEASE_REF  # use custom cache for older minors
