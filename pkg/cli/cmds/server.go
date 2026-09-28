@@ -498,7 +498,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.IntFlag{
 		Name:        "etcd-s3-retention",
-		Usage:       "(db) Number of snapshots in S3 to retain cluster-wide",
+		Usage:       "(db) Number of S3 snapshots to retain in the configured region, bucket, and prefix",
 		Destination: &ServerConfig.EtcdS3Retention,
 		Value:       defaultSnapshotRentention,
 	},
