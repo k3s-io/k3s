@@ -55,7 +55,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	&cli.IntFlag{
 		Name:        "snapshot-retention,",
 		Aliases:     []string{"etcd-snapshot-retention"},
-		Usage:       "(db) Number of snapshots to retain.",
+		Usage:       "(db) Number of local snapshots to retain per server node.",
 		Destination: &ServerConfig.EtcdSnapshotRetention,
 		Value:       defaultSnapshotRentention,
 	},
@@ -127,7 +127,7 @@ var EtcdSnapshotFlags = []cli.Flag{
 	&cli.IntFlag{
 		Name:        "s3-retention",
 		Aliases:     []string{"etcd-s3-retention"},
-		Usage:       "(db) Number of s3 snapshots to retain.",
+		Usage:       "(db) Number of snapshots in S3 to retain cluster-wide.",
 		Destination: &ServerConfig.EtcdS3Retention,
 		Value:       defaultSnapshotRentention,
 	},
