@@ -9,7 +9,7 @@ This governance explains how the K3s project is run. As such that's a living doc
 - [CNCF Resources](#cncf-resources)  
 - [Code of Conduct Enforcement](#code-of-conduct)  
 - [Security Response Team](#security-response-team)  
-- [Voting](#voting)  
+- [Voting](#voting-and-decision-making)  
 - [Modifications](#modifying-this-charter)
 
 ## Values
@@ -64,7 +64,7 @@ Anyone is eligible to become a Maintainer, you need to demonstrate a few or more
 * understanding of how the team works (policies, processes for testing and code review, etc),  
 * understanding of the project's code base and coding and documentation style.
 
-A new Maintainer must be proposed by an existing Maintainer by sending a message to the [developer mailing list](mailto:k3s-maintainers@lists.cncf.io) and opening PR in [MAINTAINERS](https://github.com/k3s-io/k3s/blob/main/MAINTAINERS). A [supermajority](#Supermajority) vote of existing Maintainers approves the application.  Maintainer nominations will be evaluated without prejudice to employer or demographics.
+A new Maintainer must be proposed by an existing Maintainer by sending a message to the [developer mailing list](mailto:k3s-maintainers@lists.cncf.io) and opening PR in [MAINTAINERS](https://github.com/k3s-io/k3s/blob/main/MAINTAINERS). A [supermajority](#supermajority) vote of existing Maintainers approves the application.  Maintainer nominations will be evaluated without prejudice to employer or demographics.
 
 Maintainers who are selected will be granted the necessary GitHub rights, and invited to the [private Maintainer mailing list](mailto:k3s-maintainers@lists.cncf.io).
 
@@ -86,7 +86,7 @@ Maintainers may resign at any time if they feel that they will not be able to co
 
 Maintainers may also be removed after being inactive, failure to fulfill their Maintainer responsibilities, violating the Code of Conduct, or other reasons. Inactivity is defined as a period of very low or no activity in the project for a year or more, with no definite schedule to return to full Maintainer activity.
 
-A Maintainer may be removed at any time by a [supermajority](#Supermajority) vote of the remaining Maintainers.
+A Maintainer may be removed at any time by a [supermajority](#supermajority) vote of the remaining Maintainers.
 
 Depending on the reason for removal, a Maintainer may be converted to Emeritus status.  Emeritus Maintainers will still be consulted on some project matters, and can be rapidly returned   
 to Maintainer status if their availability changes.
@@ -98,7 +98,7 @@ Reviewers are able to review code for quality and correctness on some part of a 
 
 * Knowledgeable about the codebase  
 * Sponsored by a Maintainer  
-* New reviewer must be nominated by an existing Maintainer or reviewer or self-nominated and must be elected by a [supermajority](#Supermajority) of existing Maintainers
+* New reviewer must be nominated by an existing Maintainer or reviewer or self-nominated and must be elected by a [supermajority](#supermajority) of existing Maintainers
 
 **Responsibilities and privileges**
 
@@ -157,9 +157,9 @@ Examples:
 While most business in K3s is conducted by "[lazy consensus](https://community.apache.org/committers/lazyConsensus.html)", periodically the Maintainers may need to vote on specific actions or changes. A vote can be taken on [the developer mailing list](mailto:cncf-k3s-dev@lists.cncf.io) or [the private Maintainer mailing list](mailto:cncf-k3s-maintainers@lists.cncf.io) for security or conduct matters.  
 Votes may also be taken at [the community meeting](https://k3s.io/community/#community-meetings).  Any Maintainer may demand a vote be taken.
 
-Most votes require a [simple majority](#simple-majority) of all Maintainers to succeed, except where otherwise noted.  [Supermajority](#Supermajority) votes mean at least two-thirds of all existing Maintainers.
+Most votes require a [simple majority](#simple-majority) of all Maintainers to succeed, except where otherwise noted.  [Supermajority](#supermajority) votes mean at least two-thirds of all existing Maintainers.
 
-Ideally, all project decisions are resolved by consensus. If impossible, any Maintainer may call a vote. Unless otherwise specified in this document, any vote will be decided by a [supermajority](#Supermajority) of Maintainers.
+Ideally, all project decisions are resolved by consensus. If impossible, any Maintainer may call a vote. Unless otherwise specified in this document, any vote will be decided by a [supermajority](#supermajority) of Maintainers.
 
 In case of situation with not enough participation from maintainer for **non** critical decision we can lower the supermajority to [**simple majority**](#simple-majority).
 
@@ -167,13 +167,13 @@ For any **critital** decisions [CNCF TOC](https://www.cncf.io/people/technical-o
 
 ## Voting requirements:
 
-* Adding a Maintainer: [Supermajority](#Supermajority)
+* Adding a Maintainer: [Supermajority](#supermajority)
 
-* Removing a Maintainer:  [Supermajority](#Supermajority)
+* Removing a Maintainer:  [Supermajority](#supermajority)
 
 * Requesting CNCF resources: [Simple majority](#simple-majority)
 
-* Charter and Governance: [Supermajority](#Supermajority)
+* Charter and Governance: [Supermajority](#supermajority)
 
 If a vote does not meet quorum (e.g., fewer than 50% of Maintainers vote), the vote may be postponed or escalated to a follow-up meeting.
 
@@ -230,7 +230,7 @@ The Security Response Team is responsible for handling all reports of security h
 
 ## Modifying this Charter
 
-Changes to this Governance and its supporting documents may be approved by a [supermajority](#Supermajority) vote of the Maintainers.
+Changes to this Governance and its supporting documents may be approved by a [supermajority](#supermajority) vote of the Maintainers.
 
 ## 
 
