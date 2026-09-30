@@ -75,7 +75,6 @@ sources:
         kind: "regex/semver"
         regex: '^({{ source "current-k8s-minor" }}\.\d+-k3s\d+)$'
 
-
   k8s-base-version:
     name: "Strip -k3sN suffix from fork tag"
     kind: "shell"
@@ -92,11 +91,24 @@ sources:
       environments:
         - name: PATH
 
-  go-version:
-    name: "Get upstream Go version for the resolved k8s tag"
+  k8s-go-version:
+    name: "Get Go version used by upstream k8s for the resolved tag"
     kind: "shell"
     spec:
       command: 'curl -sf https://raw.githubusercontent.com/kubernetes/kubernetes/refs/tags/{{ source "k8s-base-version" }}/.go-version'
+      environments:
+        - name: PATH
+
+  go-version:
+    name: "Get latest Go patch release for the upstream Kubernetes Go minor"
+    kind: "shell"
+    spec:
+      command: |
+        minor=$(echo "{{ source "k8s-go-version" }}" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/; s/\./\\./g')
+        curl -sf 'https://go.dev/dl/?mode=json&include=all' \
+          | grep -oE "\"go${minor}\.[0-9]+\"" \
+          | tr -d '"' | sed 's/^go//' \
+          | sort -V | tail -n1 | grep .
       environments:
         - name: PATH
 
