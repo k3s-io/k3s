@@ -142,13 +142,10 @@ func (k *k3s) onChangePod(key string, pod *core.Pod) (*core.Pod, error) {
 }
 
 // onChangeNode handles changes to Nodes. We need to handle this as we may need to kick the DaemonSet
-// to add or remove pods from nodes if labels have changed.
+// to add or remove pods from nodes if labels have changed (including when enablelb label is removed).
 func (k *k3s) onChangeNode(key string, node *core.Node) (*core.Node, error) {
 	if node == nil {
 		return nil, nil
-	}
-	if _, ok := node.Labels[daemonsetNodeLabel]; !ok {
-		return node, nil
 	}
 
 	if err := k.updateDaemonSets(); err != nil {
