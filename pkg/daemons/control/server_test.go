@@ -113,13 +113,21 @@ func Test_UnitServer(t *testing.T) {
 
 				executor := mock.NewExecutorWithEmbeddedETCD(t)
 
-				// authorization-mode and anonymous-auth should not be set when user sets --authorization-config and --authentication-config
-				control.ExtraAPIArgs = []string{"authorization-config=/dev/null", "authentication-config=/dev/null"}
+				// authorization-mode, anonymous-auth, service-account-signing-key-file, and service-account-key-file
+				// should not be set when user sets --authorization-config, --authentication-config, and --service-account-signing-endpoint
+				control.ExtraAPIArgs = []string{
+					"authorization-config=/dev/null",
+					"authentication-config=/dev/null",
+					"service-account-signing-endpoint=/run/k3s/signer.sock",
+				}
 				matchAuthArgs := mock.GM(And(
 					ContainElement(ContainSubstring("--authorization-config")),
 					ContainElement(ContainSubstring("--authentication-config")),
+					ContainElement(ContainSubstring("--service-account-signing-endpoint")),
 					Not(ContainElement(ContainSubstring("--authorization-mode"))),
 					Not(ContainElement(ContainSubstring("--anonymous-auth"))),
+					Not(ContainElement(ContainSubstring("--service-account-signing-key-file"))),
+					Not(ContainElement(ContainSubstring("--service-account-key-file"))),
 				))
 
 				// leader-elect should be disabled when using kine+sqlite
