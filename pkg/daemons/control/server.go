@@ -222,7 +222,12 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	} else {
 		logrus.Warn("Not setting kube-apiserver 'anonymous-auth' flag due to user-provided 'authentication-config' file.")
 	}
-	argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
+	if util.ArgValue("service-account-signing-endpoint", cfg.ExtraAPIArgs) == "" {
+		argsMap["service-account-signing-key-file"] = runtime.ServiceCurrentKey
+		argsMap["service-account-key-file"] = runtime.ServiceKey
+	} else {
+		logrus.Warn("Not setting kube-apiserver 'service-account-signing-key-file' and 'service-account-key-file' flags due to user-provided 'service-account-signing-endpoint'.")
+	}
 	argsMap["service-cluster-ip-range"] = util.JoinIPNets(cfg.ServiceIPRanges)
 	argsMap["service-node-port-range"] = cfg.ServiceNodePortRange.String()
 	argsMap["advertise-port"] = strconv.Itoa(cfg.AdvertisePort)
@@ -241,7 +246,6 @@ func apiServer(ctx context.Context, cfg *config.Control) error {
 	}
 	argsMap["tls-cert-file"] = runtime.ServingKubeAPICert
 	argsMap["tls-private-key-file"] = runtime.ServingKubeAPIKey
-	argsMap["service-account-key-file"] = runtime.ServiceKey
 	argsMap["service-account-issuer"] = "https://kubernetes.default.svc." + cfg.ClusterDomain
 	argsMap["api-audiences"] = "https://kubernetes.default.svc." + cfg.ClusterDomain + "," + version.Program
 	argsMap["kubelet-certificate-authority"] = runtime.ServerCA
