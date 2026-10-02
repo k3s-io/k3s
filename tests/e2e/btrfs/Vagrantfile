@@ -48,6 +48,7 @@ def provision(vm, role, role_num, node_num)
   
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.args = ["server"]
       k3s.env = %W[#{install_type}]
       k3s.config = <<~YAML
