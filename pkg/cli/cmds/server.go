@@ -94,6 +94,7 @@ type Server struct {
 	EtcdDisableSnapshots     bool
 	EtcdExposeMetrics        bool
 	EtcdSnapshotDir          string
+	EtcdSnapshotRestrictions cli.StringSlice
 	EtcdSnapshotCron         string
 	EtcdSnapshotReconcile    time.Duration
 	EtcdSnapshotRetention    int
@@ -430,6 +431,11 @@ var ServerFlags = []cli.Flag{
 		Name:        "etcd-snapshot-dir",
 		Usage:       "(db) Directory to save db snapshots. (default: ${data-dir}/server/db/snapshots)",
 		Destination: &ServerConfig.EtcdSnapshotDir,
+	},
+	&cli.StringSliceFlag{
+		Name:        "etcd-snapshot-restrictions",
+		Usage:       "(db) Enforce restrictions on snapshot configuration; when set the selected defaults cannot be overridden via 'etcd-snapshot' options (valid values: zero or more of 'snapshot-dir', 's3-endpoint', 's3-bucket', 's3-folder', 's3-proxy', 'all')",
+		Destination: &ServerConfig.EtcdSnapshotRestrictions,
 	},
 	&cli.BoolFlag{
 		Name:        "etcd-snapshot-compress",
