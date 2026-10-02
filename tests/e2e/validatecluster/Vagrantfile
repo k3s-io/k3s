@@ -36,14 +36,30 @@ def provision(vm, role, role_num, node_num)
   db_type = getDBType(role, role_num, vm)
   hardened_arg = getHardenedArg(vm, HARDENED, scripts_location)
  
-  if !REGISTRY.empty?
-    vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
-  end
+  registries = REGISTRY.empty? ? ghcrRegistries : <<~YAML
+    mirrors:
+      docker.io:
+        endpoint:
+          - "http://#{NETWORK_PREFIX}.1:15000"
+      registry.k8s.io:
+        endpoint:
+          - "http://#{NETWORK_PREFIX}.1:15001"
+      gcr.io:
+        endpoint:
+          - "http://#{NETWORK_PREFIX}.1:15002"
+      quay.io:
+        endpoint:
+          - "http://#{NETWORK_PREFIX}.1:15003"
+      ghcr.io:
+        endpoint:
+          - "http://#{NETWORK_PREFIX}.1:15004"
+  YAML
+  
   addCoverageDir(vm, role, GOCOVER)
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
-      k3s.registries = ghcrRegistries if REGISTRY.empty?
+      k3s.registries = registries
       k3s.args = "server "
       k3s.config = <<~YAML
         token: vagrant
@@ -58,7 +74,7 @@ def provision(vm, role, role_num, node_num)
   
   elsif role.include?("server") && role_num != 0
     vm.provision 'k3s-secondary-server', type: 'k3s', run: 'once' do |k3s|
-      k3s.registries = ghcrRegistries if REGISTRY.empty?
+      k3s.registries = registries
       k3s.args = "server"
       k3s.config = <<~YAML
         server: "https://#{NETWORK_PREFIX}.100:6443"
@@ -75,7 +91,7 @@ def provision(vm, role, role_num, node_num)
   
   if role.include?("agent")
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
-      k3s.registries = ghcrRegistries if REGISTRY.empty?
+      k3s.registries = registries
       k3s.args = "agent"
       k3s.config = <<~YAML
         server: "https://#{NETWORK_PREFIX}.100:6443"
