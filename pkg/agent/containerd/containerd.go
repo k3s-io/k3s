@@ -507,5 +507,8 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 			}
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		errs = append(errs, err)
+	}
 	return images, errors.Join(errs...)
 }
