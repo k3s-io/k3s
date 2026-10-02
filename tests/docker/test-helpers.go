@@ -56,7 +56,7 @@ func (node DockerNode) RunCmdOnNode(cmd string) (string, error) {
 }
 
 // NewTestConfig initializes the test environment and returns the configuration
-// If k3sImage == "rancher/systemd-node", then the systemd-node container and the local k3s binary
+// If k3sImage == "ghcr.io/k3s-io/systemd-node", then the systemd-node container and the local k3s binary
 // will be used to start the server. This is useful for scenarios where the server needs to be restarted.
 // k3s version and tag information should be extracted from the version.sh script
 // and supplied as an argument to the function/test
@@ -80,6 +80,11 @@ func NewTestConfig(tb testing.TB, k3sImage string) (*TestConfig, error) {
 	// Create required directories
 	if err := os.MkdirAll(filepath.Join(config.TestDir, "logs"), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create logs directory: %v", err)
+	}
+
+	// Pull the K3s system images from GHCR; mounted into every node
+	if err := tests.WriteRegistries(filepath.Join(config.TestDir, "registries.yaml")); err != nil {
+		return nil, fmt.Errorf("failed to write registries.yaml: %v", err)
 	}
 
 	// Generate random secret
@@ -176,7 +181,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 
 		// If we need restarts, we use the systemd-node container, volume mount the k3s binary
 		// and start the server using the install script
-		if config.K3sImage == "rancher/systemd-node" {
+		if config.K3sImage == "ghcr.io/k3s-io/systemd-node" {
 			dRun := strings.Join([]string{"docker run -d",
 				"--name", name,
 				"--hostname", name,
@@ -192,6 +197,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-v", "/var/run/docker.sock:/var/run/docker.sock",
 				"-v", "/var/lib/docker:/var/lib/docker",
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+				"--mount", fmt.Sprintf("type=bind,source=%s,target=/etc/rancher/k3s/registries.yaml,readonly", filepath.Join(config.TestDir, "registries.yaml")),
 				fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 			config.TB.Logf("Starting server %s: %s", name, dRun)
@@ -246,6 +252,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-e", "GOCOVERDIR=/tmp/",
 				os.Getenv("SERVER_DOCKER_ARGS"),
 				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
+				"--mount", fmt.Sprintf("type=bind,source=%s,target=/etc/rancher/k3s/registries.yaml,readonly", filepath.Join(config.TestDir, "registries.yaml")),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
 				yamlMount,
 				config.K3sImage,
@@ -348,7 +355,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 			if config.SkipStart {
 				skipStart = "INSTALL_K3S_SKIP_START=true"
 			}
-			if config.K3sImage == "rancher/systemd-node" {
+			if config.K3sImage == "ghcr.io/k3s-io/systemd-node" {
 				dRun := strings.Join([]string{"docker run -d",
 					"--name", name,
 					"--hostname", name,
@@ -362,6 +369,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"-v", "/var/run/docker.sock:/var/run/docker.sock",
 					"-v", "/var/lib/docker:/var/lib/docker",
 					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+					"--mount", fmt.Sprintf("type=bind,source=%s,target=/etc/rancher/k3s/registries.yaml,readonly", filepath.Join(config.TestDir, "registries.yaml")),
 					fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 				config.TB.Logf("Starting agent %s: %s", name, dRun)
@@ -401,6 +409,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"-e", "GOCOVERDIR=/tmp/",
 					os.Getenv("AGENT_DOCKER_ARGS"),
 					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
+					"--mount", fmt.Sprintf("type=bind,source=%s,target=/etc/rancher/k3s/registries.yaml,readonly", filepath.Join(config.TestDir, "registries.yaml")),
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
 					config.K3sImage,
 					"agent", os.Getenv("ARGS"), os.Getenv(agentInstanceArgs)}, " ")
