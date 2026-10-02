@@ -30,6 +30,13 @@ def provision(vm, role, role_num, node_num)
  
  privateRegistries = <<~YAML
     mirrors:
+  privateRegistries = <<~YAML
+    mirrors:
+      docker.io:
+        endpoint:
+          - "https://ghcr.io"
+        rewrite:
+          "^rancher/(.*)$": "k3s-io/$1"
       my-registry.local:
         endpoint:
           - http://#{NETWORK_PREFIX}.100:5000

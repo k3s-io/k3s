@@ -33,6 +33,7 @@ def provision(vm, roles, role_num, node_num)
   if roles.include?("server") && role_num == 0
     server_IP = nil
     vm.provision :k3s, run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "server "
       k3s.config = <<~YAML
@@ -58,6 +59,7 @@ def provision(vm, roles, role_num, node_num)
       vpn_auth = "/home/vagrant/vpn-auth-file"
     end
     vm.provision :k3s, run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "agent "
       k3s.config = <<~YAML
