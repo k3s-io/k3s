@@ -16,17 +16,26 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 	var restrictedServerDir string
 
 	BeforeEach(func() {
+		if !testutil.IsExistingServer() && server != nil {
+			Expect(testutil.K3sKillServer(server)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+			server = nil
+		}
 		var err error
 		restrictedServerDir, err = os.MkdirTemp("", "k3s-test-restricted-dir-")
 		Expect(err).ToNot(HaveOccurred())
-
-		if testutil.IsExistingServer() {
-			Expect(testutil.K3sKillServer(server)).To(Succeed())
-		}
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(restrictedServerDir)
+		if !testutil.IsExistingServer() && server != nil {
+			Expect(testutil.K3sKillServer(server)).To(Succeed())
+			Expect(testutil.K3sCleanup(-1, "")).To(Succeed())
+			server = nil
+		}
+		if restrictedServerDir != "" {
+			os.RemoveAll(restrictedServerDir)
+			restrictedServerDir = ""
+		}
 	})
 
 	When("a server is started with snapshot-dir and s3-bucket restrictions", func() {
@@ -88,7 +97,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			defer os.RemoveAll(maliciousDir)
 
 			configPath := filepath.Join(os.TempDir(), "k3s-test-config.yaml")
-			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3: true\netcd-s3-bucket: bad-bucket\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
+			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
 			Expect(err).ToNot(HaveOccurred())
 			defer os.Remove(configPath)
 

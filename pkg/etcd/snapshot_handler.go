@@ -3,8 +3,11 @@ package etcd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
@@ -13,12 +16,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"fmt"
-	"strings"
-
-	"path/filepath"
 )
 
 type SnapshotOperation string
@@ -37,13 +36,12 @@ type SnapshotRequest struct {
 	Compress  *bool             `json:"compress,omitempty"`
 	Retention *int              `json:"retention,omitempty"`
 	S3        *config.EtcdS3    `json:"s3,omitempty"`
-
-	ctx context.Context
+	ctx       context.Context
 }
 
-func (sr *SnapshotRequest) context() context.Context {
-	if sr.ctx != nil {
-		return sr.ctx
+func (s *SnapshotRequest) Context() context.Context {
+	if s.ctx != nil {
+		return s.ctx
 	}
 	return context.Background()
 }
@@ -59,7 +57,9 @@ func (e *ETCD) snapshotHandler() http.Handler {
 
 		warnings := e.applySnapshotRestrictions(sr)
 		for _, w := range warnings {
-			rw.Header().Add("Warning", fmt.Sprintf("299 - \"%s\"", w))
+			if h, err := utilnet.NewWarningHeader(299, "", w); err == nil {
+				rw.Header().Add("Warning", h)
+			}
 		}
 
 		switch sr.Operation {
@@ -249,7 +249,11 @@ func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
 	var ignored []string
 
 	if isRestricted("snapshot-dir") && sr.Dir != nil {
-		if e.config.EtcdSnapshotDir == "" || *sr.Dir != e.config.EtcdSnapshotDir {
+		serverDir := e.config.EtcdSnapshotDir
+		if serverDir == "" && e.config.DataDir != "" {
+			serverDir = filepath.Join(e.config.DataDir, "db", "snapshots")
+		}
+		if serverDir == "" || filepath.Clean(*sr.Dir) != filepath.Clean(serverDir) {
 			ignored = append(ignored, "snapshot-dir")
 		}
 		sr.Dir = nil
@@ -291,6 +295,6 @@ func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
 	} else if len(ignored) > 1 {
 		return []string{fmt.Sprintf("restricted snapshot options were ignored: %s. Using the server-configured snapshot destination.", strings.Join(ignored, ", "))}
 	}
-	
+
 	return []string{fmt.Sprintf("%s override ignored by server-side snapshot restrictions. Using the server-configured destination.", ignored[0])}
 }

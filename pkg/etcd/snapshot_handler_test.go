@@ -11,80 +11,98 @@ import (
 
 func Test_UnitSnapshotRestrictions(t *testing.T) {
 	tests := []struct {
-		name                 string
-		restrictions         []string
-		serverDir            string
-		reqDir               *string
-		reqEndpoint          string
-		reqBucket            string
-		reqFolder            string
-		reqProxy             string
-		expectedWarnings     []string
-		expectedDir          *string
-		expectedEndpoint     string
-		expectedBucket       string
-		expectedFolder       string
-		expectedProxy        string
+		name             string
+		restrictions     []string
+		serverDir        string
+		dataDir          string
+		reqDir           *string
+		reqEndpoint      string
+		reqBucket        string
+		reqFolder        string
+		reqProxy         string
+		expectedWarnings []string
+		expectedDir      *string
+		expectedEndpoint string
+		expectedBucket   string
+		expectedFolder   string
+		expectedProxy    string
 	}{
 		{
-			name:                 "no restrictions, overrides applied",
-			restrictions:         []string{},
-			reqDir:               stringPtr("/tmp/custom"),
-			reqEndpoint:          "custom-endpoint",
-			reqBucket:            "custom-bucket",
-			reqFolder:            "custom-folder",
-			reqProxy:             "custom-proxy",
-			expectedWarnings:     nil,
-			expectedDir:          stringPtr("/tmp/custom"),
-			expectedEndpoint:     "custom-endpoint",
-			expectedBucket:       "custom-bucket",
-			expectedFolder:       "custom-folder",
-			expectedProxy:        "custom-proxy",
+			name:             "no restrictions, overrides applied",
+			restrictions:     []string{},
+			reqDir:           stringPtr("/tmp/custom"),
+			reqEndpoint:      "custom-endpoint",
+			reqBucket:        "custom-bucket",
+			reqFolder:        "custom-folder",
+			reqProxy:         "custom-proxy",
+			expectedWarnings: nil,
+			expectedDir:      stringPtr("/tmp/custom"),
+			expectedEndpoint: "custom-endpoint",
+			expectedBucket:   "custom-bucket",
+			expectedFolder:   "custom-folder",
+			expectedProxy:    "custom-proxy",
 		},
 		{
-			name:                 "single restriction bucket",
-			restrictions:         []string{"s3-bucket"},
-			reqDir:               stringPtr("/tmp/custom"),
-			reqBucket:            "custom-bucket",
-			reqFolder:            "custom-folder",
-			expectedWarnings:     []string{"s3-bucket override ignored"},
-			expectedDir:          stringPtr("/tmp/custom"),
-			expectedBucket:       "",
-			expectedFolder:       "custom-folder",
+			name:             "single restriction bucket",
+			restrictions:     []string{"s3-bucket"},
+			reqDir:           stringPtr("/tmp/custom"),
+			reqBucket:        "custom-bucket",
+			reqFolder:        "custom-folder",
+			expectedWarnings: []string{"s3-bucket override ignored"},
+			expectedDir:      stringPtr("/tmp/custom"),
+			expectedBucket:   "",
+			expectedFolder:   "custom-folder",
 		},
 		{
-			name:                 "snapshot-dir matching server dir emits no warning",
-			restrictions:         []string{"snapshot-dir"},
-			serverDir:            "/var/lib/server/snapshots",
-			reqDir:               stringPtr("/var/lib/server/snapshots"),
-			expectedWarnings:     nil,
-			expectedDir:          nil,
+			name:             "snapshot-dir matching server dir emits no warning",
+			restrictions:     []string{"snapshot-dir"},
+			serverDir:        "/var/lib/server/snapshots",
+			reqDir:           stringPtr("/var/lib/server/snapshots"),
+			expectedWarnings: nil,
+			expectedDir:      nil,
 		},
 		{
-			name:                 "all restrictions",
-			restrictions:         []string{"all"},
-			reqDir:               stringPtr("/tmp/custom"),
-			reqEndpoint:          "custom-endpoint",
-			reqBucket:            "custom-bucket",
-			reqFolder:            "custom-folder",
-			reqProxy:             "custom-proxy",
-			expectedWarnings:     []string{"restricted snapshot options were ignored: all supported destination overrides"},
-			expectedDir:          nil,
-			expectedEndpoint:     "",
-			expectedBucket:       "",
-			expectedFolder:       "",
-			expectedProxy:        "",
+			name:             "snapshot-dir with trailing slash matching server dir emits no warning",
+			restrictions:     []string{"snapshot-dir"},
+			serverDir:        "/var/lib/server/snapshots",
+			reqDir:           stringPtr("/var/lib/server/snapshots/"),
+			expectedWarnings: nil,
+			expectedDir:      nil,
 		},
 		{
-			name:                 "multiple restrictions",
-			restrictions:         []string{"s3-endpoint", "s3-bucket"},
-			reqEndpoint:          "custom-endpoint",
-			reqBucket:            "custom-bucket",
-			reqFolder:            "custom-folder",
-			expectedWarnings:     []string{"restricted snapshot options were ignored: s3-endpoint, s3-bucket"},
-			expectedEndpoint:     "",
-			expectedBucket:       "",
-			expectedFolder:       "custom-folder",
+			name:             "snapshot-dir matching server default DataDir/db/snapshots emits no warning",
+			restrictions:     []string{"snapshot-dir"},
+			dataDir:          "/var/lib/rancher/k3s",
+			serverDir:        "",
+			reqDir:           stringPtr("/var/lib/rancher/k3s/db/snapshots"),
+			expectedWarnings: nil,
+			expectedDir:      nil,
+		},
+		{
+			name:             "all restrictions",
+			restrictions:     []string{"all"},
+			reqDir:           stringPtr("/tmp/custom"),
+			reqEndpoint:      "custom-endpoint",
+			reqBucket:        "custom-bucket",
+			reqFolder:        "custom-folder",
+			reqProxy:         "custom-proxy",
+			expectedWarnings: []string{"restricted snapshot options were ignored: all supported destination overrides"},
+			expectedDir:      nil,
+			expectedEndpoint: "",
+			expectedBucket:   "",
+			expectedFolder:   "",
+			expectedProxy:    "",
+		},
+		{
+			name:             "multiple restrictions",
+			restrictions:     []string{"s3-endpoint", "s3-bucket"},
+			reqEndpoint:      "custom-endpoint",
+			reqBucket:        "custom-bucket",
+			reqFolder:        "custom-folder",
+			expectedWarnings: []string{"restricted snapshot options were ignored: s3-endpoint, s3-bucket"},
+			expectedEndpoint: "",
+			expectedBucket:   "",
+			expectedFolder:   "custom-folder",
 		},
 	}
 
@@ -94,6 +112,7 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 				config: &config.Control{
 					EtcdSnapshotRestrictions: tt.restrictions,
 					EtcdSnapshotDir:          tt.serverDir,
+					DataDir:                  tt.dataDir,
 				},
 			}
 			sr := &SnapshotRequest{
@@ -149,7 +168,6 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 func stringPtr(s string) *string {
 	return &s
 }
-
 
 func Test_UnitSnapshotWithRequestS3(t *testing.T) {
 	e := &ETCD{
