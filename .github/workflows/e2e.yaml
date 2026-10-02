@@ -117,7 +117,11 @@ jobs:
           key: vagrant-plugins
       - name: "Vagrant Plugin(s)"
         run: |
-          for plugin in vagrant-k3s vagrant-reload vagrant-scp; do
+          # vagrant-k3s >= 0.5.0 is required for k3s.registries
+          if ! vagrant plugin list | grep -q "^vagrant-k3s (0.5.0"; then
+            vagrant plugin install vagrant-k3s --plugin-version 0.5.0
+          fi
+          for plugin in vagrant-reload vagrant-scp; do
             if ! vagrant plugin list | grep -q "^${plugin} "; then
               vagrant plugin install "${plugin}"
             fi

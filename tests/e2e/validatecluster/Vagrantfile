@@ -43,6 +43,7 @@ def provision(vm, role, role_num, node_num)
 
   if role.include?("server") && role_num == 0
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries if REGISTRY.empty?
       k3s.args = "server "
       k3s.config = <<~YAML
         token: vagrant
@@ -57,6 +58,7 @@ def provision(vm, role, role_num, node_num)
   
   elsif role.include?("server") && role_num != 0
     vm.provision 'k3s-secondary-server', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries if REGISTRY.empty?
       k3s.args = "server"
       k3s.config = <<~YAML
         server: "https://#{NETWORK_PREFIX}.100:6443"
@@ -73,6 +75,7 @@ def provision(vm, role, role_num, node_num)
   
   if role.include?("agent")
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries if REGISTRY.empty?
       k3s.args = "agent"
       k3s.config = <<~YAML
         server: "https://#{NETWORK_PREFIX}.100:6443"

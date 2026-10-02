@@ -39,6 +39,7 @@ def provision(vm, role, role_num, node_num)
   
   if role.include?("server") && role_num == 0
     vm.provision :k3s, run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "server "
       k3s.config = <<~YAML
@@ -55,6 +56,7 @@ def provision(vm, role, role_num, node_num)
     end
   elsif role.include?("server") && role_num != 0
     vm.provision :k3s, run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "server "
       k3s.config = <<~YAML
@@ -71,6 +73,7 @@ def provision(vm, role, role_num, node_num)
   end
   if role.include?("agent")
     vm.provision :k3s, run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
       k3s.args = "agent "
       k3s.config = <<~YAML

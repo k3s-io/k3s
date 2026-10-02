@@ -38,6 +38,7 @@ def provision(vm, role, role_num, node_num)
     dockerInstall(vm)
     vm.provision "run-S3-mock", type: "shell", inline: runS3mock
     vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.args = "server "
       k3s.config = <<~YAML
         token: vagrant

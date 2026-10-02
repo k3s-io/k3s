@@ -33,6 +33,11 @@ def provision(vm, role, role_num, node_num)
   writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
   mkdir -p /etc/rancher/k3s/
   echo 'mirrors:
+    docker.io:
+      endpoint:
+        - "https://ghcr.io"
+      rewrite:
+        "^rancher/(.*)$": "k3s-io/$1"
     my-registry.local:
       endpoint:
         - http://%{net}.100:5000

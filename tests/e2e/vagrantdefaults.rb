@@ -52,6 +52,19 @@ def addCoverageDir(vm, role, gocover)
     vm.provision "go coverage", type: "shell", inline: script 
 end
 
+# ghcrRegistries returns a registries.yaml that pulls the K3s system images from GHCR,
+# the same as WriteRegistries in tests/client.go. Set it with k3s.registries.
+def ghcrRegistries
+  <<~'YAML'
+    mirrors:
+      docker.io:
+        endpoint:
+          - "https://ghcr.io"
+        rewrite:
+          "^rancher/(.*)$": "k3s-io/$1"
+  YAML
+end
+
 def getHardenedArg(vm, hardened, scripts_location)
   if hardened.empty? 
     return ""

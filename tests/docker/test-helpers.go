@@ -82,6 +82,11 @@ func NewTestConfig(tb testing.TB, k3sImage string) (*TestConfig, error) {
 		return nil, fmt.Errorf("failed to create logs directory: %v", err)
 	}
 
+	// Pull the K3s system images from GHCR; mounted into every node
+	if err := tests.WriteRegistries(filepath.Join(config.TestDir, "registries.yaml")); err != nil {
+		return nil, fmt.Errorf("failed to write registries.yaml: %v", err)
+	}
+
 	// Generate random secret
 	config.Token = fmt.Sprintf("%012d", rand.Int63n(1000000000000))
 	return config, nil
@@ -107,6 +112,11 @@ func getPort() int {
 		}
 	}
 	return -1
+}
+
+// registriesMount returns the docker flag that mounts the registries.yaml written by NewTestConfig
+func (config *TestConfig) registriesMount() string {
+	return fmt.Sprintf("--mount type=bind,src=%s,dst=/etc/rancher/k3s/registries.yaml,readonly", filepath.Join(config.TestDir, "registries.yaml"))
 }
 
 // ProvisionServers starts the required number of k3s servers
@@ -192,6 +202,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-v", "/var/run/docker.sock:/var/run/docker.sock",
 				"-v", "/var/lib/docker:/var/lib/docker",
 				"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+				config.registriesMount(),
 				fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 				"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 			config.TB.Logf("Starting server %s: %s", name, dRun)
@@ -246,6 +257,7 @@ func (config *TestConfig) ProvisionServers(numOfServers int) error {
 				"-e", "GOCOVERDIR=/tmp/",
 				os.Getenv("SERVER_DOCKER_ARGS"),
 				os.Getenv(fmt.Sprintf("SERVER_%d_DOCKER_ARGS", i)),
+				config.registriesMount(),
 				os.Getenv("REGISTRY_CLUSTER_ARGS"),
 				yamlMount,
 				config.K3sImage,
@@ -362,6 +374,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"-v", "/var/run/docker.sock:/var/run/docker.sock",
 					"-v", "/var/lib/docker:/var/lib/docker",
 					"--mount", "type=bind,source=$(pwd)/../../../dist/artifacts/k3s,target=/usr/local/bin/k3s",
+					config.registriesMount(),
 					fmt.Sprintf("%s:v0.0.8", config.K3sImage),
 					"/usr/lib/systemd/systemd --unit=noop.target --show-status=true"}, " ")
 				config.TB.Logf("Starting agent %s: %s", name, dRun)
@@ -401,6 +414,7 @@ func (config *TestConfig) ProvisionAgents(numOfAgents int) error {
 					"-e", "GOCOVERDIR=/tmp/",
 					os.Getenv("AGENT_DOCKER_ARGS"),
 					os.Getenv(fmt.Sprintf("AGENT_%d_DOCKER_ARGS", i)),
+					config.registriesMount(),
 					os.Getenv("REGISTRY_CLUSTER_ARGS"),
 					config.K3sImage,
 					"agent", os.Getenv("ARGS"), os.Getenv(agentInstanceArgs)}, " ")
