@@ -13,6 +13,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1540,4 +1541,189 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// replacementTemplate is a full-replacement custom template in the common
+// nvidia-runtime shape: it carries the registry section with only config_path,
+// and no registry configs auth stanza.
+const replacementTemplate = `
+version = 2
+root = "/var/lib/rancher/k3s/agent/containerd"
+state = "/run/k3s/containerd"
+
+[plugins."io.containerd.grpc.v1.cri".registry]
+  config_path = "/var/lib/rancher/k3s/agent/etc/containerd/certs.d"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+  BinaryName = "/usr/bin/nvidia-container-runtime"
+  SystemdCgroup = true
+`
+
+func Test_UnitWarnMissingRegistryAuth(t *testing.T) {
+	tests := []struct {
+		name            string
+		registryContent string
+		userTemplate    string
+		templateName    string
+		wantWarnHosts   []string
+	}{
+		{
+			name: "auth configured, no user template",
+			registryContent: `
+			  configs:
+				  ghcr.io:
+					  auth:
+							username: user
+							password: pass
+			`,
+			wantWarnHosts: nil,
+		},
+		{
+			name: "auth configured, custom template extends base",
+			registryContent: `
+			  configs:
+				  ghcr.io:
+					  auth:
+							username: user
+							password: pass
+			`,
+			userTemplate: `{{ template "base" . }}
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+  runtime_type = "io.containerd.runc.v2"
+`,
+			templateName:  "config.toml.tmpl",
+			wantWarnHosts: nil,
+		},
+		{
+			name: "auth configured, replacement template drops it",
+			registryContent: `
+			  configs:
+				  ghcr.io:
+					  auth:
+							username: user
+							password: pass
+			`,
+			userTemplate:  replacementTemplate,
+			templateName:  "config.toml.tmpl",
+			wantWarnHosts: []string{"ghcr.io"},
+		},
+		{
+			name: "auth configured, replacement template drops it - v3",
+			registryContent: `
+			  configs:
+				  ghcr.io:
+					  auth:
+							username: user
+							password: pass
+			`,
+			userTemplate:  replacementTemplate,
+			templateName:  "config-v3.toml.tmpl",
+			wantWarnHosts: []string{"ghcr.io"},
+		},
+		{
+			name: "auth for multiple registries dropped",
+			registryContent: `
+			  configs:
+				  ghcr.io:
+					  auth:
+							username: user
+							password: pass
+					registry.example.com:
+						auth:
+							username: user
+							password: pass
+			`,
+			userTemplate:  replacementTemplate,
+			templateName:  "config.toml.tmpl",
+			wantWarnHosts: []string{"ghcr.io", "registry.example.com"},
+		},
+		{
+			name: "no auth configured, replacement template",
+			registryContent: `
+			  mirrors:
+				  docker.io:
+						endpoint:
+							- https://registry.example.com/v2
+			`,
+			userTemplate:  replacementTemplate,
+			templateName:  "config.toml.tmpl",
+			wantWarnHosts: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.registryContent = strings.ReplaceAll(tt.registryContent, "\t", "  ")
+			tempDir := t.TempDir()
+			registriesFile := filepath.Join(tempDir, "registries.yaml")
+			assert.NoError(t, os.WriteFile(registriesFile, []byte(tt.registryContent), 0644))
+
+			registry, err := registries.GetPrivateRegistries(registriesFile)
+			assert.NoError(t, err, "GetPrivateRegistries")
+
+			nodeConfig := &config.Node{
+				Containerd: config.Containerd{
+					Registry: tempDir + "/hosts.d",
+					Config:   tempDir + "/config.toml",
+					Template: tempDir,
+					Address:  "/run/k3s/containerd/containerd.sock",
+					Root:     "/var/lib/rancher/k3s/agent/containerd",
+					Opt:      "/var/lib/rancher/k3s/agent/containerd",
+					State:    "/run/k3s/containerd",
+				},
+				AgentConfig: config.Agent{
+					Registry: registry.Registry,
+				},
+			}
+
+			if tt.userTemplate != "" {
+				templateFile := filepath.Join(tempDir, tt.templateName)
+				assert.NoError(t, os.WriteFile(templateFile, []byte(tt.userTemplate), 0600))
+			}
+
+			containerdConfig := templates.ContainerdConfig{
+				NodeConfig:            nodeConfig,
+				PrivateRegistryConfig: registry.Registry,
+				Program:               "k3s",
+			}
+			hook := logtest.NewGlobal()
+			defer hook.Reset()
+			assert.NoError(t, writeContainerdConfig(nodeConfig, containerdConfig), "writeContainerdConfig")
+
+			var warns []string
+			for _, entry := range hook.AllEntries() {
+				if entry.Level == logrus.WarnLevel {
+					warns = append(warns, entry.Message)
+				}
+			}
+			if len(tt.wantWarnHosts) == 0 {
+				assert.Empty(t, warns, "expected no warnings")
+				return
+			}
+			if assert.Len(t, warns, 1, "expected a single warning") {
+				for _, host := range tt.wantWarnHosts {
+					assert.Contains(t, warns[0], host)
+				}
+			}
+		})
+	}
+}
+
+func Test_UnitRegistryAuthPresent(t *testing.T) {
+	v2Style := `
+[plugins."io.containerd.grpc.v1.cri".registry.configs."ghcr.io".auth]
+  username = "user"
+`
+	v3Style := `
+[plugins.'io.containerd.cri.v1.images'.registry.configs.'ghcr.io'.auth]
+  username = "user"
+`
+	assert.True(t, registryAuthPresent(v2Style, "ghcr.io"), "v2 double-quoted stanza not detected")
+	assert.True(t, registryAuthPresent(v3Style, "ghcr.io"), "v3 single-quoted stanza not detected")
+	assert.False(t, registryAuthPresent(v2Style, "docker.io"), "auth detected for a registry that is not configured")
+	assert.True(t, registryAuthPresent("not = valid toml", "ghcr.io"), "unparseable config should not warn")
 }

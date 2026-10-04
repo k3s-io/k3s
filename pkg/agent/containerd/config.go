@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
@@ -15,6 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/spegel"
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rancher/wharfie/pkg/registries"
 	"github.com/sirupsen/logrus"
 )
@@ -67,7 +69,71 @@ func writeContainerdConfig(cfg *config.Node, containerdConfig templates.Containe
 		return err
 	}
 
-	return util2.WriteFile(cfg.Containerd.Config, parsedTemplate)
+	if err := util2.WriteFile(cfg.Containerd.Config, parsedTemplate); err != nil {
+		return err
+	}
+
+	warnMissingRegistryAuth(parsedTemplate, containerdConfig.PrivateRegistryConfig)
+	return nil
+}
+
+// warnMissingRegistryAuth logs a warning when auth entries from the private registry
+// config file are not present in the rendered containerd config. This happens when a
+// custom config template replaces the built-in one without including the registry auth
+// stanza or extending the base template; pulls from the affected registries then run
+// anonymously.
+func warnMissingRegistryAuth(renderedConfig string, registry *registries.Registry) {
+	if registry == nil {
+		return
+	}
+	var missing []string
+	for host, config := range registry.Configs {
+		if config.Auth == nil {
+			continue
+		}
+		if !registryAuthPresent(renderedConfig, host) {
+			missing = append(missing, host)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	sort.Strings(missing)
+	logrus.Warnf("Private registry auth for %s is configured, but not present in the rendered containerd config; "+
+		"a custom config template must include the registry auth stanza or extend the base template",
+		strings.Join(missing, ", "))
+}
+
+// renderedContainerdConfig is the subset of the rendered containerd config that the
+// built-in templates fill in from the private registry configuration. The plugin table
+// name varies by config version and snapshotter (io.containerd.cri.v1.images,
+// io.containerd.grpc.v1.cri, io.containerd.snapshotter.v1.stargz), so the plugins table
+// is decoded as a map keyed by the full plugin name.
+type renderedContainerdConfig struct {
+	Plugins map[string]struct {
+		Registry struct {
+			Configs map[string]struct {
+				Auth map[string]any `toml:"auth"`
+			} `toml:"configs"`
+		} `toml:"registry"`
+	} `toml:"plugins"`
+}
+
+// registryAuthPresent reports whether the rendered containerd config contains an auth
+// entry for the given registry host, under any CRI plugin table.
+func registryAuthPresent(renderedConfig, host string) bool {
+	var config renderedContainerdConfig
+	if err := toml.Unmarshal([]byte(renderedConfig), &config); err != nil {
+		// A config that cannot be parsed will fail loudly when containerd loads it;
+		// don't add a potentially misleading warning on top of that.
+		return true
+	}
+	for _, plugin := range config.Plugins {
+		if entry, ok := plugin.Registry.Configs[host]; ok && entry.Auth != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // writeContainerdHosts merges registry mirrors/configs, and renders and saves hosts.toml from the filled template
