@@ -4240,7 +4240,7 @@ spec:
     spec:
       containers:
       - name: longhorn-manager
-        image: ghcr.io/k3s-io/mirrored-longhornio-longhorn-manager:v1.10.1
+        image: longhornio/longhorn-manager:v1.10.1
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
@@ -4249,17 +4249,17 @@ spec:
         - -d
         - daemon
         - --engine-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-longhorn-engine:v1.10.1"
+        - "longhornio/longhorn-engine:v1.10.1"
         - --instance-manager-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-longhorn-instance-manager:v1.10.1"
+        - "longhornio/longhorn-instance-manager:v1.10.1"
         - --share-manager-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-longhorn-share-manager:v1.10.1"
+        - "longhornio/longhorn-share-manager:v1.10.1"
         - --backing-image-manager-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-backing-image-manager:v1.10.1"
+        - "longhornio/backing-image-manager:v1.10.1"
         - --support-bundle-manager-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-support-bundle-kit:v0.0.71"
+        - "longhornio/support-bundle-kit:v0.0.71"
         - --manager-image
-        - "ghcr.io/k3s-io/mirrored-longhornio-longhorn-manager:v1.10.1"
+        - "longhornio/longhorn-manager:v1.10.1"
         - --service-account
         - longhorn-service-account
         - --upgrade-version-check
@@ -4311,7 +4311,7 @@ spec:
               fieldPath: spec.nodeName
       - name: pre-pull-share-manager-image
         imagePullPolicy: IfNotPresent
-        image: ghcr.io/k3s-io/mirrored-longhornio-longhorn-share-manager:v1.10.1
+        image: longhornio/longhorn-share-manager:v1.10.1
         command: ["sh", "-c", "echo share-manager image pulled && sleep infinity"]
       volumes:
       - name: boot
@@ -4364,18 +4364,18 @@ spec:
     spec:
       initContainers:
         - name: wait-longhorn-manager
-          image: ghcr.io/k3s-io/mirrored-longhornio-longhorn-manager:v1.10.1
+          image: longhornio/longhorn-manager:v1.10.1
           command: ['sh', '-c', 'while [ $(curl -m 1 -s -o /dev/null -w "%{http_code}" http://longhorn-backend:9500/v1) != "200" ]; do echo waiting; sleep 2; done']
       containers:
         - name: longhorn-driver-deployer
-          image: ghcr.io/k3s-io/mirrored-longhornio-longhorn-manager:v1.10.1
+          image: longhornio/longhorn-manager:v1.10.1
           imagePullPolicy: IfNotPresent
           command:
           - longhorn-manager
           - -d
           - deploy-driver
           - --manager-image
-          - "ghcr.io/k3s-io/mirrored-longhornio-longhorn-manager:v1.10.1"
+          - "longhornio/longhorn-manager:v1.10.1"
           - --manager-url
           - http://longhorn-backend:9500/v1
           env:
@@ -4392,17 +4392,17 @@ spec:
               fieldRef:
                 fieldPath: spec.serviceAccountName
           - name: CSI_ATTACHER_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-csi-attacher:v4.10.0-20251030"
+            value: "longhornio/csi-attacher:v4.10.0-20251030"
           - name: CSI_PROVISIONER_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-csi-provisioner:v5.3.0-20251030"
+            value: "longhornio/csi-provisioner:v5.3.0-20251030"
           - name: CSI_NODE_DRIVER_REGISTRAR_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-csi-node-driver-registrar:v2.15.0-20251030"
+            value: "longhornio/csi-node-driver-registrar:v2.15.0-20251030"
           - name: CSI_RESIZER_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-csi-resizer:v1.14.0-20251030"
+            value: "longhornio/csi-resizer:v1.14.0-20251030"
           - name: CSI_SNAPSHOTTER_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-csi-snapshotter:v8.4.0-20251030"
+            value: "longhornio/csi-snapshotter:v8.4.0-20251030"
           - name: CSI_LIVENESS_PROBE_IMAGE
-            value: "ghcr.io/k3s-io/mirrored-longhornio-livenessprobe:v2.17.0-20251030"
+            value: "longhornio/livenessprobe:v2.17.0-20251030"
       priorityClassName: "longhorn-critical"
       serviceAccountName: longhorn-service-account
       securityContext:
@@ -4447,7 +4447,7 @@ spec:
             weight: 1
       containers:
       - name: longhorn-ui
-        image: ghcr.io/k3s-io/mirrored-longhornio-longhorn-ui:v1.10.1
+        image: longhornio/longhorn-ui:v1.10.1
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: nginx-cache
