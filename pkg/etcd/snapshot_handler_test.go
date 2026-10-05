@@ -3,106 +3,166 @@ package etcd
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/k3s-io/k3s/pkg/daemons/config"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
 
 func Test_UnitSnapshotRestrictions(t *testing.T) {
 	tests := []struct {
-		name             string
-		restrictions     []string
-		serverDir        string
-		dataDir          string
-		reqDir           *string
-		reqEndpoint      string
-		reqBucket        string
-		reqFolder        string
-		reqProxy         string
-		expectedWarnings []string
-		expectedDir      *string
-		expectedEndpoint string
-		expectedBucket   string
-		expectedFolder   string
-		expectedProxy    string
+		name         string
+		restrictions []string
+		dataDir      string
+		serverDir    string
+		serverS3     *config.EtcdS3
+		reqDir       *string
+		reqS3        *config.EtcdS3
+
+		wantWarnings []string
+		wantDir      *string
+		// wantS3 is the S3 config expected on the request afterwards. Nil means the request
+		// carries no S3 config: either none was sent, or it was dropped.
+		wantS3 *config.EtcdS3
 	}{
 		{
-			name:             "no restrictions, overrides applied",
-			restrictions:     []string{},
-			reqDir:           stringPtr("/tmp/custom"),
-			reqEndpoint:      "custom-endpoint",
-			reqBucket:        "custom-bucket",
-			reqFolder:        "custom-folder",
-			reqProxy:         "custom-proxy",
-			expectedWarnings: nil,
-			expectedDir:      stringPtr("/tmp/custom"),
-			expectedEndpoint: "custom-endpoint",
-			expectedBucket:   "custom-bucket",
-			expectedFolder:   "custom-folder",
-			expectedProxy:    "custom-proxy",
+			name:   "no restrictions leaves the request untouched",
+			reqDir: stringPtr("/tmp/custom"),
+			reqS3: &config.EtcdS3{
+				Endpoint: "custom-endpoint",
+				Bucket:   "custom-bucket",
+				Folder:   "custom-folder",
+				Proxy:    "custom-proxy",
+			},
+			wantDir: stringPtr("/tmp/custom"),
+			wantS3: &config.EtcdS3{
+				Endpoint: "custom-endpoint",
+				Bucket:   "custom-bucket",
+				Folder:   "custom-folder",
+				Proxy:    "custom-proxy",
+			},
 		},
 		{
-			name:             "single restriction bucket",
-			restrictions:     []string{"s3-bucket"},
-			reqDir:           stringPtr("/tmp/custom"),
-			reqBucket:        "custom-bucket",
-			reqFolder:        "custom-folder",
-			expectedWarnings: []string{"s3-bucket override ignored"},
-			expectedDir:      stringPtr("/tmp/custom"),
-			expectedBucket:   "",
-			expectedFolder:   "custom-folder",
+			name:         "one restricted field is pinned to the server value, others pass through",
+			restrictions: []string{"s3-bucket"},
+			serverS3:     &config.EtcdS3{Bucket: "server-bucket", Folder: "server-folder"},
+			reqDir:       stringPtr("/tmp/custom"),
+			reqS3:        &config.EtcdS3{Bucket: "custom-bucket", Folder: "custom-folder"},
+			wantWarnings: []string{"s3-bucket override ignored"},
+			wantDir:      stringPtr("/tmp/custom"),
+			wantS3:       &config.EtcdS3{Bucket: "server-bucket", Folder: "custom-folder"},
 		},
 		{
-			name:             "snapshot-dir matching server dir emits no warning",
-			restrictions:     []string{"snapshot-dir"},
-			serverDir:        "/var/lib/server/snapshots",
-			reqDir:           stringPtr("/var/lib/server/snapshots"),
-			expectedWarnings: nil,
-			expectedDir:      nil,
+			name:         "restricted target field on a server without S3 drops the S3 section",
+			restrictions: []string{"s3-bucket"},
+			reqS3:        &config.EtcdS3{Bucket: "custom-bucket", Folder: "custom-folder"},
+			wantWarnings: []string{"s3-bucket override ignored"},
+			wantS3:       nil,
 		},
 		{
-			name:             "snapshot-dir with trailing slash matching server dir emits no warning",
-			restrictions:     []string{"snapshot-dir"},
-			serverDir:        "/var/lib/server/snapshots",
-			reqDir:           stringPtr("/var/lib/server/snapshots/"),
-			expectedWarnings: nil,
-			expectedDir:      nil,
+			name:         "restricted non-target field on a server without S3 keeps the S3 section",
+			restrictions: []string{"s3-folder"},
+			reqS3:        &config.EtcdS3{Endpoint: "e", Bucket: "b", Folder: "f", Proxy: "p"},
+			wantWarnings: []string{"s3-folder override ignored"},
+			wantS3:       &config.EtcdS3{Endpoint: "e", Bucket: "b", Folder: "", Proxy: "p"},
 		},
 		{
-			name:             "snapshot-dir matching server default DataDir/db/snapshots emits no warning",
-			restrictions:     []string{"snapshot-dir"},
-			dataDir:          "/var/lib/rancher/k3s",
-			serverDir:        "",
-			reqDir:           stringPtr("/var/lib/rancher/k3s/db/snapshots"),
-			expectedWarnings: nil,
-			expectedDir:      nil,
+			name:         "values equal to the server values emit no warning",
+			restrictions: []string{"s3-endpoint", "s3-bucket"},
+			serverS3:     &config.EtcdS3{Endpoint: "e", Bucket: "b"},
+			reqS3:        &config.EtcdS3{Endpoint: "e", Bucket: "b", Folder: "f"},
+			wantS3:       &config.EtcdS3{Endpoint: "e", Bucket: "b", Folder: "f"},
 		},
 		{
-			name:             "all restrictions",
-			restrictions:     []string{"all"},
-			reqDir:           stringPtr("/tmp/custom"),
-			reqEndpoint:      "custom-endpoint",
-			reqBucket:        "custom-bucket",
-			reqFolder:        "custom-folder",
-			reqProxy:         "custom-proxy",
-			expectedWarnings: []string{"restricted snapshot options were ignored: all supported destination overrides"},
-			expectedDir:      nil,
-			expectedEndpoint: "",
-			expectedBucket:   "",
-			expectedFolder:   "",
-			expectedProxy:    "",
+			name:         "multiple restricted fields are listed in order",
+			restrictions: []string{"s3-bucket", "s3-endpoint"},
+			serverS3:     &config.EtcdS3{Endpoint: "server-endpoint", Bucket: "server-bucket"},
+			reqS3:        &config.EtcdS3{Endpoint: "custom-endpoint", Bucket: "custom-bucket", Folder: "custom-folder"},
+			wantWarnings: []string{"restricted snapshot options were ignored: s3-endpoint, s3-bucket"},
+			wantS3:       &config.EtcdS3{Endpoint: "server-endpoint", Bucket: "server-bucket", Folder: "custom-folder"},
 		},
 		{
-			name:             "multiple restrictions",
-			restrictions:     []string{"s3-endpoint", "s3-bucket"},
-			reqEndpoint:      "custom-endpoint",
-			reqBucket:        "custom-bucket",
-			reqFolder:        "custom-folder",
-			expectedWarnings: []string{"restricted snapshot options were ignored: s3-endpoint, s3-bucket"},
-			expectedEndpoint: "",
-			expectedBucket:   "",
-			expectedFolder:   "custom-folder",
+			name:         "snapshot-dir matching the server dir emits no warning",
+			restrictions: []string{"snapshot-dir"},
+			serverDir:    "/var/lib/server/snapshots",
+			reqDir:       stringPtr("/var/lib/server/snapshots"),
+		},
+		{
+			name:         "snapshot-dir is compared after cleaning",
+			restrictions: []string{"snapshot-dir"},
+			serverDir:    "/var/lib/server/snapshots",
+			reqDir:       stringPtr("/var/lib/server/./snapshots/"),
+		},
+		{
+			name:         "snapshot-dir matching the default dir emits no warning",
+			restrictions: []string{"snapshot-dir"},
+			dataDir:      "/var/lib/rancher/k3s/server",
+			reqDir:       stringPtr("/var/lib/rancher/k3s/server/db/snapshots"),
+		},
+		{
+			name:         "snapshot-dir differing from the default dir is ignored",
+			restrictions: []string{"snapshot-dir"},
+			dataDir:      "/var/lib/rancher/k3s/server",
+			reqDir:       stringPtr("/tmp/custom"),
+			wantWarnings: []string{"snapshot-dir override ignored"},
+		},
+		{
+			name:         "snapshot-dir is ignored when the server dir is unknown",
+			restrictions: []string{"snapshot-dir"},
+			reqDir:       stringPtr("/tmp/custom"),
+			wantWarnings: []string{"snapshot-dir override ignored"},
+		},
+		{
+			name:         "all with a server S3 config pins every setting and lists them",
+			restrictions: []string{"all"},
+			dataDir:      "/var/lib/rancher/k3s/server",
+			serverS3: &config.EtcdS3{
+				Endpoint: "server-endpoint",
+				Bucket:   "server-bucket",
+				Folder:   "server-folder",
+				Proxy:    "server-proxy",
+			},
+			reqDir: stringPtr("/tmp/custom"),
+			reqS3: &config.EtcdS3{
+				Endpoint: "custom-endpoint",
+				Bucket:   "custom-bucket",
+				Folder:   "custom-folder",
+				Proxy:    "custom-proxy",
+			},
+			wantWarnings: []string{"restricted snapshot options were ignored: snapshot-dir, s3-endpoint, s3-bucket, s3-folder, s3-proxy"},
+			wantS3: &config.EtcdS3{
+				Endpoint: "server-endpoint",
+				Bucket:   "server-bucket",
+				Folder:   "server-folder",
+				Proxy:    "server-proxy",
+			},
+		},
+		{
+			name:         "all without a server S3 config drops the S3 section and lists what was ignored",
+			restrictions: []string{"all"},
+			dataDir:      "/var/lib/rancher/k3s/server",
+			reqDir:       stringPtr("/tmp/custom"),
+			reqS3: &config.EtcdS3{
+				Endpoint: "custom-endpoint",
+				Bucket:   "custom-bucket",
+				Folder:   "custom-folder",
+				Proxy:    "custom-proxy",
+			},
+			wantWarnings: []string{"restricted snapshot options were ignored: snapshot-dir, s3-endpoint, s3-bucket, s3-folder, s3-proxy"},
+			wantS3:       nil,
+		},
+		{
+			name:         "all only reports the overrides that were actually supplied",
+			restrictions: []string{"all"},
+			dataDir:      "/var/lib/rancher/k3s/server",
+			reqDir:       stringPtr("/tmp/custom"),
+			wantWarnings: []string{"snapshot-dir override ignored"},
+		},
+		{
+			name:         "restrictions do not apply to a request without an S3 section",
+			restrictions: []string{"s3-bucket", "s3-endpoint"},
 		},
 	}
 
@@ -111,62 +171,91 @@ func Test_UnitSnapshotRestrictions(t *testing.T) {
 			e := &ETCD{
 				config: &config.Control{
 					EtcdSnapshotRestrictions: tt.restrictions,
-					EtcdSnapshotDir:          tt.serverDir,
 					DataDir:                  tt.dataDir,
+					EtcdSnapshotDir:          tt.serverDir,
+					EtcdS3:                   tt.serverS3,
 				},
 			}
-			sr := &SnapshotRequest{
-				Dir: tt.reqDir,
-				S3: &config.EtcdS3{
-					Endpoint: tt.reqEndpoint,
-					Bucket:   tt.reqBucket,
-					Folder:   tt.reqFolder,
-					Proxy:    tt.reqProxy,
-				},
-			}
+			sr := &SnapshotRequest{Dir: tt.reqDir, S3: tt.reqS3}
 
 			warnings := e.applySnapshotRestrictions(sr)
 
-			// Check warnings
-			if len(tt.expectedWarnings) == 0 && len(warnings) != 0 {
-				t.Fatalf("expected no warnings, got: %v", warnings)
+			if len(warnings) != len(tt.wantWarnings) {
+				t.Fatalf("expected %d warnings, got %d: %v", len(tt.wantWarnings), len(warnings), warnings)
 			}
-			for i, expW := range tt.expectedWarnings {
-				if i >= len(warnings) {
-					t.Fatalf("missing expected warning: %s", expW)
-				}
-				if !strings.Contains(warnings[i], expW) {
-					t.Errorf("expected warning to contain '%s', got: '%s'", expW, warnings[i])
+			for i, want := range tt.wantWarnings {
+				if !strings.Contains(warnings[i], want) {
+					t.Errorf("expected warning to contain %q, got %q", want, warnings[i])
 				}
 			}
 
-			// Check mutated request
-			if tt.expectedDir != nil {
-				if sr.Dir == nil || *sr.Dir != *tt.expectedDir {
-					t.Errorf("expected Dir %v, got %v", *tt.expectedDir, sr.Dir)
-				}
-			} else if sr.Dir != nil {
-				t.Errorf("expected Dir nil, got %v", *sr.Dir)
+			// A restricted request that does not name the server's destination must be
+			// cleared; one that is allowed through must be left as it was.
+			if !reflect.DeepEqual(sr.Dir, tt.wantDir) {
+				t.Errorf("expected Dir %s, got %s", derefString(tt.wantDir), derefString(sr.Dir))
 			}
-
-			if sr.S3.Endpoint != tt.expectedEndpoint {
-				t.Errorf("expected Endpoint %s, got %s", tt.expectedEndpoint, sr.S3.Endpoint)
-			}
-			if sr.S3.Bucket != tt.expectedBucket {
-				t.Errorf("expected Bucket %s, got %s", tt.expectedBucket, sr.S3.Bucket)
-			}
-			if sr.S3.Folder != tt.expectedFolder {
-				t.Errorf("expected Folder %s, got %s", tt.expectedFolder, sr.S3.Folder)
-			}
-			if sr.S3.Proxy != tt.expectedProxy {
-				t.Errorf("expected Proxy %s, got %s", tt.expectedProxy, sr.S3.Proxy)
+			if !reflect.DeepEqual(sr.S3, tt.wantS3) {
+				t.Errorf("expected S3 %+v, got %+v", tt.wantS3, sr.S3)
 			}
 		})
 	}
 }
 
+func Test_UnitSnapshotRestrictionsNilSafe(t *testing.T) {
+	sr := &SnapshotRequest{Dir: stringPtr("/tmp/custom"), S3: &config.EtcdS3{Bucket: "custom-bucket"}}
+
+	for name, e := range map[string]*ETCD{
+		"nil ETCD":   nil,
+		"nil config": {},
+	} {
+		if warnings := e.applySnapshotRestrictions(sr); warnings != nil {
+			t.Errorf("%s: expected no warnings, got %v", name, warnings)
+		}
+	}
+	if sr.Dir == nil || sr.S3 == nil || sr.S3.Bucket != "custom-bucket" {
+		t.Errorf("request must not be modified when there is nothing to enforce, got Dir=%s S3=%+v", derefString(sr.Dir), sr.S3)
+	}
+	if warnings := (&ETCD{config: &config.Control{EtcdSnapshotRestrictions: []string{"all"}}}).applySnapshotRestrictions(nil); warnings != nil {
+		t.Errorf("nil request: expected no warnings, got %v", warnings)
+	}
+}
+
+func Test_UnitSnapshotWarningHeaders(t *testing.T) {
+	want := []string{"first warning", `second "quoted" warning, with a comma`}
+
+	h := http.Header{}
+	addWarnings(h, want)
+
+	got, errs := utilnet.ParseWarningHeaders(h["Warning"])
+	if len(errs) != 0 {
+		t.Fatalf("failed to parse warning headers %v: %v", h["Warning"], errs)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d warnings, got %d: %v", len(want), len(got), got)
+	}
+	for i := range want {
+		if got[i].Code != 299 || got[i].Text != want[i] {
+			t.Errorf("expected warning 299 %q, got %d %q", want[i], got[i].Code, got[i].Text)
+		}
+	}
+
+	// A message that cannot be encoded is skipped, without discarding the others.
+	h = http.Header{}
+	addWarnings(h, []string{"bad\nmessage", "good message"})
+	if got, _ := utilnet.ParseWarningHeaders(h["Warning"]); len(got) != 1 || got[0].Text != "good message" {
+		t.Errorf("expected only the encodable warning to be sent, got %v", got)
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
+}
+
+func derefString(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
 }
 
 func Test_UnitSnapshotWithRequestS3(t *testing.T) {
@@ -233,8 +322,18 @@ func Test_UnitSnapshotHandleDeleteTraversal(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name:      "valid name containing consecutive dots",
+			snapshots: []string{"on-demand..1234"},
+			wantErr:   false,
+		},
+		{
 			name:      "current directory dot",
 			snapshots: []string{"."},
+			wantErr:   true,
+		},
+		{
+			name:      "parent directory",
+			snapshots: []string{".."},
 			wantErr:   true,
 		},
 		{
@@ -245,6 +344,16 @@ func Test_UnitSnapshotHandleDeleteTraversal(t *testing.T) {
 		{
 			name:      "subdirectory name",
 			snapshots: []string{"sub/snap"},
+			wantErr:   true,
+		},
+		{
+			name:      "trailing separator",
+			snapshots: []string{"snap/"},
+			wantErr:   true,
+		},
+		{
+			name:      "one invalid name among valid ones",
+			snapshots: []string{"on-demand-1234", "../on-demand-5678"},
 			wantErr:   true,
 		},
 	}

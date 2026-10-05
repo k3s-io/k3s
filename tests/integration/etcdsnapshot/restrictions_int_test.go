@@ -61,7 +61,7 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			res, err := testutil.K3sCmd("etcd-snapshot", "save", "--etcd-snapshot-dir="+maliciousDir)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainSubstring("saved"))
-			Expect(res).To(ContainSubstring("snapshot-dir override ignored by server-side snapshot restrictions"))
+			expectRestrictionWarning(res, "snapshot-dir")
 
 			matches, err := filepath.Glob(filepath.Join(restrictedServerDir, "on-demand*"))
 			Expect(err).ToNot(HaveOccurred())
@@ -71,8 +71,12 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(maliciousMatches).To(BeEmpty(), "snapshot escaped to the malicious directory")
 
-			res, _ = testutil.K3sCmd("etcd-snapshot", "save", "--s3", "--s3-bucket=malicious-bucket")
-			Expect(res).To(ContainSubstring("s3-bucket override ignored by server-side snapshot restrictions"))
+			// The server has no S3 configured, so a restricted S3 target has nothing to be pinned to:
+			// the S3 section is dropped and the snapshot saved locally, instead of failing to reach S3.
+			res, err = testutil.K3sCmd("etcd-snapshot", "save", "--s3", "--s3-bucket=malicious-bucket")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(ContainSubstring("saved"))
+			expectRestrictionWarning(res, "s3-bucket")
 		})
 	})
 
@@ -97,14 +101,18 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 			defer os.RemoveAll(maliciousDir)
 
 			configPath := filepath.Join(os.TempDir(), "k3s-test-config.yaml")
-			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
+			err = os.WriteFile(configPath, []byte(fmt.Sprintf("etcd-snapshot-dir: %s\netcd-s3: true\netcd-s3-bucket: bad-bucket\netcd-s3-folder: bad-folder\n", maliciousDir)), 0644)
 			Expect(err).ToNot(HaveOccurred())
 			defer os.Remove(configPath)
 
 			res, err := testutil.K3sCmd("etcd-snapshot", "save", "--config", configPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainSubstring("saved"))
-			Expect(res).To(ContainSubstring("restricted snapshot options were ignored: all supported destination overrides"))
+			expectRestrictionWarning(res, "snapshot-dir", "s3-bucket", "s3-folder")
+
+			maliciousMatches, err := filepath.Glob(filepath.Join(maliciousDir, "on-demand*"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(maliciousMatches).To(BeEmpty(), "snapshot escaped to the directory set in config.yaml")
 
 			matches, err := filepath.Glob(filepath.Join(restrictedServerDir, "on-demand*"))
 			Expect(err).ToNot(HaveOccurred())
@@ -185,3 +193,24 @@ var _ = Describe("etcd snapshot restrictions", Ordered, func() {
 		})
 	})
 })
+
+// expectRestrictionWarning asserts that the CLI output contains a server-side snapshot
+// restriction warning naming each of the given settings, whether the server reported a single
+// ignored option or a list of them.
+func expectRestrictionWarning(output string, settings ...string) {
+	GinkgoHelper()
+
+	var warning string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "override ignored by server-side snapshot restrictions") ||
+			strings.Contains(line, "restricted snapshot options were ignored") {
+			warning = line
+			break
+		}
+	}
+	Expect(warning).ToNot(BeEmpty(), "no snapshot restriction warning found in output:\n%s", output)
+	for _, setting := range settings {
+		Expect(warning).To(ContainSubstring(setting))
+	}
+	Expect(warning).To(ContainSubstring("Using the server-configured"))
+}
