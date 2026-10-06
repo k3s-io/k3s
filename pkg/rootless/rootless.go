@@ -13,10 +13,10 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/opencontainers/cgroups"
-	"github.com/rootless-containers/rootlesskit/pkg/child"
-	"github.com/rootless-containers/rootlesskit/pkg/copyup/tmpfssymlink"
-	"github.com/rootless-containers/rootlesskit/pkg/network/slirp4netns"
-	"github.com/rootless-containers/rootlesskit/pkg/parent"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/child"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/copyup/tmpfssymlink"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/network/slirp4netns"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/parent"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
