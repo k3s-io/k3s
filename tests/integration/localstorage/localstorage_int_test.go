@@ -91,7 +91,9 @@ var _ = Describe("local storage", Ordered, func() {
 			pvName, err := testutil.K3sCmd("kubectl get --namespace=default pvc local-path-pvc -o jsonpath={.spec.volumeName}")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pvName).To(HavePrefix("pvc-"))
-			volumePath := "/var/lib/rancher/k3s/storage/" + pvName + "_default_local-path-pvc"
+			volumePath, err := testutil.K3sCmd("kubectl get pv " + pvName + " -o jsonpath={.spec.local.path}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(volumePath).To(HaveSuffix(pvName + "_default_local-path-pvc"))
 			Expect(volumePath).To(BeADirectory())
 
 			Expect(testutil.K3sCmd("kubectl delete --namespace=default --force pod volume-test")).
