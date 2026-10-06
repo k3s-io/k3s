@@ -22,10 +22,13 @@ import (
 )
 
 var (
-	pipeFD             = "_K3S_ROOTLESS_FD"
-	childEnv           = "_K3S_ROOTLESS_SOCK"
-	evacuateCgroup2Env = "_K3S_ROOTLESS_EVACUATE_CGROUP2" // boolean
-	Sock               = ""
+	pipeFD                 = "_K3S_ROOTLESS_FD"
+	childEnv               = "_K3S_ROOTLESS_SOCK"
+	evacuateCgroup2Env     = "_K3S_ROOTLESS_EVACUATE_CGROUP2" // boolean
+	childUseActivationEnv  = "_K3S_ROOTLESS_CHILD_USE_ACTIVATION"
+	runActivationHelperEnv = "_K3S_ROOTLESS_RUN_ACTIVATION_HELPER"
+	stateDirEnv            = "ROOTLESSKIT_STATE_DIR"
+	Sock                   = ""
 
 	mtuEnv             = "K3S_ROOTLESS_MTU"
 	cidrEnv            = "K3S_ROOTLESS_CIDR"
@@ -138,11 +141,13 @@ func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*pare
 	driver.SetStateDir(stateDir)
 
 	opt := &parent.Opt{
-		StateDir:       stateDir,
-		CreatePIDNS:    true,
-		CreateCgroupNS: true,
-		CreateUTSNS:    true,
-		CreateIPCNS:    true,
+		StateDir:                 stateDir,
+		StateDirEnvKey:           stateDirEnv,
+		ChildUseActivationEnvKey: childUseActivationEnv,
+		CreatePIDNS:              true,
+		CreateCgroupNS:           true,
+		CreateUTSNS:              true,
+		CreateIPCNS:              true,
 	}
 
 	selfCgroupMap, err := cgroups.ParseCgroupFile("/proc/self/cgroup")
@@ -215,9 +220,13 @@ func createParentOpt(driver portDriver, stateDir string, enableIPv6 bool) (*pare
 }
 
 func createChildOpt(driver portDriver) (*child.Opt, error) {
-	opt := &child.Opt{}
-	opt.TargetCmd = os.Args
-	opt.PipeFDEnvKey = pipeFD
+	opt := &child.Opt{
+		TargetCmd:                 os.Args,
+		PipeFDEnvKey:              pipeFD,
+		RunActivationHelperEnvKey: runActivationHelperEnv,
+		ChildUseActivationEnvKey:  childUseActivationEnv,
+		StateDirEnvKey:            stateDirEnv,
+	}
 	opt.NetworkDriver = slirp4netns.NewChildDriver()
 	opt.PortDriver = driver.NewChildDriver()
 	opt.CopyUpDirs = []string{"/etc", "/var/run", "/run", "/var/lib"}
