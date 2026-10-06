@@ -602,8 +602,8 @@ github.com/containerd/nri v0.12.0 h1:RvZtyCM64XOB1UmMAFOlfReTTwCd+hE2IEQ5XEpkKA0
 github.com/containerd/nri v0.12.0/go.mod h1:TGAfPLH4a+qwbv0PxsefPiR+PobYecDj2aXMtz7GQcg=
 github.com/containerd/otelttrpc v0.1.0 h1:UOX68eVTE8H/T45JveIg+I22Ev2aFj4qPITCmXsskjw=
 github.com/containerd/otelttrpc v0.1.0/go.mod h1:XhoA2VvaGPW1clB2ULwrBZfXVuEWuyOd2NUD1IM0yTg=
-github.com/containerd/platforms v1.0.0-rc.4 h1:M42JrUT4zfZTqtkUwkr0GzmUWbfyO5VO0Q5b3op97T4=
-github.com/containerd/platforms v1.0.0-rc.4/go.mod h1:lKlMXyLybmBedS/JJm11uDofzI8L2v0J2ZbYvNsbq1A=
+github.com/containerd/platforms v1.0.0-rc.5 h1:vXd569rDrz8LeMXzAnBsy6LADV5YtsD8oyaRarxdmSU=
+github.com/containerd/platforms v1.0.0-rc.5/go.mod h1:lKlMXyLybmBedS/JJm11uDofzI8L2v0J2ZbYvNsbq1A=
 github.com/containerd/plugin v1.1.0 h1:O+7lczNJVMy8rz0YNx3xGB8tTf5qY4i5abF041Ew19U=
 github.com/containerd/plugin v1.1.0/go.mod h1:qBTum+A8lJ6lO44A19Eo7y1OlcLj4OWFH1DA/vnHmcc=
 github.com/containerd/stargz-snapshotter v0.18.2 h1:Ev/sxfQUjwzJQ9eqy3XzttcQ3osMIqkQgMYlcET+10M=
@@ -1156,8 +1156,8 @@ github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/k3s-io/api v0.2.1 h1:ZYFsqUOgTlM1Se3vpX7cBDQWTE8eDD+9320rIqQOV50=
 github.com/k3s-io/api v0.2.1/go.mod h1:IPDLtbGvkL/yDR6ZJ17jhd/E15CUYVsnyqAHst+ULvo=
-github.com/k3s-io/containerd/v2 v2.3.4-k3s1.36 h1:IWlJo6YZE0IgyyL+6+FEVsIQR+XjQRFE4HhFbRyW0k0=
-github.com/k3s-io/containerd/v2 v2.3.4-k3s1.36/go.mod h1:lMLqICgRPSeWCXgnXJLxEGd1Ejuzz0iFHyNhtLniVsk=
+github.com/k3s-io/containerd/v2 v2.3.6-k3s1.36 h1:hX5qCewIs0Pn+zmDoEAa2zZMbXdbTkG/KEzf/YMEFQQ=
+github.com/k3s-io/containerd/v2 v2.3.6-k3s1.36/go.mod h1:PTsxx+Ev1Jg4GhLWddAjiGbkPEJPqFT9G43Z8uFjDbY=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s5 h1:LymM6LDgeqeEhxAdmVYuqucatFEOiWHqsp8hXAaJODc=
 github.com/k3s-io/cri-dockerd v0.3.19-k3s5/go.mod h1:S6JjJaIsB/SXLnBk5qhQxhNMCIbYWGmirCGdarULFWM=
 github.com/k3s-io/cri-tools v1.36.0-k3s1 h1:k2VEj/iQsOP8iJ7r8XA+ETPl1OgY1/q1QCIEcFbwfec=
