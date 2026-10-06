@@ -81,6 +81,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: CONFIG_MOUNT_PATH
+          value: /etc/config/
       volumes:
         - name: config-volume
           configMap:
