@@ -7,7 +7,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/moby/sys/userns"
-	"github.com/rootless-containers/rootlesskit/pkg/parent/cgrouputil"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/parent/cgrouputil"
 )
 
 // EvacuateCgroup2 will handle evacuating the root cgroup in order to enable subtree_control,
