@@ -51,7 +51,7 @@ var _ = DescribeTableSubtree("Verify snapshots and cluster restores work", func(
 			})
 			It("should provision servers and agents", func() {
 				var err error
-				config, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
+				config, err = docker.NewTestConfig(GinkgoTB(), "ghcr.io/rancher/systemd-node")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(config.ProvisionServers(*serverCount)).To(Succeed())
 				Expect(config.ProvisionAgents(*agentCount)).To(Succeed())

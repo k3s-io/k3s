@@ -178,7 +178,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: rancher/mirrored-library-nginx:1.29.1-alpine
+        image: ghcr.io/k3s-io/mirrored-library-nginx:1.29.1-alpine
         resources:
           requests:
             cpu: 100m

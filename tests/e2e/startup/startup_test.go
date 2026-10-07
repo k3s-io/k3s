@@ -136,7 +136,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Runs an interactive command a pod", func() {
-			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.37.0 -- uname -a"
+			cmd := "kubectl run busybox --rm -it --restart=Never --image=ghcr.io/k3s-io/mirrored-library-busybox:1.37.0 -- uname -a"
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -325,7 +325,7 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 
 		It("Runs an interactive command a pod", func() {
-			cmd := "kubectl run busybox --rm -it --restart=Never --image=rancher/mirrored-library-busybox:1.37.0 -- uname -a"
+			cmd := "kubectl run busybox --rm -it --restart=Never --image=ghcr.io/k3s-io/mirrored-library-busybox:1.37.0 -- uname -a"
 			_, err := tc.Servers[0].RunCmdOnNode(cmd)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -343,9 +343,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 	})
 	Context("Verify server picks up preloaded images on start", func() {
 		It("Downloads and preloads images", func() {
-			_, err := tc.Servers[0].RunCmdOnNode("docker pull rancher/shell:v0.1.28")
+			_, err := tc.Servers[0].RunCmdOnNode("docker pull ghcr.io/k3s-io/mirrored-library-nginx:1.29.1-alpine")
 			Expect(err).NotTo(HaveOccurred())
-			_, err = tc.Servers[0].RunCmdOnNode("docker save rancher/shell:v0.1.28 -o /tmp/mytestcontainer.tar")
+			_, err = tc.Servers[0].RunCmdOnNode("docker save ghcr.io/k3s-io/mirrored-library-nginx:1.29.1-alpine -o /tmp/mytestcontainer.tar")
 			Expect(err).NotTo(HaveOccurred())
 			_, err = tc.Servers[0].RunCmdOnNode("mkdir -p /var/lib/rancher/k3s/agent/images/")
 			Expect(err).NotTo(HaveOccurred())
@@ -364,9 +364,9 @@ var _ = Describe("Various Startup Configurations", Ordered, func() {
 		})
 		It("has loaded the test container image", func() {
 			Eventually(func() (string, error) {
-				cmd := "k3s crictl images | grep rancher/shell"
+				cmd := "k3s crictl images | grep ghcr.io/k3s-io/mirrored-library-nginx"
 				return tc.Servers[0].RunCmdOnNode(cmd)
-			}, "120s", "5s").Should(ContainSubstring("rancher/shell"))
+			}, "120s", "5s").Should(ContainSubstring("ghcr.io/k3s-io/mirrored-library-nginx"))
 		})
 		It("Kills the cluster", func() {
 			err := e2e.KillK3sCluster(tc.AllNodes())
