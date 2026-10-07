@@ -27,7 +27,6 @@ var (
 	evacuateCgroup2Env     = "_K3S_ROOTLESS_EVACUATE_CGROUP2" // boolean
 	childUseActivationEnv  = "_K3S_ROOTLESS_CHILD_USE_ACTIVATION"
 	runActivationHelperEnv = "_K3S_ROOTLESS_RUN_ACTIVATION_HELPER"
-	stateDirEnv            = "ROOTLESSKIT_STATE_DIR"
 	Sock                   = ""
 
 	mtuEnv             = "K3S_ROOTLESS_MTU"
@@ -36,6 +35,7 @@ var (
 	portDriverEnv      = "K3S_ROOTLESS_PORT_DRIVER"
 	disableLoopbackEnv = "K3S_ROOTLESS_DISABLE_HOST_LOOPBACK"
 	copyUpDirsEnv      = "K3S_ROOTLESS_COPYUPDIRS"
+	stateDirEnv        = "K3S_ROOTLESS_STATE_DIR"
 )
 
 func Rootless(stateDir string, enableIPv6 bool) error {
