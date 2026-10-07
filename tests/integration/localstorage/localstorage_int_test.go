@@ -88,10 +88,24 @@ var _ = Describe("local storage", Ordered, func() {
 				To(Equal("644\n"))
 		})
 		It("deletes properly", func() {
+			pvName, err := testutil.K3sCmd("kubectl get --namespace=default pvc local-path-pvc -o jsonpath={.spec.volumeName}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pvName).To(HavePrefix("pvc-"))
+			volumePath, err := testutil.K3sCmd("kubectl get pv " + pvName + " -o jsonpath={.spec.local.path}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(volumePath).To(HaveSuffix(pvName + "_default_local-path-pvc"))
+			Expect(volumePath).To(BeADirectory())
+
 			Expect(testutil.K3sCmd("kubectl delete --namespace=default --force pod volume-test")).
 				To(ContainSubstring("pod \"volume-test\" force deleted"))
 			Expect(testutil.K3sCmd("kubectl delete --namespace=default pvc local-path-pvc")).
 				To(ContainSubstring("persistentvolumeclaim \"local-path-pvc\" deleted"))
+
+			// The delete helper pod must actually remove the PV and its backing directory
+			Eventually(func() (string, error) {
+				return testutil.K3sCmd("kubectl get pv --ignore-not-found " + pvName)
+			}, "120s", "5s").Should(BeEmpty())
+			Expect(volumePath).ToNot(BeAnExistingFile())
 		})
 	})
 })
