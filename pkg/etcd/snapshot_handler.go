@@ -3,8 +3,11 @@ package etcd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	k3s "github.com/k3s-io/api/k3s.cattle.io/v1"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
@@ -13,6 +16,8 @@ import (
 	"github.com/k3s-io/k3s/pkg/util/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type SnapshotOperation string
@@ -31,13 +36,12 @@ type SnapshotRequest struct {
 	Compress  *bool             `json:"compress,omitempty"`
 	Retention *int              `json:"retention,omitempty"`
 	S3        *config.EtcdS3    `json:"s3,omitempty"`
-
-	ctx context.Context
+	ctx       context.Context
 }
 
-func (sr *SnapshotRequest) context() context.Context {
-	if sr.ctx != nil {
-		return sr.ctx
+func (s *SnapshotRequest) Context() context.Context {
+	if s.ctx != nil {
+		return s.ctx
 	}
 	return context.Background()
 }
@@ -48,7 +52,11 @@ func (e *ETCD) snapshotHandler() http.Handler {
 		sr, err := getSnapshotRequest(req)
 		if err != nil {
 			util.SendErrorWithID(err, "etcd-snapshot", rw, req, http.StatusInternalServerError)
+			return
 		}
+
+		addWarnings(rw.Header(), e.applySnapshotRestrictions(sr))
+
 		switch sr.Operation {
 		case SnapshotOperationList:
 			err = e.withRequest(sr).handleList(rw, req)
@@ -68,7 +76,7 @@ func (e *ETCD) snapshotHandler() http.Handler {
 }
 
 func (e *ETCD) handleList(rw http.ResponseWriter, req *http.Request) error {
-	if e.config.EtcdS3 != nil {
+	if e.config != nil && e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
 			err = errors.WithMessage(err, "failed to initialize S3 client")
 			util.SendError(err, rw, req, http.StatusBadRequest)
@@ -119,6 +127,12 @@ func (e *ETCD) handlePrune(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (e *ETCD) handleDelete(rw http.ResponseWriter, req *http.Request, snapshots []string) error {
+	for _, name := range snapshots {
+		if !validSnapshotName(name) {
+			util.SendError(errors.New("invalid snapshot name: path traversal not allowed"), rw, req, http.StatusBadRequest)
+			return nil
+		}
+	}
 	if e.config.EtcdS3 != nil {
 		if _, err := e.getS3Client(req.Context()); err != nil {
 			err = errors.WithMessage(err, "failed to initialize S3 client")
@@ -153,6 +167,7 @@ func (e *ETCD) withRequest(sr *SnapshotRequest) *ETCD {
 			DisableAgent:          e.config.DisableAgent,
 			EtcdSnapshotCompress:  e.config.EtcdSnapshotCompress,
 			EtcdSnapshotName:      e.config.EtcdSnapshotName,
+			EtcdSnapshotDir:       e.config.EtcdSnapshotDir,
 			EtcdSnapshotRetention: e.config.EtcdSnapshotRetention,
 			EtcdS3:                sr.S3,
 		},
@@ -212,4 +227,128 @@ func sendSnapshotList(rw http.ResponseWriter, req *http.Request, sf *k3s.ETCDSna
 	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Write(b)
+}
+
+// snapshotRestrictionAll is the --etcd-snapshot-restrictions value that restricts every
+// supported setting.
+const snapshotRestrictionAll = "all"
+
+// restrictedS3Field describes an S3 setting that --etcd-snapshot-restrictions can pin to the
+// server-configured value.
+type restrictedS3Field struct {
+	// name is the value accepted by --etcd-snapshot-restrictions.
+	name string
+	// value returns a pointer to the setting within an S3 config.
+	value func(*config.EtcdS3) *string
+	// identifiesTarget is true if the setting selects which S3 service or bucket snapshots are
+	// stored in, as opposed to refining how or where within it (folder, proxy).
+	identifiesTarget bool
+}
+
+// restrictedS3Fields lists the S3 settings that can be restricted, in the order they are
+// reported to the client.
+var restrictedS3Fields = []restrictedS3Field{
+	{name: "s3-endpoint", value: func(s *config.EtcdS3) *string { return &s.Endpoint }, identifiesTarget: true},
+	{name: "s3-bucket", value: func(s *config.EtcdS3) *string { return &s.Bucket }, identifiesTarget: true},
+	{name: "s3-folder", value: func(s *config.EtcdS3) *string { return &s.Folder }},
+	{name: "s3-proxy", value: func(s *config.EtcdS3) *string { return &s.Proxy }},
+}
+
+// effectiveSnapshotDir returns the directory the server stores snapshots in: the configured
+// snapshot directory, or the default one. It returns an empty string if neither is known.
+func effectiveSnapshotDir(c *config.Control) string {
+	if c.EtcdSnapshotDir != "" {
+		return c.EtcdSnapshotDir
+	}
+	if c.DataDir == "" {
+		return ""
+	}
+	return defaultSnapshotPath(c)
+}
+
+// applySnapshotRestrictions enforces the server's --etcd-snapshot-restrictions on a snapshot
+// request. Any restricted setting that the request tries to override with something other than
+// the server-configured value is reset to the server-configured value, and a warning naming
+// what was ignored is returned for the client. The request is never rejected, and is modified
+// in place.
+//
+// The server-configured value of an S3 setting is empty if the server has no S3 configuration.
+// If the request tries to override a setting that identifies the S3 target (endpoint or bucket)
+// in that case, there is no server-configured target to fall back to, so the S3 section is
+// dropped and the request is handled using the server-configured (local) destination instead.
+func (e *ETCD) applySnapshotRestrictions(sr *SnapshotRequest) []string {
+	if e == nil || e.config == nil || sr == nil || len(e.config.EtcdSnapshotRestrictions) == 0 {
+		return nil
+	}
+
+	restrictions := sets.New(e.config.EtcdSnapshotRestrictions...)
+	all := restrictions.Has(snapshotRestrictionAll)
+	isRestricted := func(name string) bool {
+		return all || restrictions.Has(name)
+	}
+
+	var ignored []string
+
+	if sr.Dir != nil && isRestricted("snapshot-dir") {
+		serverDir := effectiveSnapshotDir(e.config)
+		if serverDir == "" || filepath.Clean(*sr.Dir) != filepath.Clean(serverDir) {
+			ignored = append(ignored, "snapshot-dir")
+		}
+		sr.Dir = nil
+	}
+
+	if sr.S3 != nil {
+		serverS3 := e.config.EtcdS3
+		dropS3 := false
+		for _, field := range restrictedS3Fields {
+			if !isRestricted(field.name) {
+				continue
+			}
+			pinned := ""
+			if serverS3 != nil {
+				pinned = *field.value(serverS3)
+			}
+			requested := field.value(sr.S3)
+			if *requested == pinned {
+				continue
+			}
+			ignored = append(ignored, field.name)
+			*requested = pinned
+			if field.identifiesTarget && serverS3 == nil {
+				dropS3 = true
+			}
+		}
+		if dropS3 {
+			sr.S3 = nil
+		}
+	}
+
+	switch len(ignored) {
+	case 0:
+		return nil
+	case 1:
+		return []string{fmt.Sprintf("%s override ignored by server-side snapshot restrictions. Using the server-configured destination.", ignored[0])}
+	default:
+		return []string{fmt.Sprintf("restricted snapshot options were ignored: %s. Using the server-configured snapshot destination.", strings.Join(ignored, ", "))}
+	}
+}
+
+// addWarnings sends each message to the client as an RFC 7234 "299" Warning header, which the
+// CLI prints when it reads the response.
+func addWarnings(h http.Header, warnings []string) {
+	for _, w := range warnings {
+		value, err := utilnet.NewWarningHeader(299, "", w)
+		if err != nil {
+			logrus.Warnf("Unable to send warning to etcd-snapshot client: %v: %s", err, w)
+			continue
+		}
+		h.Add("Warning", value)
+	}
+}
+
+// validSnapshotName returns true if name is a plain snapshot file name. Names are joined onto
+// the snapshot directory and used as S3 object keys, so anything that is a path - one with
+// separators, an absolute path, or "." / ".." - could address something other than a snapshot.
+func validSnapshotName(name string) bool {
+	return name != "" && name != "." && name != ".." && filepath.Base(name) == name
 }

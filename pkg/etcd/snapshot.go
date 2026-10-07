@@ -66,11 +66,17 @@ var (
 	cronLogger = cron.VerbosePrintfLogger(logrus.StandardLogger())
 )
 
+// defaultSnapshotPath returns the directory snapshots are stored in when no
+// snapshot directory has been configured.
+func defaultSnapshotPath(c *config.Control) string {
+	return filepath.Join(c.DataDir, "db", "snapshots")
+}
+
 // snapshotDir ensures that the snapshot directory exists, and then returns its path.
 // Only the default snapshot directory will be created; user-specified non-default
 // snapshot directories must already exist.
 func snapshotDir(config *config.Control, create bool) (string, error) {
-	defaultSnapshotDir := filepath.Join(config.DataDir, "db", "snapshots")
+	defaultSnapshotDir := defaultSnapshotPath(config)
 	snapshotDir := config.EtcdSnapshotDir
 
 	if snapshotDir == "" {

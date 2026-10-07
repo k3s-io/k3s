@@ -245,6 +245,7 @@ type Control struct {
 	EtcdDisableSnapshots     bool            `json:"-"`
 	EtcdExposeMetrics        bool            `json:"-"`
 	EtcdSnapshotDir          string          `json:"-"`
+	EtcdSnapshotRestrictions []string        `json:"-"`
 	EtcdSnapshotCron         string          `json:"-"`
 	EtcdSnapshotReconcile    metav1.Duration `json:"-"`
 	EtcdSnapshotRetention    int             `json:"-"`
