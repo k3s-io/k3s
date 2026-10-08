@@ -7,7 +7,7 @@ metadata:
 spec:
   forceConflicts: true
   failurePolicy: retry
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-40.1.6+up40.1.0.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-crd-40.1.7+up40.1.0.tgz
 ---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
@@ -17,7 +17,7 @@ metadata:
 spec:
   forceConflicts: true
   failurePolicy: retry
-  chart: https://%{KUBERNETES_API}%/static/charts/traefik-40.1.6+up40.1.0.tgz
+  chart: https://%{KUBERNETES_API}%/static/charts/traefik-40.1.7+up40.1.0.tgz
   set:
     global.systemDefaultRegistry: "%{SYSTEM_DEFAULT_REGISTRY_RAW}%"
   valuesContent: |-
