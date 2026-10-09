@@ -463,12 +463,26 @@ flags="
   CGROUPS CGROUP_PIDS CGROUP_CPUACCT CGROUP_DEVICE CGROUP_FREEZER CGROUP_SCHED CPUSETS MEMCG
   SECCOMP KEYS
   VETH BRIDGE BRIDGE_NETFILTER
-  IP_NF_FILTER IP_NF_TARGET_MASQUERADE IP_NF_TARGET_REJECT
   NETFILTER_XT_MATCH_ADDRTYPE NETFILTER_XT_MATCH_CONNTRACK NETFILTER_XT_MATCH_IPVS NETFILTER_XT_MATCH_COMMENT NETFILTER_XT_MATCH_MULTIPORT NETFILTER_XT_MATCH_STATISTIC
-  IP_NF_NAT NF_NAT
+  NF_NAT
   POSIX_MQUEUE
 "
 isError=1 check_flags $flags && isError=0
+
+# K3s ships both xtables-legacy-multi and xtables-nft-multi and falls back to whichever
+# the kernel supports, so either the legacy IPv4 iptables backend (CONFIG_IP_NF_IPTABLES
+# and its child symbols) or the nftables backend (CONFIG_NF_TABLES with the compatibility
+# shim) is sufficient. Kernels built without CONFIG_IP_NF_IPTABLES (increasingly common
+# on nftables-only distributions) automatically hide IP_NF_FILTER / IP_NF_TARGET_MASQUERADE
+# / IP_NF_NAT, so check the available backend rather than fail on symbols the kernel never
+# exposed.
+if is_set IP_NF_IPTABLES; then
+  isError=1 check_flags IP_NF_FILTER IP_NF_TARGET_MASQUERADE IP_NF_TARGET_REJECT IP_NF_NAT && isError=0
+elif is_set NF_TABLES; then
+  isError=1 check_flags NF_TABLES_IPV4 NFT_NAT NFT_MASQ NFT_COMPAT && isError=0
+else
+  wrap_bad "- CONFIG_IP_NF_IPTABLES or CONFIG_NF_TABLES" 'neither enabled; pod and service networking will not function'
+fi
 
 if [ "$kernelMajor" -lt 4 ] || ( [ "$kernelMajor" -eq 4 ] && [ "$kernelMinor" -lt 8 ] ); then
   check_flags DEVPTS_MULTIPLE_INSTANCES
