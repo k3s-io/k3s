@@ -507,5 +507,11 @@ func prePullImages(ctx context.Context, client *containerd.Client, imageClient r
 			}
 		}
 	}
+	// Scan returns false for a read that failed just as it does for the end of
+	// the list, so without this a truncated or unreadable list looks like a
+	// complete one and the images that were never read are silently not pulled.
+	if err := scanner.Err(); err != nil {
+		errs = append(errs, err)
+	}
 	return images, errors.Join(errs...)
 }
