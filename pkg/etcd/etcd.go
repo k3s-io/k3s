@@ -1688,7 +1688,18 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 		}
 	}
 
-	if err := e.RemovePeer(ctx, e.name, e.address, true); err != nil {
+	// the member name is not loaded when etcd is disabled, so read it from the
+	// name file that was left behind if this node previously ran etcd
+	name := e.name
+	if name == "" {
+		if data, err := os.ReadFile(nameFile(e.config)); err == nil {
+			name = string(data)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	if err := e.RemovePeer(ctx, name, e.address, true); err != nil {
 		return err
 	}
 
