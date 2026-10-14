@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatewayapi-echo
+  namespace: kube-system
+  labels:
+    k8s-app: gatewayapi-echo
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    k8s-app: gatewayapi-echo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatewayapi-echo
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: gatewayapi-echo
+  template:
+    metadata:
+      labels:
+        k8s-app: gatewayapi-echo
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: testcontainer
+        image: rancher/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to gatewayapi-echo! > index.html; httpd -vvf']
+        ports:
+        - containerPort: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gatewayapi-echo
+  namespace: kube-system
+spec:
+  parentRefs:
+  - name: traefik-gateway
+    sectionName: web
+  hostnames:
+  - gatewayapi.example.com
+  rules:
+  - backendRefs:
+    - name: gatewayapi-echo
+      port: 80
