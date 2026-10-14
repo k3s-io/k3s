@@ -30,8 +30,6 @@ def provision(vm, role, role_num, node_num)
  
  privateRegistries = <<~YAML
     mirrors:
-  privateRegistries = <<~YAML
-    mirrors:
       docker.io:
         endpoint:
           - "https://ghcr.io"
