@@ -135,3 +135,14 @@ def waitForNodeReady(vm)
       SHELL
     end
   end
+
+  def ghcrRegistries
+    <<~'YAML'
+      mirrors:
+        docker.io:
+          endpoint:
+            - "https://ghcr.io"
+          rewrite:
+            "^rancher/(.*)$": "k3s-io/$1"
+    YAML
+  end

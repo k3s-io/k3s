@@ -41,6 +41,7 @@ def provision(vm, role, role_num, node_num)
   privateRegistries = <<~YAML
     mirrors:
       docker.io:
+      ghcr.io:
       registry.example.com:
   YAML
 
