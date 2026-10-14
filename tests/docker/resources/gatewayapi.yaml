@@ -32,7 +32,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: testcontainer
-        image: rancher/mirrored-library-busybox:1.37.0
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
         args: ['sh', '-c', 'echo Welcome to gatewayapi-echo! > index.html; httpd -vvf']
         ports:
         - containerPort: 80
