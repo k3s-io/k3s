@@ -30,6 +30,7 @@ var existingServer = "False"
 
 const lockFile = "/tmp/k3s-test.lock"
 const DefaultConfig = "/etc/rancher/k3s/k3s.yaml"
+const DefaultRegistries = "/etc/rancher/k3s/registries.yaml"
 
 type K3sServer struct {
 	cmd *exec.Cmd
@@ -184,6 +185,9 @@ func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	}
 
 	k3sBin := findK3sExecutable()
+	if err := tests.WriteRegistries(DefaultRegistries); err != nil {
+		return nil, err
+	}
 	k3sCmd := append([]string{"server"}, inputArgs...)
 	cmd := exec.Command(k3sBin, k3sCmd...)
 	// Give the server a new group id so we can kill it and its children later
@@ -282,6 +286,9 @@ func K3sCleanup(k3sTestLock int, dataDir string) error {
 		dataDir = "/var/lib/rancher/k3s"
 	}
 	if err := os.RemoveAll(dataDir); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(DefaultRegistries); err != nil {
 		return err
 	}
 	if k3sTestLock != -1 {

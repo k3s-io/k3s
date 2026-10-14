@@ -36,7 +36,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 	Context("Setup Cluster", func() {
 		It("should provision servers and agents", func() {
 			var err error
-			tc, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
+			tc, err = docker.NewTestConfig(GinkgoTB(), "ghcr.io/rancher/systemd-node:v0.0.9")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tc.ProvisionServers(*serverCount)).To(Succeed())
 			Expect(tc.ProvisionAgents(*agentCount)).To(Succeed())
@@ -106,14 +106,14 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 			// Verify connectivity to the external IP of the lbsvc service and the IP should be the flannel interface IP because of MASQ
 			for _, externalIP := range lbSvcExternalIPs {
 				Eventually(func() (string, error) {
-					cmd := "curl -m 5 -s -f http://" + externalIP + ":81/ip"
+					cmd := "curl -m 5 -s -f http://" + externalIP + ":81/cgi-bin/ip"
 					return tests.RunCommand(cmd)
 				}, "25s", "5s").Should(ContainSubstring("10.42"))
 			}
 
 			// Verify connectivity to the external IP of the lbsvcExt service and the IP should not be the flannel interface IP
 			Eventually(func() (string, error) {
-				cmd := "curl -m 5 -s -f http://" + lbSvcExtExternalIPs[0] + ":82/ip"
+				cmd := "curl -m 5 -s -f http://" + lbSvcExtExternalIPs[0] + ":82/cgi-bin/ip"
 				return tests.RunCommand(cmd)
 			}, "25s", "5s").ShouldNot(ContainSubstring("10.42"))
 		})
@@ -176,12 +176,12 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			var workingCmd, nonWorkingCmd string
 			if serverNodeName == clientPod1Node {
-				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
-				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
+				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/cgi-bin/ip", tc.KubeconfigFile, clientPod1)
+				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/cgi-bin/ip", tc.KubeconfigFile, clientPod2)
 			}
 			if serverNodeName == clientPod2Node {
-				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod2)
-				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/ip", tc.KubeconfigFile, clientPod1)
+				workingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/cgi-bin/ip", tc.KubeconfigFile, clientPod2)
+				nonWorkingCmd = fmt.Sprintf("kubectl exec --kubeconfig=%s %s -- wget -T 5 -q -O - http://nginx-loadbalancer-svc-int:83/cgi-bin/ip", tc.KubeconfigFile, clientPod1)
 			}
 
 			Eventually(func() (string, error) {
@@ -204,7 +204,7 @@ var _ = Describe("Verify Services Traffic policies and firewall config", Ordered
 
 			// curling a service with internal traffic policy=cluster. It should work on both pods
 			for _, pod := range []string{clientPod1, clientPod2} {
-				cmd := "kubectl exec " + "--kubeconfig=" + tc.KubeconfigFile + " " + pod + " -- wget -T 5 -q -O - http://nginx-loadbalancer-svc:81/ip"
+				cmd := "kubectl exec " + "--kubeconfig=" + tc.KubeconfigFile + " " + pod + " -- wget -T 5 -q -O - http://nginx-loadbalancer-svc:81/cgi-bin/ip"
 				Eventually(func() (string, error) {
 					return tests.RunCommand(cmd)
 				}, "20s", "5s").Should(SatisfyAny(

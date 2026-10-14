@@ -178,7 +178,8 @@ spec:
     spec:
       containers:
       - name: web
-        image: rancher/mirrored-library-nginx:1.29.1-alpine
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         resources:
           requests:
             cpu: 100m
