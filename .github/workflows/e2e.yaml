@@ -1,6 +1,9 @@
 name: E2E Test Coverage
 on: 
   push:
+    branches:
+      - "main"
+      - "release-*"
     paths-ignore:
       - "**.md"
       - "channel.yaml"
