@@ -21,6 +21,7 @@ Vagrant.configure("2") do |config|
     # Leap 15.6+ VM images are missing procps for some reason.
     test.vm.provision 'k3s-prepare', type: 'shell', run: 'once', inline: 'zypper install -y apparmor-parser procps'
     test.vm.provision 'k3s-install', type: 'k3s', run: 'once' do |k3s|
+      k3s.registries = ghcrRegistries
       k3s.installer_url = 'file:///home/vagrant/install.sh'
       k3s.args = %w[server]
       k3s.env = ENV.select{|k,v| k.start_with?('K3S_') || k.start_with?('INSTALL_K3S_')}.merge({
