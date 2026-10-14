@@ -19,6 +19,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:1.14.2
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         ports:
         - containerPort: 80

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -257,4 +258,17 @@ func K8sClient(kubeconfigFile string) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 	return clientSet, nil
+}
+
+func WriteRegistries(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(`mirrors:
+  docker.io:
+    endpoint:
+      - "https://ghcr.io"
+    rewrite:
+      "^rancher/(.*)$": "k3s-io/$1"
+`), 0644)
 }

@@ -48,7 +48,7 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 	Context("Test disabling etcd on a server in a 3 server cluster", func() {
 		It("should setup the cluster configuration", func() {
 			var err error
-			config, err = docker.NewTestConfig(GinkgoTB(), "rancher/systemd-node")
+			config, err = docker.NewTestConfig(GinkgoTB(), "ghcr.io/rancher/systemd-node:v0.0.9")
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should provision servers", func() {
