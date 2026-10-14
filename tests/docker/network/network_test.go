@@ -35,6 +35,9 @@ var _ = Describe("Network Tests", Ordered, func() {
 			// Clean up any lingering container from past test runs
 			tests.RunCommand(fmt.Sprintf("docker rm -f %s", containerName))
 
+			registries := filepath.Join(GinkgoT().TempDir(), "registries.yaml")
+			Expect(tests.WriteRegistries(registries)).To(Succeed())
+
 			// Boot K3s container, removing the default route before K3s starts.
 			dRun := strings.Join([]string{"docker run -d",
 				"--name", containerName,
@@ -42,6 +45,7 @@ var _ = Describe("Network Tests", Ordered, func() {
 				"--privileged",
 				"-e K3S_DEBUG=true",
 				fmt.Sprintf("--mount type=bind,source=%s,target=/opt/artifacts", artifactDir),
+				fmt.Sprintf("--mount type=bind,source=%s,target=/etc/rancher/k3s/registries.yaml,readonly", registries),
 				"--entrypoint sh",
 				*k3sImage,
 				"-c",

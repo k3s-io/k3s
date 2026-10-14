@@ -43,7 +43,7 @@ metadata:
             }]'
 spec:
   containers:
-  - image: rancher/mirrored-library-busybox:1.37.0
+  - image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
     command:
       - sleep
       - infinity
@@ -69,7 +69,7 @@ metadata:
             }]'
 spec:
   containers:
-  - image: rancher/mirrored-library-busybox:1.37.0
+  - image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
     command:
       - sleep
       - infinity
