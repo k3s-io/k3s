@@ -104,4 +104,13 @@ targets:
       file: "scripts/airgap/image-list.txt"
       matchpattern: 'rancher/klipper-helm:v\d+\.\d+\.\d+(-\w+)?'
       replacepattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
+  versionfile:
+    name: "Bump to latest klipper-helm version in scripts/version.sh"
+    kind: "file"
+    scmid: "k3s"
+    sourceid: "klipper-helm"
+    spec:
+      file: "scripts/version.sh"
+      matchpattern: '(?m)^VERSION_HELM_JOB=(.*)'
+      replacepattern: 'VERSION_HELM_JOB="{{ source "klipper-helm" }}"'
 
