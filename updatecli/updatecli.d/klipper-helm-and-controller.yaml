@@ -83,14 +83,6 @@ conditions:
     spec:
       file: "go.mod"
       matchpattern: 'github.com/k3s-io/helm-controller'
-  klipper-helm-in-helm-controller:
-    name: "Check rancher/klipper-helm image version in Helm Controller"
-    kind: "file"
-    scmid: "helm-controller"
-    disablesourceinput: true
-    spec:
-      file: "pkg/controllers/chart/chart.go"
-      matchpattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
 
 targets:
   go-mod:
