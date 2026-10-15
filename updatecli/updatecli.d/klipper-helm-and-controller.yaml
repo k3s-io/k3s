@@ -47,8 +47,9 @@ sources:
       repository: "{{ .helm_controller.repo }}"
       branch: "{{ .helm_controller.branch }}"
       token: "{{ requiredEnv .github.token }}"
-      typefilter:
-        latest: true
+      versionfilter:
+        kind: "semver"
+        pattern: '{{ requiredEnv .helm_controller.version_pattern }}'
   klipper-helm:
     name: "Get Klipper Helm latest release version"
     kind: "githubrelease"

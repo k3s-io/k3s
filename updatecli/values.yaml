@@ -25,3 +25,4 @@ helm_controller:
   org: "k3s-io"
   repo: "helm-controller"
   branch: "master"
+  version_pattern: "HELM_CONTROLLER_VERSION_PATTERN"

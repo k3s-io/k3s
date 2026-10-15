@@ -35,12 +35,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: 
-          - main
-          - release-1.37
-          - release-1.36
-          - release-1.35
-          - release-1.34
+        include:
+          - branch: main
+            helm_controller_pattern: "*"
+          - branch: release-1.37
+            helm_controller_pattern: "~0.17"
+          - branch: release-1.36
+            helm_controller_pattern: "~0.17"
+          - branch: release-1.35
+            helm_controller_pattern: "~0.17"
+          - branch: release-1.34
+            helm_controller_pattern: "~0.16"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -60,3 +65,4 @@ jobs:
           TARGET_BRANCH: ${{ matrix.branch }}
           TARGET_REPO: ${{ github.event.repository.name }}
           TARGET_ORG: ${{ github.repository_owner }}
+          HELM_CONTROLLER_VERSION_PATTERN: ${{ matrix.helm_controller_pattern }}
