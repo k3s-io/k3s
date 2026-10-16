@@ -17,6 +17,11 @@ The main usage of Updatecli is for:
 * Bumping versions in unstructured formats, e.g., environment variables in Dockerfiles and by matching regular expressions.
 * Scripting the automation process, e.g., update package A in repo B after package X in repo Y matches a pre-defined version criteria.
 
+The Flannel pipeline updates `github.com/flannel-io/flannel` to the latest stable
+release on every branch configured in `.github/workflows/updatecli.yaml`,
+including release branches. It uses `run-go-mod-update.sh` to update `go.mod`
+and `go.sum` with `go get` and `go mod tidy`.
+
 ### Not in scope
 
 * Updatecli will only open a pull request in the targeted repo. It's not responsible for approving and merging the PR.
@@ -58,4 +63,3 @@ updatecli diff --clean --config updatecli/updatecli.d/ --values updatecli/values
 Everyone is free to contribute with new manifests and pipelines for security version bumps targeting Rancher owned repos.
 
 Before contributing, please follow the guidelines provided in this readme and make sure to test locally your changes before opening a PR.
-
