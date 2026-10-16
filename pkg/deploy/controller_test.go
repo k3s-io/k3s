@@ -119,40 +119,43 @@ func Test_UnitListFilesInAppliesOnContentChangeDespiteUnchangedModTime(t *testin
 	contentA := "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: test\n"
 	contentB := "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: test\n  labels:\n    changed: \"true\"\n"
 
-	// Simulate filesystems (e.g. NixOS /nix/store) that pin all mtimes to the
-	// epoch, so mtime never changes even when file content does.
-	fixedMtime := time.Unix(0, 0)
+	var seconds int64
+	for seconds = 0; seconds <= 1; seconds++ {
+		// Simulate filesystems (e.g. NixOS /nix/store) that pin all mtimes to the
+		// epoch, so mtime never changes even when file content does.
+		fixedMtime := time.Unix(seconds, 0)
 
-	writeManifest := func(content string) {
-		t.Helper()
-		if err := os.WriteFile(manifest, []byte(content), 0644); err != nil {
+		writeManifest := func(content string) {
+			t.Helper()
+			if err := os.WriteFile(manifest, []byte(content), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chtimes(manifest, fixedMtime, fixedMtime); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		apply := &applyfake.FakeApply{}
+		w := newTestWatcher(t, apply)
+
+		// First pass is forced, so the manifest is applied and its checksum recorded.
+		writeManifest(contentA)
+		if err := w.listFilesIn(base, true); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chtimes(manifest, fixedMtime, fixedMtime); err != nil {
+		if apply.Count != 1 {
+			t.Fatalf("expected initial apply, got %d", apply.Count)
+		}
+
+		// Second (non-forced) pass must detect the content change via checksum even
+		// though mtime is unchanged, and apply it again.
+		writeManifest(contentB)
+		if err := w.listFilesIn(base, false); err != nil {
 			t.Fatal(err)
 		}
-	}
-
-	apply := &applyfake.FakeApply{}
-	w := newTestWatcher(t, apply)
-
-	// First pass is forced, so the manifest is applied and its checksum recorded.
-	writeManifest(contentA)
-	if err := w.listFilesIn(base, true); err != nil {
-		t.Fatal(err)
-	}
-	if apply.Count != 1 {
-		t.Fatalf("expected initial apply, got %d", apply.Count)
-	}
-
-	// Second (non-forced) pass must detect the content change via checksum even
-	// though mtime is unchanged, and apply it again.
-	writeManifest(contentB)
-	if err := w.listFilesIn(base, false); err != nil {
-		t.Fatal(err)
-	}
-	if apply.Count != 2 {
-		t.Fatalf("expected changed content to be applied despite unchanged mtime, got %d applies", apply.Count)
+		if apply.Count != 2 {
+			t.Fatalf("expected changed content to be applied despite unchanged mtime, got %d applies", apply.Count)
+		}
 	}
 }
 
