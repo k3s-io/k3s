@@ -78,7 +78,7 @@ jobs:
       - name: Install Go
         uses: ./.github/actions/setup-go
       - name: Set up Docker
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
         with:
           version: type=image,tag=29
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -147,7 +147,7 @@ jobs:
           path: tests/e2e/${{ matrix.etest }}/*log.txt
           retention-days: 30
       - name: Upload Results To Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v5
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/e2e/${{ matrix.etest }}/coverage.out
@@ -209,7 +209,7 @@ jobs:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
     - name: Set up Docker
-      uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+      uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
       with:
         version: type=image,tag=29
         daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -263,7 +263,7 @@ jobs:
     - name: Install Go
       uses: ./.github/actions/setup-go
     - name: Set up Docker
-      uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+      uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
       with:
         version: type=image,tag=29
         set-host: true
