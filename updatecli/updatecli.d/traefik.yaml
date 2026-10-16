@@ -1,0 +1,82 @@
+name: "Bump Traefik Image Version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
+      commitmessage:
+        title: "Bump rancher/mirrored-library-traefik image version"
+
+actions:
+  github:
+    title: "[{{ requiredEnv .github.branch }}] Bump rancher/mirrored-library-traefik image version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      merge:
+        strategy: "manual"
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
+
+sources:
+  # Retrieve the latest tag from the rancher/mirrored-library-traefik repository.
+  # The pattern is pinned to the Traefik minor version supported by the bundled
+  # Helm chart. Bump this constraint when the Traefik chart is updated to a new
+  # minor/major version.
+  traefik-docker-image:
+    name: "Check Traefik image tag in DockerHub"
+    kind: "dockerimage"
+    spec:
+      image: "rancher/mirrored-library-traefik"
+      versionfilter:
+        kind: "semver"
+        pattern: "~3.7"
+    transformers:
+      - find: '\d+\.\d+\.\d+'
+
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  docker-image:
+    name: "Check latest image tag for rancher/mirrored-library-traefik"
+    kind: "dockerimage"
+    disablesourceinput: true
+    spec:
+      image: "rancher/mirrored-library-traefik"
+      tag: '{{ source "traefik-docker-image" }}'
+
+targets:
+  traefik-manifest:
+    name: "Update Traefik image version in manifests/traefik.yaml"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "manifests/traefik.yaml"
+      matchpattern: 'tag: "\d+\.\d+\.\d+(-\w+)?"'
+      replacepattern: 'tag: "{{ source "traefik-docker-image" }}"'
+
+  traefik-airgap:
+    name: "Update Traefik image version in scripts/airgap/image-list"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      files:
+        - "scripts/airgap/image-list.txt"
+      matchpattern: 'docker.io/rancher/mirrored-library-traefik:\S+'
+      replacepattern: 'docker.io/rancher/mirrored-library-traefik:{{ source "traefik-docker-image" }}'
