@@ -188,12 +188,12 @@ func NewTemporaryStore(dataDir string) (*TemporaryStore, error) {
 		},
 	}
 	if err := copy.Copy(dataDir, tempDir, copyOpts); err != nil {
-		return nil, err
+		return nil, errors.Join(err, os.RemoveAll(tempDir))
 	}
 
 	s, err := NewStore(tempDir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, os.RemoveAll(tempDir))
 	}
 
 	return &TemporaryStore{store: s, dataDir: tempDir}, nil

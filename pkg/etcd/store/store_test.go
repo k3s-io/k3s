@@ -174,6 +174,12 @@ func Test_UnitNewTemporaryStore(t *testing.T) {
 
 			t.Logf("NewTemporaryStore() error = %v, kv = %#v", err, kv)
 
+			if tt.wantErr {
+				if _, err := os.Stat(tt.args.dataDir + "-tmp"); !os.IsNotExist(err) {
+					t.Errorf("NewTemporaryStore() left %s-tmp behind after an error, Stat() = %v", tt.args.dataDir, err)
+				}
+			}
+
 			if !tt.wantErr {
 				kvs, err := kv.List(t.Context(), "/bootstrap", 0)
 				if err != nil {
