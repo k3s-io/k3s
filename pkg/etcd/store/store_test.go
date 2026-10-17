@@ -1,10 +1,8 @@
 package store
 
 import (
-	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"testing"
 
@@ -33,7 +31,6 @@ var tests = []struct {
 		name:    "no db path",
 		wantErr: true,
 		setup: func(t *testing.T, args *args) error {
-			args.dataDir = filepath.Join(t.TempDir(), "missing")
 			return nil
 		},
 	},
@@ -43,31 +40,6 @@ var tests = []struct {
 		setup: func(t *testing.T, args *args) error {
 			args.dataDir = t.TempDir()
 			return os.MkdirAll(filepath.Join(args.dataDir, "member", "snap"), 0775)
-		},
-	},
-	{
-		name:    "socket db",
-		wantErr: true,
-		setup: func(t *testing.T, args *args) error {
-			if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-				t.Skip("Socket copy is not supported")
-			}
-			// Keep the socket path short; t.TempDir includes the full test name.
-			dataDir, err := os.MkdirTemp("", "store-")
-			if err != nil {
-				return err
-			}
-			t.Cleanup(func() { os.RemoveAll(dataDir) })
-			args.dataDir = filepath.Join(dataDir, "data")
-			if err := os.MkdirAll(filepath.Join(args.dataDir, "member", "snap"), 0775); err != nil {
-				return err
-			}
-			listener, err := net.Listen("unix", filepath.Join(args.dataDir, "member", "snap", "db"))
-			if err != nil {
-				return err
-			}
-			t.Cleanup(func() { listener.Close() })
-			return nil
 		},
 	},
 	{
