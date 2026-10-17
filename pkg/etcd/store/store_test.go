@@ -1,8 +1,10 @@
 package store
 
 import (
+	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -31,6 +33,7 @@ var tests = []struct {
 		name:    "no db path",
 		wantErr: true,
 		setup: func(t *testing.T, args *args) error {
+			args.dataDir = filepath.Join(t.TempDir(), "missing")
 			return nil
 		},
 	},
@@ -40,6 +43,31 @@ var tests = []struct {
 		setup: func(t *testing.T, args *args) error {
 			args.dataDir = t.TempDir()
 			return os.MkdirAll(filepath.Join(args.dataDir, "member", "snap"), 0775)
+		},
+	},
+	{
+		name:    "socket db",
+		wantErr: true,
+		setup: func(t *testing.T, args *args) error {
+			if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+				t.Skip("Socket copy is not supported")
+			}
+			// Keep the socket path short; t.TempDir includes the full test name.
+			dataDir, err := os.MkdirTemp("", "store-")
+			if err != nil {
+				return err
+			}
+			t.Cleanup(func() { os.RemoveAll(dataDir) })
+			args.dataDir = filepath.Join(dataDir, "data")
+			if err := os.MkdirAll(filepath.Join(args.dataDir, "member", "snap"), 0775); err != nil {
+				return err
+			}
+			listener, err := net.Listen("unix", filepath.Join(args.dataDir, "member", "snap", "db"))
+			if err != nil {
+				return err
+			}
+			t.Cleanup(func() { listener.Close() })
+			return nil
 		},
 	},
 	{
@@ -173,6 +201,12 @@ func Test_UnitNewTemporaryStore(t *testing.T) {
 			}
 
 			t.Logf("NewTemporaryStore() error = %v, kv = %#v", err, kv)
+
+			if tt.wantErr {
+				if _, err := os.Stat(tt.args.dataDir + "-tmp"); !os.IsNotExist(err) {
+					t.Errorf("NewTemporaryStore() left %s-tmp behind after an error, Stat() = %v", tt.args.dataDir, err)
+				}
+			}
 
 			if !tt.wantErr {
 				kvs, err := kv.List(t.Context(), "/bootstrap", 0)
