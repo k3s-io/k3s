@@ -1,0 +1,68 @@
+---
+name: "Bump Flannel version"
+scms:
+  k3s:
+    kind: "github"
+    spec:
+      user: "{{ .github.user }}"
+      email: "{{ .github.email }}"
+      username: "{{ .github.username }}"
+      token: "{{ requiredEnv .github.token }}"
+      owner: '{{ requiredEnv .github.org }}'
+      repository: '{{ requiredEnv .github.repo }}'
+      branch: '{{ requiredEnv .github.branch }}'
+      commitmessage:
+        title: "Bump Flannel version"
+
+actions:
+  github:
+    title: "[{{ requiredEnv .github.branch }}] Bump Flannel version"
+    kind: "github/pullrequest"
+    scmid: "k3s"
+    spec:
+      merge:
+        strategy: "manual"
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
+
+sources:
+  flannel:
+    name: "Get Flannel latest stable release version"
+    kind: "githubrelease"
+    spec:
+      owner: "{{ .flannel.org }}"
+      repository: "{{ .flannel.repo }}"
+      token: "{{ requiredEnv .github.token }}"
+      versionfilter:
+        kind: "semver"
+        pattern: "*"
+  get-pwd:
+    name: "Run Updatecli execution directory"
+    kind: "shell"
+    spec:
+      command: 'pwd'
+      environments:
+        - name: PATH
+
+conditions:
+  flannel:
+    name: "Check Flannel usage in go.mod"
+    kind: "file"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      file: "go.mod"
+      matchpattern: 'github.com/flannel-io/flannel'
+
+targets:
+  go-mod:
+    name: "Run go mod update"
+    kind: "shell"
+    scmid: "k3s"
+    disablesourceinput: true
+    spec:
+      command: '{{ source "get-pwd" }}/updatecli/scripts/run-go-mod-update.sh github.com/flannel-io/flannel@{{ source "flannel" }}'
+      environments:
+        - name: PATH
+        - name: HOME
