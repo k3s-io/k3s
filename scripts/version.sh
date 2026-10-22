@@ -59,7 +59,7 @@ if [ -z "$VERSION_KUBE_ROUTER" ]; then
     VERSION_KUBE_ROUTER="v0.0.0"
 fi
 
-VERSION_ROOT="v0.15.3"
+VERSION_ROOT="v0.15.4"
 case ${ARCH} in
     amd64)
       K3S_ROOT_SHA256=0c5e030e0d3ea5a8292660e37daa1b1e66ce0b0fa5c0482e053abe45f04957d9
