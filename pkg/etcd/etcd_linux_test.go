@@ -162,6 +162,44 @@ func Test_UnitETCD_IsInitialized(t *testing.T) {
 	}
 }
 
+func Test_UnitETCD_oldNameFile(t *testing.T) {
+	tests := []struct {
+		name string
+		dirs []string
+		want string
+	}{
+		{name: "no moved data dirs"},
+		{
+			name: "newest by number, not by string",
+			dirs: []string{"etcd-old-999", "etcd-old-1000", "etcd-old-100"},
+			want: "etcd-old-1000",
+		},
+		{
+			name: "ignores other directories",
+			dirs: []string{"etcd-old-5", "etcd-old-9x", "etcd-old-", "etcd-backup-9", "etcd"},
+			want: "etcd-old-5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cnf := generateTestConfig(t)
+			for _, dir := range tt.dirs {
+				if err := os.MkdirAll(filepath.Join(cnf.DataDir, "db", dir), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want := ""
+			if tt.want != "" {
+				want = filepath.Join(cnf.DataDir, "db", tt.want, "name")
+			}
+			if got := oldNameFile(cnf); got != want {
+				t.Errorf("oldNameFile() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func Test_UnitETCD_Register(t *testing.T) {
 	type args struct {
 		config  *config.Control

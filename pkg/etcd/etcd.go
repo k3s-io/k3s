@@ -1664,7 +1664,14 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 	// the member name is not loaded when etcd is disabled, so read it from the
 	// name file that was left behind if this node previously ran etcd
 	if e.name == "" {
-		if data, err := os.ReadFile(nameFile(e.config)); err == nil {
+		data, err := os.ReadFile(nameFile(e.config))
+		if os.IsNotExist(err) {
+			// a release that did not read the name file already moved the data dir aside
+			if nf := oldNameFile(e.config); nf != "" {
+				data, err = os.ReadFile(nf)
+			}
+		}
+		if err == nil {
 			e.name = string(data)
 		} else if !os.IsNotExist(err) {
 			return err
@@ -1681,6 +1688,23 @@ func (e *ETCD) RemoveSelf(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// oldNameFile returns the path to the name file in the newest etcd data dir that was
+// moved aside, or an empty string if there is none.
+func oldNameFile(config *config.Control) string {
+	dir := dbDir(config)
+	entries, _ := os.ReadDir(filepath.Dir(dir))
+	var newest int64
+	var path string
+	for _, entry := range entries {
+		if suffix, ok := strings.CutPrefix(entry.Name(), filepath.Base(dir)+"-old-"); ok && entry.IsDir() {
+			if ts, err := strconv.ParseInt(suffix, 10, 64); err == nil && ts > newest {
+				newest, path = ts, filepath.Join(filepath.Dir(dir), entry.Name(), "name")
+			}
+		}
+	}
+	return path
 }
 
 // DefaultEndpointConfig returns default kine endpoint config, with k3s default

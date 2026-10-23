@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/tests"
 	"github.com/k3s-io/k3s/tests/docker"
@@ -69,6 +70,61 @@ var _ = Describe("Etcd Tests", Ordered, func() {
 			server := config.Servers[1]
 			_, err := server.RunCmdOnNode("echo 'disable-etcd: true' >> /etc/rancher/k3s/config.yaml")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(docker.RestartCluster([]docker.DockerNode{server})).To(Succeed())
+			Eventually(func() ([]string, error) {
+				return etcdMemberNames(config.Servers[0])
+			}, "120s", "5s").Should(And(HaveLen(2), Not(ContainElement(HavePrefix(server.Name)))))
+			Eventually(func() error {
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+			}, "120s", "5s").Should(Succeed())
+		})
+		It("should stay healthy when the server is restarted again", func() {
+			server := config.Servers[1]
+			Expect(docker.RestartCluster([]docker.DockerNode{server})).To(Succeed())
+			Eventually(func() error {
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+			}, "120s", "5s").Should(Succeed())
+			Eventually(func() ([]string, error) {
+				return etcdMemberNames(config.Servers[0])
+			}, "60s", "5s").Should(And(HaveLen(2), Not(ContainElement(HavePrefix(server.Name)))))
+		})
+		It("should destroy the cluster", func() {
+			Expect(config.Cleanup()).To(Succeed())
+		})
+	})
+
+	Context("Test disabling etcd on a server in a 3 server cluster whose etcd data dir was moved aside", func() {
+		It("should setup the cluster configuration", func() {
+			var err error
+			config, err = docker.NewTestConfig(GinkgoTB(), "ghcr.io/rancher/systemd-node:v0.0.9")
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("should provision servers", func() {
+			Expect(config.ProvisionServers(3)).To(Succeed())
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
+			}, "120s", "5s").Should(Succeed())
+			Eventually(func() error {
+				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
+			}, "60s", "5s").Should(Succeed())
+		})
+		It("should list all servers as etcd members", func() {
+			Eventually(func() ([]string, error) {
+				return etcdMemberNames(config.Servers[0])
+			}, "60s", "5s").Should(HaveLen(3))
+		})
+		It("should leave the etcd data dir moved aside, as a release without the name lookup does", func() {
+			server := config.Servers[1]
+			_, err := server.RunCmdOnNode("systemctl stop k3s")
+			Expect(err).NotTo(HaveOccurred())
+			cmd := fmt.Sprintf("mv /var/lib/rancher/k3s/server/db/etcd /var/lib/rancher/k3s/server/db/etcd-old-%d", time.Now().Unix())
+			_, err = server.RunCmdOnNode(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = server.RunCmdOnNode("echo 'disable-etcd: true' >> /etc/rancher/k3s/config.yaml")
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("should remove the etcd member when the server is started with etcd disabled", func() {
+			server := config.Servers[1]
 			Expect(docker.RestartCluster([]docker.DockerNode{server})).To(Succeed())
 			Eventually(func() ([]string, error) {
 				return etcdMemberNames(config.Servers[0])
