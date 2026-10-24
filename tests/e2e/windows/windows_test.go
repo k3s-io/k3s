@@ -27,11 +27,12 @@ var ci = flag.Bool("ci", false, "running on CI")
 // E2E_NODE_MEMORY: memory per VM in MB (default: 4096)
 
 const (
-	serverName  = "server-0"
-	windowsName = "agent-0"
-	serverIP    = "10.10.10.100"
-	windowsIP   = "10.10.10.101"
-	token       = "vagrant"
+	serverName     = "server-0"
+	windowsName    = "agent-0"
+	linuxAgentName = "agent-1"
+	serverIP       = "10.10.10.100"
+	windowsIP      = "10.10.10.101"
+	token          = "vagrant"
 )
 
 func Test_E2EWindows(t *testing.T) {
@@ -44,6 +45,7 @@ func Test_E2EWindows(t *testing.T) {
 var (
 	kubeconfig string
 	server     = e2e.VagrantNode{Name: serverName}
+	linuxAgent = e2e.VagrantNode{Name: linuxAgentName}
 )
 
 // runOnWindows runs a PowerShell command over WinRM; RunCmdOnNode can't be used as it wraps in sudo.
@@ -100,7 +102,7 @@ func nodeVersion(name string) (string, error) {
 
 var _ = ReportAfterEach(e2e.GenReport)
 
-var _ = Describe("Windows agent joins a Linux cluster", Ordered, func() {
+var _ = Describe("Windows agent and Linux agent join a Linux cluster", Ordered, func() {
 	It("Starts the Linux server", func() {
 		Expect(vagrantUp(serverName)).To(Succeed(), e2e.GetVagrantLog(nil))
 		var err error
@@ -167,6 +169,51 @@ var _ = Describe("Windows agent joins a Linux cluster", Ordered, func() {
 			return tests.RunCommand(cmd)
 		}, "120s", "3s").Should(ContainSubstring("Linux connectivity test"), "Windows to Linux: "+cmd)
 	})
+
+	It("Joins a Linux agent to the cluster", func() {
+		Expect(vagrantUp(linuxAgentName)).To(Succeed(), e2e.GetVagrantLog(nil))
+		Eventually(func() error {
+			return tests.NodesReady(kubeconfig, []string{serverName, windowsName, linuxAgentName})
+		}, "600s", "10s").Should(Succeed())
+		e2e.DumpNodes(kubeconfig)
+	})
+
+	It("Labels the Linux and Windows agents with their OS", func() {
+		res, err := tests.RunCommand("kubectl get nodes -l kubernetes.io/os=linux -o name --kubeconfig=" + kubeconfig)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res).To(ContainSubstring(linuxAgentName))
+		Expect(res).NotTo(ContainSubstring(windowsName))
+
+		res, err = tests.RunCommand("kubectl get nodes -l kubernetes.io/os=windows -o name --kubeconfig=" + kubeconfig)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res).To(ContainSubstring(windowsName))
+		Expect(res).NotTo(ContainSubstring(linuxAgentName))
+	})
+
+	It("Runs the same K3s version on the Linux and Windows agents", func() {
+		linuxVersion, err := nodeVersion(linuxAgentName)
+		Expect(err).NotTo(HaveOccurred())
+		windowsVersion, err := nodeVersion(windowsName)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(linuxVersion).NotTo(BeEmpty())
+		Expect(linuxVersion).To(Equal(windowsVersion))
+	})
+
+	It("Runs a pod on the Linux agent while the Windows pod keeps running", func() {
+		_, err := tests.RunCommand("kubectl apply -f ../amd64_resource_files/linux-agent-workload.yaml --kubeconfig=" + kubeconfig)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(func(g Gomega) {
+			cmd := "kubectl get pods -l app=linux-agent-test --field-selector=status.phase=Running -o jsonpath='{.items[*].spec.nodeName}' --kubeconfig=" + kubeconfig
+			res, err := tests.RunCommand(cmd)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(res).To(ContainSubstring(linuxAgentName))
+		}, "300s", "5s").Should(Succeed())
+
+		cmd := "kubectl get pods -l app=windows-test --field-selector=status.phase=Running -o=name --kubeconfig=" + kubeconfig
+		res, err := tests.RunCommand(cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(res).To(ContainSubstring("windows-test"))
+	})
 })
 
 var failed bool
@@ -176,7 +223,10 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("server-journal", e2e.TailJournalLogs(1000, []e2e.VagrantNode{server}))
+		AddReportEntry("server-journal", e2e.TailJournalLogs(1000, []e2e.VagrantNode{server, linuxAgent}))
+		if out, err := tests.RunCommand("kubectl describe pods --kubeconfig=" + kubeconfig); err == nil {
+			AddReportEntry("pod-descriptions", out)
+		}
 		if out, err := runOnWindows(`Get-Content C:\k3s\agent.log -Tail 200`); err == nil {
 			AddReportEntry("windows-agent-log", out)
 		}

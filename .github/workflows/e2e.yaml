@@ -162,7 +162,7 @@ jobs:
           verbose: true # optional (default = false)
   
   e2e-windows:
-    name: E2E Windows Tests
+    name: E2E Windows and Linux Agent Tests
     needs: [build, build-windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 135
@@ -208,7 +208,7 @@ jobs:
         run: |
           vagrant box add cloud-image/ubuntu-24.04 --provider libvirt
           vagrant box add "$E2E_WINDOWS_BOX" --provider libvirt
-      - name: Run Windows Test
+      - name: Run Windows and Linux Agent Tests
         shell: bash
         working-directory: tests/e2e/windows
         run: go test -v -count=1 -timeout=90m . -ci -ginkgo.timeout=85m 2>&1 | tee windows-e2e.log

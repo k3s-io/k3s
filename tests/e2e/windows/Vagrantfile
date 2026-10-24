@@ -10,6 +10,7 @@ NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 4096).to_i
 NETWORK_PREFIX = "10.10.10"
 SERVER_IP = "#{NETWORK_PREFIX}.100"
 WINDOWS_IP = "#{NETWORK_PREFIX}.101"
+LINUX_AGENT_IP = "#{NETWORK_PREFIX}.102"
 TOKEN = "vagrant"
 
 if RELEASE_VERSION.empty?
@@ -22,17 +23,7 @@ if RELEASE_VERSION == "skip" && !File.file?(LINUX_K3S_BIN)
   abort "E2E_LINUX_K3S_BIN must point to a Linux K3s binary when E2E_RELEASE_VERSION=skip"
 end
 
-def provisionServer(vm)
-  vm.box = LINUX_BOX
-  vm.hostname = "server-0"
-  vm.network "private_network", ip: SERVER_IP, netmask: "255.255.255.0"
-
-  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
-  load vagrant_defaults
-
-  defaultOSConfigure(vm)
-  install_type = getInstallType(vm, RELEASE_VERSION, "")
-
+def configureLinuxNode(vm, node_ip)
   if RELEASE_VERSION == "skip"
     vm.provision "Upload Linux K3s", type: "file", source: LINUX_K3S_BIN, destination: "/tmp/k3s"
     vm.provision "Install Linux K3s", type: "shell",
@@ -42,7 +33,7 @@ def provisionServer(vm)
   # Match the VXLAN VNI and port required by Windows.
   vm.provision "Configure Windows-compatible VXLAN", type: "shell", inline: <<~SHELL
     set -eu
-    iface=$(ip -o -4 addr show | awk '$4 == "#{SERVER_IP}/24" { print $2 }')
+    iface=$(ip -o -4 addr show | awk '$4 == "#{node_ip}/24" { print $2 }')
     if [ -z "$iface" ]; then
       echo "Cluster network interface not found" >&2
       exit 1
@@ -60,6 +51,19 @@ def provisionServer(vm)
     }
     JSON
   SHELL
+end
+
+def provisionServer(vm)
+  vm.box = LINUX_BOX
+  vm.hostname = "server-0"
+  vm.network "private_network", ip: SERVER_IP, netmask: "255.255.255.0"
+
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  load vagrant_defaults
+
+  defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, "")
+  configureLinuxNode(vm, SERVER_IP)
 
   vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
     k3s.registries = ghcrRegistries
@@ -70,6 +74,32 @@ def provisionServer(vm)
       node-ip: #{SERVER_IP}
       node-external-ip: #{SERVER_IP}
       flannel-backend: vxlan
+      flannel-conf: /etc/rancher/k3s/flannel.json
+    YAML
+    k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
+    k3s.config_mode = '0644'
+  end
+end
+
+def provisionLinuxAgent(vm)
+  vm.box = LINUX_BOX
+  vm.hostname = "agent-1"
+  vm.network "private_network", ip: LINUX_AGENT_IP, netmask: "255.255.255.0"
+
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  load vagrant_defaults
+
+  defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, "")
+  configureLinuxNode(vm, LINUX_AGENT_IP)
+
+  vm.provision 'k3s-linux-agent', type: 'k3s', run: 'once' do |k3s|
+    k3s.args = "agent"
+    k3s.config = <<~YAML
+      server: https://#{SERVER_IP}:6443
+      token: #{TOKEN}
+      node-ip: #{LINUX_AGENT_IP}
+      node-external-ip: #{LINUX_AGENT_IP}
       flannel-conf: /etc/rancher/k3s/flannel.json
     YAML
     k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
@@ -129,5 +159,8 @@ Vagrant.configure("2") do |config|
   end
   config.vm.define "agent-0" do |node|
     provisionWindowsAgent(node.vm)
+  end
+  config.vm.define "agent-1" do |node|
+    provisionLinuxAgent(node.vm)
   end
 end
