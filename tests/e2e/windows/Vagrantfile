@@ -1,0 +1,133 @@
+ENV['VAGRANT_NO_PARALLEL'] = 'no'
+LINUX_BOX = (ENV['E2E_LINUX_BOX'] || 'cloud-image/ubuntu-24.04')
+WINDOWS_BOX = (ENV['E2E_WINDOWS_BOX'] || '')
+RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
+WINDOWS_K3S_BIN = (ENV['E2E_WINDOWS_K3S_BIN'] || "")
+LINUX_K3S_BIN = (ENV['E2E_LINUX_K3S_BIN'] || "")
+LIBVIRT_POOL = (ENV['E2E_LIBVIRT_POOL'] || "")
+NODE_CPUS = (ENV['E2E_NODE_CPUS'] || 2).to_i
+NODE_MEMORY = (ENV['E2E_NODE_MEMORY'] || 4096).to_i
+NETWORK_PREFIX = "10.10.10"
+SERVER_IP = "#{NETWORK_PREFIX}.100"
+WINDOWS_IP = "#{NETWORK_PREFIX}.101"
+TOKEN = "vagrant"
+
+if RELEASE_VERSION.empty?
+  abort "E2E_RELEASE_VERSION must be set to a published K3s release or skip for local binaries"
+end
+if WINDOWS_K3S_BIN.empty?
+  abort "E2E_WINDOWS_K3S_BIN must point to k3s.exe built from E2E_RELEASE_VERSION"
+end
+if RELEASE_VERSION == "skip" && !File.file?(LINUX_K3S_BIN)
+  abort "E2E_LINUX_K3S_BIN must point to a Linux K3s binary when E2E_RELEASE_VERSION=skip"
+end
+
+def provisionServer(vm)
+  vm.box = LINUX_BOX
+  vm.hostname = "server-0"
+  vm.network "private_network", ip: SERVER_IP, netmask: "255.255.255.0"
+
+  vagrant_defaults = File.exist?("./vagrantdefaults.rb") ? "./vagrantdefaults.rb" : "../vagrantdefaults.rb"
+  load vagrant_defaults
+
+  defaultOSConfigure(vm)
+  install_type = getInstallType(vm, RELEASE_VERSION, "")
+
+  if RELEASE_VERSION == "skip"
+    vm.provision "Upload Linux K3s", type: "file", source: LINUX_K3S_BIN, destination: "/tmp/k3s"
+    vm.provision "Install Linux K3s", type: "shell",
+      inline: "install -o root -g root -m 0755 /tmp/k3s /usr/local/bin/k3s"
+  end
+
+  # Match the VXLAN VNI and port required by Windows.
+  vm.provision "Configure Windows-compatible VXLAN", type: "shell", inline: <<~SHELL
+    set -eu
+    iface=$(ip -o -4 addr show | awk '$4 == "#{SERVER_IP}/24" { print $2 }')
+    if [ -z "$iface" ]; then
+      echo "Cluster network interface not found" >&2
+      exit 1
+    fi
+    mkdir -p /etc/rancher/k3s/config.yaml.d
+    printf 'flannel-iface: %s\\n' "$iface" > /etc/rancher/k3s/config.yaml.d/10-flannel.yaml
+    cat > /etc/rancher/k3s/flannel.json <<'JSON'
+    {
+      "Network": "10.42.0.0/16",
+      "Backend": {
+        "Type": "vxlan",
+        "VNI": 4096,
+        "Port": 4789
+      }
+    }
+    JSON
+  SHELL
+
+  vm.provision 'k3s-primary-server', type: 'k3s', run: 'once' do |k3s|
+    k3s.registries = ghcrRegistries
+    k3s.args = "server"
+    # Windows only supports the vxlan backend
+    k3s.config = <<~YAML
+      token: #{TOKEN}
+      node-ip: #{SERVER_IP}
+      node-external-ip: #{SERVER_IP}
+      flannel-backend: vxlan
+      flannel-conf: /etc/rancher/k3s/flannel.json
+    YAML
+    k3s.env = %W[K3S_KUBECONFIG_MODE=0644 #{install_type}]
+    k3s.config_mode = '0644'
+  end
+end
+
+def provisionWindowsAgent(vm)
+  if WINDOWS_BOX.empty?
+    abort "E2E_WINDOWS_BOX must be set to a Windows Server Vagrant box"
+  end
+  vm.box = WINDOWS_BOX
+  vm.hostname = "agent-0"
+  vm.guest = :windows
+  vm.communicator = "winrm"
+  vm.boot_timeout = 900
+  vm.synced_folder ".", "/vagrant", disabled: true
+  vm.network "private_network", ip: WINDOWS_IP, netmask: "255.255.255.0"
+
+  vm.provision "Install Containers feature", type: "shell", privileged: true, inline: <<~POWERSHELL
+    $feature = Get-WindowsFeature -Name Containers
+    if (-not $feature.Installed) { Install-WindowsFeature -Name Containers }
+  POWERSHELL
+  vm.provision "Reload after Containers feature", type: "reload", run: "once"
+
+  vm.provision "Configure cluster network", type: "shell", privileged: true, inline: <<~POWERSHELL
+    $ErrorActionPreference = "Stop"
+    $index = (Get-NetIPAddress -IPAddress "#{WINDOWS_IP}" -AddressFamily IPv4).InterfaceIndex
+    Get-NetAdapter | Where-Object { $_.ifIndex -eq $index -and $_.Name -ne "k3s" } |
+      Rename-NetAdapter -NewName "k3s"
+    if (-not (Get-NetFirewallRule | Where-Object { $_.DisplayName -eq "K3s VXLAN" })) {
+      New-NetFirewallRule -DisplayName "K3s VXLAN" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 4789 | Out-Null
+    }
+  POWERSHELL
+
+  vm.provision "Create install directory", type: "shell", privileged: true,
+    inline: "New-Item -ItemType Directory -Force -Path C:\\k3s | Out-Null"
+
+  vm.provision "Upload k3s.exe", type: "file", source: WINDOWS_K3S_BIN, destination: "C:\\k3s\\k3s.exe"
+end
+
+Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ["vagrant-k3s", "vagrant-reload", "vagrant-scp"]
+  config.vm.provider "libvirt" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+    v.storage_pool_name = LIBVIRT_POOL unless LIBVIRT_POOL.empty?
+    v.default_prefix = File.basename(Dir.getwd) + "_" + Time.now.to_i.to_s + "_"
+  end
+  config.vm.provider "virtualbox" do |v|
+    v.cpus = NODE_CPUS
+    v.memory = NODE_MEMORY
+  end
+
+  config.vm.define "server-0" do |node|
+    provisionServer(node.vm)
+  end
+  config.vm.define "agent-0" do |node|
+    provisionWindowsAgent(node.vm)
+  end
+end
