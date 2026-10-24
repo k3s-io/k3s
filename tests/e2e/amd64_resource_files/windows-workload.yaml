@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: windows-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: windows-test
+  template:
+    metadata:
+      labels:
+        app: windows-test
+    spec:
+      nodeSelector:
+        kubernetes.io/os: windows
+      containers:
+      - name: pause
+        image: mcr.microsoft.com/windows/nanoserver:ltsc2022
+        command: ["ping", "-t", "localhost"]
