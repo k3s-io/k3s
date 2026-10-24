@@ -34,6 +34,7 @@ import (
 	_ "github.com/containerd/containerd/v2/plugins/sandbox"
 	_ "github.com/containerd/containerd/v2/plugins/server/debug"
 	_ "github.com/containerd/containerd/v2/plugins/server/grpc"
+	_ "github.com/containerd/containerd/v2/plugins/server/metrics"
 	_ "github.com/containerd/containerd/v2/plugins/server/ttrpc"
 	_ "github.com/containerd/containerd/v2/plugins/services/containers"
 	_ "github.com/containerd/containerd/v2/plugins/services/content"
