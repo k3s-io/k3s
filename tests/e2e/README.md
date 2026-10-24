@@ -77,6 +77,28 @@ go test -timeout=15m ./tests/e2e/validatecluster/... -run E2E
 go test -timeout=15m ./tests/e2e/... -run E2EClusterValidation
 ```
 
+### Windows agent
+
+The Windows suite starts a Linux server and a Windows Server 2022 agent. It has been tested with libvirt and the default `cloud-image/ubuntu-24.04` Linux box. A Windows Server 2022 Vagrant box is required; verify its licence permits your intended use.
+
+Provide either a matching pair of locally built binaries or a release version for both nodes:
+
+```bash
+export E2E_WINDOWS_BOX=<windows-server-2022-box>
+
+# Option A: binaries built from the same k3s source revision
+export E2E_LINUX_K3S_BIN=/path/to/k3s
+export E2E_WINDOWS_K3S_BIN=/path/to/k3s.exe
+
+# Option B: use a published release instead of the two binary paths
+# export E2E_RELEASE_VERSION=<release-version>
+
+cd tests/e2e/windows
+go test -v -timeout=75m .
+```
+
+Set `E2E_LIBVIRT_POOL` if the VM disks should use a specific libvirt storage pool. The suite removes the VMs after a successful run and retains them after a local failure for debugging. Adding `-ci` also removes the VMs after a failure.
+
 Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  
 
 To run the all E2E tests and generate JUnit testing reports:
