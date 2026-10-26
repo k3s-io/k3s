@@ -60,7 +60,7 @@ Regarding subnet and backend configuration:
 `EnableIPv6` is set based on what the user passed as k3s server `--cluster-cidr`.
 `Backend` uses vxlan as default, although this can be changed using k3s server flag `--flannel-backend`
 
-Something important to note is that k3s allows the user to override the whole subnet and backend configuration, by using the k3s agent flag `--flannel-conf` and `--flanel-cni-conf`. Overriding the whole subnet and backend configuration is useful if user wants to add specific backend configurations, e.g. VNI for vxlan. Users can currently do this by using `<=option1=val1,option2=val2>` when selecting the backend, but it seldom used and complicates things, thus it was deprecated in favor of `--flannel-conf`.
+Something important to note is that k3s allows the user to override the whole subnet and backend configuration using `--flannel-conf`, and the CNI configuration using `--flannel-cni-conf`. Overriding the whole subnet and backend configuration is useful if user wants to add specific backend configurations, e.g. VNI for vxlan. Users can currently do this by using `<=option1=val1,option2=val2>` when selecting the backend, but it seldom used and complicates things, thus it was deprecated in favor of `--flannel-conf`.
 
 To wrap up the context, k3s includes the following flannel options:
 
@@ -75,6 +75,46 @@ To wrap up the context, k3s includes the following flannel options:
 | `--flannel-backend` | string | Sets the encapsulation technology that will allow inter-node traffic to work. It matches part of the Backend parameter in the subnet&backend configuration |
 | `--flannel-ipv6-masq` | bool | Enables masquerading traffic for IPv6. Note that IPv4 traffic is always masqueraded. It matches the ipv6 part of the `--ip-masq` flag |
 | `--flannel-external-ip` | bool | Enables using node external IP addresses for flannel traffic. It sort of matches on `--public-ip` and `--public-ipv6` flag. In this case, k3s selects the external-ips for those flags |
+
+### Configuring VXLAN for mixed Linux and Windows clusters
+
+Linux defaults to VNI `1` and the kernel-default UDP port (normally `8472`).
+To interoperate with Windows nodes, use `--flannel-conf` to configure VNI
+`4096` and UDP port `4789` on every Linux node running Flannel, including
+servers with the embedded agent enabled. Windows already uses these values.
+
+For an IPv4-only cluster, create `/etc/rancher/k3s/flannel-windows.json` on
+each Linux node, replacing `Network` with the cluster's IPv4 pod CIDR:
+
+```json
+{
+  "Network": "10.42.0.0/16",
+  "EnableIPv4": true,
+  "EnableIPv6": false,
+  "Backend": {
+    "Type": "vxlan",
+    "VNI": 4096,
+    "Port": 4789
+  }
+}
+```
+
+Add the following entry to `/etc/rancher/k3s/config.yaml` on each Linux node:
+
+```yaml
+flannel-conf: /etc/rancher/k3s/flannel-windows.json
+```
+
+Keep the server's `flannel-backend` set to `vxlan` (the default), and allow
+UDP `4789` between the nodes' Flannel endpoint addresses, restricted to trusted
+cluster nodes. The override is local to each node and replaces the entire
+generated Flannel network configuration; it is not distributed by the server.
+For dual-stack or IPv6-only clusters, adapt the network and enablement fields
+to match the cluster configuration.
+
+Configure the override before starting the cluster when possible. For existing
+clusters, plan a maintenance window to apply it and restart the affected Linux
+K3s services: nodes using different VNIs or ports cannot exchange VXLAN traffic.
 
 ### Design suggestion
 
