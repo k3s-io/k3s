@@ -24,6 +24,7 @@ import (
 	coregetter "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 )
 
 // This sets a default duration to wait for the apiserver to become ready. This is primarily used to
@@ -251,7 +252,7 @@ func subjectAccessReview(authClient *authorizationv1client.AuthorizationV1Client
 }
 
 func BuildControllerEventRecorder(ctx context.Context, k8s clientset.Interface, controllerName, namespace string) record.EventRecorder {
-	logrus.Infof("Creating %s event broadcaster", controllerName)
+	klog.FromContext(ctx).Info("Creating event broadcaster", "controller", controllerName)
 	eventBroadcaster := record.NewBroadcaster(record.WithContext(ctx))
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&coregetter.EventSinkImpl{Interface: k8s.CoreV1().Events(namespace)})
