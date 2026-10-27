@@ -465,6 +465,14 @@ func (sc *serverConn) Close() error {
 	return sc.Conn.Close()
 }
 
+func (sc *serverConn) CloseRead() error {
+	return sc.Close()
+}
+
+func (sc *serverConn) CloseWrite() error {
+	return sc.Close()
+}
+
 // runHealthChecks periodically health-checks all servers and updates metrics
 func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 	wait.Until(func() {
