@@ -162,7 +162,9 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 		return nil
 	}
 
-	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || file.Size() != lastFileState.Size || file.ModTime().After(lastFileState.ModTime.Time) {
+	// metav1.Time is serialized with second precision, so truncate the file's actual mtime before
+	// comparing, otherwise files with a sub-second mtime are re-imported on every start
+	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || file.Size() != lastFileState.Size || file.ModTime().Truncate(time.Second).After(lastFileState.ModTime.Time) {
 		start := time.Now()
 		images, err := preloadFile(ctx, w.cfg, client, imageClient, key)
 		if err != nil {
