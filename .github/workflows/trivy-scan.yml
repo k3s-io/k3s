@@ -12,7 +12,7 @@ permissions:
 jobs:
   trivy_scan:
     if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write # Required to checkout the PR's head SHA.
     outputs:
@@ -79,7 +79,7 @@ jobs:
   report_results:
     needs: trivy_scan
     if: always() # Run even if the scan fails.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pull-requests: write # Required to post comments.
     
@@ -115,7 +115,7 @@ jobs:
   remove_label:
     if: always() # Run even if the scan fails.
     needs: trivy_scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pull-requests: write # Required to remove labels from the PR.
 
