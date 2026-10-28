@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/distribution/reference"
 	"github.com/k3s-io/k3s/pkg/agent/proxy"
 	agentutil "github.com/k3s-io/k3s/pkg/agent/util"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -676,6 +677,11 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		}
 	}
 
+	normalized, err := reference.ParseDockerRef(nodeConfig.AgentConfig.PauseImage)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to normalize pause image reference")
+	}
+	nodeConfig.AgentConfig.PauseImage = normalized.String()
 	nodeConfig.AgentConfig.ExtraKubeletArgs = envInfo.ExtraKubeletArgs.Value()
 	nodeConfig.AgentConfig.ExtraKubeProxyArgs = envInfo.ExtraKubeProxyArgs.Value()
 	nodeConfig.AgentConfig.NodeTaints = envInfo.Taints.Value()
