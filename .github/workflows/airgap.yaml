@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-airgap:
     name: Export Images (${{ matrix.arch }})
-    runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
+    runs-on: ubuntu-24.04 # Runs on standard runner, docker pulls with --platform
     strategy:
       matrix:
         arch: [amd64, arm64, arm]

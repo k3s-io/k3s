@@ -10,7 +10,7 @@ permissions:
 jobs:
   install-test:
     name: Install
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false

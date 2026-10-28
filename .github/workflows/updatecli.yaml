@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   cleanup-branches:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: read
@@ -25,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   updatecli:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: cleanup-branches
     permissions:
       contents: write
