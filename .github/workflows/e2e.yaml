@@ -178,7 +178,7 @@ jobs:
             arch: arm64
           - dtest: network
             arch: arm64
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     steps:
     - name: Remove Unnecessary Tools
       working-directory: /
