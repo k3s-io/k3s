@@ -55,7 +55,9 @@ jobs:
         run: docker load -i pr-context/k3s.tar
 
       - name: Download Rancher's VEX Hub report
-        run: curl -fsSO https://raw.githubusercontent.com/rancher/vexhub/refs/heads/main/reports/rancher.openvex.json
+        run: |
+          curl -fsSO https://github.com/rancher/vexhub/raw/refs/heads/main/reports/rancher.openvex.json.gz
+          gzip -d rancher.openvex.json.gz
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
