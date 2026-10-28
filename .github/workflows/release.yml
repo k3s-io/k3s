@@ -27,7 +27,7 @@ jobs:
 
   push-release-image:
     name: Build and Push Multi-Arch Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions: 
       packages: write # Needed to push images to GHCR
       id-token: write
@@ -181,7 +181,7 @@ jobs:
     permissions: 
       contents: write # Needed to update release with assets
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-amd64, build-arm, build-airgap]
     steps:
     - name: Checkout code
@@ -266,7 +266,7 @@ jobs:
 
   dispatch-k3s-upgrade:
     name: Dispatch k3s-upgrade Workflow
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [upload-release-assets]
     steps:
       - name: Dispatch k3s-upgrade Workflow

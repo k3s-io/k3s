@@ -26,7 +26,7 @@ jobs:
     uses: ./.github/workflows/build-k3s.yaml
   docker-go:
     name: Docker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -43,7 +43,7 @@ jobs:
   test:
     name: "Smoke Test"
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
