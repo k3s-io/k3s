@@ -122,8 +122,10 @@ func (c *Cluster) initClusterAndHTTPS(ctx context.Context) error {
 			certHandler.ServeHTTP(rw, req)
 			handler.ServeHTTP(rw, req)
 		}),
-		// Same value as kube-apiserver. Without it, idle client connections are never closed.
-		IdleTimeout: 90 * time.Second,
+		// Same values as kubernetes apiserver
+		MaxHeaderBytes:    1 << 20,
+		IdleTimeout:       90 * time.Second,
+		ReadHeaderTimeout: 32 * time.Second,
 	}
 
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
