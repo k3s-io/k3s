@@ -164,7 +164,7 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 
 	// metav1.Time is serialized with second precision, so truncate the file's actual mtime before
 	// comparing, otherwise files with a sub-second mtime are re-imported on every start
-	if lastFileState := w.filesCache[key]; lastFileState == nil || lastFileState.Images == nil || file.Size() != lastFileState.Size || file.ModTime().Truncate(time.Second).After(lastFileState.ModTime.Time) {
+	if lastFileState := w.filesCache[key]; fileChanged(file, lastFileState) {
 		start := time.Now()
 		images, err := preloadFile(ctx, w.cfg, client, imageClient, key)
 		if err != nil {
@@ -192,6 +192,26 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 	}
 
 	return nil
+}
+
+// fileChanged reports whether an on-disk file image no longer
+// matches its cached file info.
+func fileChanged(current file.File, stored *fileInfo) bool {
+
+	// Never processed before, or processing didn't finish.
+	if stored == nil || stored.Images == nil {
+		return true
+	}
+
+	// Size changed
+	if stored.Size != current.Size() {
+		return true
+	}
+
+	// Truncate to whole seconds, since the stored timestamp
+	// may not keep sub-second precision.
+	currentModTime := current.ModTime().Truncate(time.Second)
+	return !currentModTime.Equal(stored.ModTime.Time)
 }
 
 // pruneCache removes entries for all files that have not been seen since the last restart,
