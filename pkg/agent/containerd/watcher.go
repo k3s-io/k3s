@@ -197,7 +197,6 @@ func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *
 // fileChanged reports whether an on-disk file image no longer
 // matches its cached file info.
 func fileChanged(current os.FileInfo, stored *fileInfo) bool {
-
 	// Never processed before, or processing didn't finish.
 	if stored == nil || stored.Images == nil {
 		return true
