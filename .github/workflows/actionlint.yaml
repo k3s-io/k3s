@@ -10,7 +10,7 @@ permissions:
 jobs:
   acitonlint:
     name: Lint GitHub Workflows
-    runs-on: ubuntu-latest # Runs on standard runner, docker pulls with --platform
+    runs-on: ubuntu-24.04 # Runs on standard runner, docker pulls with --platform
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

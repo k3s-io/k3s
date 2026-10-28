@@ -16,7 +16,7 @@ permissions:
 jobs:
   trigger-scan:
     if: github.event.label.name == 'scan-with-trivy'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Verify actor is a member of k3s-io organization and has write permissions
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
