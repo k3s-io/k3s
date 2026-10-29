@@ -544,6 +544,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		Token:                    info.String(),
 		Flannel: config.Flannel{
 			Backend:    controlConfig.FlannelBackend,
+			BackendEnv: controlConfig.FlannelBackendEnv,
 			IPv6Masq:   controlConfig.FlannelIPv6Masq,
 			ExternalIP: controlConfig.FlannelExternalIP,
 		},

@@ -2,6 +2,17 @@
 
 package flannel
 
+import "os"
+
+func init() {
+	if _, ok := os.LookupEnv(vxlanVniEnv); !ok {
+		os.Setenv(vxlanVniEnv, "4096")
+	}
+	if _, ok := os.LookupEnv(vxlanPortEnv); !ok {
+		os.Setenv(vxlanPortEnv, "4789")
+	}
+}
+
 const (
 	cniConf = `{
   "name":"flannel.4096",
@@ -49,10 +60,4 @@ const (
   ]
 }
 `
-
-	vxlanBackend = `{
-	"Type": "vxlan",
-	"VNI": 4096,
-	"Port": 4789
-}`
 )
