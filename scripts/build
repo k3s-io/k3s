@@ -154,22 +154,6 @@ cleanup() {
     exit ${exit_status}
 }
 
-INSTALLBIN=$(pwd)/bin
-if [ ! -x ${INSTALLBIN}/cni${BINARY_POSTFIX} ]; then
-(
-    echo Building cni
-    TMPDIR=$(mktemp -d)
-    trap cleanup EXIT
-    WORKDIR=$TMPDIR/src/github.com/containernetworking/plugins
-    git clone --single-branch --depth=1 --branch=$VERSION_CNIPLUGINS https://github.com/rancher/plugins.git $WORKDIR
-    cd $WORKDIR
-    rm -rf plugins/meta/flannel
-    git clone --single-branch --depth=1 --branch=$VERSION_FLANNEL_PLUGIN https://github.com/flannel-io/cni-plugin.git plugins/meta/flannel
-    sed -i 's/package main/package flannel/; s/func main/func Main/' plugins/meta/flannel/*.go
-    GO111MODULE=off GOPATH=$TMPDIR CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o $INSTALLBIN/cni${BINARY_POSTFIX}
-)
-fi
-
 echo Building k3s
 cp -av manifests/* pkg/deploy/embed/
 cp -av build/static/* pkg/static/embed/
@@ -181,22 +165,34 @@ for i in "${k3s_binaries[@]}"; do
 done
 
 export GOPATH=$(pwd)/build
+REPLACEMENTS=$(go list -m --mod=readonly -f '{{ if .Replace }}-replace={{.Path}}={{.Replace.Path}}@{{.Replace.Version}}{{end}}' all | grep '=golang.org/x/')
+
+echo Building cni
+pushd ${PLUGINS_DIR}
+go mod edit ${REPLACEMENTS}; go mod tidy; [ -d vendor ] && go mod vendor
+CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/cni${BINARY_POSTFIX}
+popd
+cp -vf ${PLUGINS_DIR}/bin/cni${BINARY_POSTFIX} ./bin/
 
 case ${OS} in
   linux)
     echo Building containerd-shim
-    pushd ./build/src/github.com/containerd/containerd
+    pushd ${CONTAINERD_DIR}
+    rm -rf bin
+    go mod edit ${REPLACEMENTS}; go mod tidy; [ -d vendor ] && go mod vendor
     TAGS="${TAGS/netcgo/netgo}"
     CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
     popd
-    cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
+    cp -vf ${CONTAINERD_DIR}/bin/* ./bin/
 
     echo Building runc
-    pushd ./build/src/github.com/opencontainers/runc
+    pushd ${RUNC_DIR}
     rm -f runc
-    make GO="${GO}" EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    COMMIT=$(git describe --dirty --long --always)
+    go mod edit ${REPLACEMENTS}; go mod tidy; [ -d vendor ] && go mod vendor
+    make COMMIT="${COMMIT}" GO="${GO}" EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
     popd
-    cp -vf ./build/src/github.com/opencontainers/runc/runc ./bin/
+    cp -vf ${RUNC_DIR}/runc ./bin/
     ;;
   windows)
     if [ "${ARCH}" != "amd64" ]; then
@@ -205,12 +201,14 @@ case ${OS} in
     fi
 
     echo Building containerd-shim-runhcs-v1
-    pushd ./build/src/github.com/microsoft/hcsshim
+    pushd ${HCSSHIM_DIR}
+    rm -rf bin
+    go mod edit ${REPLACEMENTS}; go mod tidy; [ -d vendor ] && go mod vendor
     TAGS="${TAGS/netcgo/netgo}"
     CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runhcs-v1${BINARY_POSTFIX} ./cmd/containerd-shim-runhcs-v1
     CGO_ENABLED=0 "${GO}" build -tags "$TAGS" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/runhcs${BINARY_POSTFIX} ./cmd/runhcs
     popd
-    cp -vf ./build/src/github.com/microsoft/hcsshim/bin/*${BINARY_POSTFIX} ./bin/
+    cp -vf ${HCSSHIM_DIR}/bin/*${BINARY_POSTFIX} ./bin/
     ;;
   *)
     echo "[ERROR] unrecognized opertaing system: ${OS}"
