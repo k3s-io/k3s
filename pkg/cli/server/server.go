@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -180,6 +181,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.AdvertiseIP = cfg.AdvertiseIP
 	serverConfig.ControlConfig.AdvertisePort = cfg.AdvertisePort
 	serverConfig.ControlConfig.FlannelBackend = cfg.FlannelBackend
+	serverConfig.ControlConfig.FlannelBackendEnv = slices.DeleteFunc(os.Environ(), func(s string) bool { return !strings.HasPrefix(s, version.ProgramUpper+"_FLANNEL_") })
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
 	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
