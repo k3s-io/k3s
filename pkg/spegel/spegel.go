@@ -252,9 +252,6 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 			libp2p.ChainOptions(libp2p.NoTransports, libp2p.Transport(tcp.NewTCPTransport)),
 		),
 	}
-	if c.RegistryPort < 1 || c.RegistryPort > math.MaxUint16 {
-		return fmt.Errorf("invalid registry port %d", c.RegistryPort)
-	}
 	bootstrapper := NewNotSelfBootstrapper(c.Bootstrapper)
 	c.router, err = routinglibp2p.NewRouter(ctx, routerAddr, bootstrapper, routing.PeerMetadata{RegistryPort: uint16(c.RegistryPort)}, opts...)
 	if err != nil {
