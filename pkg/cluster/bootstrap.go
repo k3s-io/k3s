@@ -543,6 +543,10 @@ func (c *Cluster) compareConfig() error {
 	if clusterControl.CriticalControlArgs.EncryptProvider == "" {
 		clusterControl.CriticalControlArgs.EncryptProvider = c.config.CriticalControlArgs.EncryptProvider
 	}
+	// if the remote server is down-level, for flannel backend env
+	if len(clusterControl.CriticalControlArgs.FlannelBackendEnv) == 0 {
+		clusterControl.CriticalControlArgs.FlannelBackendEnv = c.config.CriticalControlArgs.FlannelBackendEnv
+	}
 
 	if diff := deep.Equal(c.config.CriticalControlArgs, clusterControl.CriticalControlArgs); diff != nil {
 		rc := reflect.ValueOf(clusterControl.CriticalControlArgs).Type()
