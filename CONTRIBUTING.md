@@ -24,8 +24,15 @@ understanding every change. If you used AI tools in preparing your PR, you must 
 description of your PR. Listing AI tooling as a co-author, co-signing commits using an AI tool, or using
 the `assisted-by`, `co-developed` or similar commit trailer is not allowed.
 
-Large AI generated PRs and AI generated commit messages are not allowed. PRs with excessively large or
-unnecessarily scaffolded unit tests that could be replaced with a succinct E2E test will be closed.
+Be considerate of maintainer resources. Large AI generated PRs, commit messages, and issue
+reports are not allowed. Issues with excessive AI prose ("Why it matters" sections and lengthy
+contrived steps to reproduce) may be ignored or rejected.
+
+PRs may be rejected solely due to inapproriate addition of tests. Test should not be:
+* Excessively trivial (ie, validates that input=output, or covers only 3rd party code)
+* Replacable by a succinct E2E test
+* Unnecessarily scaffolded
+* Excessively large
 
 Do not leave the first review of AI generated changes to the reviewers. Verify the changes (code review,
 testing, etc.) before submitting your PR. Reviewers may ask questions about your AI-assisted code, and if
