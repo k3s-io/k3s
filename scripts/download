@@ -8,9 +8,6 @@ cd $(dirname $0)/..
 
 CHARTS_URL=https://k3s.io/k3s-charts/assets
 CHARTS_DIR=build/static/charts
-RUNC_DIR=build/src/github.com/opencontainers/runc
-CONTAINERD_DIR=build/src/github.com/containerd/containerd
-HCSSHIM_DIR=build/src/github.com/microsoft/hcsshim
 DATA_DIR=build/data
 export TZ=UTC
 
@@ -19,6 +16,7 @@ rm -rf ${CHARTS_DIR}
 rm -rf ${RUNC_DIR}
 rm -rf ${CONTAINERD_DIR}
 rm -rf ${HCSSHIM_DIR}
+rm -rf ${PLUGINS_DIR}
 mkdir -p ${CHARTS_DIR}
 mkdir -p ${DATA_DIR}
 
@@ -35,6 +33,12 @@ case ${OS} in
     exit 1
     ;;
 esac
+
+git clone --single-branch --depth=1 --branch=${VERSION_CNIPLUGINS} https://github.com/rancher/plugins.git ${PLUGINS_DIR}
+rm -rf ${PLUGINS_DIR}/plugins/meta/flannel
+git clone --single-branch --depth=1 --branch=${VERSION_FLANNEL_PLUGIN} https://github.com/flannel-io/cni-plugin.git ${PLUGINS_DIR}/plugins/meta/flannel
+rm -rf ${PLUGINS_DIR}/plugins/meta/flannel/go.*
+sed -i 's/package main/package flannel/; s/func main/func Main/' ${PLUGINS_DIR}/plugins/meta/flannel/*.go
 
 git clone --single-branch --branch=${VERSION_CONTAINERD} --depth=1 https://${PKG_CONTAINERD_K3S%/v[0-9]*} ${CONTAINERD_DIR}
 
