@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -87,7 +88,7 @@ type Config struct {
 	InternalAddress string
 
 	// RegistryPort is the port for the registry API.
-	RegistryPort string
+	RegistryPort int
 
 	// PSK is the preshared key required to join the p2p network.
 	PSK []byte
@@ -117,7 +118,7 @@ func init() {
 
 // Start starts the embedded p2p router, and binds the registry API to an existing HTTP router.
 func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyChan <-chan struct{}) error {
-	localAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
+	localAddr := net.JoinHostPort(c.InternalAddress, strconv.Itoa(c.RegistryPort))
 	// distribute images for all configured mirrors. there doesn't need to be a
 	// configured endpoint, just having a key for the registry will do.
 	urls := []string{}
@@ -154,7 +155,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		filters = append(filters, oci.RegexFilter{Regex: regexp.MustCompile(`:latest$`)})
 	}
 
-	logrus.Infof("Starting distributed registry mirror at https://%s:%s/v2 for registries %v",
+	logrus.Infof("Starting distributed registry mirror at https://%s:%d/v2 for registries %v",
 		c.ExternalAddress, c.RegistryPort, registries)
 
 	// set up the various logging logging frameworks
@@ -251,12 +252,11 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 			libp2p.ChainOptions(libp2p.NoTransports, libp2p.Transport(tcp.NewTCPTransport)),
 		),
 	}
-	registryPort, err := strconv.ParseUint(c.RegistryPort, 10, 16)
-	if err != nil {
-		return errors.WithMessage(err, "invalid registry port")
+	if c.RegistryPort < 1 || c.RegistryPort > math.MaxUint16 {
+		return fmt.Errorf("invalid registry port %d", c.RegistryPort)
 	}
 	bootstrapper := NewNotSelfBootstrapper(c.Bootstrapper)
-	c.router, err = routinglibp2p.NewRouter(ctx, routerAddr, bootstrapper, routing.PeerMetadata{RegistryPort: uint16(registryPort)}, opts...)
+	c.router, err = routinglibp2p.NewRouter(ctx, routerAddr, bootstrapper, routing.PeerMetadata{RegistryPort: uint16(c.RegistryPort)}, opts...)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create P2P router")
 	}
@@ -285,7 +285,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		return errors.WithMessage(err, "failed to create embedded registry")
 	}
 	regSvr := &http.Server{
-		Addr:    ":" + c.RegistryPort,
+		Addr:    ":" + strconv.Itoa(c.RegistryPort),
 		Handler: reg.Handler(logr.FromContextOrDiscard(ctx)),
 	}
 
