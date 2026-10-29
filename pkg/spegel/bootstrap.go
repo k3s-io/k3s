@@ -16,7 +16,7 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/sirupsen/logrus"
-	"github.com/spegel-org/spegel/pkg/routing"
+	routinglibp2p "github.com/spegel-org/spegel/pkg/routing/libp2p"
 	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,18 +25,24 @@ import (
 )
 
 // explicit interface checks
-var _ routing.Bootstrapper = &selfBootstrapper{}
-var _ routing.Bootstrapper = &notSelfBootstrapper{}
-var _ routing.Bootstrapper = &agentBootstrapper{}
-var _ routing.Bootstrapper = &serverBootstrapper{}
-var _ routing.Bootstrapper = &chainingBootstrapper{}
+var _ Bootstrapper = &selfBootstrapper{}
+var _ Bootstrapper = &notSelfBootstrapper{}
+var _ Bootstrapper = &agentBootstrapper{}
+var _ Bootstrapper = &serverBootstrapper{}
+var _ Bootstrapper = &chainingBootstrapper{}
+
+// Bootstrapper adds node address publication to Spegel's peer discovery interface.
+type Bootstrapper interface {
+	routinglibp2p.Bootstrapper
+	Run(context.Context, peer.AddrInfo) error
+}
 
 type selfBootstrapper struct {
 	id *peer.AddrInfo
 }
 
 // NewSelfBootstrapper returns a stub p2p bootstrapper that just returns its own ID
-func NewSelfBootstrapper() routing.Bootstrapper {
+func NewSelfBootstrapper() Bootstrapper {
 	return &selfBootstrapper{}
 }
 
@@ -54,14 +60,14 @@ func (s *selfBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 
 type notSelfBootstrapper struct {
 	id *peer.AddrInfo
-	b  routing.Bootstrapper
+	b  Bootstrapper
 }
 
 // NewNotSelfBootstrapper wraps an existing bootstrapper,
 // and will never return a list of peers containing only itself.
 // This is best used to prevent the spegel router from considering
 // itself as "Ready" when it has no peers.
-func NewNotSelfBootstrapper(b routing.Bootstrapper) routing.Bootstrapper {
+func NewNotSelfBootstrapper(b Bootstrapper) Bootstrapper {
 	return &notSelfBootstrapper{
 		b: b,
 	}
@@ -90,7 +96,7 @@ type agentBootstrapper struct {
 }
 
 // NewAgentBootstrapper returns a p2p bootstrapper that retrieves a peer address from its server
-func NewAgentBootstrapper(server, token, dataDir string) routing.Bootstrapper {
+func NewAgentBootstrapper(server, token, dataDir string) Bootstrapper {
 	return &agentBootstrapper{
 		clientCert: filepath.Join(dataDir, "agent", "client-kubelet.crt"),
 		clientKey:  filepath.Join(dataDir, "agent", "client-kubelet.key"),
@@ -179,7 +185,7 @@ type serverBootstrapper struct {
 }
 
 // NewServerBootstrapper returns a p2p bootstrapper that returns an address from the Kubernetes node list
-func NewServerBootstrapper(controlConfig *config.Control) routing.Bootstrapper {
+func NewServerBootstrapper(controlConfig *config.Control) Bootstrapper {
 	return &serverBootstrapper{
 		controlConfig: controlConfig,
 	}
@@ -237,14 +243,14 @@ func (s *serverBootstrapper) Get(ctx context.Context) ([]peer.AddrInfo, error) {
 }
 
 type chainingBootstrapper struct {
-	bootstrappers []routing.Bootstrapper
+	bootstrappers []Bootstrapper
 }
 
 // NewChainingBootstrapper returns a p2p bootstrapper that passes through to a list of bootstrappers.
 // Addressess are returned from the first bootstrapper that returns successfully, to prevent infinite
 // recursion if this chains through an agentBootstrapper when the server URL is set to an external
 // loadbalancer that points back at this node.
-func NewChainingBootstrapper(bootstrappers ...routing.Bootstrapper) routing.Bootstrapper {
+func NewChainingBootstrapper(bootstrappers ...Bootstrapper) Bootstrapper {
 	return &chainingBootstrapper{
 		bootstrappers: bootstrappers,
 	}

@@ -6,17 +6,18 @@ import (
 	"io"
 
 	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/spegel-org/spegel/pkg/oci"
+	"github.com/spegel-org/spegel/pkg/oci/containerd"
+	"github.com/spegel-org/spegel/pkg/store"
 )
 
 var errStoreNotStarted = errors.New("deferred OCI Store not started")
 
-// DeferredStore extends `oci.Store` by allowing for delayed connection
+// DeferredStore allows for delayed connection
 // to the backend. Functions are expected to return errors until the store
 // has been started.
 type DeferredStore interface {
-	oci.Store
+	store.Provider
+	store.Watcher
 	io.Closer
 	Start() error
 }
@@ -25,8 +26,8 @@ type DeferredStore interface {
 var _ DeferredStore = &deferredStore{}
 
 type deferredStore struct {
-	store  oci.Store
-	create func() (oci.Store, error)
+	store  *containerd.Containerd
+	create func() (*containerd.Containerd, error)
 }
 
 func (ds *deferredStore) Name() string {
@@ -36,20 +37,6 @@ func (ds *deferredStore) Name() string {
 	return ds.store.Name()
 }
 
-func (ds *deferredStore) ListImages(ctx context.Context) ([]oci.Image, error) {
-	if ds.store == nil {
-		return nil, errStoreNotStarted
-	}
-	return ds.store.ListImages(ctx)
-}
-
-func (ds *deferredStore) ListContent(ctx context.Context) ([][]oci.Reference, error) {
-	if ds.store == nil {
-		return nil, errStoreNotStarted
-	}
-	return ds.store.ListContent(ctx)
-}
-
 func (ds *deferredStore) Resolve(ctx context.Context, ref string) (digest.Digest, error) {
 	if ds.store == nil {
 		return "", errStoreNotStarted
@@ -57,9 +44,9 @@ func (ds *deferredStore) Resolve(ctx context.Context, ref string) (digest.Digest
 	return ds.store.Resolve(ctx, ref)
 }
 
-func (ds *deferredStore) Descriptor(ctx context.Context, dgst digest.Digest) (ocispec.Descriptor, error) {
+func (ds *deferredStore) Descriptor(ctx context.Context, dgst digest.Digest) (store.Descriptor, error) {
 	if ds.store == nil {
-		return ocispec.Descriptor{}, errStoreNotStarted
+		return store.Descriptor{}, errStoreNotStarted
 	}
 	return ds.store.Descriptor(ctx, dgst)
 }
@@ -71,21 +58,18 @@ func (ds *deferredStore) Open(ctx context.Context, dgst digest.Digest) (io.ReadS
 	return ds.store.Open(ctx, dgst)
 }
 
-func (ds *deferredStore) Subscribe(ctx context.Context) (<-chan oci.OCIEvent, error) {
+func (ds *deferredStore) Watch(ctx context.Context) ([]store.Event, <-chan store.Event, error) {
 	if ds.store == nil {
-		return nil, errStoreNotStarted
+		return nil, nil, errStoreNotStarted
 	}
-	return ds.store.Subscribe(ctx)
+	return ds.store.Watch(ctx)
 }
 
-// Close is not part of the Store interface, but probably should be. Containerd implements it.
 func (ds *deferredStore) Close() error {
 	if ds.store != nil {
 		store := ds.store
 		ds.store = nil
-		if closer, ok := store.(io.Closer); ok {
-			return closer.Close()
-		}
+		return store.Close()
 	}
 	return nil
 }
@@ -100,10 +84,10 @@ func (ds *deferredStore) Start() error {
 }
 
 // NewDeferredContainerd creates a deferred store that creates a new Containerd store when Start is called.
-func NewDeferredContainerd(ctx context.Context, sock, namespace string, opts ...oci.ContainerdOption) (DeferredStore, error) {
+func NewDeferredContainerd(ctx context.Context, sock, namespace string, opts ...containerd.ContainerdOption) (DeferredStore, error) {
 	return &deferredStore{
-		create: func() (oci.Store, error) {
-			return oci.NewContainerd(ctx, sock, namespace, opts...)
+		create: func() (*containerd.Containerd, error) {
+			return containerd.NewContainerd(ctx, sock, namespace, opts...)
 		},
 	}, nil
 }
