@@ -29,15 +29,18 @@ import (
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
 	"github.com/spegel-org/spegel/pkg/metrics"
 	"github.com/spegel-org/spegel/pkg/oci"
+	"github.com/spegel-org/spegel/pkg/oci/containerd"
 	"github.com/spegel-org/spegel/pkg/registry"
 	"github.com/spegel-org/spegel/pkg/routing"
-	"github.com/spegel-org/spegel/pkg/state"
+	routinglibp2p "github.com/spegel-org/spegel/pkg/routing/libp2p"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/metrics/legacyregistry"
 )
@@ -90,12 +93,12 @@ type Config struct {
 	PSK []byte
 
 	// Bootstrapper is the bootstrapper that will be used to discover p2p peers.
-	Bootstrapper routing.Bootstrapper
+	Bootstrapper Bootstrapper
 
 	// HandlerFunc will be called to add the registry API handler to an existing router.
 	Router https.RouterFunc
 
-	router *routing.P2PRouter
+	router *routinglibp2p.Router
 }
 
 // These values are not currently configurable
@@ -184,9 +187,9 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		return err
 	}
 
-	storeOpts := []oci.ContainerdOption{
-		oci.WithContentEvents(false),
-		oci.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content")),
+	storeOpts := []containerd.ContainerdOption{
+		containerd.WithContentPath(filepath.Join(nodeConfig.Containerd.Root, "io.containerd.content.v1.content")),
+		containerd.WithFilters(filters),
 	}
 	ociStore, err := NewDeferredContainerd(ctx, nodeConfig.Containerd.Address, registryNamespace, storeOpts...)
 	if err != nil {
@@ -240,20 +243,35 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 	routerAddr := net.JoinHostPort(c.ExternalAddress, routerPort)
 
 	logrus.Infof("Starting distributed registry P2P node at %s", routerAddr)
-	opts := []routing.P2PRouterOption{
-		routing.WithLogBootstrapErr(false),
-		routing.WithLibP2POptions(
+	opts := []routinglibp2p.RouterOption{
+		routinglibp2p.WithLibP2POptions(
 			libp2p.Identity(p2pKey),
 			libp2p.Peerstore(ps),
 			libp2p.PrivateNetwork(c.PSK),
 			libp2p.ChainOptions(libp2p.NoTransports, libp2p.Transport(tcp.NewTCPTransport)),
 		),
 	}
-	c.router, err = routing.NewP2PRouter(ctx, routerAddr, NewNotSelfBootstrapper(c.Bootstrapper), c.RegistryPort, opts...)
+	registryPort, err := strconv.ParseUint(c.RegistryPort, 10, 16)
+	if err != nil {
+		return errors.WithMessage(err, "invalid registry port")
+	}
+	bootstrapper := NewNotSelfBootstrapper(c.Bootstrapper)
+	c.router, err = routinglibp2p.NewRouter(ctx, routerAddr, bootstrapper, routing.PeerMetadata{RegistryPort: uint16(registryPort)}, opts...)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create P2P router")
 	}
-	go c.router.Run(ctx)
+	go func() {
+		group, groupCtx := errgroup.WithContext(ctx)
+		group.Go(func() error {
+			return bootstrapper.Run(groupCtx, *host.InfoFromHost(c.router.Host()))
+		})
+		group.Go(func() error {
+			return c.router.Run(groupCtx)
+		})
+		if err := group.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+			logrus.Errorf("Distributed registry P2P router exited: %v", err)
+		}
+	}()
 
 	metrics.Register()
 	registryOpts := []registry.RegistryOption{
@@ -271,10 +289,6 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		Handler: reg.Handler(logr.FromContextOrDiscard(ctx)),
 	}
 
-	trackerOpts := []state.TrackerOption{
-		state.WithRegistryFilters(filters),
-	}
-
 	// Track images available in containerd and publish via p2p router
 	go func() {
 		defer ociStore.Close()
@@ -283,12 +297,13 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 			logrus.Debug("Starting embedded registry image state tracker")
 			if err := ociStore.Start(); err != nil {
 				logrus.Errorf("Failed to start deferred OCI store: %v", err)
+			} else {
+				err := routing.Sync(ctx, c.router, ociStore)
+				if errors.Is(err, context.Canceled) {
+					return
+				}
+				logrus.Errorf("Embedded registry image state tracker exited: %v", err)
 			}
-			err := state.Track(ctx, ociStore, c.router, trackerOpts...)
-			if err != nil && errors.Is(err, context.Canceled) {
-				return
-			}
-			logrus.Errorf("Embedded registry image state tracker exited: %v", err)
 			time.Sleep(time.Second)
 		}
 	}()
