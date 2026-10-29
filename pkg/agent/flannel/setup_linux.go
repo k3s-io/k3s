@@ -2,6 +2,17 @@
 
 package flannel
 
+import "os"
+
+func init() {
+	if _, ok := os.LookupEnv(vxlanVniEnv); !ok {
+		os.Setenv(vxlanVniEnv, "1")
+	}
+	if _, ok := os.LookupEnv(vxlanPortEnv); !ok {
+		os.Setenv(vxlanPortEnv, "8472")
+	}
+}
+
 const (
 	cniConf = `{
   "name":"cbr0",
@@ -30,8 +41,4 @@ const (
   ]
 }
 `
-
-	vxlanBackend = `{
-	"Type": "vxlan"
-}`
 )

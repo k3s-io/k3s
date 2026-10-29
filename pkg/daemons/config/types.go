@@ -95,6 +95,7 @@ type CRIDockerd struct {
 
 type Flannel struct {
 	Backend      string
+	BackendEnv   []string
 	CNIConfFile  string
 	ConfFile     string
 	ConfOverride bool
@@ -182,6 +183,7 @@ type CriticalControlArgs struct {
 	EncryptProvider       string       `cli:"secrets-encryption-provider"`
 	EmbeddedRegistry      bool         `cli:"embedded-registry"`
 	FlannelBackend        string       `cli:"flannel-backend"`
+	FlannelBackendEnv     []string
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
 	FlannelExternalIP     bool         `cli:"flannel-external-ip"`
 	EgressSelectorMode    string       `cli:"egress-selector-mode"`
