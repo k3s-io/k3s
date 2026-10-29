@@ -13,6 +13,11 @@ get-module-path(){
   go list -mod=readonly -m -f '{{if .Replace}}{{.Replace.Path}}{{else}}{{.Path}}{{end}}' $1
 }
 
+RUNC_DIR=build/src/github.com/opencontainers/runc
+CONTAINERD_DIR=build/src/github.com/containerd/containerd
+HCSSHIM_DIR=build/src/github.com/microsoft/hcsshim
+PLUGINS_DIR=build/src/github.com/containernetworking/plugins
+
 PKG_CONTAINERD_K3S=$(get-module-path github.com/containerd/containerd/v2)
 VERSION_CONTAINERD=$(get-module-version github.com/containerd/containerd/v2)
 if [ -z "$VERSION_CONTAINERD" ]; then
