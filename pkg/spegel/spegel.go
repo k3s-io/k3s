@@ -158,7 +158,7 @@ func (c *Config) Start(ctx context.Context, nodeConfig *config.Node, criReadyCha
 		c.ExternalAddress, c.RegistryPort, registries)
 
 	// set up the various logging logging frameworks
-	ctx = logger.NewContext(ctx, "spegel")
+	ctx = logger.NewContext(ctx, "spegel", logger.WithMessageFilter("failed to run bootstrap"))
 	level := ipfslog.LevelInfo
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		level = ipfslog.LevelDebug
