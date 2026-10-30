@@ -28,9 +28,9 @@ Be considerate of maintainer resources. Large AI generated PRs, commit messages,
 reports are not allowed. Issues with excessive AI prose ("Why it matters" sections and lengthy
 contrived steps to reproduce) may be ignored or rejected.
 
-PRs may be rejected solely due to inapproriate addition of tests. Test should not be:
+PRs may be rejected solely due to inappropriate addition of tests. Test should not be:
 * Excessively trivial (ie, validates that input=output, or covers only 3rd party code)
-* Replacable by a succinct E2E test
+* Replaceable by a succinct E2E test
 * Unnecessarily scaffolded
 * Excessively large
 
@@ -66,11 +66,11 @@ Generally, pull requests need two approvals from maintainers to be merged. One e
 
 When addressing review feedback, it is helpful to the reviewer if additional changes are made in new commits. This allows the reviewer to easily see the delta between what they previously reviewed and the changes you added to address their feedback.
 
-Once a PR has the necessary approvals, it can be merged. Here’s how the merge should be handled:
-- If the PR is a single logical commit, the merger should use the “Rebase and merge” option. This keeps the git commit history very clean and simple and eliminates noise from "merge commits."
-- If the PR is more than one logical commit, the merger should use the “Create a merge commit” option.
+Once a PR has the necessary approvals, it can be merged. Here's how the merge should be handled:
+- If the PR is a single logical commit, the merger should use the "Rebase and merge" option. This keeps the git commit history very clean and simple and eliminates noise from "merge commits."
+- If the PR is more than one logical commit, the merger should use the "Create a merge commit" option.
 - If the PR consists of more than one commit because the author added commits to address feedback, the commits should be squashed into a single commit (or more than one logical commit, if it is a big feature that needs more commits). This can be achieved in one of two ways:
-  - The merger can use the “Squash and merge” option. If they do this, the merger is responsible for cleaning up the commit message according to the previously stated commit message guidance.
+  - The merger can use the "Squash and merge" option. If they do this, the merger is responsible for cleaning up the commit message according to the previously stated commit message guidance.
   - The pull request author, after getting the requisite approvals, can reorganize the commits as they see fit (using, for example, git rebase -i) and re-push.
 
 ## Development Workflow
