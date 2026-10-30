@@ -155,7 +155,7 @@ Examples:
 ## Voting and Decision Making
 
 While most business in K3s is conducted by "[lazy consensus](https://community.apache.org/committers/lazyConsensus.html)", periodically the Maintainers may need to vote on specific actions or changes. A vote can be taken on [the developer mailing list](mailto:cncf-k3s-dev@lists.cncf.io) or [the private Maintainer mailing list](mailto:cncf-k3s-maintainers@lists.cncf.io) for security or conduct matters.  
-Votes may also be taken at [the community meeting](https://k3s.io/community/#community-meetings).  Any Maintainer may demand a vote be taken.
+Votes may also be taken at [the community meeting](https://k3s.io/community#community-meetings).  Any Maintainer may demand a vote be taken.
 
 Most votes require a [simple majority](#simple-majority) of all Maintainers to succeed, except where otherwise noted.  [Supermajority](#supermajority) votes mean at least two-thirds of all existing Maintainers.
 
@@ -210,7 +210,7 @@ Smaller, self-contained changes (e.g., bug fixes, minor enhancements, or localiz
 
 ## Meetings
 
-Time zones permitting, Maintainers are expected to participate in the public developer meeting, which occurs [Community meetings](https://k3s.io/community/\#community-meetings)
+Time zones permitting, Maintainers are expected to participate in the public developer meeting, which occurs [Community meetings](https://k3s.io/community#community-meetings)
 
 Maintainers will also have closed meetings in order to discuss security reports or [Code of Conduct](https://github.com/k3s-io/k3s/blob/main/CODE_OF_CONDUCT.md) violations.  Such meetings should be scheduled by any Maintainer on receipt of a security issue or CoC report.  All current Maintainers must be invited to such closed meetings, except for any Maintainer who is accused of a CoC violation.
 
