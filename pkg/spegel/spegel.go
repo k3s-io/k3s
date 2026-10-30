@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"net/url"
