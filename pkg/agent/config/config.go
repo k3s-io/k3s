@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -719,7 +718,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 		conf := spegel.DefaultRegistry
 		conf.ExternalAddress = nodeConfig.AgentConfig.NodeIP
 		conf.InternalAddress = controlConfig.Loopback(false)
-		conf.RegistryPort = strconv.Itoa(controlConfig.SupervisorPort)
+		conf.RegistryPort = controlConfig.SupervisorPort
 		conf.ClientCAFile = clientCAFile
 		conf.ClientCertFile = clientK3sControllerCert
 		conf.ClientKeyFile = clientK3sControllerKey
