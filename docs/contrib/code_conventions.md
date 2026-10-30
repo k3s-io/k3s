@@ -7,7 +7,7 @@
 
 ## POSIX shell
 
-- [Style guide](https://google.github.io/styleguide/shell.xml)
+- [Style guide](https://google.github.io/styleguide/shellguide.html)
 
 ## Go
 
