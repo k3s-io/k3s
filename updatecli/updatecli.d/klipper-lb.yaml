@@ -37,6 +37,7 @@ actions:
       parent: false
       labels: 
         - "dependencies"
+        - "kind/updatecli"
 
 sources:
   klipper-lb:

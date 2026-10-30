@@ -24,6 +24,7 @@ actions:
       mergemethod: "squash"
       labels:
         - "dependencies"
+        - "kind/updatecli"
 
 sources:
   # Retrieve the latest tag from the rancher/mirrored-coredns-coredns repository

@@ -25,6 +25,7 @@ actions:
       mergemethod: "squash"
       labels:
         - "dependencies"
+        - "kind/updatecli"
 
 sources:
   flannel:
