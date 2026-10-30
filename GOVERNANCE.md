@@ -68,7 +68,7 @@ A new Maintainer must be proposed by an existing Maintainer by sending a message
 
 Maintainers who are selected will be granted the necessary GitHub rights, and invited to the [private Maintainer mailing list](mailto:k3s-maintainers@lists.cncf.io).
 
-Maintainer’s responsibilities:
+Maintainer's responsibilities:
 
 * **Code Quality & Reviews**: Review and merge pull requests, ensure adherence to project standards, and manage the codebase  
 * **Issue Management**: Triage incoming issues, provide guidance, and close or categorize as needed  
@@ -120,7 +120,7 @@ User \-\> Contributor \-\> Reviewer \-\> Maintainer
 
 A **supermajority** is defined as two-thirds (2/3) of active Maintainers. A supermajority is calculated based on the number of votes cast, excluding abstentions.
 
-Maintainers may vote "agree / yes / +1", "disagree / no / -1", or "abstain". An "abstain" vote does not count toward the total used to calculate the supermajority — it is equivalent to not voting.
+Maintainers may vote "agree / yes / +1", "disagree / no / -1", or "abstain". An "abstain" vote does not count toward the total used to calculate the supermajority - it is equivalent to not voting.
 
 A vote passes when at least two-thirds of the non-abstaining votes are in favor within the voting period.
 
@@ -129,7 +129,7 @@ Votes must be cast within a defined voting period (e.g., 7 calendar days). If a 
 Failure to vote on major decisions will be considered a sign of inactivity and may indicate that a Maintainer is not fulfilling their responsibilities. This behavior will be taken into account during periodic reviews of Maintainer status.
 
 Examples:
-| Votes Cast | Yes Votes | No Votes | Required Yes Votes (≥2/3) | Result               |
+| Votes Cast | Yes Votes | No Votes | Required Yes Votes (>=2/3) | Result               |
 |------------|-----------|----------|----------------------------|----------------------|
 | 9          | 6         | 3        | 6                          | ✅ Passes (6 = 2/3)   |
 | 9          | 5         | 4        | 6                          | ❌ Fails (5 < 2/3)    |
@@ -201,7 +201,7 @@ The proposal PR can be marked with different status labels to represent the stat
  A proposal may only be accepted and merged after receiving approval from at least two maintainers who are not the original author of the proposal.
 
 ### Proposal Threshold
-The need for a proposal (in the form of an ADR or design document) is determined primarily by scope. Pull requests that introduce major changes — such as architectural overhauls, system-wide patterns, or significant new features — may prompt maintainers to request a proposal for further discussion and alignment.
+The need for a proposal (in the form of an ADR or design document) is determined primarily by scope. Pull requests that introduce major changes - such as architectural overhauls, system-wide patterns, or significant new features - may prompt maintainers to request a proposal for further discussion and alignment.
 
 Maintainers may comment on a PR with a request to "submit an ADR" when a change is deemed too substantial for review in isolation.
 
@@ -240,4 +240,4 @@ Changes to this Governance and its supporting documents may be approved by a [su
 
 Many thanks in advance to everyone who contributes their time and effort to making K3s both a successful project as well as a successful community. The strength of our software shines in the strengths of each individual community member. Thank YOU\!
 
-Some content in this document was built(inspired) upon the work in the [Kubernetes](https://github.com/kubernetes/community), [Linkerd](https://github.com/linkerd/linkerd2/blob/main/GOVERNANCE.md), [Helm](https://github.com/helm/community/blob/main/governance), [Harbor](https://github.com/goharbor/community/blob/main/GOVERNANCE.md), [Contour](https://github.com/projectcontour/community/blob/main/GOVERNANCE.md) Communities\! KUDOs to all of them\!  
+Some content in this document was built(inspired) upon the work in the [Kubernetes](https://github.com/kubernetes/community), [Linkerd](https://github.com/linkerd/linkerd2/blob/main/GOVERNANCE.md), [Helm](https://github.com/helm/community/blob/main/governance), [Harbor](https://github.com/goharbor/community/blob/main/GOVERNANCE.md), [Contour](https://github.com/projectcontour/community/blob/main/GOVERNANCE.md) Communities\! KUDOs to all of them\!
