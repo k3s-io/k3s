@@ -44,6 +44,10 @@ jobs:
     with:
       platforms: linux/arm64
       upload-image: true
+  build-windows:
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: windows/amd64
   e2e:
     name: "E2E Tests"
     needs: build
@@ -157,6 +161,67 @@ jobs:
           flags: e2etests # optional
           verbose: true # optional (default = false)
   
+  e2e-windows:
+    name: E2E Windows and Linux Agent Tests
+    needs: [build, build-windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 135
+    env:
+      E2E_RELEASE_VERSION: skip
+      E2E_LINUX_K3S_BIN: ${{ github.workspace }}/dist/artifacts/k3s
+      E2E_WINDOWS_K3S_BIN: ${{ github.workspace }}/dist/artifacts/k3s.exe
+      E2E_WINDOWS_BOX: gusztavvargadr/windows-server-2025-standard
+    steps:
+      - name: Remove Unnecessary Tools
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+      - name: Set up vagrant and libvirt
+        uses: ./.github/actions/vagrant-setup
+      - name: Install Vagrant Plugins
+        run: |
+          for plugin in vagrant-k3s vagrant-reload vagrant-scp; do
+            if ! vagrant plugin list | grep -q "^${plugin} "; then
+              vagrant plugin install "${plugin}"
+            fi
+          done
+      - name: Download Linux K3s binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: k3s-amd64
+          path: ./dist/artifacts
+      - name: Download Windows K3s binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: k3s-windows
+          path: ./dist/artifacts
+      - name: Install kubectl from K3s artifacts
+        run: |
+          sudo install -o root -g root -m 0755 ./dist/artifacts/bin-k3s /usr/local/bin/k3s
+          sudo ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
+      - name: Download Vagrant boxes
+        timeout-minutes: 30
+        run: |
+          vagrant box add cloud-image/ubuntu-24.04 --provider libvirt
+          vagrant box add "$E2E_WINDOWS_BOX" --provider libvirt
+      - name: Run Windows and Linux Agent Tests
+        shell: bash
+        working-directory: tests/e2e/windows
+        run: go test -v -count=1 -timeout=90m . -ci -ginkgo.timeout=85m 2>&1 | tee windows-e2e.log
+      - name: On Failure, Upload Logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-windows-logs
+          path: |
+            tests/e2e/windows/vagrant.log
+            tests/e2e/windows/windows-e2e.log
+          retention-days: 30
+
   docker-go:
     needs: [build, build-arm64]
     name: Docker
