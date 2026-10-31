@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: windows-test
+spec:
+  replicas: 1
+  # Allow the 30-minute image startup wait plus the 5-minute rollout wait.
+  progressDeadlineSeconds: 2100
+  selector:
+    matchLabels:
+      app: windows-test
+  template:
+    metadata:
+      labels:
+        app: windows-test
+    spec:
+      nodeSelector:
+        kubernetes.io/os: windows
+      containers:
+      - name: iis
+        image: mcr.microsoft.com/windows/servercore/iis:windowsservercore-ltsc2025
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          exec:
+            command:
+            - powershell.exe
+            - -NoProfile
+            - -NonInteractive
+            - -Command
+            - "$ErrorActionPreference = 'Stop'; Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 http://localhost | Out-Null"
+          timeoutSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: windows-test
+spec:
+  selector:
+    app: windows-test
+  ports:
+  - port: 80
