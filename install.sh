@@ -124,7 +124,7 @@ verify_system() {
         HAS_OPENRC=true
         return
     fi
-    if [ -x /bin/systemctl ] || type systemctl > /dev/null 2>&1; then
+    if [ -x /bin/systemctl ] || command -v systemctl > /dev/null 2>&1; then
         HAS_SYSTEMD=true
         return
     fi
@@ -405,7 +405,7 @@ get_k3s_selinux_version() {
             fatal "Incorrect downloader executable '$DOWNLOADER'"
             ;;
     esac
-    for i in {1..3}; do
+    for i in 1 2 3; do
         set +e
         if [ "${rpm_channel}" = "testing" ]; then
             version=$(timeout 5 ${DOWNLOADER} ${DOWNLOADER_OPTS} https://api.github.com/repos/k3s-io/k3s-selinux/releases |  grep browser_download_url | awk '{ print $2 }' | grep -oE "[^\/]+${rpm_target}\.noarch\.rpm" | head -n 1)
@@ -976,7 +976,7 @@ zypper_remove_selinux_rpm() {
 dnf_remove_selinux_rpm() {
     package_manager=dnf
     # yum is only needed for rhel 7, which is EOM since 2024 anyway
-    if ! type dnf >/dev/null 2>&1; then
+    if ! command -v dnf >/dev/null 2>&1; then
         package_manager=yum
     fi
     \$package_manager remove -y k3s-selinux
@@ -996,11 +996,11 @@ elif [ "\${ID:-}" = fedora ] || [ "\$(expr "\${ID_LIKE}" : ".*fedora.*\|.*rhel.*
         dnf_remove_selinux_rpm
     fi
 # if we did not match yet just check for package managers commonly found on selinux-enabled distributions
-elif type rpm-ostree >/dev/null 2>&1; then
+elif command -v rpm-ostree >/dev/null 2>&1; then
     \$rpm_ostree_uninstall_cmd
-elif type zypper >/dev/null 2>&1; then
+elif command -v zypper >/dev/null 2>&1; then
     zypper_remove_selinux_rpm
-elif type yum >/dev/null 2>&1; then
+elif command -v yum >/dev/null 2>&1; then
     dnf_remove_selinux_rpm
 elif [ -d /usr/share/selinux ]; then
     echo '[WARN] Automatic removal of "k3s-selinux" package not possible, please remove it manually.' >&2
