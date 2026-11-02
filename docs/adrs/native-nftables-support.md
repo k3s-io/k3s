@@ -24,7 +24,7 @@ Here is where things stand:
 | kube-router network-policy controller | Runs embedded with `UseNftablesForNetpol=false`, an ipset precheck, and iptables/ipset handlers. | Select nftables, skip the ipset precheck and iptables handlers, and create and pass the nftables interfaces. The bundled library already supports this. |
 | Flannel | Runs embedded with a hardcoded `IPTablesManager`. | Select the existing `NFTablesManager` when the network config has `EnableNFTables=true`. Currently even a custom `--flannel-conf` cannot enable it. |
 | CNI portmap | The generated CNI conflist leaves the backend unset, normally selecting iptables. | Generate `"backend": "nftables"`. This already works through a complete custom `--flannel-cni-conf` and bypasses backend auto-detection. |
-| ServiceLB / klipper-lb | Uses hostPorts plus iptables rules inside the load-balancer Pods. Its "nft mode" selects `iptables-nft`. | Add native nftables support to klipper-lb, or require ServiceLB to be disabled and replaced. Changing portmap alone is not enough. |
+| ServiceLB / klipper-lb | Uses hostPorts plus iptables rules inside the load-balancer Pods. Its "nft mode" selects `iptables-nft`. | Add native nftables support to klipper-lb. |
 
 Flannel's `--flannel-backend` selects VXLAN, host-gw, or another network backend;
 it does not select the firewall implementation. With the default CNI config,
