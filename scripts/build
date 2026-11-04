@@ -62,8 +62,32 @@ else
   LDFLAGS="-w -s"
 fi
 
+# Sycned with kine
+# https://github.com/k3s-io/kine/blob/v0.17.4/scripts/build#L31-L32
+SQLITE_TAGS="sqlite_unlock_notify sqlite_vtable sqlite_stat4 sqlite_preupdate_hook sqlite_math_functions sqlite_dbstat sqlite_column_metadata"
+SQLITE_CGO_CFLAGS="
+    -DSQLITE_DEFAULT_MEMSTATUS=0
+    -DSQLITE_DISABLE_INTRINSIC
+    -DSQLITE_ENABLE_COLUMN_METADATA
+    -DSQLITE_ENABLE_DBPAGE_VTAB
+    -DSQLITE_ENABLE_DBSTAT_VTAB
+    -DSQLITE_ENABLE_MATH_FUNCTIONS
+    -DSQLITE_ENABLE_MEMORY_MANAGEMENT
+    -DSQLITE_ENABLE_OFFSET_SQL_FUNC
+    -DSQLITE_ENABLE_PREUPDATE_HOOK
+    -DSQLITE_ENABLE_RBU
+    -DSQLITE_ENABLE_RTREE
+    -DSQLITE_ENABLE_SESSION
+    -DSQLITE_ENABLE_SNAPSHOT
+    -DSQLITE_ENABLE_STAT4
+    -DSQLITE_ENABLE_UNLOCK_NOTIFY
+    -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
+    -DSQLITE_THREADSAFE=1
+    -DSQLITE_WITHOUT_ZONEMALLOC
+"
+
 STATIC=""
-TAGS="ctrd netcgo osusergo providerless urfave_cli_no_docs sqlite_omit_load_extension"
+TAGS="ctrd netcgo osusergo providerless urfave_cli_no_docs $SQLITE_TAGS"
 RUNC_STATIC=""
 RUNC_TAGS=""
 
@@ -74,7 +98,7 @@ case ${OS} in
 
     if [ "$STATIC_BUILD" == "true" ]; then
       STATIC=$'\n-extldflags \'-static -lm -ldl -lz -lpthread\'\n'
-      TAGS="static_build libsqlite3 $TAGS"
+      TAGS="$TAGS static_build libsqlite3"
       RUNC_STATIC="static"
     fi
     if [ "$SELINUX" = "true" ]; then
@@ -87,7 +111,7 @@ case ${OS} in
 
     if [ "$STATIC_BUILD" == "true" ]; then
       STATIC=$'\n-extldflags \'-static -lpthread\'\n'
-      TAGS="static_build $TAGS"
+      TAGS="$TAGS static_build"
     fi
 
     export CXX="x86_64-w64-mingw32-g++"
@@ -101,7 +125,7 @@ esac
 
 if [ -n "${GOCOVER}" ]; then
     BLDFLAGS="-cover"
-    TAGS="cover $TAGS"
+    TAGS="$TAGS cover"
 fi
 
 mkdir -p bin
@@ -157,7 +181,7 @@ cleanup() {
 echo Building k3s
 cp -av manifests/* pkg/deploy/embed/
 cp -av build/static/* pkg/static/embed/
-CGO_CFLAGS="-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_USE_ALLOCA=1" \
+CGO_CFLAGS="$SQLITE_CGO_CFLAGS" \
 CGO_ENABLED=1 "${GO}" build $BLDFLAGS -tags "$TAGS" -buildvcs=false -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/k3s${BINARY_POSTFIX} ./cmd/server
 
 for i in "${k3s_binaries[@]}"; do
