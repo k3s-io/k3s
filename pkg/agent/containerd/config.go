@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
@@ -72,7 +73,7 @@ func writeContainerdConfig(cfg *config.Node, containerdConfig templates.Containe
 
 // writeContainerdHosts merges registry mirrors/configs, and renders and saves hosts.toml from the filled template
 func writeContainerdHosts(cfg *config.Node, containerdConfig templates.ContainerdConfig) error {
-	mirrorAddr := net.JoinHostPort(spegel.DefaultRegistry.InternalAddress, spegel.DefaultRegistry.RegistryPort)
+	mirrorAddr := net.JoinHostPort(spegel.DefaultRegistry.InternalAddress, strconv.Itoa(spegel.DefaultRegistry.RegistryPort))
 	hosts := getHostConfigs(containerdConfig.PrivateRegistryConfig, containerdConfig.NoDefaultEndpoint, mirrorAddr)
 
 	// Clean up previous configuration templates
