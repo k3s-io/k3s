@@ -89,13 +89,18 @@ func (ls *LogrusSink) WithName(name string) logr.LogSink {
 	return ls.WithValues("logger", name)
 }
 
-func NewContext(ctx context.Context, name string) context.Context {
+type LogOption func(logger logr.Logger) logr.Logger
+
+func NewContext(ctx context.Context, name string, opts ...LogOption) context.Context {
 	logger, err := logr.FromContext(ctx)
 	if err != nil {
 		logger = NewLogrusSink(nil).AsLogr()
 	}
 	if name != "" {
 		logger = logger.WithName(name)
+	}
+	for _, opt := range opts {
+		logger = opt(logger)
 	}
 	return logr.NewContext(ctx, logger)
 }

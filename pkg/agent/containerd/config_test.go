@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1498,7 +1499,9 @@ func Test_UnitGetHostConfigs(t *testing.T) {
 				conf.ServerCAFile = "server-ca"
 				conf.ClientKeyFile = "client-key"
 				conf.ClientCertFile = "client-cert"
-				conf.InternalAddress, conf.RegistryPort, _ = net.SplitHostPort(tt.args.mirrorAddr)
+				var port string
+				conf.InternalAddress, port, _ = net.SplitHostPort(tt.args.mirrorAddr)
+				conf.RegistryPort, _ = strconv.Atoi(port)
 				conf.InjectMirror(nodeConfig)
 			}
 
