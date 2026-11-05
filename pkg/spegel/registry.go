@@ -2,6 +2,7 @@ package spegel
 
 import (
 	"net"
+	"strconv"
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
@@ -11,7 +12,7 @@ import (
 // InjectMirror configures TLS for the registry mirror client, and  adds the mirror address as an endpoint
 // to all configured registries.
 func (c *Config) InjectMirror(nodeConfig *config.Node) error {
-	mirrorAddr := net.JoinHostPort(c.InternalAddress, c.RegistryPort)
+	mirrorAddr := net.JoinHostPort(c.InternalAddress, strconv.Itoa(c.RegistryPort))
 	mirrorURL := "https://" + mirrorAddr + "/v2"
 	registry := nodeConfig.AgentConfig.Registry
 
