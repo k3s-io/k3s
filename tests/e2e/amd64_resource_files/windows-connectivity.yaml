@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linux-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linux-test
+  template:
+    metadata:
+      labels:
+        app: linux-test
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: busybox
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+        args: ['sh', '-c', 'mkdir -p /tmp/www; echo "Linux connectivity test" > /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www']
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linux-test
+spec:
+  selector:
+    app: linux-test
+  ports:
+  - port: 8080
