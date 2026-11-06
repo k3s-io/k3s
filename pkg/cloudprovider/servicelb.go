@@ -55,7 +55,7 @@ const (
 )
 
 var (
-	DefaultLBImage = "rancher/klipper-lb:v0.4.17"
+	DefaultLBImage = "rancher/klipper-lb:v0.4.18"
 )
 
 var lbPodSelector labels.Selector
