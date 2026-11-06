@@ -36,6 +36,7 @@ actions:
       usetitleforautomerge: true
       labels: 
         - "dependencies"
+        - "kind/updatecli"
 
 sources:
   local-path-provisioner:
