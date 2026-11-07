@@ -272,8 +272,10 @@ func RunStandalone(ctx context.Context, wg *sync.WaitGroup, cfg cmds.Agent) erro
 		return err
 	}
 
-	if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
-		return err
+	if !cfg.DisableLoadBalancer {
+		if err := tunnelSetup(ctx, nodeConfig, cfg, proxy); err != nil {
+			return err
+		}
 	}
 	if err := certMonitorSetup(ctx, nodeConfig, cfg); err != nil {
 		return err
