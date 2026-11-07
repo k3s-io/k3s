@@ -3,6 +3,8 @@ kind: Pod
 metadata:
   name: agnhost
 spec:
+  nodeSelector:
+    kubernetes.io/os: windows
   containers:
   - name: agnhost
     image: registry.k8s.io/e2e-test-images/agnhost:2.53
