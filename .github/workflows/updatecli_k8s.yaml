@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Install Updatecli
-        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+        uses: updatecli/updatecli-action@93ae2608256484ef8598e902aa675bbc9e278e4e # v3.10.0
 
       - name: Apply Updatecli
         run: "updatecli apply --clean --config ./updatecli/manual.d/k3s-io-kubernetes.yaml --values ./updatecli/values.yaml"
