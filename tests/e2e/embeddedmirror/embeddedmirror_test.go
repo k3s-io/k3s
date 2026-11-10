@@ -51,11 +51,11 @@ var _ = Describe("Verify Create", Ordered, func() {
 			By(tc.Status())
 		})
 		It("Saves image into server images dir", func() {
-			res, err := tests.RunCommand("docker image pull ghcr.io/k3s-io/mirrored-library-busybox:1.37.0")
+			res, err := tests.RunCommand("docker image pull ghcr.io/k3s-io/mirrored-library-busybox:1.38.0")
 			Expect(err).NotTo(HaveOccurred(), "failed to pull image: "+res)
-			res, err = tests.RunCommand("docker image tag ghcr.io/k3s-io/mirrored-library-busybox:1.37.0 registry.example.com/k3s-io/mirrored-library-busybox:1.37.0")
+			res, err = tests.RunCommand("docker image tag ghcr.io/k3s-io/mirrored-library-busybox:1.38.0 registry.example.com/k3s-io/mirrored-library-busybox:1.38.0")
 			Expect(err).NotTo(HaveOccurred(), "failed to tag image: "+res)
-			res, err = tests.RunCommand("docker image save registry.example.com/k3s-io/mirrored-library-busybox:1.37.0 -o mirrored-library-busybox.tar")
+			res, err = tests.RunCommand("docker image save registry.example.com/k3s-io/mirrored-library-busybox:1.38.0 -o mirrored-library-busybox.tar")
 			Expect(err).NotTo(HaveOccurred(), "failed to save image: "+res)
 			res, err = tests.RunCommand("vagrant scp mirrored-library-busybox.tar " + tc.Servers[0].Name + ":/tmp/mirrored-library-busybox.tar")
 			Expect(err).NotTo(HaveOccurred(), "failed to 'vagrant scp' image tarball: "+res)
@@ -75,7 +75,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			}, "620s", "10s").Should(Succeed())
 		})
 		It("Should create and validate deployment with embedded registry mirror using image tag", func() {
-			res, err := tests.RunCommand("kubectl create deployment my-deployment-1 --image=ghcr.io/k3s-io/mirrored-library-busybox:1.37.0 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-1 --image=ghcr.io/k3s-io/mirrored-library-busybox:1.38.0 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -93,6 +93,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+// TODO
 		// @sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 is :1.37.0 which has already been pulled and should be reused
 		It("Should create and validate deployment with embedded registry mirror using image digest for existing tag", func() {
 			res, err := tests.RunCommand("kubectl create deployment my-deployment-2 --image=ghcr.io/k3s-io/mirrored-library-busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 -- sleep 86400")
@@ -135,7 +136,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 		// create deployment from imported image
 		It("Should create and validate deployment with embedded registry mirror using image tag from import", func() {
-			res, err := tests.RunCommand("kubectl create deployment my-deployment-4 --image=registry.example.com/k3s-io/mirrored-library-busybox:1.37.0 -- sleep 86400")
+			res, err := tests.RunCommand("kubectl create deployment my-deployment-4 --image=registry.example.com/k3s-io/mirrored-library-busybox:1.38.0 -- sleep 86400")
 			fmt.Println(res)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -153,6 +154,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+// TODO
 		// @sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 is :1.37.0 which should have been created by the image import.
 		// Note that the digest here may vary depending on the image store used to save the image. When using docker with
 		// containerd-snapshotter, image pull/save retains the original manifest list and digest, but the legacy docker
