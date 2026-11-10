@@ -178,7 +178,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.38.0
         args: ['sh', '-c', 'echo Welcome to nginx! > index.html; hostname > name.html; httpd -vvf']
         resources:
           requests:
