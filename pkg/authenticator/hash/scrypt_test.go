@@ -38,6 +38,16 @@ func Test_UnitSCrypt_VerifyHash(t *testing.T) {
 	}
 }
 
+func Test_UnitSCrypt_CreateHash_SaltLength(t *testing.T) {
+	hash, err := NewSCrypt().CreateHash("hello world")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if salt := strings.Split(hash, ":")[1]; len(salt) != 32 {
+		t.Errorf("salt is %d hex characters, want 32", len(salt))
+	}
+}
+
 func FuzzVerifyHash(f *testing.F) {
 	hasher := NewSCrypt()
 	validSecret := "my-secret-password"
