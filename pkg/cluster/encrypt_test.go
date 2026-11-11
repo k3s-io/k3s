@@ -2,7 +2,9 @@ package cluster
 
 import (
 	"bytes"
+	"crypto/fips140"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -37,6 +39,7 @@ func Test_UnitstorageKey(t *testing.T) {
 }
 
 func Test_Unitencrypt(t *testing.T) {
+	setFIPS(t, false, false)
 	tests := []struct {
 		name       string
 		passphrase string
@@ -51,7 +54,7 @@ func Test_Unitencrypt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ciphertext, err := encrypt(tt.passphrase, tt.plaintext)
+			ciphertext, err := encrypt(tt.passphrase, tt.plaintext, false)
 			if err != nil {
 				t.Fatalf("encrypt() error = %v", err)
 			}
@@ -75,7 +78,7 @@ func Test_Unitencrypt(t *testing.T) {
 				t.Fatalf("decrypt() = %q, want %q", string(decrypted), string(tt.plaintext))
 			}
 
-			second, err := encrypt(tt.passphrase, tt.plaintext)
+			second, err := encrypt(tt.passphrase, tt.plaintext, false)
 			if err != nil {
 				t.Fatalf("second encrypt() error = %v", err)
 			}
@@ -87,7 +90,8 @@ func Test_Unitencrypt(t *testing.T) {
 }
 
 func Test_Unitdecrypt(t *testing.T) {
-	goodCiphertext, err := encrypt("correct-passphrase", []byte("payload"))
+	setFIPS(t, false, false)
+	goodCiphertext, err := encrypt("correct-passphrase", []byte("payload"), false)
 	if err != nil {
 		t.Fatalf("setup encrypt() error = %v", err)
 	}
@@ -112,6 +116,9 @@ func Test_Unitdecrypt(t *testing.T) {
 			ciphertext: []byte("salt:***"),
 			wantErr:    true,
 		},
+		{name: "empty", passphrase: "secret", ciphertext: []byte(""), wantErr: true, wantErrText: "not : delimited"},
+		{name: "legacy shorter than a nonce", passphrase: "secret", ciphertext: []byte("salt:AAAA"), wantErr: true, wantErrText: "too short"},
+		{name: "v2 shorter than a nonce", passphrase: "secret", ciphertext: []byte(v2Prefix + "salt:AAAA"), wantErr: true, wantErrText: "too short"},
 		{
 			name:       "wrong passphrase",
 			passphrase: "wrong-passphrase",
@@ -140,6 +147,86 @@ func Test_Unitdecrypt(t *testing.T) {
 			}
 			if string(got) != "payload" {
 				t.Errorf("decrypt() = %q, want %q", string(got), "payload")
+			}
+		})
+	}
+}
+
+// legacyVector is "bootstrap payload" encrypted with "test-passphrase" by the SHA-1 encrypt that predates the v2 format.
+const legacyVector = "663ef4545bce9fe4:FXvWg+7GFBzv4XCKLGvZeGAS2bGC0MwIKs8ZuEGJTtDlB1WKLDFRjidxCoNQ"
+
+var boringEnabled bool
+
+func setFIPS(t *testing.T, enabled, enforced bool) {
+	if fips140.Enforced() && !enforced || enabled && boringEnabled {
+		t.Skip("mode is not available in this build")
+	}
+	oldEnabled, oldEnforced := fipsEnabled, fipsEnforced
+	fipsEnabled, fipsEnforced = func() bool { return enabled }, func() bool { return enforced }
+	t.Cleanup(func() { fipsEnabled, fipsEnforced = oldEnabled, oldEnforced })
+}
+
+func Test_UnituseV2(t *testing.T) {
+	tests := []struct {
+		name     string
+		enabled  bool
+		existing string
+		want     bool
+	}{
+		{"fips off writes legacy", false, legacyVector, false},
+		{"fips off keeps v2", false, v2Prefix + "salt:data", true},
+		{"fips on writes v2", true, legacyVector, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setFIPS(t, tt.enabled, false)
+			if got := useV2([]byte(tt.existing)); got != tt.want {
+				t.Fatalf("useV2() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_UnitencryptV2(t *testing.T) {
+	for _, write := range []bool{true, false} {
+		for _, read := range []bool{true, false} {
+			t.Run(fmt.Sprintf("write fips=%v read fips=%v", write, read), func(t *testing.T) {
+				setFIPS(t, write, false)
+				ciphertext, err := encrypt("test-passphrase", []byte("payload"), true)
+				if err != nil || !bytes.HasPrefix(ciphertext, []byte(v2Prefix)) {
+					t.Fatalf("encrypt() = %q, %v, want a %q value", ciphertext, err, v2Prefix)
+				}
+				setFIPS(t, read, false)
+				if got, err := decrypt("test-passphrase", ciphertext); err != nil || string(got) != "payload" {
+					t.Fatalf("decrypt() = %q, %v", got, err)
+				}
+				if _, err := decrypt("wrong-passphrase", ciphertext); err == nil {
+					t.Fatal("decrypt() accepted the wrong passphrase")
+				}
+			})
+		}
+	}
+}
+
+func Test_UnitdecryptLegacy(t *testing.T) {
+	tests := []struct {
+		name              string
+		enabled, enforced bool
+		wantErrText       string
+	}{
+		{"fips off", false, false, ""},
+		{"fips on", true, false, ""},
+		{"fips only", true, true, "fips140=on"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setFIPS(t, tt.enabled, tt.enforced)
+			got, err := decrypt("test-passphrase", []byte(legacyVector))
+			if (err != nil) != (tt.wantErrText != "") || err != nil && !strings.Contains(err.Error(), tt.wantErrText) {
+				t.Fatalf("decrypt() error = %v, expected to contain %q", err, tt.wantErrText)
+			}
+			if err == nil && string(got) != "bootstrap payload" {
+				t.Fatalf("decrypt() = %q", got)
 			}
 		})
 	}

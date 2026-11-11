@@ -81,11 +81,6 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 		return err
 	}
 
-	data, err := encrypt(normalizedToken, buf.Bytes())
-	if err != nil {
-		return err
-	}
-
 	storageClient, err := store.NewRemoteStore(config.Runtime.EtcdConfig)
 	if err != nil {
 		return err
@@ -93,6 +88,15 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 	defer storageClient.Close()
 
 	kv, _, err := getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+	if err != nil {
+		return err
+	}
+
+	var existing []byte
+	if kv != nil {
+		existing = kv.Value
+	}
+	data, err := encrypt(normalizedToken, buf.Bytes(), useV2(existing))
 	if err != nil {
 		return err
 	}
@@ -362,6 +366,10 @@ func migrateTokens(ctx context.Context, bootstrapList []*mvccpb.KeyValue, storag
 			if err := doMigrateToken(ctx, storageClient, bootstrapKV, oldToken, oldTokenKey, token, tokenKey); err != nil {
 				return err
 			}
+		} else if string(bootstrapKV.Key) == tokenKey && len(bootstrapKV.Value) > 0 && !bytes.HasPrefix(bootstrapKV.Value, []byte(v2Prefix)) && fipsEnabled() && !fipsEnforced() {
+			if err := migrateLegacy(ctx, storageClient, bootstrapKV, token); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -375,7 +383,7 @@ func doMigrateToken(ctx context.Context, storageClient store.ReadWriteCloser, kv
 		return err
 	}
 
-	encryptedData, err := encrypt(newToken, data)
+	encryptedData, err := encrypt(newToken, data, useV2(kv.Value))
 	if err != nil {
 		return err
 	}
@@ -398,5 +406,31 @@ func doMigrateToken(ctx context.Context, storageClient store.ReadWriteCloser, kv
 		logrus.Warnf("failed to delete old bootstrap key %s", oldTokenKey)
 	}
 
+	return nil
+}
+
+// migrateLegacy re-encrypts bootstrap data written with a SHA-1 derived key, so that it can be read under fips140=only.
+// It writes at the revision it read, so a concurrent writer wins and this server tries again on its next start.
+func migrateLegacy(ctx context.Context, storageClient store.ReadWriteCloser, kv *mvccpb.KeyValue, token string) error {
+	data, err := decrypt(token, kv.Value)
+	if err != nil {
+		return err
+	}
+
+	encryptedData, err := encrypt(token, data, true)
+	if err != nil {
+		return err
+	}
+
+	if err := storageClient.Update(ctx, string(kv.Key), kv.ModRevision, encryptedData); err != nil {
+		if errors.Is(err, rpctypes.ErrGRPCNotSupportedForLearner) {
+			logrus.Debug("skipping bootstrap data migration on learner")
+			return nil
+		}
+		logrus.Warnf("failed to migrate bootstrap key %s to SHA-256: %v", string(kv.Key), err)
+		return nil
+	}
+
+	logrus.Infof("migrated bootstrap key %s to SHA-256", string(kv.Key))
 	return nil
 }
