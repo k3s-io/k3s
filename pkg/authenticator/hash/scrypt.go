@@ -30,7 +30,7 @@ func NewSCrypt() Hasher {
 		R:       8,
 		P:       1,
 		KeyLen:  64,
-		SaltLen: 8,
+		SaltLen: 16,
 	}
 }
 
