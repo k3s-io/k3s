@@ -51,5 +51,6 @@ actions:
                 strategy: "manual"
             labels:
                 - dependencies
+                - kind/updatecli
         scmid: default
 
