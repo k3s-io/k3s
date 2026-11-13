@@ -638,6 +638,11 @@ setup_selinux() {
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
+        if [ -f /usr/share/selinux/packages/k3s.pp ] && ! $SUDO chcon -u system_u -r object_r -t container_runtime_exec_t ${BIN_DIR}/k3s >/dev/null 2>&1; then
+            if $SUDO grep '^\s*SELINUX=enforcing' /etc/selinux/config >/dev/null 2>&1; then
+                warn "Failed to apply container_runtime_exec_t to ${BIN_DIR}/k3s"
+            fi
+        fi
         return
     fi
 
