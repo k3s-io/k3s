@@ -77,6 +77,27 @@ go test -timeout=15m ./tests/e2e/validatecluster/... -run E2E
 go test -timeout=15m ./tests/e2e/... -run E2EClusterValidation
 ```
 
+### Windows agent
+
+This suite requires a Windows Server 2025 Vagrant box and checks HTTP connectivity in both directions between Linux and Windows pods.
+
+Build the Windows binary from the same release tag:
+
+```bash
+export E2E_RELEASE_VERSION='v1.37.1+k3s1'
+git clone --depth 1 --branch "$E2E_RELEASE_VERSION" https://github.com/k3s-io/k3s.git /tmp/k3s-release-source
+cd /tmp/k3s-release-source
+docker buildx build --platform=windows/amd64 --target=result \
+  --build-arg GIT_TAG="$E2E_RELEASE_VERSION" \
+  --output=type=local,dest=/tmp/k3s-release-artifacts -f Dockerfile .
+export E2E_WINDOWS_K3S_BIN=/tmp/k3s-release-artifacts/dist/artifacts/k3s.exe
+export E2E_WINDOWS_BOX=gusztavvargadr/windows-server-2025-standard
+
+cd /path/to/k3s/tests/e2e/windows
+go test -v -timeout=75m .
+```
+
+
 Additionally, to generate junit reporting for the tests, the Ginkgo CLI is used. Installation instructions can be found [here.](https://onsi.github.io/ginkgo/#getting-started)  
 
 To run the all E2E tests and generate JUnit testing reports:
