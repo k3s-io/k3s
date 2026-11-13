@@ -51,7 +51,7 @@ func waitForSourceVip(networkName string, nodeConfig *daemonconfig.Node) string 
 
 		configData := `{
 			"cniVersion": "0.2.0",
-			"name": "vxlan0",
+			"name": "` + networkName + `",
 			"ipam": {
 				"type": "host-local",
 				"ranges": [[{"subnet":"` + subnet + `"}]],
