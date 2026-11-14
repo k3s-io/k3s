@@ -318,7 +318,7 @@ func (c *Cluster) ReconcileBootstrapData(ctx context.Context, buf io.ReadSeeker,
 
 		defer storageClient.Close()
 
-		kv, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		kv, c.saveBootstrap, err = getBootstrapKeyFromStorage(ctx, c.config.Runtime, storageClient, normalizedToken, token)
 		if err != nil {
 			return err
 		}

@@ -4,21 +4,29 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/bootstrap"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/etcd/store"
 	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // maxBootstrapWaitAttempts is the number of iterations to wait for another node to populate an empty bootstrap key.
 // After this many attempts, the lock is deleted and the counter reset.
 const maxBootstrapWaitAttempts = 5
+
+// BootstrapSHA256Annotation is set on a node by every server that can read bootstrap data keyed with SHA-256.
+var BootstrapSHA256Annotation = version.Program + ".io/bootstrap-sha256"
 
 func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken string) error {
 	token, err := util.ReadTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
@@ -55,7 +63,7 @@ func RotateBootstrapToken(ctx context.Context, config *config.Control, oldToken 
 		return err
 	}
 	// reuse the existing migration function to reencrypt bootstrap data with new token
-	return migrateTokens(ctx, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken)
+	return migrateTokens(ctx, config.Runtime, bootstrapList, storageClient, "", tokenKey, normalizedToken, normalizedOldToken)
 }
 
 // Save writes the current ControlRuntimeBootstrap data to the datastore. This contains a complete
@@ -87,7 +95,7 @@ func Save(ctx context.Context, config *config.Control, override bool) error {
 	}
 	defer storageClient.Close()
 
-	kv, _, err := getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+	kv, _, err := getBootstrapKeyFromStorage(ctx, config.Runtime, storageClient, normalizedToken, token)
 	if err != nil {
 		return err
 	}
@@ -212,7 +220,7 @@ func (c *Cluster) storageBootstrap(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		kv, saveBootstrap, err := getBootstrapKeyFromStorage(ctx, storageClient, normalizedToken, token)
+		kv, saveBootstrap, err := getBootstrapKeyFromStorage(ctx, c.config.Runtime, storageClient, normalizedToken, token)
 		c.saveBootstrap = saveBootstrap
 		if err != nil {
 			return false, err
@@ -305,7 +313,7 @@ func getBootstrapValues(ctx context.Context, storageClient store.ReadCloser) ([]
 // passed to it, it will return error if it finds a key that is hashed with different token and will return
 // value if it finds the key hashed by passed token or empty string.
 // Upon receiving a "not supported for learner" error from etcd, this function will retry until the context is cancelled.
-func getBootstrapKeyFromStorage(ctx context.Context, storageClient store.ReadCloser, normalizedToken, oldToken string) (*mvccpb.KeyValue, bool, error) {
+func getBootstrapKeyFromStorage(ctx context.Context, runtime *config.ControlRuntime, storageClient store.ReadCloser, normalizedToken, oldToken string) (*mvccpb.KeyValue, bool, error) {
 	emptyStringKey := storageKey("")
 	tokenKey := storageKey(normalizedToken)
 
@@ -322,7 +330,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient store.ReadClo
 	}
 	// check for empty string key and for old token format with k10 prefix
 	if storageWriter, ok := storageClient.(store.ReadWriteCloser); ok {
-		if err := migrateTokens(ctx, bootstrapList, storageWriter, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
+		if err := migrateTokens(ctx, runtime, bootstrapList, storageWriter, emptyStringKey, tokenKey, normalizedToken, oldToken); err != nil {
 			return nil, false, err
 		}
 	} else {
@@ -348,7 +356,7 @@ func getBootstrapKeyFromStorage(ctx context.Context, storageClient store.ReadClo
 // migrateTokens will list all keys that has prefix /bootstrap and will check for key that is
 // hashed with empty string and keys that is hashed with old token format before normalizing
 // then migrate those and resave only with the normalized token
-func migrateTokens(ctx context.Context, bootstrapList []*mvccpb.KeyValue, storageClient store.ReadWriteCloser, emptyStringKey, tokenKey, token, oldToken string) error {
+func migrateTokens(ctx context.Context, runtime *config.ControlRuntime, bootstrapList []*mvccpb.KeyValue, storageClient store.ReadWriteCloser, emptyStringKey, tokenKey, token, oldToken string) error {
 	oldTokenKey := storageKey(oldToken)
 
 	for _, bootstrapKV := range bootstrapList {
@@ -367,6 +375,9 @@ func migrateTokens(ctx context.Context, bootstrapList []*mvccpb.KeyValue, storag
 				return err
 			}
 		} else if string(bootstrapKV.Key) == tokenKey && len(bootstrapKV.Value) > 0 && !bytes.HasPrefix(bootstrapKV.Value, []byte(v2Prefix)) && fipsEnabled() && !fipsEnforced() {
+			if deferLegacyMigration(runtime) {
+				continue
+			}
 			if err := migrateLegacy(ctx, storageClient, bootstrapKV, token); err != nil {
 				return err
 			}
@@ -407,6 +418,80 @@ func doMigrateToken(ctx context.Context, storageClient store.ReadWriteCloser, kv
 	}
 
 	return nil
+}
+
+// listControlPlaneNodes is a variable so that tests can supply the node list.
+var listControlPlaneNodes = func(runtime *config.ControlRuntime) ([]corev1.Node, error) {
+	if runtime == nil || runtime.Core == nil {
+		return nil, errors.New("apiserver is not available")
+	}
+	selector := labels.Set{util.ControlPlaneRoleLabelKey: "true"}.String()
+	nodes, err := runtime.Core.Core().V1().Node().List(metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+	return nodes.Items, nil
+}
+
+// deferLegacyMigration reports whether the SHA-256 rewrite must wait. A server that cannot read the SHA-256
+// format fails to start on rewritten data, so the rewrite waits until every control-plane node has
+// set BootstrapSHA256Annotation. Deferring costs nothing: fips140=on reads the legacy format.
+func deferLegacyMigration(runtime *config.ControlRuntime) bool {
+	nodes, err := listControlPlaneNodes(runtime)
+	if err != nil {
+		logrus.Infof("Deferring bootstrap data migration to SHA-256: unable to list control-plane nodes: %v", err)
+		return true
+	}
+	var blocking []string
+	for _, node := range nodes {
+		if _, ok := node.Annotations[BootstrapSHA256Annotation]; !ok {
+			blocking = append(blocking, node.Name)
+		}
+	}
+	if len(nodes) == 0 || len(blocking) > 0 {
+		logrus.Infof("Deferring bootstrap data migration to SHA-256 until all control-plane nodes support it; waiting on nodes: %s", strings.Join(blocking, ", "))
+		return true
+	}
+	return false
+}
+
+// MigrateBootstrapData retries the SHA-256 migration once the apiserver is up and can report on every
+// control-plane node. It returns true when there is nothing further to retry.
+func MigrateBootstrapData(ctx context.Context, config *config.Control) (bool, error) {
+	if !fipsEnabled() || fipsEnforced() {
+		return true, nil
+	}
+	token, err := util.ReadTokenFromFile(config.Runtime.ServerToken, config.Runtime.ServerCA, config.DataDir)
+	if err != nil {
+		return false, err
+	}
+	normalizedToken, err := util.NormalizeToken(token)
+	if err != nil {
+		return false, err
+	}
+	storageClient, err := store.NewRemoteStore(config.Runtime.EtcdConfig)
+	if err != nil {
+		return false, err
+	}
+	defer storageClient.Close()
+
+	bootstrapList, err := getBootstrapValues(ctx, storageClient)
+	if err != nil {
+		return false, err
+	}
+	if err := migrateTokens(ctx, config.Runtime, bootstrapList, storageClient, "", storageKey(normalizedToken), normalizedToken, normalizedToken); err != nil {
+		return false, err
+	}
+	bootstrapList, err = getBootstrapValues(ctx, storageClient)
+	if err != nil {
+		return false, err
+	}
+	for _, kv := range bootstrapList {
+		if string(kv.Key) == storageKey(normalizedToken) && len(kv.Value) > 0 && !bytes.HasPrefix(kv.Value, []byte(v2Prefix)) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // migrateLegacy re-encrypts bootstrap data written with a SHA-1 derived key, so that it can be read under fips140=only.

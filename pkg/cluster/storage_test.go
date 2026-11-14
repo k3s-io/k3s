@@ -12,6 +12,8 @@ import (
 	"github.com/k3s-io/kine/pkg/app"
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type updateStore struct {
@@ -36,6 +38,55 @@ func (s *updateStore) Update(_ context.Context, _ string, rev int64, value []byt
 	return s.err
 }
 
+func testNode(name string, annotated bool) corev1.Node {
+	node := corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	if annotated {
+		node.Annotations = map[string]string{BootstrapSHA256Annotation: "true"}
+	}
+	return node
+}
+
+func setNodes(t *testing.T, nodes []corev1.Node, err error) {
+	t.Helper()
+	old := listControlPlaneNodes
+	listControlPlaneNodes = func(*config.ControlRuntime) ([]corev1.Node, error) { return nodes, err }
+	t.Cleanup(func() { listControlPlaneNodes = old })
+}
+
+func Test_UnitmigrateTokensMixedVersion(t *testing.T) {
+	const token = "test-passphrase"
+	tests := []struct {
+		name      string
+		nodes     []corev1.Node
+		listErr   error
+		wantWrite bool
+	}{
+		{"all control-plane nodes annotated migrates", []corev1.Node{testNode("server-1", true), testNode("server-2", true)}, nil, true},
+		{"one node without the annotation defers", []corev1.Node{testNode("server-1", true), testNode("server-2", false)}, nil, false},
+		{"node list unavailable defers", nil, errors.New("apiserver is not available"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setFIPS(t, true, false)
+			setNodes(t, tt.nodes, tt.listErr)
+			s := &updateStore{}
+			list := []*mvccpb.KeyValue{{Key: []byte(storageKey(token)), Value: []byte(legacyVector), ModRevision: 7}}
+			if err := migrateTokens(context.Background(), nil, list, s, storageKey(""), storageKey(token), token, token); err != nil {
+				t.Fatalf("migrateTokens() error = %v", err)
+			}
+			if !tt.wantWrite {
+				if s.value != nil {
+					t.Fatalf("migrateTokens() wrote %q, want legacy data left in place", s.value)
+				}
+				return
+			}
+			if !bytes.HasPrefix(s.value, []byte(v2Prefix)) {
+				t.Fatalf("migrateTokens() wrote %q, want v2 data", s.value)
+			}
+		})
+	}
+}
+
 func Test_UnitmigrateTokens(t *testing.T) {
 	const token = "test-passphrase"
 	tests := []struct {
@@ -56,6 +107,7 @@ func Test_UnitmigrateTokens(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			setFIPS(t, tt.enabled, tt.enforced)
+			setNodes(t, []corev1.Node{testNode("server-1", true)}, nil)
 			s := &updateStore{err: tt.updateErr}
 			value, oldToken := []byte(tt.value), token
 			if tt.rotate {
@@ -63,7 +115,7 @@ func Test_UnitmigrateTokens(t *testing.T) {
 				value, _ = encrypt(oldToken, []byte("bootstrap payload"), true)
 			}
 			list := []*mvccpb.KeyValue{{Key: []byte(storageKey(oldToken)), Value: value, ModRevision: 7}}
-			if err := migrateTokens(context.Background(), list, s, storageKey(""), storageKey(token), token, oldToken); err != nil {
+			if err := migrateTokens(context.Background(), nil, list, s, storageKey(""), storageKey(token), token, oldToken); err != nil {
 				t.Fatalf("migrateTokens() error = %v", err)
 			}
 			if !tt.wantWrite {
