@@ -231,3 +231,60 @@ func Test_UnitdecryptLegacy(t *testing.T) {
 		})
 	}
 }
+
+// The InProcessMode tests below run against the real mode with no setFIPS stub, so
+// GODEBUG=fips140=on and =only exercise the GCM path that setFIPS skips under =only.
+func Test_UnitencryptV2_InProcessMode(t *testing.T) {
+	ciphertext, err := encrypt("test-passphrase", []byte("payload"), true)
+	if err != nil || !bytes.HasPrefix(ciphertext, []byte(v2Prefix)) {
+		t.Fatalf("encrypt() = %q, %v, want a %q value", ciphertext, err, v2Prefix)
+	}
+	if got, err := decrypt("test-passphrase", ciphertext); err != nil || string(got) != "payload" {
+		t.Fatalf("decrypt() = %q, %v", got, err)
+	}
+	if _, err := decrypt("wrong-passphrase", ciphertext); err == nil {
+		t.Fatal("decrypt() accepted the wrong passphrase")
+	}
+}
+
+func Test_UnitdecryptLegacy_InProcessMode(t *testing.T) {
+	got, err := decrypt("test-passphrase", []byte(legacyVector))
+	if fips140.Enforced() {
+		if err == nil || !strings.Contains(err.Error(), "fips140=on") {
+			t.Fatalf("decrypt() error = %v, expected to contain %q", err, "fips140=on")
+		}
+		return
+	}
+	if err != nil || string(got) != "bootstrap payload" {
+		t.Fatalf("decrypt() = %q, %v", got, err)
+	}
+}
+
+func Test_UnituseV2_InProcessMode(t *testing.T) {
+	if got := useV2([]byte(legacyVector)); got != fips140.Enabled() {
+		t.Fatalf("useV2() = %v with fips140.Enabled() = %v", got, fips140.Enabled())
+	}
+}
+
+// Under FIPS mode the GCM picks its own nonce, so two seals of one plaintext under one key
+// must differ. A fixed or caller-chosen nonce would repeat, which breaks GCM.
+func Test_UnitencryptV2_RandomNonce(t *testing.T) {
+	if !fips140.Enabled() {
+		setFIPS(t, true, false)
+	}
+	gcm, err := v2GCM("test-passphrase", "0123456789abcdef")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gcm.NonceSize() != 0 {
+		t.Fatalf("NonceSize() = %d, want 0 for a GCM that generates its own nonce", gcm.NonceSize())
+	}
+	first := gcm.Seal(nil, nil, []byte("payload"), nil)
+	second := gcm.Seal(nil, nil, []byte("payload"), nil)
+	if bytes.Equal(first, second) {
+		t.Fatal("two seals of one plaintext are identical, the nonce is not random")
+	}
+	if bytes.Equal(first[:12], second[:12]) {
+		t.Fatal("two seals share a nonce")
+	}
+}
