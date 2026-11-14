@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"crypto/fips140"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -12,6 +13,10 @@ import (
 
 // Version is the hashing format version
 const Version = 1
+
+// MinFIPSSaltLen is the shortest salt that crypto/pbkdf2 accepts under GODEBUG=fips140=only
+const MinFIPSSaltLen = 16
+
 const hashFormat = "$%d:%x:%d:%d:%d:%s"
 
 // SCrypt contains all of the variables needed for scrypt hashing
@@ -68,6 +73,10 @@ func (s SCrypt) VerifyHash(hash, secretKey string) error {
 	}
 	if version != Version {
 		return fmt.Errorf("hash version %d does not match package version %d", version, Version)
+	}
+
+	if fips140.Enforced() && len(salt) < MinFIPSSaltLen {
+		return fmt.Errorf("hash salt is %d bytes, fips140=only requires at least %d; delete the node password secret so the node can re-register", len(salt), MinFIPSSaltLen)
 	}
 
 	dk, err := base64.RawStdEncoding.DecodeString(enc)

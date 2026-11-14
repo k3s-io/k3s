@@ -54,7 +54,7 @@ const legacyHash = "$1:c229c44d4c4adb07:15:8:1:8TozcojzhYRmvoYMOzClhBJ5EomfBg+6y
 
 func Test_UnitSCrypt_VerifyHash_LegacySalt(t *testing.T) {
 	if fips140.Enforced() {
-		t.Skip("fips140=only rejects the 8-byte salt, VerifyHash does not guard it yet")
+		t.Skip("fips140=only rejects the 8-byte salt, see Test_UnitSCrypt_VerifyHash_LegacySaltFIPS")
 	}
 	hasher := NewSCrypt()
 	if err := hasher.VerifyHash(legacyHash, "hello world"); err != nil {
@@ -62,6 +62,19 @@ func Test_UnitSCrypt_VerifyHash_LegacySalt(t *testing.T) {
 	}
 	if err := hasher.VerifyHash(legacyHash, "wrong"); err == nil {
 		t.Fatal("SCrypt.VerifyHash() accepted the wrong secret")
+	}
+}
+
+func Test_UnitSCrypt_VerifyHash_LegacySaltFIPS(t *testing.T) {
+	if !fips140.Enforced() {
+		t.Skip("requires GODEBUG=fips140=only")
+	}
+	err := NewSCrypt().VerifyHash(legacyHash, "hello world")
+	if err == nil {
+		t.Fatal("SCrypt.VerifyHash() error = nil, want an error for an 8-byte salt under fips140=only")
+	}
+	if !strings.Contains(err.Error(), "delete the node password secret") {
+		t.Errorf("SCrypt.VerifyHash() error = %q, want it to name the remedy", err)
 	}
 }
 
