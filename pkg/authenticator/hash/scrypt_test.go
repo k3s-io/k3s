@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"crypto/fips140"
 	"strings"
 	"testing"
 )
@@ -45,6 +46,22 @@ func Test_UnitSCrypt_CreateHash_SaltLength(t *testing.T) {
 	}
 	if salt := strings.Split(hash, ":")[1]; len(salt) != 32 {
 		t.Errorf("salt is %d hex characters, want 32", len(salt))
+	}
+}
+
+// legacyHash is "hello world" hashed by the 8-byte-salt SCrypt that predates the 16-byte salt.
+const legacyHash = "$1:c229c44d4c4adb07:15:8:1:8TozcojzhYRmvoYMOzClhBJ5EomfBg+6yClpqo15t0j2ENlD+cVwcVdIyqo02V6JK05zToAusxPYmytPIus/kQ"
+
+func Test_UnitSCrypt_VerifyHash_LegacySalt(t *testing.T) {
+	if fips140.Enforced() {
+		t.Skip("fips140=only rejects the 8-byte salt, VerifyHash does not guard it yet")
+	}
+	hasher := NewSCrypt()
+	if err := hasher.VerifyHash(legacyHash, "hello world"); err != nil {
+		t.Fatalf("SCrypt.VerifyHash() error = %v, want nil for a stock 8-byte-salt hash", err)
+	}
+	if err := hasher.VerifyHash(legacyHash, "wrong"); err == nil {
+		t.Fatal("SCrypt.VerifyHash() accepted the wrong secret")
 	}
 }
 
