@@ -162,6 +162,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.HelmJobImage = cfg.HelmJobImage
 	serverConfig.ControlConfig.Rootless = cfg.Rootless
 	serverConfig.ControlConfig.ServiceLBNamespace = cfg.ServiceLBNamespace
+	serverConfig.ControlConfig.RejectDuplicateNodeAddresses = cfg.RejectDuplicateNodeAddresses
 	serverConfig.ControlConfig.SANs = util.SplitStringSlice(cfg.TLSSan.Value())
 	serverConfig.ControlConfig.SANSecurity = cfg.TLSSanSecurity
 	serverConfig.ControlConfig.BindAddress = cmds.AgentConfig.BindAddress

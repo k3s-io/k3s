@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
@@ -104,5 +106,33 @@ func (k *k3s) InstanceMetadata(ctx context.Context, node *corev1.Node) (*cloudpr
 		logrus.Infof("Couldn't find node hostname annotation or label on node %s", node.Name)
 	}
 
+	if k.RejectDuplicateNodeAddresses {
+		if err := k.checkDuplicateNodeAddresses(node.Name, metadata.NodeAddresses); err != nil {
+			return nil, err
+		}
+	}
+
 	return metadata, nil
+}
+
+// checkDuplicateNodeAddresses returns an error if any of the node's internal or external IPs
+// already belong to another node.
+func (k *k3s) checkDuplicateNodeAddresses(nodeName string, nodeAddresses []corev1.NodeAddress) error {
+	if k.nodeCache == nil {
+		return errors.New("node cache not ready")
+	}
+	nodes, err := k.nodeCache.List(labels.Everything())
+	if err != nil {
+		return err
+	}
+	addresses := []string{}
+	for _, address := range nodeAddresses {
+		if address.Type == corev1.NodeInternalIP || address.Type == corev1.NodeExternalIP {
+			addresses = append(addresses, address.Address)
+		}
+	}
+	if address, owner := util.DuplicateNodeAddress(nodes, nodeName, addresses); address != "" {
+		return fmt.Errorf("refusing to set address %s on node %s: already assigned to node %s", address, nodeName, owner)
+	}
+	return nil
 }
