@@ -42,9 +42,10 @@ flowchart LR
 - protocol SHA-1 wrapped in the libraries: [wrangler#797](https://github.com/rancher/wrangler/pull/797), [dynamiclistener#390](https://github.com/rancher/dynamiclistener/pull/390)
 - etcd: narrow wraps at its two SHA-1 ID calls, to be offered on etcd `main` ([etcd-io/etcd#21673](https://github.com/etcd-io/etcd/issues/21673)). etcd has not agreed to take them; K3s wraps `embed.StartEtcd` until its pin carries them.
 - K3s call-site wraps for the tunnel server, the agent dial, `kubectl` and snapshot restore: a PR after this ADR is accepted.
-- the FIPS build: K3s's build does not pass `GOFIPS140` through today. [#14999](https://github.com/k3s-io/k3s/pull/14999) passes it through.
+- a build option for downstream builders: `make` does not pass `GOFIPS140` through; [#14999](https://github.com/k3s-io/k3s/pull/14999) does, if maintainers want it.
+- CI: `GODEBUG=fips140=only` on the startup test, and `Test_DockerFIPSMigration`: a PR after this ADR is accepted.
 
-The series applies to `main`, release-1.36 and release-1.37, where it was tested; release-1.34 and 1.35 were not tested, and 1.33 cannot take it. With it applied to main and to release-1.36, unit tests pass under off, `on` and `only`. On `main`, the integration startup test passes under `only` (60 of 60) and stock fails it at the first server start, and `Test_DockerFIPSMigration` passes (8 of 8) with the server and the agent checked in each mode. On `main`, with the series and [#14999](https://github.com/k3s-io/k3s/pull/14999), a FIPS build from `make` started with `GODEBUG` unset runs a pod that answers `kubectl exec` and a ClusterIP service. Logs: https://github.com/andrewdunndev/k3s-fips140-evidence/tree/adr-1.
+The series applies to `main`, release-1.36 and release-1.37, where it was tested; release-1.34 and 1.35 were not tested, and 1.33 cannot take it. With it applied to main and to release-1.36, unit tests pass under off, `on` and `only`. On `main`, the integration startup test passes under `only` (60 of 60) and stock fails it at the first server start, and `Test_DockerFIPSMigration` passes (8 of 8) with two fixes to be filed with it: the agent's mode is set and checked after each change, and the test waits for the bootstrap rewrite before `only`. Logs: https://github.com/andrewdunndev/k3s-fips140-evidence/blob/adr-1-r1/adr/round1.md.
 
 [#1502](https://github.com/k3s-io/k3s/issues/1502) asked for a certified K3s; this ADR does not offer certification. brandond wrote of RKE2, "Eventually we will probably switch to the native module" ([rke2#9453](https://github.com/rancher/rke2/discussions/9453)).
 
@@ -54,10 +55,10 @@ K3s will support running under `GODEBUG=fips140=on`, set by the operator, on new
 
 1. K3s's own cryptography uses approved algorithms by default. Options that select a non-approved algorithm stay available and are the operator's choice. Stored values move to approved forms, and `off` and `on` keep reading the old ones. Where `only` cannot read an old value, K3s returns an error that names the remedy instead of rehashing.
 2. SHA-1 fixed by a protocol or a stored value stays SHA-1, inside `fips140.WithoutEnforcement`, at the narrowest call the code allows. Narrow wraps belong upstream. The K3s wrap around embedded etcd is a stopgap, dropped once etcd's fix is pinned; the tunnel, `kubectl` and snapshot restore wraps stay.
-3. The integration startup test runs under `GODEBUG=fips140=only`, which detects new non-approved calls without a separate CI job. One docker test, `Test_DockerFIPSMigration`, covers the move from off to `on` to `only`. K3s publishes no separate FIPS binary or build process; under `on` the one binary runs the module of its Go release.
+3. The integration startup test runs under `GODEBUG=fips140=only`, which detects new non-approved calls. One docker test, `Test_DockerFIPSMigration`, covers the move from off to `on` to `only`. K3s publishes no separate FIPS binary or build process; under `on` the one binary runs the module of its Go release, which is not the validated version, and K3s makes no compliance claim.
 
 ## Consequences
 
 - Each `WithoutEnforcement` call is a place SHA-1 runs in FIPS mode.
-- A Kubernetes, containerd or flannel bump can add a non-approved call and turn the startup test red under `only`. The author will watch it for red and fix what breaks it.
+- A Kubernetes, containerd or flannel bump can add a non-approved call and turn the startup test red under `only` on that bump's PR, and the author will fix what breaks it.
 - This ADR does not change RKE2, which builds with BoringCrypto today. The library fixes (wrangler, dynamiclistener, kube-router, etcd) are ones RKE2 shares.
