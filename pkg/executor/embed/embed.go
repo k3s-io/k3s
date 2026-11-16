@@ -243,7 +243,7 @@ func (*Embedded) APIServerHandlers(ctx context.Context) (authenticator.Request, 
 
 func (e *Embedded) APIServer(ctx context.Context, args []string) error {
 	// set feature-gates now, to avoid race conditions between components started in parallel
-	if featureGates := util.ArgValue("feature-gates", args); featureGates != "" {
+	if featureGates, ok := util.ArgValue("feature-gates", args); ok {
 		if err := utilfeature.DefaultMutableFeatureGate.Set(featureGates); err != nil {
 			logrus.Warnf("Failed to set feature-gates %s: %v", featureGates, err)
 		}

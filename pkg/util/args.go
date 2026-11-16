@@ -9,17 +9,19 @@ import (
 const hyphens = "--"
 
 // ArgValue returns the value of the first matching arg in the provided list.
-func ArgValue(searchArg string, extraArgs []string) string {
-	var value string
+func ArgValue(searchArg string, extraArgs []string) (string, bool) {
 	for _, unsplitArg := range extraArgs {
-		splitArg := strings.SplitN(strings.TrimPrefix(unsplitArg, hyphens), "=", 2)
-		if splitArg[0] == searchArg {
-			value = splitArg[1]
-			// break if we found our value
-			break
+		unsplitArg = strings.TrimPrefix(unsplitArg, hyphens)
+		// arg is flag with no value
+		if unsplitArg == searchArg {
+			return "", true
+		}
+		// arg is = joined flag-value pair
+		if k, v, ok := strings.Cut(unsplitArg, "="); ok && k == searchArg && len(v) > 0 {
+			return v, true
 		}
 	}
-	return value
+	return "", false
 }
 
 // GetArgs appends extra arguments to existing arguments with logic to override any default
