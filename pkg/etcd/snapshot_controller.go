@@ -268,7 +268,9 @@ func (e *etcdSnapshotHandler) reconcile() error {
 			// A node is considered to match the snapshot if the snapshot name matches the node name
 			// after trimming the leading local- prefix and trailing timestamp and extension.
 			s, _ = strings.CutSuffix(s, ".zip")
-			s = strings.TrimRight(s, "-012345678")
+			if i := strings.LastIndexByte(s, '-'); i >= 0 {
+				s = s[:i]
+			}
 			var matchingNode bool
 			for _, node := range nodeList.Items {
 				if strings.HasSuffix(s, node.Name) {
