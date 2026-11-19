@@ -38,7 +38,7 @@ var (
 	ETCDServerServiceName = version.Program + "-etcd-server-load-balancer"
 )
 
-// New contstructs a new LoadBalancer instance. The default server URL, and
+// New constructs a new LoadBalancer instance. The default server URL, and
 // currently active servers, are stored in a file within the dataDir.
 func New(ctx context.Context, dataDir, serviceName, defaultServerURL string, lbServerPort int, isIPv6 bool) (_lb *LoadBalancer, _err error) {
 	bindAddress := "127.0.0.1"
