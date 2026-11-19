@@ -1,5 +1,5 @@
 name: "Bump CoreDNS Image Version"
-pipelineid: "k3s-dependencies"
+pipelineid: "addons"
 scms:
   k3s:
     kind: "github"
@@ -14,7 +14,7 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
+    title: "[{{ requiredEnv .github.branch }}] Bump packaged components"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:

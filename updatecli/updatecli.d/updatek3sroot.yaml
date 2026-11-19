@@ -1,6 +1,6 @@
 ---
 name: "Update k3sroot version" 
-pipelineid: "k3s-dependencies"
+pipelineid: "k3s-io"
 
 sources:
  k3sroot:
@@ -45,7 +45,7 @@ scms:
       
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io images"
     kind: "github/pullrequest"
     scmid: "default"
     spec:

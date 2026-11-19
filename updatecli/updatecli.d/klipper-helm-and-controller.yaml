@@ -1,6 +1,6 @@
 ---
 name: "Bump Klipper Helm and Helm Controller version"
-pipelineid: "k3s-dependencies"
+pipelineid: "k3s-io"
 scms:
   k3s:
     kind: "github"
@@ -25,7 +25,7 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io images"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
