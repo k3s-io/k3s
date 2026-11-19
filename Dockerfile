@@ -69,6 +69,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM manifests AS build
 ARG GOCOVER
 ARG DEBUG
+ARG GOFIPS140
 COPY ./cmd ./cmd
 COPY ./tests ./tests
 COPY ./pkg ./pkg
