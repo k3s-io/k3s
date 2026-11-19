@@ -902,6 +902,7 @@ func genCloudConfig(controlConfig *config.Control) error {
 		Rootless:                   controlConfig.Rootless,
 		NodeEnabled:                !controlConfig.DisableCCM,
 	}
+	cloudConfig.RejectDuplicateNodeAddresses = controlConfig.RejectDuplicateNodeAddresses
 	if controlConfig.SystemDefaultRegistry != "" {
 		cloudConfig.LBImage = controlConfig.SystemDefaultRegistry + "/" + cloudConfig.LBImage
 	}

@@ -117,6 +117,8 @@ type Server struct {
 	EtcdS3Timeout            time.Duration
 	EtcdS3Insecure           bool
 	ServiceLBNamespace       string
+
+	RejectDuplicateNodeAddresses bool
 }
 
 var (
@@ -278,6 +280,11 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) Namespace of the pods for the servicelb component",
 		Destination: &ServerConfig.ServiceLBNamespace,
 		Value:       "kube-system",
+	},
+	&cli.BoolFlag{
+		Name:        "reject-duplicate-node-addresses",
+		Usage:       "(networking) Refuse to sign kubelet serving certificates for, and to set node addresses on, nodes whose IPs already belong to another node. Not compatible with --with-node-id",
+		Destination: &ServerConfig.RejectDuplicateNodeAddresses,
 	},
 	&cli.StringFlag{
 		Name:        "write-kubeconfig",

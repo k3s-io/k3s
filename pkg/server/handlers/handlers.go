@@ -79,6 +79,13 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 			}
 		}
 
+		if control.RejectDuplicateNodeAddresses {
+			if errCode, err := checkDuplicateNodeAddresses(control, nodeName, ips); err != nil {
+				util.SendError(err, resp, req, errCode)
+				return
+			}
+		}
+
 		signAndSend(resp, req, control.Runtime.ServerCA, control.Runtime.ServerCAKey, control.Runtime.ServingKubeletKey, certutil.Config{
 			CommonName: nodeName,
 			Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
@@ -88,6 +95,26 @@ func ServingKubeletCert(control *config.Control, auth nodepassword.NodeAuthValid
 			},
 		})
 	})
+}
+
+// checkDuplicateNodeAddresses returns an error if any of the IPs requested for a kubelet
+// serving certificate already belong to another node.
+func checkDuplicateNodeAddresses(control *config.Control, nodeName string, ips []net.IP) (int, error) {
+	if control.Runtime.Core == nil {
+		return http.StatusServiceUnavailable, fmt.Errorf("runtime core not ready")
+	}
+	nodes, err := control.Runtime.Core.Core().V1().Node().Cache().List(labels.Everything())
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	addresses := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		addresses = append(addresses, ip.String())
+	}
+	if address, owner := util.DuplicateNodeAddress(nodes, nodeName, addresses); address != "" {
+		return http.StatusConflict, fmt.Errorf("node IP address %s is already assigned to node %s", address, owner)
+	}
+	return 0, nil
 }
 
 func ClientKubeletCert(control *config.Control, auth nodepassword.NodeAuthValidator) http.Handler {

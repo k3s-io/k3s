@@ -4,10 +4,13 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/rancher/wrangler/v3/pkg/generic"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
@@ -128,5 +131,54 @@ func Test_UnitK3sInstanceMetadata(t *testing.T) {
 				t.Errorf("k3s.InstanceMetadata() = %+v\nWant = %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_UnitK3sInstanceMetadataRejectDuplicateAddresses(t *testing.T) {
+	existing := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent-1", CreationTimestamp: metav1.NewTime(time.Now().Add(-time.Hour))},
+		Status: corev1.NodeStatus{Addresses: []corev1.NodeAddress{
+			{Type: corev1.NodeInternalIP, Address: "10.0.0.1"},
+		}},
+	}
+	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	if err := nodeIndexer.Add(existing); err != nil {
+		t.Fatalf("failed to seed node cache: %v", err)
+	}
+	k := &k3s{
+		Config:    Config{NodeEnabled: true, RejectDuplicateNodeAddresses: true},
+		nodeCache: generic.NewNonNamespacedCache[*corev1.Node](nodeIndexer, corev1.Resource("nodes")),
+	}
+
+	newNode := func(internalIP string) *corev1.Node {
+		return &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:              "agent-2",
+			CreationTimestamp: metav1.Now(),
+			Annotations:       map[string]string{InternalIPKey: internalIP},
+		}}
+	}
+
+	// a new node asking for an address another node already has is refused
+	if _, err := k.InstanceMetadata(context.Background(), newNode("10.0.0.1")); err == nil {
+		t.Errorf("k3s.InstanceMetadata() with a duplicate address: expected an error")
+	}
+
+	// a unique address is set as usual
+	got, err := k.InstanceMetadata(context.Background(), newNode("10.0.0.2"))
+	if err != nil {
+		t.Fatalf("k3s.InstanceMetadata() with a unique address: %v", err)
+	}
+	want := []corev1.NodeAddress{{Type: corev1.NodeInternalIP, Address: "10.0.0.2"}}
+	if !reflect.DeepEqual(got.NodeAddresses, want) {
+		t.Errorf("k3s.InstanceMetadata() addresses = %+v, want %+v", got.NodeAddresses, want)
+	}
+
+	// the node that had the address first keeps getting it
+	if _, err := k.InstanceMetadata(context.Background(), &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+		Name:              existing.Name,
+		CreationTimestamp: existing.CreationTimestamp,
+		Annotations:       map[string]string{InternalIPKey: "10.0.0.1"},
+	}}); err != nil {
+		t.Errorf("k3s.InstanceMetadata() for the original owner: %v", err)
 	}
 }
