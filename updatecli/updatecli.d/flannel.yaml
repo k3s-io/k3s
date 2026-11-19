@@ -1,5 +1,6 @@
 ---
 name: "Bump Flannel version"
+pipelineid: "k3s-dependencies"
 scms:
   k3s:
     kind: "github"
@@ -16,7 +17,7 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Flannel version"
+    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:

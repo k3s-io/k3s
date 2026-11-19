@@ -1,5 +1,6 @@
 ---
 name: "Bump Golang Alpine version"
+pipelineid: "k3s-dependencies"
 scms:
   k3s:
     kind: "github"
@@ -16,14 +17,14 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump golang:alpine image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      labels: 
+      labels:
         - "dependencies"
 
 sources:
