@@ -13,6 +13,7 @@ import (
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/control"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
@@ -540,7 +541,7 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 	}
 
 	patcher := util.NewPatcher[*corev1.Node](nodes)
-	return wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+	if err := wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
 		nodeName := os.Getenv("NODE_NAME")
 		if nodeName == "" {
 			logrus.Info("Waiting for control-plane node agent startup")
@@ -548,6 +549,7 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 		}
 
 		patch := util.NewPatchList().Add("true", "metadata", "labels", util.ControlPlaneRoleLabelKey)
+		patch.Add("true", "metadata", "annotations", cluster.BootstrapSHA256Annotation)
 		if _, err := patcher.Patch(ctx, patch, nodeName); err != nil {
 			logrus.Infof("Unable to set control-plane role label: %v", err)
 			return false, nil
@@ -561,6 +563,17 @@ func setNodeLabelsAndAnnotations(ctx context.Context, nodes v1.NodeClient, confi
 		}
 		logrus.Infof("Labels and annotations have been set successfully on node: %s", nodeName)
 		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	return wait.PollUntilContextCancel(ctx, time.Minute, true, func(ctx context.Context) (bool, error) {
+		done, err := cluster.MigrateBootstrapData(ctx, &config.ControlConfig)
+		if err != nil {
+			logrus.Infof("Unable to migrate bootstrap data: %v", err)
+			return false, nil
+		}
+		return done, nil
 	})
 }
 
