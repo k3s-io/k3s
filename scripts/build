@@ -214,7 +214,7 @@ case ${OS} in
     rm -f runc
     COMMIT=$(git describe --dirty --long --always)
     go mod edit ${REPLACEMENTS}; go mod tidy; [ -d vendor ] && go mod vendor
-    make COMMIT="${COMMIT}" GO="${GO}" EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
+    CGO_LDFLAGS="-O2 -g -Wl,--apply-dynamic-relocs" make COMMIT="${COMMIT}" GO="${GO}" EXTRA_FLAGS="-gcflags=\"all=${GCFLAGS}\"" EXTRA_LDFLAGS="$LDFLAGS" BUILDTAGS="$RUNC_TAGS" $RUNC_STATIC
     popd
     cp -vf ${RUNC_DIR}/runc ./bin/
     ;;
