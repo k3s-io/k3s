@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -33,6 +34,8 @@ type watchqueue struct {
 	watcher    *fsnotify.Watcher
 	filesCache map[string]*fileInfo
 	workqueue  workqueue.TypedDelayingInterface[string]
+	// mu guards filesCache, which the worker and pruneCache use from different goroutines
+	mu sync.Mutex
 }
 
 func createWatcher(path string) (*fsnotify.Watcher, error) {
@@ -113,6 +116,9 @@ func (w *watchqueue) processNextEventForImages(ctx context.Context, client *cont
 // processImageEvent processes a single item from the workqueue.
 func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *containerd.Client, imageClient runtimeapi.ImageServiceClient) error {
 	defer w.workqueue.Done(key)
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
 	// Watch is rooted at the parent dir of the images dir, but we only need to handle things within the images dir
 	if !strings.HasPrefix(key, w.cfg.Images) {
@@ -213,12 +219,17 @@ func fileChanged(current os.FileInfo, stored *fileInfo) bool {
 	return !currentModTime.Equal(stored.ModTime.Time)
 }
 
-// pruneCache removes entries for all files that have not been seen since the last restart,
-// and syncs the cache to disk. This is done to ensure that the cache file does not grow without
-// bounds by continuing to track files that do not exist.
+// pruneCache removes entries for all files that no longer exist, and syncs the cache to disk.
+// This is done to ensure that the cache file does not grow without bounds by continuing to track
+// files that do not exist. It goes by the files on disk rather than by whether they have been seen
+// since the last restart: importAndWatchImages calls it once the workqueue is empty, which is also
+// the case while the worker is still processing the last item, not yet marked as seen.
 func (w *watchqueue) pruneCache() {
-	for path, fileState := range w.filesCache {
-		if !fileState.seen {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for path := range w.filesCache {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
 			delete(w.filesCache, path)
 		}
 	}
