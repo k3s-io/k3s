@@ -36,7 +36,7 @@ The motivation behind keeping a fork is that:
 
 * upstream might ask for implementing dual-stack in all kube-router
   components (which would be understandable)
-* acceepting a solution upstream might take long time
+* accepting a solution upstream might take long time
 
 Our fork of kube-router is going to be used as a vendored library inside k3s
 code. And the currently copied code in k3s in `pkg/agent/netpol` is going to

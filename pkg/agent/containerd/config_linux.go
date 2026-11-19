@@ -71,7 +71,7 @@ func SetupContainerdConfig(cfg *config.Node) error {
 		cfg.AgentConfig.Systemd = !isRunningInUserNS && controllers["cpuset"] && os.Getenv("INVOCATION_ID") != ""
 	}
 
-	// set the path to include the default runtimes and remove the aditional path entries
+	// set the path to include the default runtimes and remove the additional path entries
 	// that we added after finding the runtimes
 	originalPath := os.Getenv("PATH")
 	os.Setenv("PATH", runtimesPath+string(os.PathListSeparator)+originalPath)
