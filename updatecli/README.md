@@ -42,8 +42,10 @@ When adding a new manifest to `updatecli.d`:
   including the title `[{{ requiredEnv .github.branch }}] Bump bundled dependencies`.
   Updatecli rewrites the title of an existing pull request on every pipeline,
   so a different title would make the pull request title flap.
-* Set a component-specific `commitmessage.title` on the scm so each bump stays
-  a distinct commit in the grouped pull request.
+* Give each target a short `name` that includes the new version, e.g.
+  `'Bump Foo image to {{ source "foo" }}'`. Updatecli uses the target name as
+  the commit title (`commitmessage.title` is deprecated and ignored), so each
+  bump stays a distinct, identifiable commit in the grouped pull request.
 
 Trade-off: a single failing bump blocks the whole grouped pull request. To ship
 the remaining bumps, revert the offending commit on the pull request branch (or

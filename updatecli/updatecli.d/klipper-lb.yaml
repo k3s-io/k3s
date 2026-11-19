@@ -12,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Klipper LB version"
   klipper-lb:
     kind: "github"
     spec:
@@ -59,7 +57,7 @@ conditions:
 
 targets:
   klipper-lb:
-    name: "Update rancher/klipper-lb image versions"
+    name: 'Bump klipper-lb image to {{ source "klipper-lb" }}'
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-lb"

@@ -12,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Flannel version"
 
 actions:
   github:
@@ -58,7 +56,7 @@ conditions:
 
 targets:
   go-mod:
-    name: "Run go mod update"
+    name: 'Bump Flannel to {{ source "flannel" }}'
     kind: "shell"
     scmid: "k3s"
     disablesourceinput: true
