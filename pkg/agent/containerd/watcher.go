@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -33,6 +34,7 @@ type watchqueue struct {
 	watcher    *fsnotify.Watcher
 	filesCache map[string]*fileInfo
 	workqueue  workqueue.TypedDelayingInterface[string]
+	mu         sync.RWMutex
 }
 
 func createWatcher(path string) (*fsnotify.Watcher, error) {
@@ -113,6 +115,9 @@ func (w *watchqueue) processNextEventForImages(ctx context.Context, client *cont
 // processImageEvent processes a single item from the workqueue.
 func (w *watchqueue) processImageEvent(ctx context.Context, key string, client *containerd.Client, imageClient runtimeapi.ImageServiceClient) error {
 	defer w.workqueue.Done(key)
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 
 	// Watch is rooted at the parent dir of the images dir, but we only need to handle things within the images dir
 	if !strings.HasPrefix(key, w.cfg.Images) {
@@ -217,6 +222,9 @@ func fileChanged(current os.FileInfo, stored *fileInfo) bool {
 // and syncs the cache to disk. This is done to ensure that the cache file does not grow without
 // bounds by continuing to track files that do not exist.
 func (w *watchqueue) pruneCache() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	for path, fileState := range w.filesCache {
 		if !fileState.seen {
 			delete(w.filesCache, path)
