@@ -276,7 +276,7 @@ var ServerFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:        "apiserver-lb-policy",
-		Usage:       "(experimental/networking) How the agent load-balancer selects a server for each new apiserver connection. Also applies to supervisor connections if the supervisor and apiserver share a port. One of 'first', 'random'",
+		Usage:       "(networking) How the agent load-balancer selects a server for each new apiserver connection. Also applies to supervisor connections if the supervisor and apiserver share a port. One of 'first', 'random'",
 		Destination: &ServerConfig.APIServerLBPolicy,
 		Value:       "first",
 	},
