@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linux-agent-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linux-agent-test
+  template:
+    metadata:
+      labels:
+        app: linux-agent-test
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/hostname: agent-1
+      containers:
+      - name: busybox
+        image: ghcr.io/k3s-io/mirrored-library-busybox:1.37.0
+        command: ["sleep", "3600"]
