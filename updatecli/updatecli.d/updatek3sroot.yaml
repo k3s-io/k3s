@@ -1,5 +1,6 @@
 ---
 name: "Update k3sroot version" 
+pipelineid: "k3s-io"
 
 sources:
  k3sroot:
@@ -20,7 +21,7 @@ sources:
 
 targets:
   versionfile:
-    name: "[{{ requiredEnv .github.branch }}] Bump to latest k3s-root version in scripts/version.sh"
+    name: 'Bump k3s-root to {{ source "k3sroot" }} in scripts/version.sh'
     kind: file
     scmid: default
     sourceid: k3sroot
@@ -43,13 +44,14 @@ scms:
       branch: '{{ requiredEnv .github.branch }}'
       
 actions:
-    default:
-        title: '[{{ requiredEnv .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
-        kind: github/pullrequest
-        spec:
-            merge:
-                strategy: "manual"
-            labels:
-                - dependencies
-        scmid: default
+  github:
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io images"
+    kind: "github/pullrequest"
+    scmid: "default"
+    spec:
+      merge:
+        strategy: "manual"
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
 

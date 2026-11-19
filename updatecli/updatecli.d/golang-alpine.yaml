@@ -1,5 +1,6 @@
 ---
 name: "Bump Golang Alpine version"
+pipelineid: "other"
 scms:
   k3s:
     kind: "github"
@@ -11,19 +12,17 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump golang:alpine version"
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump golang:alpine image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump other dependencies"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      labels: 
+      labels:
         - "dependencies"
 
 sources:
@@ -68,7 +67,7 @@ conditions:
 
 targets:
   dockerfiles:
-    name: "Bump golang:alpine image version in Dockerfiles"
+    name: 'Bump Dockerfiles to golang:{{ source "dockerfile-local" }}{{ source "alpine-docker-image" }}'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true

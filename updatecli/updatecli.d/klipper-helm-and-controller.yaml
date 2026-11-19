@@ -1,5 +1,6 @@
 ---
 name: "Bump Klipper Helm and Helm Controller version"
+pipelineid: "k3s-io"
 scms:
   k3s:
     kind: "github"
@@ -11,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Klipper Helm and Helm Controller version"
   helm-controller:
     kind: "github"
     spec:
@@ -26,16 +25,14 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Klipper Helm and Helm Controller version"
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io images"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      usetitleforautomerge: true
-      parent: false
-      labels: 
+      labels:
         - "dependencies"
 
 sources:
@@ -87,7 +84,7 @@ conditions:
 
 targets:
   go-mod:
-    name: "Run go mod update"
+    name: 'Bump helm-controller to {{ source "helm-controller" }}'
     kind: "shell"
     scmid: "k3s"
     disablesourceinput: true
@@ -97,7 +94,7 @@ targets:
         - name: PATH
         - name: HOME
   klipper-helm:
-    name: "Update rancher/klipper-helm image version"
+    name: 'Bump klipper-helm image to {{ source "klipper-helm" }}'
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-helm"
@@ -106,7 +103,7 @@ targets:
       matchpattern: 'rancher/klipper-helm:v\d+\.\d+\.\d+(-\w+)?'
       replacepattern: 'rancher/klipper-helm:{{ source "klipper-helm" }}'
   versionfile:
-    name: "Bump to latest klipper-helm version in scripts/version.sh"
+    name: 'Bump klipper-helm to {{ source "klipper-helm" }} in scripts/version.sh'
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-helm"

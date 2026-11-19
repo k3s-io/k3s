@@ -1,4 +1,5 @@
 name: "Bump Traefik Image Version"
+pipelineid: "addons"
 scms:
   k3s:
     kind: "github"
@@ -10,12 +11,10 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump rancher/mirrored-library-traefik image version"
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump rancher/mirrored-library-traefik image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump packaged components"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
@@ -60,7 +59,7 @@ conditions:
 
 targets:
   traefik-manifest:
-    name: "Update Traefik image version in manifests/traefik.yaml"
+    name: 'Bump Traefik image to {{ source "traefik-docker-image" }} in manifests'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true
@@ -71,7 +70,7 @@ targets:
       replacepattern: 'tag: "{{ source "traefik-docker-image" }}"'
 
   traefik-airgap:
-    name: "Update Traefik image version in scripts/airgap/image-list"
+    name: 'Bump Traefik image to {{ source "traefik-docker-image" }} in airgap image list'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true

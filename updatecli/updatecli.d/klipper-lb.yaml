@@ -1,5 +1,6 @@
 ---
 name: "Bump Klipper LB version"
+pipelineid: "k3s-io"
 scms:
   k3s:
     kind: "github"
@@ -11,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Klipper LB version"
   klipper-lb:
     kind: "github"
     spec:
@@ -26,16 +25,14 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Klipper LB version"
+    title: "[{{ requiredEnv .github.branch }}] Bump k3s-io images"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      usetitleforautomerge: true
-      parent: false
-      labels: 
+      labels:
         - "dependencies"
 
 sources:
@@ -60,7 +57,7 @@ conditions:
 
 targets:
   klipper-lb:
-    name: "Update rancher/klipper-lb image versions"
+    name: 'Bump klipper-lb image to {{ source "klipper-lb" }}'
     kind: "file"
     scmid: "k3s"
     sourceid: "klipper-lb"

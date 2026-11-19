@@ -1,4 +1,5 @@
 name: "Bump Metrics Server Image Version"
+pipelineid: "addons"
 scms:
   k3s:
     kind: "github"
@@ -10,12 +11,10 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump rancher/mirrored-metrics-server image version"
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump rancher/mirrored-metrics-server image version"
+    title: "[{{ requiredEnv .github.branch }}] Bump packaged components"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
@@ -57,7 +56,7 @@ conditions:
 
 targets:
   metrics-server-manifest:
-    name: "Update Metrics Server image version in manifests/metrics-server/metrics-server-deployment.yaml"
+    name: 'Bump metrics-server image to {{ source "metrics-server-docker-image" }} in manifests'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true
@@ -68,7 +67,7 @@ targets:
       replacepattern: 'image: "%{SYSTEM_DEFAULT_REGISTRY}%rancher/mirrored-metrics-server:{{ source "metrics-server-docker-image" }}"'
 
   metrics-server-airgap:
-    name: "Update Metrics Server image version in scripts/airgap/image-list"
+    name: 'Bump metrics-server image to {{ source "metrics-server-docker-image" }} in airgap image list'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true

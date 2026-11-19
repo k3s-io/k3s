@@ -1,5 +1,6 @@
 ---
 name: "Bump Flannel version"
+pipelineid: "other"
 scms:
   k3s:
     kind: "github"
@@ -11,12 +12,10 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Flannel version"
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Flannel version"
+    title: "[{{ requiredEnv .github.branch }}] Bump other dependencies"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
@@ -57,7 +56,7 @@ conditions:
 
 targets:
   go-mod:
-    name: "Run go mod update"
+    name: 'Bump Flannel to {{ source "flannel" }}'
     kind: "shell"
     scmid: "k3s"
     disablesourceinput: true

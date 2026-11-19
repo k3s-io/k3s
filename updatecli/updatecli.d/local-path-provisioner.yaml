@@ -1,5 +1,6 @@
 ---
 name: "Bump Local Path Provisioner version"
+pipelineid: "addons"
 scms:
   k3s:
     kind: "github"
@@ -11,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump Local Path Provisioner version"
   local-path-provisioner:
     kind: "github"
     spec:
@@ -26,15 +25,14 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Local Path Provisioner version"
+    title: "[{{ requiredEnv .github.branch }}] Bump packaged components"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      usetitleforautomerge: true
-      labels: 
+      labels:
         - "dependencies"
 
 sources:
@@ -67,7 +65,7 @@ conditions:
 
 targets:
   local-path-provisioner:
-    name: "Update rancher/local-path-provisioner image version"
+    name: 'Bump local-path-provisioner image to {{ source "local-path-provisioner" }}'
     kind: "file"
     scmid: "k3s"
     sourceid: "local-path-provisioner"

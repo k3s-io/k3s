@@ -27,6 +27,36 @@ and `go.sum` with `go get` and `go mod tidy`.
 * Updatecli will only open a pull request in the targeted repo. It's not responsible for approving and merging the PR.
 * The resulting PR must still follow the rules of the targeted repo, e.g., passing checks, QA testing, review process etc.
 
+## Pull request grouping
+
+Manifests in `updatecli.d` are grouped by a shared top-level `pipelineid`.
+Updatecli derives the working branch from the target branch and the pipeline
+ID (`updatecli_<branch>_<pipelineid>`), so every daily run opens or updates a
+single pull request per group and target branch instead of one pull request
+per dependency and branch.
+
+| `pipelineid` | Manifests | Pull request title |
+|---|---|---|
+| `k3s-io` | klipper-lb, klipper-helm-and-controller, updatek3sroot | `[<branch>] Bump k3s-io images` |
+| `addons` | coredns, metrics-server, local-path-provisioner, traefik | `[<branch>] Bump packaged components` |
+| `other` | flannel, golang-alpine | `[<branch>] Bump other dependencies` |
+
+When adding a new manifest to `updatecli.d`:
+
+* Set `pipelineid` to the group the dependency belongs to.
+* Use the same `github/pullrequest` action settings as the other manifests in
+  that group, including the exact title. Updatecli rewrites the title of an
+  existing pull request on every pipeline, so a different title would make
+  the pull request title flap.
+* Give each target a short `name` that includes the new version, e.g.
+  `'Bump Foo image to {{ source "foo" }}'`. Updatecli uses the target name as
+  the commit title (`commitmessage.title` is deprecated and ignored), so each
+  bump stays a distinct, identifiable commit in the grouped pull request.
+
+Trade-off: a single failing bump blocks its group's pull request. To ship
+the remaining bumps, revert the offending commit on the pull request branch (or
+fix it there) before merging.
+
 ## Project organization
 
 A manifest or pipeline consists of three stages - source, condition and target - that define how to apply the update strategy.
