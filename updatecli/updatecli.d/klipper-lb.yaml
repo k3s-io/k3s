@@ -1,5 +1,6 @@
 ---
 name: "Bump Klipper LB version"
+pipelineid: "k3s-dependencies"
 scms:
   k3s:
     kind: "github"
@@ -26,16 +27,14 @@ scms:
 
 actions:
   github:
-    title: "[{{ requiredEnv .github.branch }}] Bump Klipper LB version"
+    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
     kind: "github/pullrequest"
     scmid: "k3s"
     spec:
       merge:
         strategy: "manual"
       mergemethod: "squash"
-      usetitleforautomerge: true
-      parent: false
-      labels: 
+      labels:
         - "dependencies"
 
 sources:

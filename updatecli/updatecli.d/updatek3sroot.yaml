@@ -1,5 +1,6 @@
 ---
 name: "Update k3sroot version" 
+pipelineid: "k3s-dependencies"
 
 sources:
  k3sroot:
@@ -41,15 +42,18 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
+      commitmessage:
+        title: "Bump k3s-root version"
       
 actions:
-    default:
-        title: '[{{ requiredEnv .github.branch }}] Bump K3s-root version to {{ source "k3sroot" }}'
-        kind: github/pullrequest
-        spec:
-            merge:
-                strategy: "manual"
-            labels:
-                - dependencies
-        scmid: default
+  github:
+    title: "[{{ requiredEnv .github.branch }}] Bump bundled dependencies"
+    kind: "github/pullrequest"
+    scmid: "default"
+    spec:
+      merge:
+        strategy: "manual"
+      mergemethod: "squash"
+      labels:
+        - "dependencies"
 

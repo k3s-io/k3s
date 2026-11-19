@@ -27,6 +27,28 @@ and `go.sum` with `go get` and `go mod tidy`.
 * Updatecli will only open a pull request in the targeted repo. It's not responsible for approving and merging the PR.
 * The resulting PR must still follow the rules of the targeted repo, e.g., passing checks, QA testing, review process etc.
 
+## Pull request grouping
+
+All manifests in `updatecli.d` share the same top-level `pipelineid`
+(`k3s-dependencies`). Updatecli derives the working branch from the target
+branch and the pipeline ID (`updatecli_<branch>_k3s-dependencies`), so every
+daily run opens or updates a single grouped pull request per target branch
+instead of one pull request per dependency and branch.
+
+When adding a new manifest to `updatecli.d`:
+
+* Set `pipelineid: "k3s-dependencies"`.
+* Use the same `github/pullrequest` action settings as the other manifests,
+  including the title `[{{ requiredEnv .github.branch }}] Bump bundled dependencies`.
+  Updatecli rewrites the title of an existing pull request on every pipeline,
+  so a different title would make the pull request title flap.
+* Set a component-specific `commitmessage.title` on the scm so each bump stays
+  a distinct commit in the grouped pull request.
+
+Trade-off: a single failing bump blocks the whole grouped pull request. To ship
+the remaining bumps, revert the offending commit on the pull request branch (or
+fix it there) before merging.
+
 ## Project organization
 
 A manifest or pipeline consists of three stages - source, condition and target - that define how to apply the update strategy.
