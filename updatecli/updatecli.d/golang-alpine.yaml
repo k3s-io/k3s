@@ -12,8 +12,6 @@ scms:
       owner: '{{ requiredEnv .github.org }}'
       repository: '{{ requiredEnv .github.repo }}'
       branch: '{{ requiredEnv .github.branch }}'
-      commitmessage:
-        title: "Bump golang:alpine version"
 
 actions:
   github:
@@ -69,7 +67,7 @@ conditions:
 
 targets:
   dockerfiles:
-    name: "Bump golang:alpine image version in Dockerfiles"
+    name: 'Bump Dockerfiles to golang:{{ source "dockerfile-local" }}{{ source "alpine-docker-image" }}'
     kind: "file"
     scmid: "k3s"
     disablesourceinput: true
