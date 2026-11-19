@@ -203,6 +203,7 @@ type Control struct {
 	// The port which kube-apiserver runs on
 	APIServerPort            int
 	APIServerBindAddress     string
+	APIServerLBPolicy        string
 	AgentToken               string `json:"-"`
 	Token                    string `json:"-"`
 	ServiceNodePortRange     *utilnet.PortRange
