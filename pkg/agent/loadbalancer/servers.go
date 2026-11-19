@@ -5,15 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/proxy"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+// probeTimeout is how long a server has to accept a connection when probed.
+const probeTimeout = 2 * time.Second
 
 type HealthCheckFunc func() HealthCheckResult
 
@@ -33,6 +38,8 @@ type serverList struct {
 	// This mutex protects access to the server list. All direct access to the list should be protected by it.
 	mutex   sync.Mutex
 	servers []*server
+	// random sends each new connection to a random healthy server, instead of the first server in the list.
+	random bool
 }
 
 // setServers updates the server list to contain only the selected addresses.
@@ -174,6 +181,43 @@ func (sl *serverList) getServers() []*server {
 	return slices.Clone(sl.servers)
 }
 
+// setRandom enables or disables random server selection for new connections.
+func (sl *serverList) setRandom(random bool) {
+	sl.mutex.Lock()
+	defer sl.mutex.Unlock()
+
+	sl.random = random
+}
+
+// getDialOrder returns a copy of the servers list in the order that servers should be dialed.
+// With random selection, healthy servers are shuffled and the rest are kept as fallbacks.
+func (sl *serverList) getDialOrder() []*server {
+	sl.mutex.Lock()
+	defer sl.mutex.Unlock()
+
+	servers := slices.Clone(sl.servers)
+	if sl.random {
+		// the list is sorted by state, so healthy servers are at the front
+		healthy := 0
+		for healthy < len(servers) && servers[healthy].state >= stateHealthy {
+			healthy++
+		}
+		rand.Shuffle(healthy, func(i, j int) {
+			servers[i], servers[j] = servers[j], servers[i]
+		})
+	}
+	return servers
+}
+
+// needsProbe returns true if the server must accept a connection before a successful health check can promote it.
+// With random selection all healthy servers are dialed, and a health check does not show that a server can be dialed.
+func (sl *serverList) needsProbe(s *server) bool {
+	sl.mutex.Lock()
+	defer sl.mutex.Unlock()
+
+	return sl.random && s.state == stateRecovering
+}
+
 // getServer returns the first server with the specified address
 func (sl *serverList) getServer(address string) *server {
 	sl.mutex.Lock()
@@ -244,6 +288,10 @@ func (sl *serverList) recordSuccess(srv *server, r reason) {
 	if new_state == stateActive {
 		for _, s := range sl.servers {
 			if srv.address == s.address {
+				continue
+			}
+			if sl.random && s.state >= stateRecovering {
+				// with random selection, other usable servers keep their connections
 				continue
 			}
 			switch s.state {
@@ -435,6 +483,26 @@ func (s *server) dialContext(ctx context.Context, network string) (net.Conn, err
 	return wrappedConn, nil
 }
 
+// probe returns true if the server accepts a connection. The connection is closed without being used.
+func (s *server) probe(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+
+	var conn net.Conn
+	var err error
+	if dialer, ok := defaultDialer.(proxy.ContextDialer); ok {
+		conn, err = dialer.DialContext(ctx, "tcp", s.address)
+	} else {
+		conn, err = defaultDialer.Dial("tcp", s.address)
+	}
+	if err != nil {
+		logrus.Debugf("Probe error from server %s: %v", s.address, err)
+		return false
+	}
+	conn.Close()
+	return true
+}
+
 // closeAll closes all connections to the server, and removes their entries from the map
 func (s *server) closeAll() {
 	s.mutex.Lock()
@@ -479,7 +547,9 @@ func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 		for _, s := range sl.getServers() {
 			switch s.healthCheck() {
 			case HealthCheckResultOK:
-				sl.recordSuccess(s, reasonHealthCheck)
+				if !sl.needsProbe(s) || s.probe(ctx) {
+					sl.recordSuccess(s, reasonHealthCheck)
+				}
 			case HealthCheckResultFailed:
 				sl.recordFailure(s, reasonHealthCheck)
 			}
@@ -495,7 +565,7 @@ func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 // dialContext attemps to dial a connection to a server from the server list.
 // Success or failure is recorded to ensure that server state is updated appropriately.
 func (sl *serverList) dialContext(ctx context.Context, network, _ string) (net.Conn, error) {
-	for _, s := range sl.getServers() {
+	for _, s := range sl.getDialOrder() {
 		dialTime := time.Now()
 		conn, err := s.dialContext(ctx, network)
 		if err == nil {

@@ -15,6 +15,7 @@ import (
 type Proxy interface {
 	Update(addresses []string)
 	SetAPIServerPort(port int, isIPv6 bool) error
+	SetAPIServerLBPolicy(policy string)
 	SetSupervisorDefault(address string)
 	IsSupervisorLBEnabled() bool
 	SupervisorURL() string
@@ -162,6 +163,16 @@ func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 	logrus.Debugf("Supervisor proxy apiserver port changed; apiserver=%s lb=%v", p.apiServerURL, p.lbEnabled)
 	p.apiServerEnabled = true
 	return nil
+}
+
+// SetAPIServerLBPolicy sets the server selection policy for new apiserver connections.
+// If the apiserver shares a port with the supervisor, the policy is set on the supervisor load-balancer.
+func (p *proxy) SetAPIServerLBPolicy(policy string) {
+	if p.apiServerLB != nil {
+		p.apiServerLB.SetPolicy(policy)
+	} else if p.supervisorLB != nil {
+		p.supervisorLB.SetPolicy(policy)
+	}
 }
 
 // SetSupervisorDefault updates the default (fallback) address for the connection to the

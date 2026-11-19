@@ -70,6 +70,7 @@ type Server struct {
 	FlannelIPv6Masq          bool
 	FlannelExternalIP        bool
 	EgressSelectorMode       string
+	APIServerLBPolicy        string
 	DefaultLocalStoragePath  string
 	DisableCCM               bool
 	DisableNPC               bool
@@ -272,6 +273,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "(networking) One of 'agent', 'cluster', 'pod', 'disabled'",
 		Destination: &ServerConfig.EgressSelectorMode,
 		Value:       "agent",
+	},
+	&cli.StringFlag{
+		Name:        "apiserver-lb-policy",
+		Usage:       "(networking) How the agent load-balancer selects a server for each new apiserver connection. Also applies to supervisor connections if the supervisor and apiserver share a port. One of 'first', 'random'",
+		Destination: &ServerConfig.APIServerLBPolicy,
+		Value:       "first",
 	},
 	&cli.StringFlag{
 		Name:        "servicelb-namespace",

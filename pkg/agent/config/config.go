@@ -464,6 +464,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 			return nil, errors.WithMessagef(err, "failed to set apiserver port to %d", controlConfig.HTTPSPort)
 		}
 	}
+	proxy.SetAPIServerLBPolicy(controlConfig.APIServerLBPolicy)
 	apiServerURL := proxy.APIServerURL()
 
 	clientCAFile := filepath.Join(envInfo.DataDir, "agent", "client-ca.crt")
