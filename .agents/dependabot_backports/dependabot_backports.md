@@ -48,7 +48,7 @@ Create at most one pull request per target release branch. Each PR must include 
    - If a cherry-pick does not apply cleanly, manually apply only the workflow `uses:` SHA pin changes needed to match `main`.
 9. Open exactly one PR per target release branch using `create-pull-request`.
    - Base branch: target `release-1.XX` branch.
-   - Target branch: should follow naming convetion of `dependabot-backports/release-1.XX`.
+   - Target branch: should follow naming convention of `dependabot-backports/release-1.XX`.
    - Title: `[<branch>] Backport GitHub Action SHA pin updates from main`.
    - Body must include: updated actions, old/new SHAs, and source Dependabot commit links. It must also include a section called "AI Disclosure" that states which AI tool was used to generate the PR.
    

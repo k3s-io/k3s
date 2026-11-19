@@ -33,7 +33,7 @@ avoids embedding the credentials directly in the system configuration, chart val
 ## Decision
 
 * We will add a `--etcd-s3-proxy` flag that can be used to set the proxy used by the S3 client. This will override the
-  settings that golang's default HTTP client reads from the `HTTP_PROXY/HTTPS_PROXY/NO_PROXY` environment varibles.
+  settings that golang's default HTTP client reads from the `HTTP_PROXY/HTTPS_PROXY/NO_PROXY` environment variables.
 * We will add support for reading etcd snapshot S3 configuration from a Secret. The secret name will be specified via a new
   `--etcd-s3-config-secret` flag, which accepts the name of the Secret in the `kube-system` namespace.
 * Presence of the `--etcd-s3-config-secret` flag does not imply `--etcd-s3`. If S3 is not enabled by use of the `--etcd-s3` flag,
