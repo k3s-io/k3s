@@ -12,6 +12,33 @@ import (
 	utilsptr "k8s.io/utils/ptr"
 )
 
+func Test_UnitShouldSetBridgeFilter(t *testing.T) {
+	tests := []struct {
+		name           string
+		flannelBackend string
+		want           bool
+	}{
+		{
+			name:           "Flannel disabled regardless of kube-proxy",
+			flannelBackend: "none",
+			want:           false,
+		},
+		{
+			name:           "Flannel enabled",
+			flannelBackend: "vxlan",
+			want:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldSetBridgeFilter(tt.flannelBackend); got != tt.want {
+				t.Errorf("shouldSetBridgeFilter(%q) = %v, want %v", tt.flannelBackend, got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_UnitGetConntrackConfig(t *testing.T) {
 	// There are only helpers to default the typed config, so we have to set defaults on the typed config,
 	// then convert it to the internal config representation in order to use it for tests.

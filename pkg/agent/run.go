@@ -52,6 +52,10 @@ import (
 	utilsptr "k8s.io/utils/ptr"
 )
 
+func shouldSetBridgeFilter(flannelBackend string) bool {
+	return flannelBackend != "none"
+}
+
 func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	nodeConfig, err := config.Get(ctx, cfg, proxy)
 	if err != nil {
@@ -99,13 +103,14 @@ func run(ctx context.Context, cfg cmds.Agent, proxy proxy.Proxy) error {
 	if err != nil {
 		return errors.WithMessage(err, "failed to validate kube-proxy conntrack configuration")
 	}
-	// The net/bridge/bridge-nf-call-{ip,ip6}tables sysctls are only required by kube-proxy
-	// and flannel. When both are disabled the node is using an alternative CNI, so leave
-	// these sysctls untouched for the administrator to manage. See
-	// https://github.com/k3s-io/k3s/issues/14022. The flannel backend is compared against the
-	// "none" literal rather than flannel.BackendNone to avoid importing the flannel package,
-	// which registers all flannel backends via init().
-	setBridgeFilter := !config.KubeProxyDisabled(ctx, nodeConfig, proxy) || nodeConfig.Flannel.Backend != "none"
+	// Only manage the bridge netfilter sysctls when using Flannel. When Flannel is disabled,
+	// leave them untouched for the alternative CNI or administrator to manage; kube-proxy
+	// being enabled alone is not a reason for K3s to override them. See
+	// https://github.com/k3s-io/k3s/issues/14022 and
+	// https://github.com/k3s-io/k3s/issues/14551. Compare against the "none" literal rather
+	// than flannel.BackendNone to avoid importing the flannel package, which registers all
+	// flannel backends via init().
+	setBridgeFilter := shouldSetBridgeFilter(nodeConfig.Flannel.Backend)
 	syssetup.Configure(enableIPv6, setBridgeFilter, conntrackConfig)
 	nodeConfig.AgentConfig.EnableIPv4 = enableIPv4
 	nodeConfig.AgentConfig.EnableIPv6 = enableIPv6
