@@ -422,6 +422,32 @@ cmd_agent() {
   esac
 }
 
+SAVED_SUFFIX=.k3s-dev-saved
+move_dev_state_aside() {
+  local d
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    if [ -e "${d}${SAVED_SUFFIX}" ]; then
+      die "${d}${SAVED_SUFFIX} exists from an interrupted run; move it back to ${d} (or delete it) first"
+    fi
+  done
+  info "Moving the dev cluster's state aside (${DATA_DIR}, /etc/rancher/k3s)"
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    [ -e "${d}" ] && mv "${d}" "${d}${SAVED_SUFFIX}"
+  done
+  return 0
+}
+restore_dev_state() {
+  local d
+  "$(killall_script)" > "${RUN_DIR}/killall.log" 2>&1
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    if [ -e "${d}${SAVED_SUFFIX}" ]; then
+      rm -rf "${d}"
+      mv "${d}${SAVED_SUFFIX}" "${d}"
+    fi
+  done
+  ok "Restored the dev cluster's state"
+}
+
 cmd_test() {
   local kind="${1:-}"
   [ $# -gt 0 ] && shift
@@ -435,11 +461,21 @@ cmd_test() {
     integration)
       local name="${1:-}"
       [ -x dist/artifacts/k3s ] || die "integration tests run dist/artifacts/k3s, run 'k3s-dev build' first"
+      local was_running=false rc=0
       if is_running; then
         warn "integration tests start their own K3s server, stopping the dev cluster first"
+        was_running=true
         cmd_down
       fi
-      go test "./tests/integration/${name:+${name}/}..." -run Integration -ginkgo.v -test.v
+      # Each test expects a clean /var/lib/rancher/k3s (as on a CI runner) and deletes it when it
+      # finishes, so keep the dev cluster's state out of the way and put it back afterwards
+      move_dev_state_aside
+      trap 'restore_dev_state; exit 130' INT TERM
+      go test "./tests/integration/${name:+${name}/}..." -run Integration -ginkgo.v -test.v || rc=$?
+      trap - INT TERM
+      restore_dev_state
+      if [ "${was_running}" = true ]; then cmd_up --wait; fi
+      return "${rc}"
       ;;
     docker)
       local name="${1:-basics}"
