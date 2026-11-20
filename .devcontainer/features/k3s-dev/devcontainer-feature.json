@@ -1,0 +1,23 @@
+{
+  "id": "k3s-dev",
+  "version": "1.0.0",
+  "name": "K3s developer tools",
+  "description": "Adds the tools for developing K3s on top of the build environment from the repository's Dockerfile (target: infra): an in-container Docker daemon, cgroup v2 setup to run K3s nested, helm, k9s, golangci-lint, delve, gopls, gotests, the Kubernetes MCP server and Claude Code. All downloads are pinned and checksum-verified.",
+  "documentationURL": "https://github.com/k3s-io/k3s/blob/main/.devcontainer/README.md",
+  "options": {
+    "installClaudeCode": {
+      "type": "boolean",
+      "default": true,
+      "description": "Install the Claude Code CLI"
+    }
+  },
+  "privileged": true,
+  "init": true,
+  "entrypoint": "/usr/local/share/k3s-dev/init.sh",
+  "containerEnv": {
+    "KUBECONFIG": "/etc/rancher/k3s/k3s.yaml",
+    "CRI_CONFIG_FILE": "/var/lib/rancher/k3s/agent/etc/crictl.yaml",
+    "CLAUDE_CONFIG_DIR": "/root/.claude",
+    "GOMODCACHE": "/go/pkg/mod"
+  }
+}

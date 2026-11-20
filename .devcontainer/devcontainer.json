@@ -1,0 +1,134 @@
+{
+  // K3s dev container: the K3s build environment from ../Dockerfile, plus a live cluster that runs
+  // your own build. See .devcontainer/README.md.
+  "name": "K3s",
+  "build": {
+    // The same image CI builds K3s in: Go version, xx cross-compiler and static libraries all come
+    // from the "infra" stage, so updatecli's Go bumps apply here automatically.
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "infra"
+  },
+  "features": {
+    "./features/k3s-dev": {}
+  },
+  "remoteUser": "root",
+  "containerEnv": {
+    "K3S_SRC": "${containerWorkspaceFolder}"
+  },
+  "mounts": [
+    // Go caches shared by all K3s dev containers on this machine, so rebuilds stay incremental
+    "source=k3s-devcontainer-gomod,target=/go/pkg/mod,type=volume",
+    "source=k3s-devcontainer-gocache,target=/root/.cache/go-build,type=volume",
+    // Cluster and Docker state need a real filesystem (overlayfs cannot nest on overlayfs)
+    "source=k3s-devcontainer-rancher-${devcontainerId},target=/var/lib/rancher,type=volume",
+    "source=k3s-devcontainer-kubelet-${devcontainerId},target=/var/lib/kubelet,type=volume",
+    "source=k3s-devcontainer-docker-${devcontainerId},target=/var/lib/docker,type=volume",
+    // Claude Code login and settings survive rebuilds
+    "source=k3s-devcontainer-claude,target=/root/.claude,type=volume"
+  ],
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "postCreateCommand": "k3s-dev setup",
+  "postStartCommand": "k3s-dev up",
+  "postAttachCommand": "k3s-dev banner --first-run",
+  "forwardPorts": [6443, 4466],
+  "portsAttributes": {
+    "6443": { "label": "Kubernetes API", "onAutoForward": "silent" },
+    "4466": { "label": "Headlamp", "onAutoForward": "notify" },
+    "2345": { "label": "Delve (k3s-dev debug)", "onAutoForward": "silent" }
+  },
+  // K3s listens on many ports (kubelet, metrics, servicelb); don't pop up a notification for each
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [".devcontainer/README.md"]
+    },
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "anthropic.claude-code",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "github.vscode-github-actions",
+        "timonwong.shellcheck"
+      ],
+      "mcp": {
+        "servers": {
+          "kubernetes": {
+            "type": "stdio",
+            "command": "kubernetes-mcp-server",
+            "env": { "KUBECONFIG": "/etc/rancher/k3s/k3s.yaml" }
+          }
+        }
+      },
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "go.toolsManagement.checkForUpdates": "off",
+        "go.toolsManagement.autoUpdate": false,
+        // tests/TESTING.md: generate unit tests with the K3s gotests templates
+        "go.generateTestsFlags": ["--template_dir=${workspaceFolder}/contrib/gotests_templates"],
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast-only"],
+        "shellcheck.customArgs": ["-x"],
+        "files.watcherExclude": {
+          "**/build/**": true,
+          "**/dist/**": true,
+          "**/bin/**": true
+        },
+        "search.exclude": {
+          "build/": true,
+          "dist/": true,
+          "bin/": true
+        },
+        "launch": {
+          "version": "0.2.0",
+          "configurations": [
+            {
+              "name": "Attach to k3s server (k3s-dev debug)",
+              "type": "go",
+              "request": "attach",
+              "mode": "remote",
+              "host": "127.0.0.1",
+              "port": 2345
+            },
+            {
+              "name": "Debug unit tests in current package",
+              "type": "go",
+              "request": "launch",
+              "mode": "test",
+              "program": "${fileDirname}",
+              "args": ["-test.run", "Unit"]
+            }
+          ]
+        },
+        // K3s yellow, so you can always tell this window is the K3s dev container
+        "workbench.colorCustomizations": {
+          "activityBar.background": "#ffc61c",
+          "activityBar.activeBackground": "#ffc61c",
+          "activityBar.activeBorder": "#15202b",
+          "activityBar.foreground": "#15202b",
+          "activityBar.inactiveForeground": "#15202b99",
+          "activityBarBadge.background": "#0075a8",
+          "activityBarBadge.foreground": "#e7e7e7",
+          "commandCenter.border": "#15202b99",
+          "sash.hoverBorder": "#ffc61c",
+          "statusBar.background": "#ffc61c",
+          "statusBar.foreground": "#15202b",
+          "statusBar.debuggingBackground": "#ffc61c",
+          "statusBar.debuggingForeground": "#15202b",
+          "statusBarItem.hoverBackground": "#e6ad00",
+          "statusBarItem.remoteBackground": "#15202b",
+          "statusBarItem.remoteForeground": "#ffc61c",
+          "titleBar.activeBackground": "#ffc61c",
+          "titleBar.activeForeground": "#15202b",
+          "titleBar.inactiveBackground": "#ffc61c99",
+          "titleBar.inactiveForeground": "#15202b99"
+        }
+      }
+    }
+  }
+}

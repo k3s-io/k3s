@@ -32,3 +32,7 @@ SKIP_VALIDATE=true make
 ```
 
 In case you make any changes to [go.mod](go.mod), you should run `go mod tidy` before running `make`.
+
+## Develop in a Dev Container
+
+The repository includes a [Dev Container](.devcontainer/README.md) for VS Code and GitHub Codespaces. It is built from the same `Dockerfile` stage as CI, builds K3s natively with `k3s-dev build`, and runs your build as a live cluster with `k3s-dev reload`, with a debugger, test runners and multi-node support. See [.devcontainer/README.md](.devcontainer/README.md).

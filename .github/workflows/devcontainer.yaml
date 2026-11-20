@@ -1,0 +1,60 @@
+name: Dev Container
+on:
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - "Dockerfile"
+      - "scripts/build"
+      - "scripts/download"
+      - "scripts/package-cli"
+      - ".github/workflows/devcontainer.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  devcontainer:
+    name: Build, run and test the dev container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Remove Unnecessary Tools
+        working-directory: /
+        run: |
+          sudo rm -rf \
+            /home/linuxbrew \
+            /home/packer \
+            /opt/az \
+            /opt/microsoft \
+            /usr/lib/firefox \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/julia* \
+            /usr/local/share/boost \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/az* \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Build the dev container, start a release cluster, then build and run this commit
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        with:
+          push: never
+          runCmd: |
+            set -ex
+            k3s-dev wait
+            k3s-dev status
+            k3s-dev build
+            k3s-dev reload
+            k3s-dev status
+            k3s version | grep -F "$(git rev-parse --short=8 HEAD)"
+            k3s-dev agent add 1
+            kubectl get nodes -o wide
+            kubectl -n kube-system rollout status deployment/coredns --timeout=180s
+            k3s-dev test unit ./pkg/version/...
+            k3s-dev down
