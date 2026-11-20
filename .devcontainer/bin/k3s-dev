@@ -377,7 +377,7 @@ cmd_agent() {
   [ $# -gt 0 ] && shift
   case "${action}" in
     add)
-      local count="${1:-1}" url token image i n name
+      local count="${1:-1}" url token image i n name names=()
       is_running || die "start the server first with 'k3s-dev up'"
       docker info > /dev/null 2>&1 || die "dockerd is not running, see /var/log/dockerd.log"
       url=$(server_url)
@@ -392,9 +392,13 @@ cmd_agent() {
           -e K3S_URL="${url}" -e K3S_TOKEN="${token}" \
           "${image}" agent > /dev/null || die "failed to start ${name}"
         ok "Started ${name} (${image})"
+        names+=("${name}")
       done
-      info "Waiting for the new node(s) to be Ready"
-      kubectl wait --for=condition=Ready node -l '!node-role.kubernetes.io/control-plane' --timeout=180s
+      info "Waiting for the new node(s) to register and become Ready"
+      for name in "${names[@]}"; do
+        for ((i = 0; i < 90; i++)); do kubectl get node "${name}" > /dev/null 2>&1 && break; sleep 2; done
+        kubectl wait --for=condition=Ready "node/${name}" --timeout=180s || die "${name} did not become Ready, see: docker logs ${name}"
+      done
       ;;
     rm)
       local target="${1:-all}" names
