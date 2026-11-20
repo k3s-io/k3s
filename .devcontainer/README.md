@@ -34,7 +34,11 @@ tool that supports the spec) and you get:
 ## Getting started
 
 **GitHub Codespaces:** Code → Codespaces → Create codespace. Choose a machine with at least 4 cores
-and 16 GB of memory (8 cores make the first build much faster).
+and 16 GB of memory (8 cores make the first build much faster). Without a prebuild, creating a
+Codespace takes about 4 minutes while the image builds; if the browser stays on "Opening Remote..."
+after that, reload the page. Repository admins can make this near-instant with a
+[Codespaces prebuild](https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds)
+(Settings → Codespaces → Set up prebuild, trigger "On configuration change").
 
 **VS Code:** install [Docker](https://docs.docker.com/get-docker/) (Docker Desktop, Rancher Desktop,
 Colima or Docker Engine) and the

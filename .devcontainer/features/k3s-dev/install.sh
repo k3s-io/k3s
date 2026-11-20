@@ -67,9 +67,13 @@ apk add --no-cache \
   kmod \
   libgcc \
   libstdc++ \
+  openssh-server \
   procps \
   ripgrep \
   shellcheck
+
+# sshd for `gh codespace ssh`, `gh codespace logs` and JetBrains Gateway; the Codespaces agent starts it
+ssh-keygen -A
 
 echo "k3s-dev: installing helm ${HELM_VERSION}"
 fetch "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz" "$(sha HELM)" "${TMP}/helm.tgz"
