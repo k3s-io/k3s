@@ -1,0 +1,24 @@
+# shellcheck shell=bash
+# Bash completion for k3s-dev
+_k3s_dev() {
+  local cur prev
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  if [ "${COMP_CWORD}" -eq 1 ]; then
+    mapfile -t COMPREPLY < <(compgen -W "up down restart reload build debug status logs wait nuke agent test lint doctor token banner setup help" -- "${cur}")
+    return
+  fi
+  case "${prev}" in
+    up) mapfile -t COMPREPLY < <(compgen -W "--release --dev --wait --" -- "${cur}") ;;
+    --release) mapfile -t COMPREPLY < <(compgen -W "stable latest testing" -- "${cur}") ;;
+    build|reload) mapfile -t COMPREPLY < <(compgen -W "--debug --download" -- "${cur}") ;;
+    debug) mapfile -t COMPREPLY < <(compgen -W "--no-build" -- "${cur}") ;;
+    agent) mapfile -t COMPREPLY < <(compgen -W "add rm ls" -- "${cur}") ;;
+    test) mapfile -t COMPREPLY < <(compgen -W "unit integration docker" -- "${cur}") ;;
+    integration) mapfile -t COMPREPLY < <(compgen -W "$(ls "${K3S_SRC}/tests/integration" 2>/dev/null)" -- "${cur}") ;;
+    docker) mapfile -t COMPREPLY < <(compgen -W "$(find "${K3S_SRC}/tests/docker" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null)" -- "${cur}") ;;
+    logs) mapfile -t COMPREPLY < <(compgen -W "-f" -- "${cur}") ;;
+    lint) mapfile -t COMPREPLY < <(compgen -W "--all" -- "${cur}") ;;
+  esac
+}
+complete -F _k3s_dev k3s-dev
