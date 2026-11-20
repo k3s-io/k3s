@@ -69,12 +69,15 @@ release_binary() {
   dir="${STATE_DIR}/releases/${version}"
   if [ ! -x "${dir}/k3s" ]; then
     info "Downloading K3s ${version} (${ARCH}) from GitHub releases" >&2
-    mkdir -p "${dir}"
-    local base="https://github.com/k3s-io/k3s/releases/download/${version//+/%2B}"
-    curl -fsSL --retry 3 -o "${dir}/sha256sum.txt" "${base}/sha256sum-${ARCH}.txt" || die "download failed: ${base}/sha256sum-${ARCH}.txt"
-    curl -fsSL --retry 3 -o "${dir}/${RELEASE_BIN}" "${base}/${RELEASE_BIN}" || die "download failed: ${base}/${RELEASE_BIN}"
-    (cd "${dir}" && grep " ${RELEASE_BIN}\$" sha256sum.txt | sha256sum -c - > /dev/null) || { rm -rf "${dir}"; die "checksum mismatch for K3s ${version}"; }
-    mv "${dir}/${RELEASE_BIN}" "${dir}/k3s" && chmod 0755 "${dir}/k3s"
+    # Download and verify in a scratch directory, then install the binary as <dir>/k3s.
+    # The asset is named k3s on amd64 and k3s-<arch> elsewhere.
+    local base="https://github.com/k3s-io/k3s/releases/download/${version//+/%2B}" dl="${dir}.download"
+    rm -rf "${dl}" && mkdir -p "${dl}" "${dir}"
+    curl -fsSL --retry 3 -o "${dl}/sha256sum.txt" "${base}/sha256sum-${ARCH}.txt" || die "download failed: ${base}/sha256sum-${ARCH}.txt"
+    curl -fsSL --retry 3 -o "${dl}/${RELEASE_BIN}" "${base}/${RELEASE_BIN}" || die "download failed: ${base}/${RELEASE_BIN}"
+    (cd "${dl}" && grep " ${RELEASE_BIN}\$" sha256sum.txt | sha256sum -c - > /dev/null) || { rm -rf "${dl}"; die "checksum mismatch for K3s ${version}"; }
+    install -m 0755 "${dl}/${RELEASE_BIN}" "${dir}/k3s" || die "could not install K3s ${version}"
+    rm -rf "${dl}"
   fi
   echo "${dir}/k3s"
 }
