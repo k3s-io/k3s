@@ -48,7 +48,7 @@ When the controller receive a event saying that a file was renamed, or removed, 
 
 Good:
 - Better use of embedded containerd image store.
-- Fsnotify it's a indirect dependency that upstream uses
+- Fsnotify it's an indirect dependency that upstream uses
 
 Bad:
 - The need for another dependency
