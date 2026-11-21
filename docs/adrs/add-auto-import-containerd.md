@@ -34,7 +34,7 @@ fsnotify has a great toolset for handling changes in files, since the code will 
 
 ### How the controller will work with the events
 
-When the controller receive a event saying that a file was created, he will add to the map and import the images if the event that he has received is not a directory and then import the image.
+When the controller receive an event saying that a file was created, he will add to the map and import the images if the event that he has received is not a directory and then import the image.
 
 When the controller receive a event saying that a file was written, he will verify if the file has the size changed and if the file has the time modified based on the time and size from the state.
 
