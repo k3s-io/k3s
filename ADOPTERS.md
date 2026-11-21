@@ -23,3 +23,4 @@ A non-exhaustive list of k3s adopters is provided below.  To add your company to
  - [Kairos](https://kairos.io)
  - [Getdeck Beiboot](https://github.com/Getdeck/beiboot)
  - [Solanica](https://solanica.io/) and [Percona](https://www.percona.com/) (development and CI usage via k3d for the [OpenEverest](https://openeverest.io/) project)
+ - [SpatiumDDI](https://github.com/spatiumnorth/spatiumddi) - open-source DDI (DNS, DHCP, IPAM) appliance; Debian 13 + embedded k3s, single node growing to 3/5/7-node HA
