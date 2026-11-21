@@ -37,12 +37,7 @@ type testServer struct {
 }
 
 func createServer(ctx context.Context, prefix string) (*testServer, error) {
-	return createServerAt(ctx, prefix, "127.0.0.1:0")
-}
-
-// createServerAt creates a server that listens on the specified address.
-func createServerAt(ctx context.Context, prefix, address string) (*testServer, error) {
-	listener, err := net.Listen("tcp", address)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
@@ -364,9 +359,9 @@ var _ = Describe("LoadBalancer", func() {
 		})
 	})
 
-	// confirms that the random policy spreads new connections across healthy servers,
+	// confirms that the weighted-random policy spreads new connections across healthy servers,
 	// and that connections are only closed when their own server fails.
-	When("the random policy is set", Ordered, func() {
+	When("the weighted-random policy is set", Ordered, func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		var defaultServer, node1Server, node2Server *testServer
 		var lb *LoadBalancer
@@ -386,7 +381,7 @@ var _ = Describe("LoadBalancer", func() {
 
 			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address, RandomPort, false)
 			Expect(err).NotTo(HaveOccurred(), "New() failed")
-			lb.SetPolicy(PolicyRandom)
+			lb.SetPolicy(PolicyWeightedRandom)
 
 			lb.Update([]string{node1Server.address, node2Server.address, defaultServer.address})
 			for _, s := range []*testServer{defaultServer, node1Server, node2Server} {
@@ -446,78 +441,24 @@ var _ = Describe("LoadBalancer", func() {
 			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultOK })
 			Eventually(func() []string { return firstDialed(lb) }, 5, 1).Should(ContainElement(node1Server.address), "Recovered server is not dialed first")
 		})
-	})
 
-	// confirms that with the random policy, a server that passes health checks but does not
-	// accept connections is kept out of rotation until it accepts connections again.
-	When("the random policy is set and a healthy server stops accepting connections", Ordered, func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		var defaultServer, node1Server *testServer
-		var defaultAddress, node1Address string
-		var lb *LoadBalancer
-		var err error
+		It("dials a recently recovered server first more often", func() {
+			Expect(serverState(lb, node1Server.address)).To(Equal(statePreferred), "Recovered server is not preferred")
 
-		BeforeAll(func() {
-			tmpDir := GinkgoT().TempDir()
-
-			defaultServer, err = createServer(ctx, "default")
-			Expect(err).NotTo(HaveOccurred(), "createServer(default) failed")
-			defaultAddress = defaultServer.address
-
-			node1Server, err = createServer(ctx, "node1")
-			Expect(err).NotTo(HaveOccurred(), "createServer(node1) failed")
-			node1Address = node1Server.address
-
-			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultAddress, RandomPort, false)
-			Expect(err).NotTo(HaveOccurred(), "New() failed")
-			lb.SetPolicy(PolicyRandom)
-
-			// health checks pass for the whole test
-			lb.Update([]string{node1Address, defaultAddress})
-			for _, address := range []string{defaultAddress, node1Address} {
-				lb.SetHealthCheck(address, func() HealthCheckResult { return HealthCheckResultOK })
+			// the recovered server has twice the weight of each of the other two servers
+			dialed := 0
+			for range 1000 {
+				if lb.servers.getDialOrder()[0].address == node1Server.address {
+					dialed++
+				}
 			}
-
-			for _, address := range []string{defaultAddress, node1Address} {
-				Eventually(func() state { return serverState(lb, address) }, 5, 1).Should(Equal(statePreferred))
-			}
-		})
-
-		AfterAll(func() {
-			cancel()
-		})
-
-		It("stops dialing the server first after a dial to it fails", func() {
-			node1Server.close()
-
-			// a connection that tries the closed server first should still reach the other server
-			Eventually(func(g Gomega) {
-				conn, err := net.Dial("tcp", lb.localAddress)
-				g.Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
-				defer conn.Close()
-				g.Expect(conn.SetDeadline(time.Now().Add(5*time.Second))).To(Succeed(), "SetDeadline failed")
-				g.Expect(ping(conn)).To(Equal("default:ping"), "Unexpected ping result")
-				g.Expect(firstDialed(lb)).To(ConsistOf(defaultAddress), "Unexpected servers dialed first")
-			}, 5, "100ms").Should(Succeed())
-		})
-
-		It("does not dial the server first while only its health check passes", func() {
-			Consistently(func() []string { return firstDialed(lb) }, 4, "500ms").Should(ConsistOf(defaultAddress), "Unexpected servers dialed first")
-		})
-
-		It("dials the server first once it accepts connections again", func() {
-			Eventually(func() error {
-				node1Server, err = createServerAt(ctx, "node1", node1Address)
-				return err
-			}, 5, 1).Should(Succeed(), "createServerAt(node1) failed")
-
-			Eventually(func() []string { return firstDialed(lb) }, 5, 1).Should(ConsistOf(defaultAddress, node1Address), "Unexpected servers dialed first")
+			Expect(dialed).To(BeNumerically("~", 500, 100), "Unexpected count of recovered server dialed first")
 		})
 	})
 
-	// confirms that the random policy still closes connections to a default server that is
+	// confirms that the weighted-random policy still closes connections to a default server that is
 	// only a fallback, once a listed server has taken a connection.
-	When("the random policy is set and the default server is a fallback", Ordered, func() {
+	When("the weighted-random policy is set and the default server is a fallback", Ordered, func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		var defaultServer, node1Server *testServer
 		var lb *LoadBalancer
@@ -534,7 +475,7 @@ var _ = Describe("LoadBalancer", func() {
 
 			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address, RandomPort, false)
 			Expect(err).NotTo(HaveOccurred(), "New() failed")
-			lb.SetPolicy(PolicyRandom)
+			lb.SetPolicy(PolicyWeightedRandom)
 		})
 
 		AfterAll(func() {

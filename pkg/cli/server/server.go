@@ -700,8 +700,8 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		return fmt.Errorf("invalid egress-selector-mode %s", serverConfig.ControlConfig.EgressSelectorMode)
 	}
 
-	switch serverConfig.ControlConfig.APIServerLBPolicy {
-	case loadbalancer.PolicyFirst, loadbalancer.PolicyRandom:
+	switch loadbalancer.Policy(serverConfig.ControlConfig.APIServerLBPolicy) {
+	case loadbalancer.PolicyFirst, loadbalancer.PolicyWeightedRandom:
 	default:
 		return fmt.Errorf("invalid apiserver-lb-policy %s", serverConfig.ControlConfig.APIServerLBPolicy)
 	}

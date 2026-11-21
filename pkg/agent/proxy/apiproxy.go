@@ -169,9 +169,9 @@ func (p *proxy) SetAPIServerPort(port int, isIPv6 bool) error {
 // If the apiserver shares a port with the supervisor, the policy is set on the supervisor load-balancer.
 func (p *proxy) SetAPIServerLBPolicy(policy string) {
 	if p.apiServerLB != nil {
-		p.apiServerLB.SetPolicy(policy)
+		p.apiServerLB.SetPolicy(loadbalancer.Policy(policy))
 	} else if p.supervisorLB != nil {
-		p.supervisorLB.SetPolicy(policy)
+		p.supervisorLB.SetPolicy(loadbalancer.Policy(policy))
 	}
 }
 

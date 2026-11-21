@@ -30,10 +30,12 @@ type LoadBalancer struct {
 
 const RandomPort = 0
 
-// Server selection policies for new connections.
-const (
-	PolicyFirst  = "first"
-	PolicyRandom = "random"
+// Policy is how a server is selected for each new connection.
+type Policy string
+
+var (
+	PolicyFirst          = Policy("first")
+	PolicyWeightedRandom = Policy("weighted-random")
 )
 
 var (
@@ -153,13 +155,10 @@ func (lb *LoadBalancer) SetHealthCheck(address string, healthCheck HealthCheckFu
 }
 
 // SetPolicy sets how a server is selected for each new connection.
-// Any value other than PolicyRandom selects the first server in the list, which is the default.
-func (lb *LoadBalancer) SetPolicy(policy string) {
-	random := policy == PolicyRandom
-	lb.servers.setRandom(random)
-	if random {
-		logrus.Infof("Load balancer %s is using random server selection for new connections", lb.serviceName)
-	}
+// Any value other than PolicyWeightedRandom selects the first server in the list, which is the default.
+func (lb *LoadBalancer) SetPolicy(policy Policy) {
+	logrus.Infof("Load balancer %s uses policy %s", lb.serviceName, policy)
+	lb.servers.setPolicy(policy)
 }
 
 func (lb *LoadBalancer) LocalURL() string {
