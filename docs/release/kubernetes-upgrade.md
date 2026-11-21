@@ -241,7 +241,7 @@ The PR should consist of two commits.
 Change channels.yaml to update the kubernetes versions.
 Run go generate. Commit the changes this caused to data/data.json. Title this second commit "go generate".
 
-NOTE: If this is a ew minor release of kubernetes, then a new entry will need to be created in `channels.yaml`. Ensure to set the min/max versions accordingly. If you are not certain what they should be, reach out to the team for input on this as it will depend on what Rancher will be supporting.
+NOTE: If this is a new minor release of Kubernetes, then a new entry will need to be created in `channels.yaml`. Ensure to set the min/max versions accordingly. If you are not certain what they should be, reach out to the team for input on this as it will depend on what Rancher will be supporting.
 
 NOTE: As of v1.21.4 and above, every new release minor or patch requires a new entry be created in `channels.yaml`. It is possible to build off the server, agent, and chart arguments defined in other entries.
 
