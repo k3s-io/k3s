@@ -41,7 +41,7 @@ For HA etcd:
 ### CLI Changes
 The dicussion/problem is around how to go about deprecating the old method and introducing the new method. As Brad pointed out in https://github.com/k3s-io/k3s/pull/7848, we have a standard deprecation policy for CLI flags with a 2-minor release schedule, fully defined in [this ADR](./deprecating-and-removing-flags.md). Unfortunately, we need to ensure the smoothest transition with Rancher provising. Having multiple releases where some CLI is deprecated and others are not is not ideal.
 
-One solution is to a extend support for the old process until all K3s maintained releases support the new command. Only then would the old commands be deprecated in a single cycle.
+One solution is to extend support for the old process until all K3s maintained releases support the new command. Only then would the old commands be deprecated in a single cycle.
 
 v1.28: 
 - Add `k3s secrets-encrypt rotate-keys` command, marked as experimental

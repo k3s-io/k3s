@@ -31,7 +31,7 @@ We already have users that are operating k3s on top of one of these vpn solution
 
 My proposal is to integrate the best or the two best of these projects into k3s. Integrating in the sense of setting up the vpn and configuring k3s accordingly, so that the user ends up with a working heterogeneous cluster in a matter of seconds by just deploying k3s. At this stage, the proposal is not to incorporate the vpn binaries or daemons inside the k3s binary, we require the user to have the vpn binary installed.
 
-Therefore, the user would have 1 or 2 alternatives to deploy k3s in an heterogeneous cluster:
+Therefore, the user would have 1 or 2 alternatives to deploy k3s in a heterogeneous cluster:
 1 - Our simple and robust solution
 2 - vpn solution (e.g. tailscale)
 3 - (Optional) vpn solution 2 (e.g. netmaker)
