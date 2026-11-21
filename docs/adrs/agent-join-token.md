@@ -53,7 +53,7 @@ documentation can be referenced for more information.
   the functionality offered by `kubeadm`.
 * K3s will enable the `tokencleaner` controller, in order to ensure that bootstrap token secrets are cleaned
   up when their TTL expires.
-* K3s agent bootstrap functionality will allow a agent to connect the cluster using existing [Node
+* K3s agent bootstrap functionality will allow an agent to connect the cluster using existing [Node
   Authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/) to authenticate to the
   cluster during startup, even after its join token has been invalidated.
 * K3s agent bootstrap functionality will NOT allow an agent to connect to the cluster if it does not have a valid
