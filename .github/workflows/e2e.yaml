@@ -80,12 +80,10 @@ jobs:
         with: {fetch-depth: 1}
       - name: Install Go
         uses: ./.github/actions/setup-go
-      - name: Set up Docker
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
-        with:
-          version: type=image,tag=29
-          daemon-config: '{"features":{"containerd-snapshotter":true}}'
-          set-host: true
+      - name: Configure Docker
+        run: |
+           echo '{"features":{"containerd-snapshotter":true}}' | sudo tee /etc/docker/daemon.json
+           sudo systemctl restart docker
       - name: Set up vagrant and libvirt
         uses: ./.github/actions/vagrant-setup
       - name: Vagrant Box R/W Cache
@@ -211,12 +209,10 @@ jobs:
       with:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts
-    - name: Set up Docker
-      uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
-      with:
-        version: type=image,tag=29
-        daemon-config: '{"features":{"containerd-snapshotter":true}}'
-        set-host: true
+    - name: Configure Docker
+      run: |
+         echo '{"features":{"containerd-snapshotter":true}}' | sudo tee /etc/docker/daemon.json
+         sudo systemctl restart docker
     - name: Load and set K3s image
       run: |
         if [ ${{ matrix.arch }} = "arm64" ]; then
@@ -265,11 +261,10 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: Install Go
       uses: ./.github/actions/setup-go
-    - name: Set up Docker
-      uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
-      with:
-        version: type=image,tag=29
-        set-host: true
+    - name: Configure Docker
+      run: |
+         echo '{"features":{"containerd-snapshotter":true}}' | sudo tee /etc/docker/daemon.json
+         sudo systemctl restart docker
     - name: "Download K3s image"
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:

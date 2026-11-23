@@ -119,11 +119,10 @@ jobs:
         with:
           name: k3s-amd64
           path: ./dist/artifacts
-      - name: Set up Docker
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
-        with:
-          version: type=image,tag=29
-          set-host: true
+      - name: Configure Docker
+        run: |
+           echo '{"features":{"containerd-snapshotter":true}}' | sudo tee /etc/docker/daemon.json
+           sudo systemctl restart docker
       - name: Install Go
         uses: ./.github/actions/setup-go
       - name: Load and set K3s image
