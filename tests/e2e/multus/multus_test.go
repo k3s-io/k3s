@@ -60,6 +60,19 @@ var _ = Describe("Verify Multus config", Ordered, func() {
 		})
 
 		It("Checks pod status", func() {
+			DeferCleanup(func() {
+				if !CurrentSpecReport().Failed() {
+					return
+				}
+				for _, job := range []string{"helm-install-multus-crd", "helm-install-multus"} {
+					cmd := "kubectl logs -n kube-system -l job-name=" + job + " --all-containers=true --prefix=true --tail=-1 --request-timeout=30s --kubeconfig=" + tc.KubeconfigFile
+					logs, err := tests.RunCommand(cmd)
+					fmt.Fprintf(GinkgoWriter, "Logs for %s:\n%s\n", job, logs)
+					if err != nil {
+						fmt.Fprintf(GinkgoWriter, "Failed to fetch logs for %s: %v\n", job, err)
+					}
+				}
+			})
 			By("Fetching pod status")
 			Eventually(func() error {
 				return tests.AllPodsUp(tc.KubeconfigFile, "kube-system")
