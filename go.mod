@@ -15,8 +15,8 @@ replace (
 	github.com/go-openapi/testify/v2 => github.com/go-openapi/testify/v2 v2.4.2
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.2
-	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.13.1
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.5.3
+	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.15.1
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common => github.com/prometheus/common v0.67.5
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.4.3
