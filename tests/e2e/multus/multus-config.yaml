@@ -16,6 +16,7 @@ metadata:
 spec:
   repo: https://rke2-charts.rancher.io
   chart: rke2-multus
+  version: 4.3.204
   targetNamespace: kube-system
   valuesContent: |-
     config:
