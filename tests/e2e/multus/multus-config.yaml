@@ -6,6 +6,7 @@ metadata:
 spec:
   repo: https://rke2-charts.rancher.io
   chart: rke2-multus-crd
+  version: 4.3.204
   targetNamespace: kube-system
 ---
 apiVersion: helm.cattle.io/v1
@@ -16,7 +17,7 @@ metadata:
 spec:
   repo: https://rke2-charts.rancher.io
   chart: rke2-multus
-  version: 4.3.204+v1.3436
+  version: 4.3.204
   targetNamespace: kube-system
   valuesContent: |-
     config:
