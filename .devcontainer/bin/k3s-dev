@@ -1,0 +1,594 @@
+#!/usr/bin/env bash
+# k3s-dev: build K3s from this checkout and run it as a live cluster inside the dev container.
+# Run `k3s-dev help` for usage.
+set -uo pipefail
+
+K3S_SRC="${K3S_SRC:-/go/src/github.com/k3s-io/k3s}"
+DC_DIR="${K3S_SRC}/.devcontainer"
+STATE_DIR=/var/lib/rancher/k3s-dev           # persisted in a volume, survives rebuilds
+DATA_DIR=/var/lib/rancher/k3s
+RUN_DIR=/run/k3s-dev
+LOG=/var/log/k3s.log
+PIDFILE="${RUN_DIR}/k3s.pid"
+BIN_LINK=/usr/local/bin/k3s
+KUBECONFIG_FILE=/etc/rancher/k3s/k3s.yaml
+HEADLAMP_PORT="${K3S_DEV_HEADLAMP_PORT:-4466}"
+DELVE_PORT="${K3S_DEV_DELVE_PORT:-2345}"
+AGENT_PREFIX=k3s-dev-agent
+DEV_IMAGE=k3s-dev/k3s:dev
+
+case "$(uname -m)" in
+  x86_64) ARCH=amd64; RELEASE_BIN=k3s ;;
+  aarch64) ARCH=arm64; RELEASE_BIN=k3s-arm64 ;;
+  *) ARCH="$(uname -m)"; RELEASE_BIN="k3s-${ARCH}" ;;
+esac
+
+# ---------------------------------------------------------------- output helpers
+if [ -t 1 ]; then
+  Y=$'\e[38;2;255;198;28m' G=$'\e[32m' R=$'\e[31m' B=$'\e[1m' N=$'\e[0m'
+else
+  Y='' G='' R='' B='' N=''
+fi
+info() { printf '%s==>%s %s\n' "${Y}${B}" "${N}" "$*"; }
+ok()   { printf '%s ✔%s %s\n' "${G}" "${N}" "$*"; }
+warn() { printf '%s !%s %s\n' "${Y}" "${N}" "$*" >&2; }
+die()  { printf '%s ✘ %s%s\n' "${R}" "$*" "${N}" >&2; exit 1; }
+
+mkdir -p "${STATE_DIR}" "${RUN_DIR}"
+
+# ---------------------------------------------------------------- state helpers
+running_pid() {
+  local pid
+  pid=$(cat "${PIDFILE}" 2>/dev/null) || return 1
+  kill -0 "${pid}" 2>/dev/null && echo "${pid}"
+}
+is_running() { running_pid > /dev/null; }
+
+active_mode() { cat "${STATE_DIR}/mode" 2>/dev/null || echo none; }
+
+# Point k3s, kubectl, crictl and ctr at the binary that runs the cluster, so the client
+# tools always match the server
+activate_binary() {
+  ln -sfn "$1" "${BIN_LINK}"
+  local t
+  for t in kubectl crictl ctr; do ln -sfn "${BIN_LINK}" "/usr/local/bin/${t}"; done
+}
+
+binary_version() { "$1" --version 2>/dev/null | head -1 | awk '{print $3}'; }
+
+# Same channel lookup and checksum verification as install.sh
+release_binary() {
+  local want="${1:-stable}" version url dir
+  if [[ "${want}" =~ ^v[0-9] ]]; then
+    version="${want}"
+  else
+    url=$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://update.k3s.io/v1-release/channels/${want}") \
+      || die "could not resolve the K3s '${want}' channel"
+    version="${url##*/}"
+  fi
+  dir="${STATE_DIR}/releases/${version}"
+  if [ ! -x "${dir}/k3s" ]; then
+    info "Downloading K3s ${version} (${ARCH}) from GitHub releases" >&2
+    # Download and verify in a scratch directory, then install the binary as <dir>/k3s.
+    # The asset is named k3s on amd64 and k3s-<arch> elsewhere.
+    local base="https://github.com/k3s-io/k3s/releases/download/${version//+/%2B}" dl="${dir}.download"
+    rm -rf "${dl}" && mkdir -p "${dl}" "${dir}"
+    curl -fsSL --retry 3 -o "${dl}/sha256sum.txt" "${base}/sha256sum-${ARCH}.txt" || die "download failed: ${base}/sha256sum-${ARCH}.txt"
+    curl -fsSL --retry 3 -o "${dl}/${RELEASE_BIN}" "${base}/${RELEASE_BIN}" || die "download failed: ${base}/${RELEASE_BIN}"
+    (cd "${dl}" && grep " ${RELEASE_BIN}\$" sha256sum.txt | sha256sum -c - > /dev/null) || { rm -rf "${dl}"; die "checksum mismatch for K3s ${version}"; }
+    install -m 0755 "${dl}/${RELEASE_BIN}" "${dir}/k3s" || die "could not install K3s ${version}"
+    rm -rf "${dl}"
+  fi
+  echo "${dir}/k3s"
+}
+
+# A copy of the build output, so a rebuild in progress never breaks the running cluster
+dev_binary() {
+  local src="${K3S_SRC}/dist/artifacts/k3s"
+  [ -x "${src}" ] || return 1
+  install -m 0755 "${src}" "${STATE_DIR}/k3s-dev-build"
+  echo "${STATE_DIR}/k3s-dev-build"
+}
+
+# k3s-killall.sh, generated from the copy embedded in this checkout's install.sh
+killall_script() {
+  local out="${RUN_DIR}/k3s-killall.sh"
+  sed -n '/^create_killall()/,/^EOF$/p' "${K3S_SRC}/install.sh" | sed '1,/<< \\EOF$/d;$d' > "${out}"
+  chmod 0755 "${out}"
+  echo "${out}"
+}
+
+wait_ready() {
+  local timeout="${1:-240}" i
+  for ((i = 0; i < timeout; i += 2)); do
+    if ! is_running; then
+      tail -n 30 "${LOG}" >&2
+      die "k3s exited, see ${LOG}"
+    fi
+    if kubectl get --raw=/readyz > /dev/null 2>&1 &&
+       kubectl get nodes 2>/dev/null | grep -q ' Ready '; then
+      return 0
+    fi
+    sleep 2
+  done
+  die "cluster not Ready after ${timeout}s, see ${LOG}"
+}
+
+export_kubeconfig() {
+  # /.kube is in .gitignore; use it from the host with the forwarded port 6443
+  mkdir -p "${K3S_SRC}/.kube"
+  cp "${KUBECONFIG_FILE}" "${K3S_SRC}/.kube/config" 2>/dev/null && chmod 0600 "${K3S_SRC}/.kube/config"
+}
+
+install_addons() {
+  local addons="${K3S_DEV_ADDONS-headlamp}" a
+  mkdir -p "${DATA_DIR}/server/manifests"
+  for a in ${addons//,/ }; do
+    [ "${a}" = none ] && continue
+    [ -f "${DC_DIR}/addons/${a}.yaml" ] || { warn "unknown add-on '${a}'"; continue; }
+    # K3s deploys anything in server/manifests automatically (and HelmChart resources through its helm-controller)
+    cp "${DC_DIR}/addons/${a}.yaml" "${DATA_DIR}/server/manifests/k3s-dev-${a}.yaml"
+  done
+}
+
+start_ui_forward() {
+  stop_ui_forward
+  [[ ",${K3S_DEV_ADDONS-headlamp}," == *,headlamp,* ]] || return 0
+  setsid bash -c "while true; do kubectl -n kube-system port-forward --address 0.0.0.0 svc/headlamp ${HEADLAMP_PORT}:80 > /dev/null 2>&1; sleep 3; done" \
+    < /dev/null > /dev/null 2>&1 &
+  echo $! > "${RUN_DIR}/ui.pid"
+}
+stop_ui_forward() {
+  local pid
+  pid=$(cat "${RUN_DIR}/ui.pid" 2>/dev/null) && kill -- "-${pid}" 2>/dev/null
+  rm -f "${RUN_DIR}/ui.pid"
+}
+
+stop_delve() {
+  pkill -f "dlv attach" 2>/dev/null && sleep 1
+  return 0
+}
+
+# ---------------------------------------------------------------- commands
+cmd_up() {
+  local mode="" release="" wait=false foreground=false args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --release) mode=release; if [ $# -gt 1 ] && [[ "$2" != -* ]]; then release="$2"; shift; fi ;;
+      --release=*) mode=release; release="${1#*=}" ;;
+      --dev) mode=dev ;;
+      --wait) wait=true ;;
+      --foreground) foreground=true ;;
+      --) shift; args+=("$@"); break ;;
+      *) args+=("$1") ;;
+    esac
+    shift
+  done
+
+  if is_running; then
+    ok "K3s is already running ($(active_mode): $(binary_version "${BIN_LINK}")). Use 'k3s-dev restart' or 'k3s-dev reload'."
+    return 0
+  fi
+
+  local bin
+  if [ -z "${mode}" ]; then
+    # Your own build when there is one, otherwise the latest stable release
+    if bin=$(dev_binary); then mode=dev; else mode=release; fi
+  fi
+  if [ "${mode}" = dev ]; then
+    bin=$(dev_binary) || die "no build found at dist/artifacts/k3s, run 'k3s-dev build' first (or 'k3s-dev up --release')"
+  else
+    bin=$(release_binary "${release:-${K3S_DEV_CHANNEL:-stable}}") || exit 1
+  fi
+  echo "${mode}" > "${STATE_DIR}/mode"
+  activate_binary "${bin}"
+
+  install_addons
+  # shellcheck disable=SC2206
+  local server_args=(server --write-kubeconfig-mode=644 --tls-san=127.0.0.1 ${K3S_DEV_SERVER_ARGS:-} "${args[@]}")
+  printf '%s\n' "${args[@]}" > "${STATE_DIR}/extra-args"
+
+  info "Starting K3s $(binary_version "${bin}") (${mode} build) → log: ${LOG}"
+  if [ "${foreground}" = true ]; then
+    exec "${bin}" "${server_args[@]}"
+  fi
+  echo "---- $(date -u '+%Y-%m-%dT%H:%M:%SZ') k3s-dev up (${mode}) ----" >> "${LOG}"
+  setsid "${bin}" "${server_args[@]}" < /dev/null >> "${LOG}" 2>&1 &
+  echo $! > "${PIDFILE}"
+  start_ui_forward
+
+  if [ "${wait}" = true ]; then
+    wait_ready
+    export_kubeconfig
+    ok "Cluster is Ready: $(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ') node(s)"
+  else
+    ( for _ in $(seq 1 120); do [ -f "${KUBECONFIG_FILE}" ] && export_kubeconfig && break; sleep 2; done ) > /dev/null 2>&1 &
+    ok "K3s is starting in the background. Follow it with 'k3s-dev logs -f' or wait with 'k3s-dev wait'."
+  fi
+}
+
+stop_server() {
+  local pid i
+  pid=$(running_pid) || return 0
+  info "Stopping K3s (pid ${pid})"
+  stop_delve
+  kill -TERM "${pid}" 2>/dev/null
+  for ((i = 0; i < 30; i++)); do kill -0 "${pid}" 2>/dev/null || break; sleep 1; done
+  kill -KILL "${pid}" 2>/dev/null
+  rm -f "${PIDFILE}"
+}
+
+cmd_down() {
+  stop_ui_forward
+  stop_server
+  info "Stopping pods, unmounting volumes and removing CNI networking (k3s-killall.sh from install.sh)"
+  "$(killall_script)" > "${RUN_DIR}/killall.log" 2>&1
+  ok "K3s stopped. Cluster state is kept; 'k3s-dev nuke' deletes it."
+}
+
+# Restart the server process only; pods keep running, just like a K3s upgrade on a real node
+cmd_restart() {
+  local mode extra=()
+  mode=$(active_mode)
+  [ "${mode}" = none ] && mode=""
+  mapfile -t extra < "${STATE_DIR}/extra-args" 2>/dev/null || true
+  stop_server
+  if [ "${mode}" = release ]; then
+    local v
+    v=$(binary_version "${BIN_LINK}")
+    cmd_up --release "${v}" "$@" -- "${extra[@]}"
+  else
+    cmd_up ${mode:+--${mode}} "$@" -- "${extra[@]}"
+  fi
+}
+
+cmd_build() {
+  local debug=false download=false start
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --debug) debug=true ;;
+      --download) download=true ;;
+      *) die "unknown build option: $1" ;;
+    esac
+    shift
+  done
+  cd "${K3S_SRC}" || die "source not found at ${K3S_SRC}"
+  # scripts/build points GOPATH at ./build for the CNI, containerd and runc builds; keep their
+  # modules in the shared module cache volume instead of downloading them again into the checkout
+  export GOMODCACHE="${GOMODCACHE:-/go/pkg/mod}"
+  start=$(date +%s)
+  if [ "${debug}" = true ]; then
+    export DEBUG=true
+    info "Debug build: optimisations off, symbols kept (DEBUG=true)"
+  else
+    unset DEBUG
+  fi
+  # scripts/download clones runc, containerd and the CNI plugins and fetches k3s-root and the
+  # bundled charts. That only needs to happen once (or after their versions change).
+  if [ "${download}" = true ] || [ ! -d build/src/github.com/opencontainers/runc ] || [ ! -d bin/aux ] || [ ! -d build/static/charts ]; then
+    info "scripts/download"
+    ./scripts/download || die "scripts/download failed"
+  fi
+  # The same steps, toolchain and cross-compiler wrapper (xx-go) as the 'build' stage of the Dockerfile
+  info "scripts/build"
+  GO=xx-go ./scripts/build || die "scripts/build failed"
+  info "scripts/package-cli"
+  GO=xx-go ./scripts/package-cli || die "scripts/package-cli failed"
+  # package-cli names the binary k3s-<arch> on everything but amd64 (BIN_SUFFIX in scripts/platform.sh);
+  # the integration tests and k3s-dev look for dist/artifacts/k3s
+  if [ ! -e dist/artifacts/k3s ] || [ -L dist/artifacts/k3s ]; then
+    [ -x "dist/artifacts/k3s-${ARCH}" ] && ln -sfn "k3s-${ARCH}" dist/artifacts/k3s
+  fi
+  ok "Built $(binary_version dist/artifacts/k3s) in $(( $(date +%s) - start ))s → dist/artifacts/k3s"
+  echo "$(git rev-parse HEAD 2>/dev/null) ${debug}" > "${STATE_DIR}/last-build"
+}
+
+cmd_reload() {
+  local build_args=() up_args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --debug|--download) build_args+=("$1") ;;
+      *) up_args+=("$1") ;;
+    esac
+    shift
+  done
+  cmd_build "${build_args[@]}"
+  stop_server
+  echo dev > "${STATE_DIR}/mode"
+  local extra=()
+  mapfile -t extra < "${STATE_DIR}/extra-args" 2>/dev/null || true
+  cmd_up --dev --wait "${up_args[@]}" -- "${extra[@]}"
+}
+
+cmd_debug() {
+  local build=true
+  [ "${1:-}" = "--no-build" ] && build=false
+  if [ "${build}" = true ]; then
+    cmd_reload --debug
+  elif ! is_running; then
+    cmd_up --dev --wait
+  fi
+  local pid
+  pid=$(running_pid) || die "K3s is not running"
+  stop_delve
+  info "Attaching delve to the K3s server (pid ${pid}), listening on :${DELVE_PORT}"
+  setsid dlv attach "${pid}" --headless --listen=":${DELVE_PORT}" --api-version=2 --accept-multiclient --continue \
+    < /dev/null > /var/log/dlv.log 2>&1 &
+  sleep 2
+  pgrep -f "dlv attach" > /dev/null || { cat /var/log/dlv.log >&2; die "delve failed to attach"; }
+  ok "Delve is ready. In VS Code open Run and Debug and start \"Attach to k3s server (k3s-dev debug)\"."
+  [ "$(cut -d' ' -f2 "${STATE_DIR}/last-build" 2>/dev/null)" = true ] || warn "the running build is not a debug build, so breakpoints may not bind. Run 'k3s-dev debug' without --no-build."
+}
+
+cmd_status() {
+  local pid
+  printf '%sK3s dev cluster%s\n' "${Y}${B}" "${N}"
+  if pid=$(running_pid); then
+    printf '  %-10s %srunning%s (pid %s)\n' "state" "${G}" "${N}" "${pid}"
+  else
+    printf '  %-10s %sstopped%s\n' "state" "${R}" "${N}"
+  fi
+  printf '  %-10s %s\n' "mode" "$(active_mode)"
+  [ -e "${BIN_LINK}" ] && printf '  %-10s %s\n' "version" "$(binary_version "${BIN_LINK}")"
+  printf '  %-10s %s\n' "log" "${LOG}"
+  if [ -n "${pid:-}" ]; then
+    echo
+    kubectl get nodes -o wide 2>/dev/null || true
+  fi
+}
+
+cmd_logs() {
+  if [ "${1:-}" = "-f" ]; then tail -n 100 -F "${LOG}"; else tail -n "${1:-200}" "${LOG}"; fi
+}
+
+cmd_wait() { wait_ready "${1:-240}" && export_kubeconfig && ok "Cluster is Ready"; }
+
+cmd_nuke() {
+  cmd_agent rm all 2>/dev/null
+  cmd_down
+  info "Deleting cluster state (${DATA_DIR}, /etc/rancher/k3s, /var/lib/kubelet)"
+  rm -rf "${DATA_DIR}" /etc/rancher/k3s /var/lib/cni "${K3S_SRC}/.kube/config"
+  find /var/lib/kubelet -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null
+  ok "Cluster state deleted. 'k3s-dev up' starts a brand new cluster."
+}
+
+cmd_token() {
+  kubectl -n kube-system get secret k3s-dev-admin-token -o jsonpath='{.data.token}' 2>/dev/null | base64 -d \
+    || die "no token yet; is the cluster up and the headlamp add-on enabled?"
+  echo
+}
+
+server_url() {
+  local ip
+  ip=$(kubectl get node "$(hostname)" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null)
+  [ -n "${ip}" ] || die "cannot find the server node IP, is the cluster running?"
+  echo "https://${ip}:6443"
+}
+
+agent_image() {
+  if [ "$(active_mode)" = dev ]; then
+    # The same image `make image` builds (scripts/package-image), from the data tarball package-cli produced
+    docker build -q -t "${DEV_IMAGE}" -f "${K3S_SRC}/package/Dockerfile" "${K3S_SRC}" > /dev/null || die "building ${DEV_IMAGE} failed"
+    echo "${DEV_IMAGE}"
+  else
+    echo "rancher/k3s:$(binary_version "${BIN_LINK}" | tr + -)"
+  fi
+}
+
+cmd_agent() {
+  local action="${1:-}"
+  [ $# -gt 0 ] && shift
+  case "${action}" in
+    add)
+      local count="${1:-1}" url token image i n name names=()
+      is_running || die "start the server first with 'k3s-dev up'"
+      docker info > /dev/null 2>&1 || die "dockerd is not running, see /var/log/dockerd.log"
+      url=$(server_url)
+      token=$(cat "${DATA_DIR}/server/node-token") || die "no node token yet, wait for the server to be Ready"
+      info "Preparing the agent image"
+      image=$(agent_image)
+      for ((i = 0; i < count; i++)); do
+        n=1; while docker inspect "${AGENT_PREFIX}-${n}" > /dev/null 2>&1; do n=$((n + 1)); done
+        name="${AGENT_PREFIX}-${n}"
+        docker run -d --privileged --name "${name}" --hostname "${name}" \
+          --tmpfs /run --tmpfs /var/run \
+          -e K3S_URL="${url}" -e K3S_TOKEN="${token}" \
+          "${image}" agent > /dev/null || die "failed to start ${name}"
+        ok "Started ${name} (${image})"
+        names+=("${name}")
+      done
+      info "Waiting for the new node(s) to register and become Ready"
+      for name in "${names[@]}"; do
+        for ((i = 0; i < 90; i++)); do kubectl get node "${name}" > /dev/null 2>&1 && break; sleep 2; done
+        kubectl wait --for=condition=Ready "node/${name}" --timeout=180s || die "${name} did not become Ready, see: docker logs ${name}"
+      done
+      ;;
+    rm)
+      local target="${1:-all}" names
+      if [ "${target}" = all ]; then
+        names=$(docker ps -a --format '{{.Names}}' --filter "name=^${AGENT_PREFIX}-" 2>/dev/null)
+      else
+        names="${target}"
+      fi
+      for n in ${names}; do
+        docker rm -f "${n}" > /dev/null && kubectl delete node "${n}" --ignore-not-found > /dev/null 2>&1
+        ok "Removed ${n}"
+      done
+      ;;
+    ls|"")
+      docker ps -a --filter "name=^${AGENT_PREFIX}-" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+      ;;
+    *) die "usage: k3s-dev agent add [N] | rm [NAME|all] | ls" ;;
+  esac
+}
+
+SAVED_SUFFIX=.k3s-dev-saved
+move_dev_state_aside() {
+  local d
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    if [ -e "${d}${SAVED_SUFFIX}" ]; then
+      die "${d}${SAVED_SUFFIX} exists from an interrupted run; move it back to ${d} (or delete it) first"
+    fi
+  done
+  info "Moving the dev cluster's state aside (${DATA_DIR}, /etc/rancher/k3s)"
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    [ -e "${d}" ] && mv "${d}" "${d}${SAVED_SUFFIX}"
+  done
+  return 0
+}
+restore_dev_state() {
+  local d
+  "$(killall_script)" > "${RUN_DIR}/killall.log" 2>&1
+  for d in "${DATA_DIR}" /etc/rancher/k3s; do
+    if [ -e "${d}${SAVED_SUFFIX}" ]; then
+      rm -rf "${d}"
+      mv "${d}${SAVED_SUFFIX}" "${d}"
+    fi
+  done
+  ok "Restored the dev cluster's state"
+}
+
+cmd_test() {
+  local kind="${1:-}"
+  [ $# -gt 0 ] && shift
+  cd "${K3S_SRC}" || exit 1
+  case "${kind}" in
+    unit)
+      # tests/TESTING.md: go test ./pkg/... -run Unit
+      local pkgs=("${@:-./pkg/...}")
+      go test "${pkgs[@]}" -run Unit
+      ;;
+    integration)
+      local name="${1:-}"
+      [ -x dist/artifacts/k3s ] || die "integration tests run dist/artifacts/k3s, run 'k3s-dev build' first"
+      local was_running=false rc=0
+      if is_running; then
+        warn "integration tests start their own K3s server, stopping the dev cluster first"
+        was_running=true
+        cmd_down
+      fi
+      # Each test expects a clean /var/lib/rancher/k3s (as on a CI runner) and deletes it when it
+      # finishes, so keep the dev cluster's state out of the way and put it back afterwards
+      move_dev_state_aside
+      trap 'restore_dev_state; exit 130' INT TERM
+      go test "./tests/integration/${name:+${name}/}..." -run Integration -ginkgo.v -test.v || rc=$?
+      trap - INT TERM
+      restore_dev_state
+      if [ "${was_running}" = true ]; then cmd_up --wait; fi
+      return "${rc}"
+      ;;
+    docker)
+      local name="${1:-basics}"
+      [ -d "tests/docker/${name}" ] || die "no docker test called '${name}', see: ls tests/docker"
+      if [ "$(active_mode)" = dev ] && [ -f "build/out/data-linux-${ARCH}.tar.zst" ]; then
+        docker build -q -t "${DEV_IMAGE}" -f package/Dockerfile . > /dev/null || die "building ${DEV_IMAGE} failed"
+        export K3S_IMAGE="${DEV_IMAGE}"
+      fi
+      info "Running tests/docker/${name} against ${K3S_IMAGE:-the default image}"
+      go test "./tests/docker/${name}/..." -v -ginkgo.v -k3sImage="${K3S_IMAGE:-rancher/k3s:$(binary_version "${BIN_LINK}" | tr + -)}"
+      ;;
+    *) die "usage: k3s-dev test unit [PKG...] | integration [NAME] | docker [NAME]" ;;
+  esac
+}
+
+cmd_lint() {
+  cd "${K3S_SRC}" || exit 1
+  local base
+  base=$(git merge-base HEAD origin/HEAD 2>/dev/null || git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD origin/master 2>/dev/null)
+  if [ "${1:-}" = "--all" ] || [ -z "${base}" ]; then
+    golangci-lint run --timeout=10m
+  else
+    info "Linting changes since ${base:0:12} (like CI). Use --all for the whole tree."
+    golangci-lint run --timeout=10m --new-from-rev="${base}"
+  fi
+}
+
+cmd_doctor() {
+  printf '%sEnvironment%s\n' "${Y}${B}" "${N}"
+  printf '  %-14s %s\n' go "$(go version | awk '{print $3}')" \
+    kernel "$(uname -r)" \
+    arch "${ARCH}" \
+    cgroup "$([ -f /sys/fs/cgroup/cgroup.controllers ] && echo "v2 ($(cat /sys/fs/cgroup/cgroup.subtree_control))" || echo v1)" \
+    docker "$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'not running, see /var/log/dockerd.log')" \
+    codespaces "${CODESPACES:-false}"
+  echo
+  if [ -e "${BIN_LINK}" ]; then
+    printf '%sk3s check-config%s\n' "${Y}${B}" "${N}"
+    "${BIN_LINK}" check-config 2>&1 | tail -n 25
+  else
+    "${K3S_SRC}/contrib/util/check-config.sh" 2>&1 | tail -n 25
+  fi
+}
+
+cmd_setup() {
+  cd "${K3S_SRC}" || exit 1
+  git config --global --add safe.directory "${K3S_SRC}"
+  git config --global core.autocrlf input
+  # ginkgo at exactly the version in go.mod
+  info "Installing the ginkgo CLI from go.mod"
+  (unset GOOS GOARCH; CGO_ENABLED=0 GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo) || warn "ginkgo install failed"
+  if command -v claude > /dev/null 2>&1; then
+    mkdir -p "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"
+    ln -sfn "${DC_DIR}/claude/CLAUDE.md" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/CLAUDE.md"
+    if ! claude mcp get kubernetes > /dev/null 2>&1; then
+      if claude mcp add --scope user kubernetes -- kubernetes-mcp-server > /dev/null 2>&1; then
+        ok "Registered the Kubernetes MCP server with Claude Code"
+      else
+        warn "could not register the Kubernetes MCP server with Claude Code"
+      fi
+    fi
+  fi
+  ok "Setup done"
+}
+
+cmd_banner() {
+  "${DC_DIR}/bin/motd" "$@"
+}
+
+cmd_help() {
+  cat <<EOF
+${Y}${B}k3s-dev${N}: build K3s from this checkout and run it as a live cluster
+
+${B}Cluster${N}
+  up [--release [VERSION|CHANNEL]] [--wait] [-- K3S ARGS]
+                     Start the server. Uses your build (dist/artifacts/k3s) when there is one,
+                     otherwise the latest stable release. Extra args go to 'k3s server'.
+  down               Stop K3s and all pods (k3s-killall.sh). Cluster state is kept.
+  restart            Restart the server process; pods keep running, like an upgrade
+  wait               Wait until the node is Ready
+  status             Show mode, version and nodes
+  logs [-f|N]        Show or follow the K3s log
+  nuke               Delete all cluster state and start from scratch next time
+  agent add [N]      Add N agent nodes as containers running the same build
+  agent rm [NAME|all] / agent ls
+
+${B}Develop${N}
+  build [--debug] [--download]
+                     scripts/download (once), scripts/build and scripts/package-cli,
+                     natively with the CI toolchain. Incremental thanks to the Go caches.
+  reload [--debug]   build, then restart the cluster on your new binary
+  debug [--no-build] Debug build, reload, and attach delve on :${DELVE_PORT} (VS Code: F5)
+  test unit [PKG...] Unit tests (default ./pkg/...)
+  test integration [NAME]
+                     Integration tests against dist/artifacts/k3s
+  test docker [NAME] tests/docker suites against your build's image
+  lint [--all]       golangci-lint, only your changes by default (like CI)
+  doctor             Environment checks and k3s check-config
+
+${B}Other${N}
+  token              Headlamp login token
+  banner             Show the welcome banner
+  setup              One-time setup (run automatically when the container is created)
+
+Environment: K3S_DEV_SERVER_ARGS (extra server args), K3S_DEV_ADDONS (default: headlamp, or none),
+K3S_DEV_CHANNEL (default: stable).
+EOF
+}
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+case "${cmd}" in
+  up|down|restart|reload|build|debug|status|logs|wait|nuke|agent|test|lint|doctor|token|setup|banner|help) "cmd_${cmd}" "$@" ;;
+  -h|--help) cmd_help ;;
+  *) die "unknown command '${cmd}', see 'k3s-dev help'" ;;
+esac

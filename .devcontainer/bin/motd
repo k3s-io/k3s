@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Welcome banner for the K3s dev container. `--first-run` waits for the cluster to come up.
+K3S_SRC="${K3S_SRC:-/go/src/github.com/k3s-io/k3s}"
+STATE_DIR=/var/lib/rancher/k3s-dev
+HEADLAMP_PORT="${K3S_DEV_HEADLAMP_PORT:-4466}"
+
+Y=$'\e[38;2;255;198;28m' G=$'\e[32m' R=$'\e[31m' C=$'\e[36m' B=$'\e[1m' D=$'\e[2m' M=$'\e[38;5;198m' N=$'\e[0m'
+
+running() { kill -0 "$(cat /run/k3s-dev/k3s.pid 2>/dev/null)" 2>/dev/null; }
+ready() { timeout 3 kubectl get nodes 2>/dev/null | grep -q ' Ready '; }
+
+if [ "${1:-}" = "--first-run" ] && running && ! ready; then
+  printf '%s' "${Y}Waiting for your K3s cluster to become Ready${N}"
+  for _ in $(seq 1 90); do ready && break; printf '.'; sleep 2; done
+  echo
+fi
+
+printf '%s' "${Y}${B}"
+figlet -f standard "K3s  Dev  Container" 2>/dev/null || echo "K3s Dev Container"
+printf '%s' "${N}"
+
+mode=$(cat "${STATE_DIR}/mode" 2>/dev/null || echo none)
+version=$(k3s --version 2>/dev/null | head -1 | awk '{print $3}')
+if running && ready; then
+  nodes=$(timeout 3 kubectl get nodes --no-headers 2>/dev/null | awk '$2 == "Ready"' | wc -l | tr -d ' ')
+  state="${G}● running${N}  ${nodes} node(s) Ready"
+elif running; then
+  state="${Y}● starting${N}  ${D}(k3s-dev logs -f)${N}"
+else
+  state="${R}● stopped${N}  ${D}(k3s-dev up)${N}"
+fi
+case "${mode}" in
+  dev) built="${M}your build${N} ${D}from $(cut -c1-12 "${STATE_DIR}/last-build" 2>/dev/null)${N}" ;;
+  release) built="${C}release${N} ${D}(k3s-dev build && k3s-dev reload runs your code)${N}" ;;
+  *) built="" ;;
+esac
+
+if [ "${CODESPACES:-}" = "true" ]; then
+  headlamp="https://${CODESPACE_NAME}-${HEADLAMP_PORT}.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+else
+  headlamp="http://localhost:${HEADLAMP_PORT}"
+fi
+
+row() { printf '  %s%-12s%s %s\n' "${Y}" "$1" "${N}" "$2"; }
+row "Cluster" "${state}"
+[ -n "${version}" ] && row "K3s" "${version}  ${built}"
+row "Go" "$(go version | awk '{print $3}')  ${D}(same toolchain as CI: Dockerfile, target infra)${N}"
+row "Headlamp" "${headlamp}  ${D}(login token: k3s-dev token)${N}"
+row "Kubeconfig" "${KUBECONFIG}  ${D}(host: .kube/config via localhost:6443)${N}"
+echo
+printf '%s\n' "  ${B}Develop${N}   ${M}k3s-dev build${N} → ${M}k3s-dev reload${N}   ${D}your code, running as the cluster${N}"
+printf '%s\n' "  ${B}Debug${N}     ${M}k3s-dev debug${N}, then F5 ${D}\"Attach to k3s server\"${N}"
+printf '%s\n' "  ${B}Test${N}      ${M}k3s-dev test unit${N} | ${M}integration${N} | ${M}docker basics${N}   ${M}k3s-dev lint${N}"
+printf '%s\n' "  ${B}Nodes${N}     ${M}k3s-dev agent add 2${N}   ${M}kubectl get nodes${N}   ${M}k9s${N}"
+printf '%s\n' "  ${B}AI${N}        ${M}claude${N} ${D}(knows k3s-dev, the Kubernetes MCP server and .agents/ workflows)${N}"
+printf '%s\n' "  ${B}More${N}      ${M}k3s-dev help${N}   ${D}.devcontainer/README.md${N}   ${D}commits need DCO sign-off: git commit -s${N}"
+echo
+
+if [ "${1:-}" = "--first-run" ]; then
+  printf '%s\n' "${G}${B}👉 Your K3s dev environment is ready. Open a new terminal (Ctrl+Shift+\`) to get started.${N}"
+  echo
+fi

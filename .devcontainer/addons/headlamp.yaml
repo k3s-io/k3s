@@ -1,0 +1,42 @@
+# Headlamp, the Kubernetes SIG UI web UI, deployed by K3s's own helm-controller.
+# `k3s-dev up` copies this file to /var/lib/rancher/k3s/server/manifests/.
+# Disable with K3S_DEV_ADDONS=none.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: headlamp
+  namespace: kube-system
+spec:
+  repo: https://kubernetes-sigs.github.io/headlamp/
+  chart: headlamp
+  version: 0.46.0
+  targetNamespace: kube-system
+---
+# Cluster-admin login for this local, single-user dev cluster: `k3s-dev token`
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k3s-dev-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k3s-dev-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: k3s-dev-admin
+    namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k3s-dev-admin-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: k3s-dev-admin
+type: kubernetes.io/service-account-token
