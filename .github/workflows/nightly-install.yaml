@@ -120,7 +120,7 @@ jobs:
           name: k3s-amd64
           path: ./dist/artifacts
       - name: Set up Docker
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+        uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
         with:
           version: type=image,tag=29
           set-host: true
