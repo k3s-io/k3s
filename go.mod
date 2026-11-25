@@ -103,7 +103,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k3s-io/api v0.2.1
-	github.com/k3s-io/helm-controller v0.17.9
+	github.com/k3s-io/helm-controller v0.17.11
 	github.com/k3s-io/kine v0.17.6
 	github.com/klauspost/compress v1.20.4
 	github.com/libp2p/go-libp2p v0.50.0
@@ -147,7 +147,7 @@ require (
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.42.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.25.0
 	golang.org/x/sys v0.50.0
 	google.golang.org/grpc v1.85.0
@@ -500,7 +500,7 @@ require (
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/telemetry v0.0.0-20261009151841-97e8ea77aa2a // indirect
 	golang.org/x/term v0.47.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
