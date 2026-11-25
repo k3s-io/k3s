@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net"
 	"slices"
 	"sync"
@@ -14,6 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+// preferredWeight makes a recently recovered server more likely to be dialed, as other servers may go down for maintenance.
+const preferredWeight = 2
 
 type HealthCheckFunc func() HealthCheckResult
 
@@ -33,6 +37,8 @@ type serverList struct {
 	// This mutex protects access to the server list. All direct access to the list should be protected by it.
 	mutex   sync.Mutex
 	servers []*server
+	// policy is how a server is selected for each new connection.
+	policy Policy
 }
 
 // setServers updates the server list to contain only the selected addresses.
@@ -174,6 +180,29 @@ func (sl *serverList) getServers() []*server {
 	return slices.Clone(sl.servers)
 }
 
+// setPolicy sets how a server is selected for each new connection.
+func (sl *serverList) setPolicy(policy Policy) {
+	sl.mutex.Lock()
+	defer sl.mutex.Unlock()
+
+	sl.policy = policy
+}
+
+// getDialOrder returns a copy of the servers list in the order that servers should be dialed.
+// With the weighted-random policy, healthy servers are shuffled by weight and the rest are kept as fallbacks.
+func (sl *serverList) getDialOrder() []*server {
+	servers := sl.getServers()
+	if sl.policy == PolicyWeightedRandom {
+		// the list is sorted by state, so healthy servers are at the front
+		healthy := 0
+		for healthy < len(servers) && servers[healthy].state >= stateHealthy {
+			healthy++
+		}
+		weightedShuffle(servers[:healthy])
+	}
+	return servers
+}
+
 // getServer returns the first server with the specified address
 func (sl *serverList) getServer(address string) *server {
 	sl.mutex.Lock()
@@ -244,6 +273,10 @@ func (sl *serverList) recordSuccess(srv *server, r reason) {
 	if new_state == stateActive {
 		for _, s := range sl.servers {
 			if srv.address == s.address {
+				continue
+			}
+			if sl.policy == PolicyWeightedRandom && s.state >= stateRecovering {
+				// with the weighted-random policy, other usable servers keep their connections
 				continue
 			}
 			switch s.state {
@@ -415,6 +448,14 @@ func (s *server) String() string {
 	return fmt.Sprintf(format, s.address, s.state)
 }
 
+// weight is the relative chance that a healthy server is dialed first for a new connection.
+func (s *server) weight() int {
+	if s.state == statePreferred {
+		return preferredWeight
+	}
+	return 1
+}
+
 // dialContext dials a new connection to the server using the environment's proxy settings, and adds its wrapped connection to the map
 func (s *server) dialContext(ctx context.Context, network string) (net.Conn, error) {
 	if s.state == stateInvalid {
@@ -495,7 +536,7 @@ func (sl *serverList) runHealthChecks(ctx context.Context, serviceName string) {
 // dialContext attemps to dial a connection to a server from the server list.
 // Success or failure is recorded to ensure that server state is updated appropriately.
 func (sl *serverList) dialContext(ctx context.Context, network, _ string) (net.Conn, error) {
-	for _, s := range sl.getServers() {
+	for _, s := range sl.getDialOrder() {
 		dialTime := time.Now()
 		conn, err := s.dialContext(ctx, network)
 		if err == nil {
@@ -506,6 +547,27 @@ func (sl *serverList) dialContext(ctx context.Context, network, _ string) (net.C
 		sl.recordFailure(s, reasonDial)
 	}
 	return nil, errors.New("all servers failed")
+}
+
+// weightedShuffle puts servers in a random order, where a server with a higher weight is more likely to come first.
+func weightedShuffle(servers []*server) {
+	weights := make([]int, len(servers))
+	total := 0
+	for i, s := range servers {
+		weights[i] = s.weight()
+		total += weights[i]
+	}
+	for i := 0; i < len(servers)-1; i++ {
+		// pick one of the remaining servers in proportion to its weight
+		j, n := i, rand.IntN(total)
+		for n >= weights[j] {
+			n -= weights[j]
+			j++
+		}
+		servers[i], servers[j] = servers[j], servers[i]
+		weights[i], weights[j] = weights[j], weights[i]
+		total -= weights[i]
+	}
 }
 
 // compareServers is a comparison function that can be used to sort the server list

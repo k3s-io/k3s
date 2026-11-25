@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -90,6 +91,47 @@ func ping(conn net.Conn) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(result), nil
+}
+
+// dial opens a connection to the address, and returns it along with the name of the server that it reached.
+// The connection is closed when the current spec finishes.
+func dial(address string) (net.Conn, string) {
+	GinkgoHelper()
+
+	conn, err := net.Dial("tcp", address)
+	Expect(err).NotTo(HaveOccurred(), "net.Dial failed")
+	DeferCleanup(func() { conn.Close() })
+
+	// fail instead of blocking if the server stops responding
+	Expect(conn.SetDeadline(time.Now().Add(time.Minute))).To(Succeed(), "SetDeadline failed")
+
+	result, err := ping(conn)
+	Expect(err).NotTo(HaveOccurred(), "ping failed")
+	return conn, strings.TrimSuffix(result, ":ping")
+}
+
+// firstDialed returns the addresses of the servers that are dialed first, sampled over many new connections.
+func firstDialed(lb *LoadBalancer) []string {
+	var addresses []string
+	for range 100 {
+		if servers := lb.servers.getDialOrder(); len(servers) > 0 && !slices.Contains(addresses, servers[0].address) {
+			addresses = append(addresses, servers[0].address)
+		}
+	}
+	return addresses
+}
+
+// serverState returns the current state of the server with the specified address.
+func serverState(lb *LoadBalancer, address string) state {
+	lb.servers.mutex.Lock()
+	defer lb.servers.mutex.Unlock()
+
+	for _, s := range lb.servers.servers {
+		if s.address == address {
+			return s.state
+		}
+	}
+	return stateInvalid
 }
 
 var _ = Describe("LoadBalancer", func() {
@@ -314,6 +356,147 @@ var _ = Describe("LoadBalancer", func() {
 
 			// and is listed as the default
 			Expect(lb.servers.getDefaultAddress()).To(Equal(defaultServer.address), "default server is not default")
+		})
+	})
+
+	// confirms that the weighted-random policy spreads new connections across healthy servers,
+	// and that connections are only closed when their own server fails.
+	When("the weighted-random policy is set", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var defaultServer, node1Server, node2Server *testServer
+		var lb *LoadBalancer
+		var err error
+
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
+
+			defaultServer, err = createServer(ctx, "default")
+			Expect(err).NotTo(HaveOccurred(), "createServer(default) failed")
+
+			node1Server, err = createServer(ctx, "node1")
+			Expect(err).NotTo(HaveOccurred(), "createServer(node1) failed")
+
+			node2Server, err = createServer(ctx, "node2")
+			Expect(err).NotTo(HaveOccurred(), "createServer(node2) failed")
+
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address, RandomPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+			lb.SetPolicy(PolicyWeightedRandom)
+
+			lb.Update([]string{node1Server.address, node2Server.address, defaultServer.address})
+			for _, s := range []*testServer{defaultServer, node1Server, node2Server} {
+				lb.SetHealthCheck(s.address, func() HealthCheckResult { return HealthCheckResultOK })
+			}
+
+			// wait for all servers to pass health checks
+			for _, s := range []*testServer{defaultServer, node1Server, node2Server} {
+				Eventually(func() state { return serverState(lb, s.address) }, 5, 1).Should(Equal(statePreferred))
+			}
+		})
+
+		AfterAll(func() {
+			cancel()
+		})
+
+		It("dials all healthy servers", func() {
+			Expect(firstDialed(lb)).To(ConsistOf(defaultServer.address, node1Server.address, node2Server.address), "Unexpected servers dialed first")
+		})
+
+		It("only closes connections to a server that fails", func() {
+			// each server becomes active when it is first dialed, which should not close connections to the others
+			conns := map[string]net.Conn{}
+			for range 50 {
+				if len(conns) == 3 {
+					break
+				}
+				conn, name := dial(lb.localAddress)
+				if _, ok := conns[name]; !ok {
+					conns[name] = conn
+				}
+			}
+			Expect(conns).To(HaveLen(3), "Not all servers received connections")
+			for name, conn := range conns {
+				Expect(ping(conn)).To(Equal(name+":ping"), "Unexpected ping result")
+			}
+
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultFailed })
+			Eventually(func() error {
+				_, err := ping(conns["node1"])
+				return err
+			}, 5, 1).Should(HaveOccurred(), "Unexpected successful ping on connection to failed server")
+
+			Expect(ping(conns["default"])).To(Equal("default:ping"), "Unexpected ping result")
+			Expect(ping(conns["node2"])).To(Equal("node2:ping"), "Unexpected ping result")
+		})
+
+		It("only dials the failed server as a fallback", func() {
+			Expect(firstDialed(lb)).To(ConsistOf(defaultServer.address, node2Server.address), "Unexpected servers dialed first")
+
+			servers := lb.servers.getDialOrder()
+			Expect(servers).To(HaveLen(3), "Unexpected server count")
+			Expect(servers[2].address).To(Equal(node1Server.address), "Failed server is not the last fallback")
+		})
+
+		It("dials a recovered server", func() {
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultOK })
+			Eventually(func() []string { return firstDialed(lb) }, 5, 1).Should(ContainElement(node1Server.address), "Recovered server is not dialed first")
+		})
+
+		It("dials a recently recovered server first more often", func() {
+			Expect(serverState(lb, node1Server.address)).To(Equal(statePreferred), "Recovered server is not preferred")
+
+			// the recovered server has twice the weight of each of the other two servers
+			dialed := 0
+			for range 1000 {
+				if lb.servers.getDialOrder()[0].address == node1Server.address {
+					dialed++
+				}
+			}
+			Expect(dialed).To(BeNumerically("~", 500, 100), "Unexpected count of recovered server dialed first")
+		})
+	})
+
+	// confirms that the weighted-random policy still closes connections to a default server that is
+	// only a fallback, once a listed server has taken a connection.
+	When("the weighted-random policy is set and the default server is a fallback", Ordered, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		var defaultServer, node1Server *testServer
+		var lb *LoadBalancer
+		var err error
+
+		BeforeAll(func() {
+			tmpDir := GinkgoT().TempDir()
+
+			defaultServer, err = createServer(ctx, "default")
+			Expect(err).NotTo(HaveOccurred(), "createServer(default) failed")
+
+			node1Server, err = createServer(ctx, "node1")
+			Expect(err).NotTo(HaveOccurred(), "createServer(node1) failed")
+
+			lb, err = New(ctx, tmpDir, SupervisorServiceName, "http://"+defaultServer.address, RandomPort, false)
+			Expect(err).NotTo(HaveOccurred(), "New() failed")
+			lb.SetPolicy(PolicyWeightedRandom)
+		})
+
+		AfterAll(func() {
+			cancel()
+		})
+
+		It("closes the fallback connection once a listed server is dialed", func() {
+			conn1, name := dial(lb.localAddress)
+			Expect(name).To(Equal("default"), "Unexpected server for conn1")
+
+			lb.Update([]string{node1Server.address})
+			lb.SetHealthCheck(node1Server.address, func() HealthCheckResult { return HealthCheckResultOK })
+			Eventually(func() state { return serverState(lb, node1Server.address) }, 5, 1).Should(Equal(statePreferred))
+
+			_, name = dial(lb.localAddress)
+			Expect(name).To(Equal("node1"), "Unexpected server for conn2")
+
+			Eventually(func() error {
+				_, err := ping(conn1)
+				return err
+			}, 5, 1).Should(HaveOccurred(), "Unexpected successful ping on fallback connection conn1")
 		})
 	})
 

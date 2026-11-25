@@ -18,9 +18,7 @@ import (
 )
 
 // LoadBalancer holds data for a local listener which forwards connections to a
-// pool of remote servers. It is not a proper load-balancer in that it does not
-// actually balance connections, but instead fails over to a new server only
-// when a connection attempt to the currently selected server fails.
+// pool of remote servers.
 type LoadBalancer struct {
 	serviceName  string
 	configFile   string
@@ -31,6 +29,14 @@ type LoadBalancer struct {
 }
 
 const RandomPort = 0
+
+// Policy is how a server is selected for each new connection.
+type Policy string
+
+var (
+	PolicyFirst          = Policy("first")
+	PolicyWeightedRandom = Policy("weighted-random")
+)
 
 var (
 	SupervisorServiceName = version.Program + "-agent-load-balancer"
@@ -146,6 +152,13 @@ func (lb *LoadBalancer) SetHealthCheck(address string, healthCheck HealthCheckFu
 	} else {
 		logrus.Debugf("Set health check for load balancer %s: %s", lb.serviceName, address)
 	}
+}
+
+// SetPolicy sets how a server is selected for each new connection.
+// Any value other than PolicyWeightedRandom selects the first server in the list, which is the default.
+func (lb *LoadBalancer) SetPolicy(policy Policy) {
+	logrus.Infof("Load balancer %s uses policy %s", lb.serviceName, policy)
+	lb.servers.setPolicy(policy)
 }
 
 func (lb *LoadBalancer) LocalURL() string {

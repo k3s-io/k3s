@@ -185,6 +185,7 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	serverConfig.ControlConfig.FlannelIPv6Masq = cfg.FlannelIPv6Masq
 	serverConfig.ControlConfig.FlannelExternalIP = cfg.FlannelExternalIP
 	serverConfig.ControlConfig.EgressSelectorMode = cfg.EgressSelectorMode
+	serverConfig.ControlConfig.APIServerLBPolicy = cfg.APIServerLBPolicy
 	serverConfig.ControlConfig.DisableCCM = cfg.DisableCCM
 	serverConfig.ControlConfig.DisableNPC = cfg.DisableNPC
 	serverConfig.ControlConfig.DisableHelmController = cfg.DisableHelmController
@@ -697,6 +698,12 @@ func validateNetworkConfiguration(serverConfig server.Config) error {
 		}
 	default:
 		return fmt.Errorf("invalid egress-selector-mode %s", serverConfig.ControlConfig.EgressSelectorMode)
+	}
+
+	switch loadbalancer.Policy(serverConfig.ControlConfig.APIServerLBPolicy) {
+	case loadbalancer.PolicyFirst, loadbalancer.PolicyWeightedRandom:
+	default:
+		return fmt.Errorf("invalid apiserver-lb-policy %s", serverConfig.ControlConfig.APIServerLBPolicy)
 	}
 
 	return nil
