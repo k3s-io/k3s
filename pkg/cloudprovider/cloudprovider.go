@@ -36,6 +36,9 @@ type Config struct {
 	LBNamespace                string `json:"lbNamespace"`
 	NodeEnabled                bool   `json:"nodeEnabled"`
 	Rootless                   bool   `json:"rootless"`
+	// RejectDuplicateNodeAddresses makes the node controller refuse to set node addresses
+	// that another node already reports.
+	RejectDuplicateNodeAddresses bool `json:"rejectDuplicateNodeAddresses"`
 }
 
 type k3s struct {
@@ -135,6 +138,15 @@ func (k *k3s) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, st
 			logrus.Panicf("failed to start %s controllers: %v", controllerName, err)
 		}
 	} else {
+		if k.NodeEnabled && k.RejectDuplicateNodeAddresses {
+			// The duplicate address check needs a node cache even without the load balancer controller.
+			coreFactory := core.NewFactoryFromConfigOrDie(config)
+			k.nodeCache = coreFactory.Core().V1().Node().Cache()
+			if err := start.All(ctx, 1, coreFactory); err != nil {
+				logrus.Panicf("failed to start %s node cache: %v", controllerName, err)
+			}
+		}
+
 		// If load-balancer functionality has not been enabled, delete managed daemonsets.
 		// This uses the raw kubernetes client, as the controllers are not started when the load balancer controller is disabled.
 		if err := k.deleteAllDaemonsets(ctx); err != nil {

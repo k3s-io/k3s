@@ -224,6 +224,11 @@ type Control struct {
 	DisableServiceLB         bool
 	Rootless                 bool
 	ServiceLBNamespace       string
+
+	// RejectDuplicateNodeAddresses refuses kubelet serving certificates and node addresses
+	// for nodes whose IPs are already reported by another node.
+	RejectDuplicateNodeAddresses bool
+
 	ExtraAPIArgs             []string
 	ExtraControllerArgs      []string
 	ExtraCloudControllerArgs []string
