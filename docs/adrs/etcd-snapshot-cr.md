@@ -40,7 +40,7 @@ it into a neutral project for use by both projects.
 ## Decision
 
 1. Instead of populating snapshots into a ConfigMap using the JSON serialization of the private `snapshotFile` type, K3s
-   will manage creation of an new Custom Resource Definition with similar fields.
+   will manage creation of a new Custom Resource Definition with similar fields.
 2. Metadata on each snapshot will be stored in a distinct Custom Resource.
 3. The new Custom Resource will be cluster-scoped, as etcd and its snapshots are a cluster-level resource.
 4. Snapshot metadata will also be written alongside snapshot files created on disk and/or uploaded to S3. The metadata
