@@ -51,6 +51,7 @@ binary:
 		--build-arg "COMMIT=$$COMMIT" \
 		--build-arg "DIRTY=$$DIRTY" \
 		--build-arg="GOCOVER=$(GOCOVER)" \
+		--build-arg="GOFIPS140=$(GOFIPS140)" \
 		--build-arg="GOOS=$(GOOS)" \
 		--build-arg="DEBUG=$(DEBUG)" \
 		-f Dockerfile --target=result --output=. .
@@ -66,6 +67,7 @@ multiarch-binary:
 		--build-arg "COMMIT=$$COMMIT" \
 		--build-arg "DIRTY=$$DIRTY" \
 		--build-arg="GOCOVER=$(GOCOVER)" \
+		--build-arg="GOFIPS140=$(GOFIPS140)" \
 		--build-arg="DEBUG=$(DEBUG)" \
 		-f Dockerfile --target=multiarch-result --output type=local,dest=.,platform-split=false .
 
