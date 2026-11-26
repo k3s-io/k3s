@@ -56,9 +56,9 @@ func Configure(enableIPv6, setBridgeFilter bool, config *kubeproxyconfig.KubePro
 
 // kernelSysctls returns the kernel sysctls that Configure should ensure are set.
 // The net/bridge/bridge-nf-call-{ip,ip6}tables sysctls are only included when
-// setBridgeFilter is true. These are required by kube-proxy and flannel, but on
-// nodes that run neither (for example when using an alternative CNI) k3s should
-// leave them untouched so that they can be managed by the administrator.
+// setBridgeFilter is true. The caller enables this for Flannel; when using an
+// alternative CNI, k3s should leave them untouched for the CNI or administrator
+// to manage.
 func kernelSysctls(enableIPv6, setBridgeFilter bool, config *kubeproxyconfig.KubeProxyConntrackConfiguration) map[string]int {
 	// Kernel is inconsistent about how devconf is configured for
 	// new network namespaces between ipv4 and ipv6. Make sure to
