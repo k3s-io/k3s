@@ -5,6 +5,7 @@ metadata:
   name: gateway-api-crd
   namespace: kube-system
 spec:
+  bootstrap: true
   forceConflicts: true
   failurePolicy: retry
   takeOwnership: true

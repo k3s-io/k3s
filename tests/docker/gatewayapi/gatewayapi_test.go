@@ -27,10 +27,8 @@ var _ = Describe("Gateway API Tests", Ordered, func() {
 			var err error
 			config, err = docker.NewTestConfig(GinkgoTB(), *k3sImage)
 			Expect(err).NotTo(HaveOccurred())
+			config.ServerYaml = "node-taint:\n- node-role.kubernetes.io/control-plane:NoSchedule"
 			Expect(config.ProvisionServers(1)).To(Succeed())
-			Eventually(func() error {
-				return tests.CheckDefaultDeployments(config.KubeconfigFile)
-			}, "180s", "5s").Should(Succeed())
 			Eventually(func() error {
 				return tests.NodesReady(config.KubeconfigFile, config.GetNodeNames())
 			}, "40s", "5s").Should(Succeed())
@@ -38,11 +36,21 @@ var _ = Describe("Gateway API Tests", Ordered, func() {
 	})
 
 	Context("Enable Traefik's Gateway API provider", func() {
-		It("should install the Gateway API CRDs from the bundled gateway-api-crd manifest", func() {
+		It("should install the bundled Gateway API CRDs on a control-plane-tainted server", func() {
+			taintCmd := "kubectl get nodes -o jsonpath='{.items[0].spec.taints[?(@.key==\"node-role.kubernetes.io/control-plane\")].effect}' --kubeconfig=" + config.KubeconfigFile
+			out, err := tests.RunCommand(taintCmd)
+			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+taintCmd)
+			Expect(out).To(Equal("NoSchedule"))
 			cmd := "kubectl get crd gateways.gateway.networking.k8s.io httproutes.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io --kubeconfig=" + config.KubeconfigFile
 			Eventually(func() (string, error) {
 				return tests.RunCommand(cmd)
 			}, "120s", "5s").Should(ContainSubstring("gatewayclasses.gateway.networking.k8s.io"), "failed cmd: "+cmd)
+			cmd = "kubectl taint node " + config.Servers[0].Name + " node-role.kubernetes.io/control-plane:NoSchedule- --kubeconfig=" + config.KubeconfigFile
+			_, err = tests.RunCommand(cmd)
+			Expect(err).NotTo(HaveOccurred(), "failed cmd: "+cmd)
+			Eventually(func() error {
+				return tests.CheckDefaultDeployments(config.KubeconfigFile)
+			}, "180s", "5s").Should(Succeed())
 		})
 		It("should apply a HelmChartConfig enabling the kubernetesGateway provider", func() {
 			_, err := config.DeployWorkload("gatewayapi-helmchartconfig.yaml")
